@@ -903,7 +903,6 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-16"
           className="mt-16 -mx-4 px-4 py-10 bg-slate-50/30 border-t border-slate-100 rounded-3xl overflow-hidden"
         >
           {/* Header — exact match to /customized-holidays */}
