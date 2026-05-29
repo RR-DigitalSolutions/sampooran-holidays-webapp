@@ -9,6 +9,8 @@ const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
 const redisOptions: any = {
   // Upstash recommends null for maxRetriesPerRequest to avoid dropping commands during serverless cold starts
   maxRetriesPerRequest: null,
+  // Send keep-alive packets every 10 seconds to prevent Upstash from closing "idle" connections (fixes ECONNRESET)
+  keepAlive: 10000,
   retryStrategy(times: number) {
     const delay = Math.min(times * 50, 2000);
     return delay;
