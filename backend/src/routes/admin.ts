@@ -178,9 +178,10 @@ router.post("/staff", async (req: AuthenticatedRequest, res) => {
     return res.status(403).json({ error: "Only SUPERADMIN can create staff accounts" });
   }
   try {
-    const { name, email, password, permissions } = req.body;
+    const { name, email, password, permissions, role } = req.body;
     const referralCode = "STAFF" + Math.random().toString(36).substring(2, 7).toUpperCase();
     const passwordHash = await bcrypt.hash(password || "Staff@1234", 12);
+    const assignedRole = role === "SUPERADMIN" ? "SUPERADMIN" : "ADMIN";
 
     const [staff] = await db
       .insert(usersTable)
@@ -188,9 +189,9 @@ router.post("/staff", async (req: AuthenticatedRequest, res) => {
         name,
         email,
         passwordHash,
-        role: "ADMIN",
+        role: assignedRole,
         referralCode,
-        adminPermissions: JSON.stringify(permissions || []),
+        adminPermissions: assignedRole === "SUPERADMIN" ? JSON.stringify(["ALL"]) : JSON.stringify(permissions || []),
         isFirstLogin: false,
       })
       .returning();

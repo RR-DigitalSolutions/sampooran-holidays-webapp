@@ -33,13 +33,28 @@ interface StaffMember {
 }
 
 export default function StaffManagement() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", permissions: [] as string[] });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "ADMIN", permissions: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  if (!isSuperAdmin) {
+    return (
+      <AdminLayout title="Access Denied" subtitle="Unauthorized access">
+        <div className="p-12 text-center">
+          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4 opacity-50" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Restricted Area</h2>
+          <p className="text-gray-500 max-w-md mx-auto">
+            You do not have permission to view this page. Only Super Admins can manage Staff & Access.
+          </p>
+        </div>
+      </AdminLayout>
+    );
+  }
+
 
   const fetchStaff = async () => {
     setLoading(true);
@@ -82,7 +97,7 @@ export default function StaffManagement() {
         setError(d.error || "Failed to create staff");
         return;
       }
-      setForm({ name: "", email: "", password: "", permissions: [] });
+      setForm({ name: "", email: "", password: "", role: "ADMIN", permissions: [] });
       setShowForm(false);
       fetchStaff();
     } catch {
@@ -116,7 +131,7 @@ export default function StaffManagement() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => { setForm(f => ({ ...f, permissions: ["SUPPORT", "INQUIRIES"] })); setShowForm(true); }}
+            onClick={() => { setForm(f => ({ ...f, role: "ADMIN", permissions: ["SUPPORT", "INQUIRIES"] })); setShowForm(true); }}
             className="flex items-center gap-2 bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-primary/90 transition-all"
           >
             <Headset className="w-4 h-4" /> + Support Agent
@@ -167,27 +182,43 @@ export default function StaffManagement() {
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-4">Module Permissions</label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {PERMISSION_MODULES.map(mod => {
-                  const active = form.permissions.includes(mod.key);
-                  const gradient = deptColors[mod.dept] || "from-gray-400 to-gray-500";
-                  return (
-                    <button
-                      key={mod.key} type="button"
-                      onClick={() => togglePermission(mod.key)}
-                      className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-sm font-semibold transition-all ${
-                        active ? `bg-gradient-to-r ${gradient} text-white border-transparent shadow-lg` : "bg-gray-50 border-gray-100 text-gray-600 hover:border-gray-200"
-                      }`}
-                    >
-                      {active ? <CheckSquare className="w-4 h-4 shrink-0" /> : <Square className="w-4 h-4 shrink-0" />}
-                      {mod.label}
-                    </button>
-                  );
-                })}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-3">Account Role</label>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-3 rounded-lg border border-gray-200 flex-1 hover:border-blue-400 transition-all">
+                  <input type="radio" name="role" value="ADMIN" checked={form.role === "ADMIN"} onChange={() => setForm(f => ({ ...f, role: "ADMIN" }))} className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-gray-700">Staff / Support Agent</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer bg-white px-4 py-3 rounded-lg border border-amber-200 flex-1 hover:border-amber-400 transition-all shadow-sm">
+                  <input type="radio" name="role" value="SUPERADMIN" checked={form.role === "SUPERADMIN"} onChange={() => setForm(f => ({ ...f, role: "SUPERADMIN", permissions: ["ALL"] }))} className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-bold text-amber-600">⭐ Super Admin (Full Access)</span>
+                </label>
               </div>
             </div>
+
+            {form.role === "ADMIN" && (
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-4">Module Permissions</label>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {PERMISSION_MODULES.map(mod => {
+                    const active = form.permissions.includes(mod.key);
+                    const gradient = deptColors[mod.dept] || "from-gray-400 to-gray-500";
+                    return (
+                      <button
+                        key={mod.key} type="button"
+                        onClick={() => togglePermission(mod.key)}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-sm font-semibold transition-all ${
+                          active ? `bg-gradient-to-r ${gradient} text-white border-transparent shadow-lg` : "bg-gray-50 border-gray-100 text-gray-600 hover:border-gray-200"
+                        }`}
+                      >
+                        {active ? <CheckSquare className="w-4 h-4 shrink-0" /> : <Square className="w-4 h-4 shrink-0" />}
+                        {mod.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {error && <p className="text-red-500 text-sm bg-red-50 border border-red-200 px-4 py-3 rounded-xl">⚠️ {error}</p>}
 
