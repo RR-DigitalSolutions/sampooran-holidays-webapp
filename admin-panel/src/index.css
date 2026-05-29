@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@theme {
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  :root {
+    --primary: #0D1B3E; /* Dark Blue - Professional */
+    --accent: #F5A623;  /* Gold/Orange - Call to Action */
+  }
+
+  body {
+    font-family: 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
+    background: #F8FAFC;
+    color: #111827;
+    margin: 0;
+    padding: 0;
+  }
+}

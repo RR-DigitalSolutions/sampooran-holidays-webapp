@@ -1,0 +1,30 @@
+src/app/dashboard/page.tsx(51,59): error TS2304: Cannot find name 'Building2'.
+src/app/dashboard/page.tsx(51,97): error TS2552: Cannot find name 'Car'. Did you mean 'Card'?
+src/components/pages/B2BClient.tsx(19,9): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type '{ data: InquiryInput; }'.
+src/components/pages/ContactClient.tsx(18,50): error TS2353: Object literal may only specify known properties, and 'message' does not exist in type '{ data: InquiryInput; }'.
+src/components/pages/CountryPageClient.tsx(60,66): error TS2741: Property 'queryKey' is missing in type '{ enabled: boolean; }' but required in type 'UseQueryOptions<ListPackages200, ErrorType<unknown>, ListPackages200, readonly unknown[]>'.
+src/components/pages/CustomizeClient.tsx(35,9): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type '{ data: InquiryInput; }'.
+src/components/pages/DestinationDetailClient.old.tsx(209,19): error TS7006: Parameter 'img' implicitly has an 'any' type.
+src/components/pages/DestinationDetailClient.old.tsx(807,47): error TS7006: Parameter 'img' implicitly has an 'any' type.
+src/components/pages/DestinationDetailClient.old.tsx(807,52): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/components/pages/DestinationDetailClient.tsx(54,5): error TS2741: Property 'queryKey' is missing in type '{ enabled: boolean; }' but required in type 'UseQueryOptions<DestinationDetail, ErrorType<void>, DestinationDetail, readonly unknown[]>'.
+src/components/pages/DestinationDetailClient.tsx(61,5): error TS2741: Property 'queryKey' is missing in type '{ enabled: boolean; }' but required in type 'UseQueryOptions<ListPackages200, ErrorType<unknown>, ListPackages200, readonly unknown[]>'.
+src/components/pages/PackageDetailClient.tsx(61,64): error TS2741: Property 'queryKey' is missing in type '{ enabled: boolean; }' but required in type 'UseQueryOptions<PackageDetail, ErrorType<void>, PackageDetail, readonly unknown[]>'.
+src/components/pages/PackageDetailClient.tsx(87,9): error TS2353: Object literal may only specify known properties, and 'name' does not exist in type '{ data: InquiryInput; }'.
+src/components/pages/PackageListingPage.tsx(167,36): error TS2353: Object literal may only specify known properties, and 'pause' does not exist in type 'string[] | TargetAndTransition'.
+src/components/pages/PackagesClient.tsx(71,62): error TS2339: Property 'isTrending' does not exist on type 'Package | { id: number; name: string; slug: string; destinationName: string; stateName: string; imageUrl: string; shortDescription: string; duration: number; nights: number; pricePerPerson: number; ... 8 more ...; highlights: string[]; } | { ...; }'.
+  Property 'isTrending' does not exist on type 'Package'.
+src/components/pages/PackagesClient.tsx(71,87): error TS2339: Property 'isTrending' does not exist on type 'Package | { id: number; name: string; slug: string; destinationName: string; stateName: string; imageUrl: string; shortDescription: string; duration: number; nights: number; pricePerPerson: number; ... 8 more ...; highlights: string[]; } | { ...; }'.
+  Property 'isTrending' does not exist on type 'Package'.
+src/components/pages/PackagesClient.tsx(79,58): error TS2339: Property 'isTrending' does not exist on type 'Package | { id: number; name: string; slug: string; destinationName: string; stateName: string; imageUrl: string; shortDescription: string; duration: number; nights: number; pricePerPerson: number; ... 8 more ...; highlights: string[]; } | { ...; }'.
+  Property 'isTrending' does not exist on type 'Package'.
+src/components/pages/StatePageClient.tsx(59,66): error TS2741: Property 'queryKey' is missing in type '{ enabled: boolean; }' but required in type 'UseQueryOptions<ListPackages200, ErrorType<unknown>, ListPackages200, readonly unknown[]>'.
+src/components/VendorDashboard.tsx(35,53): error TS2339: Property 'token' does not exist on type 'User'.
+src/components/VendorDashboard.tsx(42,53): error TS2339: Property 'token' does not exist on type 'User'.
+src/components/VendorListingForm.tsx(43,44): error TS2339: Property 'token' does not exist on type 'User'.
+src/components/VendorListingForm.tsx(73,53): error TS2339: Property 'token' does not exist on type 'User'.
+src/components/VendorListingForm.tsx(160,100): error TS7006: Parameter '_' implicitly has an 'any' type.
+src/components/VendorListingForm.tsx(160,103): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+undefined
+C:\Users\Raman K Singh\Documents\RR Digital Solutions\Sampooran Holidays\sampooran-holidays-source\frontend:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: tsc --noEmit

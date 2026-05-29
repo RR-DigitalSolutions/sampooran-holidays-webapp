@@ -1,0 +1,1000 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Sampooran Holidays Travel Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: destinations
+    description: Destination operations
+  - name: packages
+    description: Holiday package operations
+  - name: transport
+    description: Transport/cab booking operations
+  - name: inquiries
+    description: Customer inquiry operations
+  - name: testimonials
+    description: Customer testimonials
+  - name: blog
+    description: Blog/travel tips operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /destinations:
+    get:
+      operationId: listDestinations
+      tags: [destinations]
+      summary: List all destinations
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of destinations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  destinations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Destination"
+                  total:
+                    type: integer
+                required:
+                  - destinations
+                  - total
+
+  /destinations/featured:
+    get:
+      operationId: getFeaturedDestinations
+      tags: [destinations]
+      summary: Get featured destinations for homepage
+      responses:
+        "200":
+          description: Featured destinations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  destinations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Destination"
+                required:
+                  - destinations
+
+  /destinations/countries:
+    get:
+      operationId: listCountries
+      tags: [destinations]
+      summary: List all available countries
+      responses:
+        "200":
+          description: List of countries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  countries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Country"
+                required:
+                  - countries
+
+  /destinations/states:
+    get:
+      operationId: listStates
+      tags: [destinations]
+      summary: List states, optionally filtered by country
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of states
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  states:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/State"
+                required:
+                  - states
+
+  /destinations/{slug}:
+    get:
+      operationId: getDestination
+      tags: [destinations]
+      summary: Get destination by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Destination details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DestinationDetail"
+        "404":
+          description: Not found
+
+  /packages:
+    get:
+      operationId: listPackages
+      tags: [packages]
+      summary: List holiday packages
+      parameters:
+        - name: destinationSlug
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: country
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: minDays
+          in: query
+          schema:
+            type: integer
+        - name: maxDays
+          in: query
+          schema:
+            type: integer
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [b2b, b2c, both]
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Package"
+                  total:
+                    type: integer
+                required:
+                  - packages
+                  - total
+
+  /packages/featured:
+    get:
+      operationId: getFeaturedPackages
+      tags: [packages]
+      summary: Get featured packages for homepage
+      responses:
+        "200":
+          description: Featured packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Package"
+                required:
+                  - packages
+
+  /packages/trending:
+    get:
+      operationId: getTrendingPackages
+      tags: [packages]
+      summary: Get trending/popular packages
+      responses:
+        "200":
+          description: Trending packages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Package"
+                required:
+                  - packages
+
+  /packages/stats:
+    get:
+      operationId: getPackageStats
+      tags: [packages]
+      summary: Get package statistics for homepage showcase
+      responses:
+        "200":
+          description: Package stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageStats"
+
+  /packages/{slug}:
+    get:
+      operationId: getPackage
+      tags: [packages]
+      summary: Get package detail by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Package details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PackageDetail"
+        "404":
+          description: Not found
+
+  /transport:
+    get:
+      operationId: listTransportServices
+      tags: [transport]
+      summary: List transport services
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [taxi, tempo, bus]
+        - name: route
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of transport services
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  services:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransportService"
+                required:
+                  - services
+
+  /transport/routes:
+    get:
+      operationId: listPopularRoutes
+      tags: [transport]
+      summary: Get popular transport routes
+      responses:
+        "200":
+          description: Popular routes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  routes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransportRoute"
+                required:
+                  - routes
+
+  /inquiries:
+    post:
+      operationId: submitInquiry
+      tags: [inquiries]
+      summary: Submit a holiday/transport inquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InquiryInput"
+      responses:
+        "201":
+          description: Inquiry submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Inquiry"
+        "400":
+          description: Validation error
+
+  /testimonials:
+    get:
+      operationId: listTestimonials
+      tags: [testimonials]
+      summary: List customer testimonials
+      parameters:
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Testimonials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  testimonials:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Testimonial"
+                required:
+                  - testimonials
+
+  /blog:
+    get:
+      operationId: listBlogPosts
+      tags: [blog]
+      summary: List blog posts / travel tips
+      parameters:
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Blog posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BlogPost"
+                  total:
+                    type: integer
+                required:
+                  - posts
+                  - total
+
+  /blog/{slug}:
+    get:
+      operationId: getBlogPost
+      tags: [blog]
+      summary: Get blog post by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Blog post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlogPost"
+        "404":
+          description: Not found
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Country:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        code:
+          type: string
+        imageUrl:
+          type: string
+        packageCount:
+          type: integer
+      required:
+        - id
+        - name
+        - slug
+        - code
+        - packageCount
+
+    State:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        countryId:
+          type: integer
+        countryName:
+          type: string
+        imageUrl:
+          type: string
+        packageCount:
+          type: integer
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - slug
+        - countryId
+        - countryName
+        - packageCount
+
+    Destination:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        stateId:
+          type: integer
+        stateName:
+          type: string
+        countryName:
+          type: string
+        imageUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+        description:
+          type: string
+        isFeatured:
+          type: boolean
+        packageCount:
+          type: integer
+        bestTimeToVisit:
+          type: string
+        altitude:
+          type: string
+        temperature:
+          type: string
+      required:
+        - id
+        - name
+        - slug
+        - stateId
+        - stateName
+        - countryName
+        - isFeatured
+        - packageCount
+
+    DestinationDetail:
+      allOf:
+        - $ref: "#/components/schemas/Destination"
+        - type: object
+          properties:
+            longDescription:
+              type: string
+            highlights:
+              type: array
+              items:
+                type: string
+            thingsToDo:
+              type: array
+              items:
+                type: string
+            howToReach:
+              type: string
+            localAttractions:
+              type: array
+              items:
+                type: string
+            packages:
+              type: array
+              items:
+                $ref: "#/components/schemas/Package"
+          required:
+            - packages
+
+    Package:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        destinationId:
+          type: integer
+        destinationName:
+          type: string
+        stateName:
+          type: string
+        countryName:
+          type: string
+        imageUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+        shortDescription:
+          type: string
+        duration:
+          type: integer
+        nights:
+          type: integer
+        pricePerPerson:
+          type: number
+        originalPrice:
+          type: number
+        discountPercent:
+          type: integer
+        category:
+          type: string
+        packageType:
+          type: string
+          enum: [b2b, b2c, both]
+        isFeatured:
+          type: boolean
+        rating:
+          type: number
+        reviewCount:
+          type: integer
+        highlights:
+          type: array
+          items:
+            type: string
+        cities:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        inclusionIcons:
+          type: array
+          items:
+            type: string
+      required:
+        - id
+        - name
+        - slug
+        - destinationId
+        - destinationName
+        - stateName
+        - countryName
+        - duration
+        - nights
+        - pricePerPerson
+        - category
+        - packageType
+        - isFeatured
+
+    ItineraryDay:
+      type: object
+      properties:
+        day:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        activities:
+          type: array
+          items:
+            type: string
+        meals:
+          type: array
+          items:
+            type: string
+        accommodation:
+          type: string
+      required:
+        - day
+        - title
+        - description
+
+    PackageDetail:
+      allOf:
+        - $ref: "#/components/schemas/Package"
+        - type: object
+          properties:
+            longDescription:
+              type: string
+            itinerary:
+              type: array
+              items:
+                $ref: "#/components/schemas/ItineraryDay"
+            inclusions:
+              type: array
+              items:
+                type: string
+            exclusions:
+              type: array
+              items:
+                type: string
+            hotels:
+              type: array
+              items:
+                $ref: "#/components/schemas/HotelOption"
+            tourType:
+              type: string
+            groupSize:
+              type: string
+            pickupPoint:
+              type: string
+            importantNotes:
+              type: array
+              items:
+                type: string
+            cancellationPolicy:
+              type: string
+            faqs:
+              type: array
+              items:
+                $ref: "#/components/schemas/FAQ"
+            relatedPackages:
+              type: array
+              items:
+                $ref: "#/components/schemas/Package"
+          required:
+            - itinerary
+            - inclusions
+            - exclusions
+
+    HotelOption:
+      type: object
+      properties:
+        city:
+          type: string
+        hotelName:
+          type: string
+        category:
+          type: string
+        nights:
+          type: integer
+        roomType:
+          type: string
+      required:
+        - city
+        - hotelName
+        - category
+        - nights
+
+    FAQ:
+      type: object
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+      required:
+        - question
+        - answer
+
+    PackageStats:
+      type: object
+      properties:
+        totalPackages:
+          type: integer
+        totalDestinations:
+          type: integer
+        totalStates:
+          type: integer
+        totalCountries:
+          type: integer
+        happyTravelers:
+          type: integer
+        yearsExperience:
+          type: integer
+        avgRating:
+          type: number
+      required:
+        - totalPackages
+        - totalDestinations
+        - totalStates
+        - totalCountries
+        - happyTravelers
+        - yearsExperience
+        - avgRating
+
+    TransportService:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        type:
+          type: string
+          enum: [taxi, tempo, bus]
+        vehicleModel:
+          type: string
+        capacity:
+          type: integer
+        imageUrl:
+          type: string
+        pricePerKm:
+          type: number
+        basePrice:
+          type: number
+        description:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+        isAC:
+          type: boolean
+      required:
+        - id
+        - name
+        - slug
+        - type
+        - capacity
+
+    TransportRoute:
+      type: object
+      properties:
+        id:
+          type: integer
+        from:
+          type: string
+        to:
+          type: string
+        distance:
+          type: integer
+        estimatedTime:
+          type: string
+        startingPrice:
+          type: number
+        isPopular:
+          type: boolean
+      required:
+        - id
+        - from
+        - to
+        - distance
+        - estimatedTime
+        - startingPrice
+        - isPopular
+
+    InquiryInput:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        inquiryType:
+          type: string
+          enum: [package, transport, customized, b2b]
+        packageId:
+          type: integer
+        destination:
+          type: string
+        travelDate:
+          type: string
+        numberOfPersons:
+          type: integer
+        message:
+          type: string
+        budget:
+          type: number
+      required:
+        - name
+        - phone
+        - inquiryType
+        - message
+
+    Inquiry:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        inquiryType:
+          type: string
+        packageId:
+          type: integer
+        destination:
+          type: string
+        travelDate:
+          type: string
+        numberOfPersons:
+          type: integer
+        message:
+          type: string
+        budget:
+          type: number
+        status:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - phone
+        - inquiryType
+        - message
+        - status
+        - createdAt
+
+    Testimonial:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+        avatarUrl:
+          type: string
+        rating:
+          type: number
+        review:
+          type: string
+        packageName:
+          type: string
+        travelDate:
+          type: string
+        isFeatured:
+          type: boolean
+      required:
+        - id
+        - name
+        - rating
+        - review
+        - isFeatured
+
+    BlogPost:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: string
+        content:
+          type: string
+        imageUrl:
+          type: string
+        author:
+          type: string
+        publishedAt:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        readTime:
+          type: integer
+      required:
+        - id
+        - title
+        - slug
+        - excerpt
+        - author
+        - publishedAt
