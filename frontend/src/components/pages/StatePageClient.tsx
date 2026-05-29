@@ -47,6 +47,7 @@ export default function StatePageClient({ stateSlug: propStateSlug }: { stateSlu
     try { const p = JSON.parse(v); return Array.isArray(p) ? p.filter((f: any) => f && f.question) : []; } catch { return []; }
   };
 
+  const staticFallback = STATE_DATA[stateSlug as string] || STATE_DATA["himachal-pradesh"];
   // Merge dynamic data with static fallback
   const s = {
     ...staticFallback,
