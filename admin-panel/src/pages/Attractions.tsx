@@ -129,7 +129,9 @@ function AttractionModal({ item, destinations, onClose, onSave }: { item?: any; 
     if (!form.destinationId || !form.name) return toast.error("Destination and Name are required");
     setLoading(true);
     try {
-      const payload = { ...form, destinationId: Number(form.destinationId), displayOrder: Number(form.displayOrder || 0), highlights: toArr(form.highlights), tips: toArr(form.tips), famousFor: toArr(form.famousFor, ","), activities: toArr(form.activities) };
+      const payload: any = {
+        ...form,
+        destinationId: Number(form.destinationId), displayOrder: Number(form.displayOrder || 0), highlights: toArr(form.highlights), tips: toArr(form.tips), famousFor: toArr(form.famousFor, ","), activities: toArr(form.activities) };
       if (!payload.slug && payload.name) payload.slug = String(payload.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) await customFetch(`/api/admin/attractions/${item.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       else await customFetch("/api/admin/attractions", { method: "POST", body: JSON.stringify(payload) });

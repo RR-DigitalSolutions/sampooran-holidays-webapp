@@ -151,7 +151,7 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
       const toArray = (v: string, sep = "\n") => (v || "").split(sep).map(s => s.trim()).filter(Boolean);
       // Filter out incomplete FAQs (must have at least a question)
       const cleanFaqs = (form.faqs as FaqItem[]).filter(f => f.question.trim());
-      const payload = {
+      const payload: any = {
         ...form,
         highlights: toArray(form.highlights),
         thingsToDo: toArray(form.thingsToDo),
@@ -280,7 +280,7 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
     try {
       const toArray = (v: string, sep = "\n") => (v || "").split(sep).map(s => s.trim()).filter(Boolean);
       const cleanFaqs = (form.faqs as FaqItem[]).filter(f => f.question.trim());
-      const payload = {
+      const payload: any = {
         ...form,
         countryId: Number(form.countryId),
         highlights: toArray(form.highlights),
@@ -473,7 +473,7 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
     try {
       const toArray = (v: string, sep = "\n") => v.split(sep).map(s => s.trim()).filter(Boolean);
       const cleanFaqs = (form.faqs as FaqItem[]).filter(f => f.question.trim());
-      const payload = {
+      const payload: any = {
         ...form,
         stateId: Number(form.stateId),
         highlights: toArray(form.highlights),

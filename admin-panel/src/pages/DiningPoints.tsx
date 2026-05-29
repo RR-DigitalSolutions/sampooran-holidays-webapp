@@ -134,7 +134,7 @@ function DiningModal({ item, destinations, onClose, onSave }: { item?: any; dest
     if (!form.destinationId || !form.name) return toast.error("Destination and Name are required");
     setLoading(true);
     try {
-      const payload = { ...form, destinationId: Number(form.destinationId), displayOrder: Number(form.displayOrder || 0), cuisine: toArr(form.cuisine), specialItems: toArr(form.specialItems) };
+      const payload: any = { ...form, destinationId: Number(form.destinationId), displayOrder: Number(form.displayOrder || 0), cuisine: toArr(form.cuisine), specialItems: toArr(form.specialItems) };
       if (!payload.slug && payload.name) payload.slug = String(payload.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) await customFetch(`/api/admin/dining/${item.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       else await customFetch("/api/admin/dining", { method: "POST", body: JSON.stringify(payload) });

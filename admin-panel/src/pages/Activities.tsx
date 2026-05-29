@@ -187,7 +187,7 @@ function ActivityModal({ item, destinations, onClose, onSave }: { item?: any; de
 
     setLoading(true);
     try {
-      const payload = {
+      const payload: any = {
         ...form,
         destinationId: Number(form.destinationId),
         displayOrder: Number(form.displayOrder || 0),

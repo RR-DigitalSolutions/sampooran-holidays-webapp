@@ -267,7 +267,7 @@ function GuideFormModal({ item, countries, states, places, onClose, onSave }: {
     setLoading(true);
     try {
       const toArr = (v: string) => v ? v.split("\n").map(s => s.trim()).filter(Boolean) : [];
-      const payload = {
+      const payload: any = {
         ...form,
         entityId: form.entityId ? Number(form.entityId) : null,
         highlights: toArr(form.highlights),
