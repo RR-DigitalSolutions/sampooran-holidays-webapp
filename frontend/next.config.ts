@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+// Derive backend origin from NEXT_PUBLIC_API_URL (e.g. "https://xxx.onrender.com/api" → "https://xxx.onrender.com")
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const BACKEND_URL = process.env.BACKEND_URL || apiUrl.replace(/\/api\/?$/, "") || "http://localhost:8080";
 
 const nextConfig: NextConfig = {
   async rewrites() {
