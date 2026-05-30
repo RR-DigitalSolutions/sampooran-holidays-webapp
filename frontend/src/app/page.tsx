@@ -1,5 +1,6 @@
 import HomeClient from "@/components/HomeClient";
 import type { Metadata } from "next";
+import { getApiUrl } from "@/lib/api-url";
 
 export const metadata: Metadata = {
   title: "Sampooran Holidays — #1 Himalayan Travel Agency | Manali, Ladakh, Kashmir & Shimla",
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 async function getHomeConfig() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+  const API_URL = getApiUrl();
   
   const safeFetch = async (url: string, options?: RequestInit, retries = 1) => {
     for (let i = 0; i <= retries; i++) {

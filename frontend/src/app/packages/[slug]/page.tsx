@@ -1,8 +1,10 @@
 import { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import { PackageDetailsPage } from "@/components/pages/PackageDetailsPage";
+import { getApiUrl } from "@/lib/api-url";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080/api";
+
+const API_URL = getApiUrl();
 
 async function getPackageBySlug(slug: string) {
   try {

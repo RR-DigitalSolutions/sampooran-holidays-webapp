@@ -5,8 +5,9 @@ import {
   Star, MapPin, Globe, CheckCircle, XCircle,
   ChevronRight, ArrowRight, Navigation, LayoutGrid, List, Building2
 } from "lucide-react";
+import { getApiUrl } from "@/utils/api-url";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const API_URL = getApiUrl();
 
 interface Hotel {
   id: number;

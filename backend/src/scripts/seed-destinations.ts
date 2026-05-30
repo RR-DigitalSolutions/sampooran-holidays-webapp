@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db, countriesTable, statesTable, destinationsTable, themesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 

@@ -1,5 +1,6 @@
 // ─── Shared helpers reused by PackageForm ─────────────────────────────────────
-const API_BASE = (import.meta as any).env?.VITE_API_URL || "http://localhost:8080/api";
+import { getApiUrl } from "./api-url";
+const API_BASE = getApiUrl();
 
 export async function uploadMedia(file: File, folder = "packages"): Promise<string> {
   const fd = new FormData();

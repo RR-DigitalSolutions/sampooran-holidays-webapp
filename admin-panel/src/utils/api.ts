@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+import { getApiBase } from "./api-url";
+const API_BASE = getApiBase();
 
 export async function customFetch<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   const stored = localStorage.getItem("sh_admin_token");

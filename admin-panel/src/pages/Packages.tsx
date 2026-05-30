@@ -5,6 +5,7 @@ import {
   Mountain, CheckCircle, XCircle, MoreVertical, Copy, Loader2
 } from "lucide-react";
 import { customFetch } from "../utils/api";
+import { getApiUrl } from "@/utils/api-url";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -34,7 +35,7 @@ export default function Packages() {
   useEffect(() => {
     async function fetchConfig() {
       try {
-        const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+        const API_BASE = getApiUrl();
         const res = await fetch(`${API_BASE}/ota/home/config`);
         if (res.ok) {
           const data = await res.json();

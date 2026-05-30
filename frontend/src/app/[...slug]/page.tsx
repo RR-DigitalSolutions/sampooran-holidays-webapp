@@ -3,20 +3,29 @@ import { notFound } from "next/navigation";
 import { PackageListingPage } from "@/components/pages/PackageListingPage";
 import { PackageDetailsPage } from "@/components/pages/PackageDetailsPage";
 import { ThemeDetailPage } from "@/components/pages/ThemeDetailPage";
+import { getApiUrl } from "@/lib/api-url";
 
-// Function to resolve slug from backend
-async function resolveSlug(slug: string) {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api'}/destinations/resolve-slug/${slug}`, {
-      cache: 'no-store' // Do not cache, ensure live updates
-    });
-    
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (error) {
-    console.error("Error resolving slug:", error);
-    return null;
+const API_URL = getApiUrl();
+
+// Function to resolve slug from backend with retry for Render cold-start
+async function resolveSlug(slug: string, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}/destinations/resolve-slug/${slug}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000), // 15s timeout for Render cold starts
+      });
+      
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (error: any) {
+      console.error(`[resolveSlug] Attempt ${attempt + 1}/${retries + 1} failed for "${slug}":`, error?.message || error);
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000)); // Wait 1s between retries
+      }
+    }
   }
+  return null;
 }
 
 type Props = {

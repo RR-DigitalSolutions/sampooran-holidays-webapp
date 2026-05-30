@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../components/AdminLayout";
 import { Plus, Search, Edit, Trash2, MapPin, Utensils, Save, X, Loader2, CheckCircle, XCircle, Upload, Star, Coffee, Image as ImageIcon } from "lucide-react";
 import { customFetch } from "../utils/api";
+import { getApiUrl } from "@/utils/api-url";
 import { toast } from "sonner";
 
 const TYPES = ["restaurant","cafe","fast_food","dhaba","bakery","street_food","rooftop","fine_dining","buffet","food_court"];
@@ -19,7 +20,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const MEAL_TYPES = ["breakfast","lunch","dinner","snack","tea"];
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const API = getApiUrl();
 
 async function uploadFile(file: File, folder = "dining"): Promise<string> {
   const fd = new FormData(); fd.append("file", file);

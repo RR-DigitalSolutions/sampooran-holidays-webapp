@@ -26,7 +26,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-export const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+export const API_BASE = (() => {
+  const raw = import.meta.env.VITE_API_URL || "http://localhost:8080";
+  return raw.replace(/\/+$/, "").replace(/\/api$/, "");
+})();
 
 // ─── Provider ────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {

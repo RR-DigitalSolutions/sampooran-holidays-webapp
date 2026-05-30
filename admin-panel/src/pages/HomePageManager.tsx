@@ -6,8 +6,9 @@ import {
   ChevronRight, ArrowRight, Eye, Palette, Upload, Link as LinkIcon, File, Percent, Tag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getApiUrl } from "@/utils/api-url";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const API_URL = getApiUrl();
 
 interface Slide {
   id?: number;

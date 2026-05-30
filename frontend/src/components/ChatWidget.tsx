@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { getApiUrl } from "@/lib/api-url";
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface GuestInfo { name: string; phone: string; email: string; }
@@ -23,7 +24,7 @@ interface Message {
 }
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:8080";
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_URL = getApiUrl();
 
 /* ── Notification helpers ──────────────────────────────────── */
 let globalAudio: HTMLAudioElement | null = null;

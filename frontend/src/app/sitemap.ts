@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next';
+import { getApiUrl } from '@/lib/api-url';
 
 const BASE_URL = 'https://sampooranholidays.com';
 
@@ -12,7 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let destinationRoutes: MetadataRoute.Sitemap = [];
 
   try {
-    const backendBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api';
+    const backendBase = getApiUrl();
 
     const [pkgRes, destRes] = await Promise.allSettled([
       fetch(`${backendBase}/packages?limit=500`, { next: { revalidate: 3600 } }),

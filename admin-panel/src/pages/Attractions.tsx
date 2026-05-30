@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../components/AdminLayout";
 import { Plus, Search, Edit, Trash2, MapPin, Camera, Save, X, Loader2, CheckCircle, XCircle, Upload, Star, Clock, Tag, Image as ImageIcon } from "lucide-react";
 import { customFetch } from "../utils/api";
+import { getApiUrl } from "@/utils/api-url";
 import { toast } from "sonner";
 
 const TYPES = ["sightseeing","adventure","cultural","religious","nature","beach","museum","wildlife","waterfall","lake","valley","pass","fort","temple","market","viewpoint"];
@@ -16,7 +17,7 @@ const TYPE_COLORS: Record<string, string> = {
   market:"bg-amber-100 text-amber-700", viewpoint:"bg-violet-100 text-violet-700",
 };
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const API = getApiUrl();
 
 async function uploadFile(file: File, folder = "attractions"): Promise<string> {
   const fd = new FormData(); fd.append("file", file);

@@ -1,10 +1,11 @@
 import { Metadata, ResolvingMetadata } from "next";
 import { notFound } from "next/navigation";
 import { TravelGuidePage } from "@/components/pages/TravelGuidePage";
+import { getApiUrl } from "@/lib/api-url";
 
 async function resolveSlug(slug: string) {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api'}/destinations/resolve-slug/${slug}`, {
+    const res = await fetch(`${getApiUrl()}/destinations/resolve-slug/${slug}`, {
       next: { revalidate: 3600 } 
     });
     if (!res.ok) return null;

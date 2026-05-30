@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../components/AdminLayout";
 import { Plus, Search, Edit, Trash2, MapPin, Camera, Save, X, Loader2, CheckCircle, XCircle, Upload, Star, Clock, Tag, Image as ImageIcon } from "lucide-react";
 import { customFetch } from "../utils/api";
+import { getApiUrl } from "@/utils/api-url";
 import { toast } from "sonner";
 
 const TYPES = ["adventure", "water-sports", "cultural", "relaxation", "shopping", "dining", "trekking", "photography", "yoga", "wellness", "cooking", "workshop"];
@@ -20,7 +21,7 @@ const TYPE_COLORS: Record<string, string> = {
   workshop: "bg-slate-100 text-slate-700",
 };
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const API = getApiUrl();
 
 async function uploadFile(file: File, folder = "activities"): Promise<string> {
   const fd = new FormData();

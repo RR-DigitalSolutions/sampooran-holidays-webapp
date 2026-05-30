@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { toast } from "sonner";
+import { getApiUrl } from "@/lib/api-url";
 
 interface User {
   id: number;
@@ -24,7 +25,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+export const API_BASE = getApiUrl();
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

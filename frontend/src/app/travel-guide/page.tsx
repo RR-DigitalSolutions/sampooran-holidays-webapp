@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { Compass, Map, Globe, ChevronRight } from "lucide-react";
+import { getApiUrl } from "@/lib/api-url";
 
 export const metadata: Metadata = {
   title: 'Travel Guides | Sampooran Holidays',
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 
 async function getTopDestinations() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8080/api'}/ota/home/top-destinations`, {
+    const res = await fetch(`${getApiUrl()}/ota/home/top-destinations`, {
       next: { revalidate: 3600 }
     });
     if (!res.ok) return null;

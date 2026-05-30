@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useListPackages, useListTestimonials } from "@workspace/api-client-react";
 import { PackageCard } from "@/components/PackageCard";
+import { getApiUrl } from "@/lib/api-url";
 import { Star, Phone, Shield, Headphones, Award, Users, CheckCircle, ChevronRight, ChevronLeft, Search, Calendar, MapPin, Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, Clock, ArrowRight, TrendingUp, Percent, Navigation, Sparkles } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
@@ -100,7 +101,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
     const fetchConfig = async () => {
       setIsConfigLoading(true);
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+        const baseUrl = getApiUrl();
         const res = await fetch(`${baseUrl}/ota/home/config`);
         if (res.ok) {
           const data = await res.json();
