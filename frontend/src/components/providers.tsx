@@ -6,10 +6,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/context/AuthContext";
 
 import { setBaseUrl } from "@workspace/api-client-react";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiBase } from "@/lib/api-url";
 
+// setBaseUrl takes the BASE url WITHOUT /api — the generated hooks
+// already include /api in their paths (e.g. "/api/packages").
 if (typeof window !== "undefined") {
-  setBaseUrl(getApiUrl());
+  setBaseUrl(getApiBase());
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {

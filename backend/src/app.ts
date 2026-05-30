@@ -11,13 +11,23 @@ const app: Express = express();
 // Secure HTTP headers
 app.use(helmet());
 
-// Apply rate limiting to all requests
+// ── Health check BEFORE rate limiter ──────────────────────────────────
+// Render pings /api/healthz every ~5 seconds.  With 150 req / 15 min
+// the health check alone (180 calls) would exceed the quota, returning
+// 429 and causing Render to think the service is down → restart loop.
+app.get("/api/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Apply rate limiting to all OTHER requests
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 150, // limit each IP to 150 requests per windowMs
+  max: 500, // limit each IP to 500 requests per windowMs
   message: { error: "Too many requests from this IP, please try again later." },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting for health checks (belt-and-suspenders)
+  skip: (req) => req.path === "/api/healthz",
 });
 app.use(limiter);
 

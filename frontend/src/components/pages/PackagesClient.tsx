@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
 import { Search, SlidersHorizontal, Star, X, LayoutGrid, LayoutList, CheckCircle } from "lucide-react";
+import { getApiUrl } from "@/lib/api-url";
 
 const CATEGORIES = ["All", "Adventure", "Honeymoon", "Family", "Cultural", "Luxury", "Budget", "Wildlife", "Religious", "Group"];
 const DURATIONS = [
@@ -27,15 +28,7 @@ const BUDGETS = [
 
 const DESTINATIONS = ["All Destinations", "Manali", "Leh Ladakh", "Kashmir", "Shimla", "Spiti Valley", "Rishikesh", "Jaipur", "Goa", "Thailand", "Bhutan", "Nepal", "Dubai"];
 
-const FALLBACK_PACKAGES = [
-  { id: 1, name: "Manali Adventure Package", slug: "manali-adventure-package", destinationName: "Manali", stateName: "Himachal Pradesh", imageUrl: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=600", shortDescription: "6 days of adventure â€” Rohtang, Solang Valley, river rafting", duration: 6, nights: 5, pricePerPerson: 14999, originalPrice: 18999, discountPercent: 21, category: "Adventure", packageType: "both" as const, isFeatured: true, isTrending: true, rating: 4.8, reviewCount: 320, highlights: ["Rohtang Pass", "Solang Valley", "Beas River Rafting"] },
-  { id: 2, name: "Leh Ladakh Grand Tour", slug: "leh-ladakh-grand-tour", destinationName: "Leh", stateName: "Ladakh", imageUrl: "https://images.unsplash.com/photo-1585136917228-84d90aa03a77?w=600", shortDescription: "8 days â€” Pangong Lake, Nubra Valley, Khardung La", duration: 8, nights: 7, pricePerPerson: 24999, originalPrice: 29999, discountPercent: 17, category: "Adventure", packageType: "both" as const, isFeatured: true, isTrending: true, rating: 4.9, reviewCount: 280, highlights: ["Pangong Lake", "Khardung La", "Nubra Valley"] },
-  { id: 3, name: "Kashmir Honeymoon Package", slug: "kashmir-honeymoon-package", destinationName: "Srinagar", stateName: "J&K", imageUrl: "https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=600", shortDescription: "Romantic 7 nights â€” Dal Lake houseboat, Gulmarg, Pahalgam", duration: 8, nights: 7, pricePerPerson: 22999, originalPrice: 27999, discountPercent: 18, category: "Honeymoon", packageType: "b2c" as const, isFeatured: true, isTrending: true, rating: 4.9, reviewCount: 195, highlights: ["Dal Lake Houseboat", "Gulmarg Gondola", "Mughal Gardens"] },
-  { id: 4, name: "Shimla Manali Family Tour", slug: "shimla-manali-family-tour", destinationName: "Shimla", stateName: "Himachal Pradesh", imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600", shortDescription: "9 days family holiday covering Shimla, Kufri and Manali", duration: 9, nights: 8, pricePerPerson: 12999, originalPrice: 15999, discountPercent: 19, category: "Family", packageType: "b2c" as const, isFeatured: true, isTrending: false, rating: 4.7, reviewCount: 415, highlights: ["Kufri Snow", "Solang Valley", "Toy Train"] },
-  { id: 5, name: "Spiti Valley Expedition", slug: "spiti-valley-expedition", destinationName: "Kaza", stateName: "Himachal Pradesh", imageUrl: "https://images.unsplash.com/photo-1568454537842-d933259bb258?w=600", shortDescription: "7 days â€” Key Monastery, Chandratal Lake, highest villages", duration: 7, nights: 6, pricePerPerson: 18999, originalPrice: 22999, discountPercent: 17, category: "Adventure", packageType: "both" as const, isFeatured: true, isTrending: true, rating: 4.8, reviewCount: 145, highlights: ["Key Monastery", "Chandratal Lake", "Kibber Village"] },
-  { id: 6, name: "Rajasthan Royal Tour", slug: "rajasthan-royal-tour", destinationName: "Jaipur", stateName: "Rajasthan", imageUrl: "https://images.unsplash.com/photo-1477587458883-47145ed31bba?w=600", shortDescription: "10 days â€” Jaipur, Jodhpur, Udaipur & Jaisalmer", duration: 10, nights: 9, pricePerPerson: 16999, originalPrice: 19999, discountPercent: 15, category: "Cultural", packageType: "both" as const, isFeatured: false, isTrending: false, rating: 4.7, reviewCount: 310, highlights: ["Amber Fort", "Desert Safari", "Lake Pichola"] },
-  { id: 7, name: "Rishikesh Adventure Week", slug: "rishikesh-adventure-week", destinationName: "Rishikesh", stateName: "Uttarakhand", imageUrl: "https://images.unsplash.com/photo-1599058917765-a780eda07a3e?w=600", shortDescription: "6 days â€” yoga, rafting, bungee & Ganga Aarti", duration: 6, nights: 5, pricePerPerson: 9999, originalPrice: 12999, discountPercent: 23, category: "Adventure", packageType: "both" as const, isFeatured: false, isTrending: true, rating: 4.6, reviewCount: 230, highlights: ["Ganga Rafting", "Bungee Jumping", "Ganga Aarti"] },
-];
+// Removed FALLBACK_PACKAGES so we don't show demo data when API fails
 
 export default function Packages() {
   const searchParams = useSearchParams();
@@ -56,7 +49,7 @@ export default function Packages() {
   useEffect(() => {
     async function fetchConfig() {
       try {
-        const res = await fetch("/api/ota/home/config");
+        const res = await fetch(`${getApiUrl()}/ota/home/config`);
         if (res.ok) {
           const data = await res.json();
           const cats = data.categories?.filter((c:any) => c.isActive).map((c: any) => c.label) || [];
@@ -74,7 +67,7 @@ export default function Packages() {
   }, []);
 
   const { data, isLoading } = useListPackages({ limit: 500 } as any);
-  const allPackages = data?.packages?.length ? data.packages : FALLBACK_PACKAGES;
+  const allPackages = data?.packages || [];
 
   const filtered = useMemo(() => {
     let result = [...allPackages];
