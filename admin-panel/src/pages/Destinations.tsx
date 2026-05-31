@@ -111,7 +111,7 @@ function FaqsEditor({ faqs, onChange }: { faqs: FaqItem[]; onChange: (v: FaqItem
 
 // ─── FORM MODALS ────────────────────────────────────────────────────────────
 
-function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => void; onSave: () => void }) {
+function CountryModal({ item, countries, onClose, onSave }: { item?: any; countries: any[]; onClose: () => void; onSave: () => void }) {
   const isEdit = !!item?.id;
   const getInitial = (): Record<string, any> => {
     const arr = (v: any, sep = "\n") => Array.isArray(v) ? v.join(sep) : (v || "");
@@ -124,6 +124,7 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
       name: "", code: "", slug: "", description: "", capital: "", currency: "", language: "", timezone: "",
       bestTimeToVisit: "", visaInfo: "", imageUrl: "", heroVideoUrl: "", metaTitle: "", metaDescription: "", metaKeywords: "",
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
+      showInMenu: false, navMenuOrder: 0,
       howToReach: "", highlights: "", thingsToDo: "", localAttractions: "", famousFor: "", activities: "", localCuisine: "", travelTips: "", safetyInfo: "", festivals: "",
       historyAndCulture: "", geography: "", weatherAndClimate: "", transportation: "", currencyAndPayments: "", languageAndCommunication: "", localEtiquette: "", healthTips: "", emergencyNumbers: "", packingList: "", shopping: ""
     };
@@ -139,6 +140,8 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
       travelTips: arr(item.travelTips),
       festivals: arr(item.festivals),
       faqs: parseFaqs(item.faqs),
+      showInMenu: !!item.showInMenu,
+      navMenuOrder: Number(item.navMenuOrder || 0),
     };
   };
 
@@ -148,6 +151,15 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
   const save = async () => {
     setLoading(true);
     try {
+      if (form.showInMenu) {
+        const orderTaken = countries.some(c => c.regionId === Number(form.regionId) && c.id !== item?.id && c.showInMenu && c.navMenuOrder === Number(form.navMenuOrder));
+        if (orderTaken) {
+          toast.error(`NavMenu Order #${form.navMenuOrder} is already taken in this region! Please choose another.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const toArray = (v: string, sep = "\n") => (v || "").split(sep).map(s => s.trim()).filter(Boolean);
       // Filter out incomplete FAQs (must have at least a question)
       const cleanFaqs = (form.faqs as FaqItem[]).filter(f => f.question.trim());
@@ -162,6 +174,8 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
         travelTips: toArray(form.travelTips),
         festivals: toArray(form.festivals),
         faqs: cleanFaqs,
+        showInMenu: Boolean(form.showInMenu),
+        navMenuOrder: Number(form.navMenuOrder || 0),
       };
       if (!payload.slug && payload.name) payload.slug = payload.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) {
@@ -227,7 +241,7 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
           onChange={v => setForm({ ...form, faqs: v })}
         />
         
-        <div className="col-span-2 flex gap-10 items-center">
+        <div className="col-span-2 flex flex-wrap gap-10 items-center">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({ ...form, isFeatured: e.target.checked })} className="w-4 h-4" />
             <span className="text-sm font-medium text-gray-700">⭐ Featured on Homepage</span>
@@ -235,13 +249,25 @@ function CountryModal({ item, onClose, onSave }: { item?: any; onClose: () => vo
           <div className="w-32">
             <FieldInput label="Display Order" value={String(form.displayOrder || 0)} onChange={v => setForm({ ...form, displayOrder: Number(v) })} />
           </div>
+          
+          <div className="w-px h-8 bg-gray-200 mx-4" />
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4" />
+            <span className="text-sm font-medium text-gray-700">📌 Feature in NavMenu</span>
+          </label>
+          {form.showInMenu && (
+            <div className="w-32">
+              <FieldInput label="NavMenu Order" value={String(form.navMenuOrder || 0)} onChange={v => setForm({ ...form, navMenuOrder: Number(v) })} />
+            </div>
+          )}
         </div>
       </div>
     </ModalWrapper>
   );
 }
 
-function StateModal({ item, countries, onClose, onSave }: { item?: any; countries: any[]; onClose: () => void; onSave: () => void }) {
+function StateModal({ item, countries, states, onClose, onSave }: { item?: any; countries: any[]; states: any[]; onClose: () => void; onSave: () => void }) {
   const isEdit = !!item?.id;
   const getInitial = (): Record<string, any> => {
     const arr = (v: any, sep = "\n") => Array.isArray(v) ? v.join(sep) : (v || "");
@@ -254,6 +280,7 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
       name: "", slug: "", countryId: "", description: "", capital: "", region: "", imageUrl: "", heroVideoUrl: "",
       bestTimeToVisit: "", howToReach: "", metaTitle: "", metaDescription: "", metaKeywords: "",
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
+      showInMenu: false, navMenuOrder: 0,
       highlights: "", thingsToDo: "", localAttractions: "", famousFor: "", activities: "", localCuisine: "", travelTips: "", safetyInfo: "", festivals: "",
       historyAndCulture: "", geography: "", weatherAndClimate: "", transportation: "", currencyAndPayments: "", languageAndCommunication: "", localEtiquette: "", healthTips: "", emergencyNumbers: "", packingList: "", shopping: ""
     };
@@ -269,6 +296,8 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
       travelTips: arr(item.travelTips),
       festivals: arr(item.festivals),
       faqs: parseFaqs(item.faqs),
+      showInMenu: !!item.showInMenu,
+      navMenuOrder: Number(item.navMenuOrder || 0),
     };
   };
 
@@ -278,6 +307,15 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
   const save = async () => {
     setLoading(true);
     try {
+      if (form.showInMenu) {
+        const orderTaken = states.some(s => s.region === form.region && s.id !== item?.id && s.showInMenu && s.navMenuOrder === Number(form.navMenuOrder));
+        if (orderTaken) {
+          toast.error(`NavMenu Order #${form.navMenuOrder} is already taken in ${form.region || 'this region'}! Please choose another.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       const toArray = (v: string, sep = "\n") => (v || "").split(sep).map(s => s.trim()).filter(Boolean);
       const cleanFaqs = (form.faqs as FaqItem[]).filter(f => f.question.trim());
       const payload: any = {
@@ -292,6 +330,8 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
         travelTips: toArray(form.travelTips),
         festivals: toArray(form.festivals),
         faqs: cleanFaqs,
+        showInMenu: Boolean(form.showInMenu),
+        navMenuOrder: Number(form.navMenuOrder || 0),
       };
       if (!payload.slug && payload.name) payload.slug = String(payload.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) {
@@ -414,7 +454,7 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
           onChange={v => setForm({ ...form, faqs: v })}
         />
         
-        <div className="col-span-2 flex gap-10 items-center">
+        <div className="col-span-2 flex flex-wrap gap-10 items-center">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({ ...form, isFeatured: e.target.checked })} className="w-4 h-4" />
             <span className="text-sm font-medium text-gray-700">⭐ Featured State</span>
@@ -422,6 +462,18 @@ function StateModal({ item, countries, onClose, onSave }: { item?: any; countrie
           <div className="w-32">
             <FieldInput label="Display Order" value={String(form.displayOrder || 0)} onChange={v => setForm({ ...form, displayOrder: Number(v) })} />
           </div>
+
+          <div className="w-px h-8 bg-gray-200 mx-4" />
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4" />
+            <span className="text-sm font-medium text-gray-700">📌 Feature in NavMenu</span>
+          </label>
+          {form.showInMenu && (
+            <div className="w-32">
+              <FieldInput label="NavMenu Order" value={String(form.navMenuOrder || 0)} onChange={v => setForm({ ...form, navMenuOrder: Number(v) })} />
+            </div>
+          )}
         </div>
       </div>
     </ModalWrapper>
@@ -730,8 +782,8 @@ export default function Destinations() {
 
   return (
     <AdminLayout title="Destinations" subtitle="Manage Countries, States & Places">
-      {modal?.type === "countries" && <CountryModal item={modal.item} onClose={closeModal} onSave={afterSave} />}
-      {modal?.type === "states" && <StateModal item={modal.item} countries={countries} onClose={closeModal} onSave={afterSave} />}
+      {modal?.type === "countries" && <CountryModal item={modal.item} countries={countries} onClose={closeModal} onSave={afterSave} />}
+      {modal?.type === "states" && <StateModal item={modal.item} countries={countries} states={states} onClose={closeModal} onSave={afterSave} />}
       {modal?.type === "places" && <PlaceModal item={modal.item} states={states} onClose={closeModal} onSave={afterSave} />}
 
       {/* Tabs */}
@@ -770,13 +822,15 @@ export default function Destinations() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {tab === "countries" && filtered.countries.map(item => (
             <DestCard key={item.id} title={item.name} sub={`${item.code || ""} • ${item.packageCount || 0} packages`}
-              featured={item.isFeatured} active={item.isActive}
+              featured={item.isFeatured} active={item.isActive} order={item.displayOrder}
+              navMenuOrder={item.showInMenu ? item.navMenuOrder : undefined}
               onEdit={() => setModal({ type: "countries", item })}
               onDelete={() => handleDelete("countries", item.id)} />
           ))}
           {tab === "states" && filtered.states.map(item => (
             <DestCard key={item.id} title={item.name} sub={item.countryName || ""}
-              featured={item.isFeatured} active={item.isActive}
+              featured={item.isFeatured} active={item.isActive} order={item.displayOrder}
+              navMenuOrder={item.showInMenu ? item.navMenuOrder : undefined}
               onEdit={() => setModal({ type: "states", item })}
               onDelete={() => handleDelete("states", item.id)} />
           ))}
@@ -800,12 +854,16 @@ export default function Destinations() {
   );
 }
 
-function DestCard({ title, sub, featured, active, badges, onEdit, onDelete }: any) {
+function DestCard({ title, sub, featured, active, badges, order, navMenuOrder, onEdit, onDelete }: any) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden group hover:shadow-md transition-all" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
       <div className="h-24 relative flex items-center justify-center" style={{ background: "linear-gradient(135deg, #EEF2FF, #DBEAFE)" }}>
         <Mountain className="w-8 h-8 text-[#1B3A6B] opacity-30" />
         {featured && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-white">FEATURED</span>}
+        <div className="absolute bottom-2 left-2 flex gap-1">
+          {order !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-[#1B3A6B] shadow-sm">HOME #{order}</span>}
+          {navMenuOrder !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-blue-600 shadow-sm">MENU #{navMenuOrder}</span>}
+        </div>
         <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${active !== false ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
           {active !== false ? <CheckCircle className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
           {active !== false ? "Active" : "Draft"}

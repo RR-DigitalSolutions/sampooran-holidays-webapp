@@ -156,6 +156,23 @@ export function MegaNav() {
           }))
         }))
       };
+    } else if (type === 'world' && dynamicData?.worldRegions) {
+      data = {
+        topRecommended: WORLD_DATA.topRecommended,
+        regions: dynamicData.worldRegions.map((region: any) => ({
+          id: region.slug || region.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name: region.name,
+          groups: [
+            {
+              title: "Popular Destinations",
+              items: region.countries.map((country: any) => ({
+                name: country.name,
+                slug: country.slug
+              }))
+            }
+          ]
+        }))
+      };
     }
 
     const currentRegionData = data.regions.find(r => r.id === activeRegion) || data.regions[0];

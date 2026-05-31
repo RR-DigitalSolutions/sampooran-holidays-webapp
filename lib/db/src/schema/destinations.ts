@@ -75,7 +75,9 @@ export const countriesTable = pgTable("countries", {
   packageCount: integer("package_count").notNull().default(0),
   isFeatured: boolean("is_featured").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  showInMenu: boolean("show_in_menu").notNull().default(false),
   displayOrder: integer("display_order").notNull().default(0),
+  navMenuOrder: integer("nav_menu_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -141,7 +143,9 @@ export const statesTable = pgTable("states", {
   packageCount: integer("package_count").notNull().default(0),
   isFeatured: boolean("is_featured").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  showInMenu: boolean("show_in_menu").notNull().default(false),
   displayOrder: integer("display_order").notNull().default(0),
+  navMenuOrder: integer("nav_menu_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

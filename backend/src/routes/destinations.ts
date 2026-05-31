@@ -97,7 +97,12 @@ router.get("/destinations/mega-menu", async (_req, res): Promise<void> => {
     let indiaDestinations: any[] = [];
 
     if (indiaCountry.length > 0) {
-      indiaStates = await db.select().from(statesTable).where(eq(statesTable.countryId, indiaCountry[0].id)).orderBy(asc(statesTable.displayOrder));
+      indiaStates = await db.select().from(statesTable).where(
+        and(
+          eq(statesTable.countryId, indiaCountry[0].id),
+          eq(statesTable.showInMenu, true)
+        )
+      ).orderBy(asc(statesTable.navMenuOrder));
       if (indiaStates.length > 0) {
         indiaDestinations = await db.select({
           name: destinationsTable.name,
@@ -114,7 +119,12 @@ router.get("/destinations/mega-menu", async (_req, res): Promise<void> => {
     
     // Group countries for World (Regions)
     const regions = await db.select().from(regionsTable).where(eq(regionsTable.isActive, true)).orderBy(asc(regionsTable.displayOrder));
-    const allCountries = await db.select().from(countriesTable).where(eq(countriesTable.isActive, true)).orderBy(asc(countriesTable.displayOrder));
+    const allCountries = await db.select().from(countriesTable).where(
+      and(
+        eq(countriesTable.isActive, true),
+        eq(countriesTable.showInMenu, true)
+      )
+    ).orderBy(asc(countriesTable.navMenuOrder));
     
     const worldRegions = regions.map(region => ({
       ...region,
