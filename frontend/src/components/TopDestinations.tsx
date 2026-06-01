@@ -265,13 +265,13 @@ export default function TopDestinations() {
                               <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4">
                                 <h4 className="text-white font-bold text-sm md:text-base mb-0.5 drop-shadow-md">{place.name}</h4>
                                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                                  {place.packageCount > 0 && (
+                                  {(place.packageCount ?? 0) > 0 && (
                                     <span className="text-white/90 text-[9px] md:text-[10px] font-semibold tracking-wide drop-shadow-sm">{place.packageCount} Packages</span>
                                   )}
-                                  {place.startingPrice > 0 && (
+                                  {(place.startingPrice ?? 0) > 0 && (
                                     <>
                                       <span className="text-white/50 text-[8px]">•</span>
-                                      <span className="text-accent text-[9px] md:text-[10px] font-black tracking-wide drop-shadow-sm">Starts ₹{place.startingPrice.toLocaleString('en-IN')}</span>
+                                      <span className="text-accent text-[9px] md:text-[10px] font-black tracking-wide drop-shadow-sm">Starts ₹{place.startingPrice?.toLocaleString('en-IN')}</span>
                                     </>
                                   )}
                                 </div>
