@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -388,15 +388,25 @@ router.delete("/packages/:id", requirePermission("PACKAGES"), async (req, res) =
 });
 
 // ─────────────────────────────────────────────────────────────
-// DESTINATION MANAGEMENT - COUNTRIES
+// DESTINATION MANAGEMENT - REGIONS & COUNTRIES
 // ─────────────────────────────────────────────────────────────
+
+router.get("/regions", requirePermission("DESTINATIONS"), async (req, res) => {
+  try {
+    const list = await db.select().from(regionsTable).orderBy(regionsTable.displayOrder);
+    res.json(list);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch regions" });
+  }
+});
 
 router.get("/countries", requirePermission("DESTINATIONS"), async (req, res) => {
   try {
     const list = await db.select().from(countriesTable).orderBy(countriesTable.name);
     res.json(list);
   } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch countries" });
+    console.error("[GET /countries] Error:", e);
+    res.status(500).json({ error: "Failed to fetch countries: " + e.message });
   }
 });
 

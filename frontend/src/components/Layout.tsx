@@ -226,7 +226,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 )}
               </div>
 
-              <Link href="/customized-holidays" className="hidden md:block">
+              <Link href="/customized-holidays" className="hidden xl:block">
                 <button className={cn(
                   "px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:scale-105 active:scale-95 transition-all",
                   "bg-accent text-accent-foreground shadow-accent/25"

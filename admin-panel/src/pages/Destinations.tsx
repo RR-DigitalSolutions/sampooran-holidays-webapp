@@ -111,7 +111,7 @@ function FaqsEditor({ faqs, onChange }: { faqs: FaqItem[]; onChange: (v: FaqItem
 
 // ─── FORM MODALS ────────────────────────────────────────────────────────────
 
-function CountryModal({ item, countries, onClose, onSave }: { item?: any; countries: any[]; onClose: () => void; onSave: () => void }) {
+function CountryModal({ item, countries, regions, onClose, onSave }: { item?: any; countries: any[]; regions: any[]; onClose: () => void; onSave: () => void }) {
   const isEdit = !!item?.id;
   const getInitial = (): Record<string, any> => {
     const arr = (v: any, sep = "\n") => Array.isArray(v) ? v.join(sep) : (v || "");
@@ -121,7 +121,7 @@ function CountryModal({ item, countries, onClose, onSave }: { item?: any; countr
       try { const parsed = JSON.parse(v); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
     };
     const base: Record<string, any> = {
-      name: "", code: "", slug: "", description: "", capital: "", currency: "", language: "", timezone: "",
+      name: "", code: "", slug: "", regionId: "", description: "", capital: "", currency: "", language: "", timezone: "",
       bestTimeToVisit: "", visaInfo: "", imageUrl: "", heroVideoUrl: "", metaTitle: "", metaDescription: "", metaKeywords: "",
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
       showInMenu: false, navMenuOrder: 0,
@@ -176,6 +176,7 @@ function CountryModal({ item, countries, onClose, onSave }: { item?: any; countr
         faqs: cleanFaqs,
         showInMenu: Boolean(form.showInMenu),
         navMenuOrder: Number(form.navMenuOrder || 0),
+        regionId: form.regionId ? Number(form.regionId) : null,
       };
       if (!payload.slug && payload.name) payload.slug = payload.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) {
@@ -193,6 +194,13 @@ function CountryModal({ item, countries, onClose, onSave }: { item?: any; countr
     <ModalWrapper title={isEdit ? "Edit Country" : "Add Country"} onClose={onClose} loading={loading} onSave={save} wide>
       <div className="grid grid-cols-2 gap-4">
         <FieldInput label="Country Name *" value={form.name} onChange={v => setForm({ ...form, name: v })} />
+        <div className="col-span-1">
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Continent / Region *</label>
+          <select value={form.regionId} onChange={e => setForm({ ...form, regionId: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white">
+            <option value="">Select Continent...</option>
+            {regions?.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </div>
         <FieldInput label="ISO Code (e.g. IN)" value={form.code} onChange={v => setForm({ ...form, code: v })} />
         <FieldInput label="Slug (Auto)" value={form.slug} onChange={v => setForm({ ...form, slug: v })} />
         <FieldInput label="Capital City" value={form.capital} onChange={v => setForm({ ...form, capital: v })} />
@@ -731,19 +739,22 @@ export default function Destinations() {
   const [countries, setCountries] = useState<any[]>([]);
   const [states, setStates] = useState<any[]>([]);
   const [places, setPlaces] = useState<any[]>([]);
+  const [regions, setRegions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [c, s, p] = await Promise.all([
+      const [c, s, p, r] = await Promise.all([
         customFetch("/api/admin/countries"),
         customFetch("/api/admin/states"),
         customFetch("/api/admin/destinations"),
+        customFetch("/api/admin/regions"),
       ]);
       setCountries(Array.isArray(c) ? c : []);
       setStates(Array.isArray(s) ? s : []);
       setPlaces(Array.isArray(p) ? p : []);
+      setRegions(Array.isArray(r) ? r : []);
     } catch (e) {
       toast.error("Failed to load destinations");
     } finally {
@@ -782,7 +793,7 @@ export default function Destinations() {
 
   return (
     <AdminLayout title="Destinations" subtitle="Manage Countries, States & Places">
-      {modal?.type === "countries" && <CountryModal item={modal.item} countries={countries} onClose={closeModal} onSave={afterSave} />}
+      {modal?.type === "countries" && <CountryModal item={modal.item} countries={countries} regions={regions} onClose={closeModal} onSave={afterSave} />}
       {modal?.type === "states" && <StateModal item={modal.item} countries={countries} states={states} onClose={closeModal} onSave={afterSave} />}
       {modal?.type === "places" && <PlaceModal item={modal.item} states={states} onClose={closeModal} onSave={afterSave} />}
 

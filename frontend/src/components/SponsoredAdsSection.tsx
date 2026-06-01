@@ -97,7 +97,7 @@ export function SponsoredAdsSection({
               {ads.map((ad) => (
                 <div key={ad.id} className="flex-[0_0_100%] min-w-0">
                   <Link href={ad.link || "/"}>
-                    <div className="relative aspect-[5/2] md:aspect-[6/1] w-full bg-slate-900 cursor-pointer">
+                    <div className="relative aspect-[3/1] md:aspect-[8/1] w-full bg-slate-900 cursor-pointer">
                       <Image
                         src={ad.imageUrl}
                         alt={ad.title}

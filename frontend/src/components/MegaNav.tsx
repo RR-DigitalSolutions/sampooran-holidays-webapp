@@ -211,23 +211,24 @@ export function MegaNav() {
               {data.regions.map((region) => {
                 if (!region) return null;
                 return (
-                <div
-                  key={region.id}
-                  onMouseEnter={() => setActiveRegion(region.id)}
-                  className={cn(
-                    "px-8 py-3.5 cursor-pointer flex items-center justify-between transition-all group",
-                    activeRegion === region.id 
-                      ? "bg-white text-primary border-r-4 border-accent shadow-sm" 
-                      : "text-slate-500 hover:bg-slate-100/50 hover:text-primary"
-                  )}
-                >
-                  <span className="text-[14px] font-bold">{region.name}</span>
-                  <ChevronRight className={cn(
-                    "w-4 h-4 transition-transform",
-                    activeRegion === region.id ? "translate-x-1 text-accent opacity-100" : "opacity-0 group-hover:opacity-100"
-                  )} />
-                </div>
-              )})}
+                  <div
+                    key={region.id}
+                    onMouseEnter={() => setActiveRegion(region.id)}
+                    className={cn(
+                      "px-8 py-3.5 cursor-pointer flex items-center justify-between transition-all group",
+                      activeRegion === region.id
+                        ? "bg-white text-primary border-r-4 border-accent shadow-sm"
+                        : "text-slate-500 hover:bg-slate-100/50 hover:text-primary"
+                    )}
+                  >
+                    <span className="text-[14px] font-bold">{region.name}</span>
+                    <ChevronRight className={cn(
+                      "w-4 h-4 transition-transform",
+                      activeRegion === region.id ? "translate-x-1 text-accent opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )} />
+                  </div>
+                )
+              })}
             </div>
 
             {/* Main Content Area */}
@@ -249,8 +250,8 @@ export function MegaNav() {
                           const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : item?.slug;
                           return (
                             <li key={itemSlug || index}>
-                              <Link 
-                                href={`/${itemSlug}-tour-packages`} 
+                              <Link
+                                href={`/${itemSlug}-tour-packages`}
                                 className="text-[13px] text-slate-500 hover:text-primary hover:font-bold transition-all block py-0.5"
                               >
                                 {itemName}
@@ -267,15 +268,15 @@ export function MegaNav() {
                     Loading regions...
                   </div>
                 )}
-                
+
                 {/* View All Link */}
                 {currentRegionData && (
                   <div className="col-span-full pt-6 mt-6 border-t border-slate-100 flex justify-start">
-                    <Link 
+                    <Link
                       href={type === 'india' ? "/india-tour-packages" : "/world-tour-packages"}
                       className="flex items-center gap-2 text-accent font-bold text-[13px] hover:underline group"
                     >
-                      View All {currentRegionData.name} Packages 
+                      View All {currentRegionData.name} Packages
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Link>
                   </div>
@@ -289,16 +290,16 @@ export function MegaNav() {
   };
 
   return (
-    <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full relative font-sans">
-      
+    <nav className="hidden lg:flex items-center gap-0 xl:gap-1 2xl:gap-2 h-full relative font-sans">
+
       {/* INDIA */}
-      <div 
-        className="h-full flex items-center px-1"
+      <div
+        className="h-full flex items-center px-0.5 xl:px-1"
         onMouseEnter={() => handleMouseEnter('india')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "flex items-center gap-1.5 font-bold text-[13px] transition-all py-2 px-2 rounded-lg",
+          "flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap transition-all py-2 px-1.5 xl:px-2 rounded-lg",
           activeMenu === 'india' ? 'text-accent bg-slate-50 shadow-sm' : 'text-slate-700 hover:bg-slate-50'
         )}>
           India <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", activeMenu === 'india' && "rotate-180")} />
@@ -306,13 +307,13 @@ export function MegaNav() {
       </div>
 
       {/* WORLD */}
-      <div 
-        className="h-full flex items-center px-1"
+      <div
+        className="h-full flex items-center px-0.5 xl:px-1"
         onMouseEnter={() => handleMouseEnter('world')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "flex items-center gap-1.5 font-bold text-[13px] transition-all py-2 px-2 rounded-lg",
+          "flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap transition-all py-2 px-1.5 xl:px-2 rounded-lg",
           activeMenu === 'world' ? 'text-accent bg-slate-50 shadow-sm' : 'text-slate-700 hover:bg-slate-50'
         )}>
           World <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", activeMenu === 'world' && "rotate-180")} />
@@ -320,43 +321,43 @@ export function MegaNav() {
       </div>
 
       {/* CUSTOMIZED HOLIDAYS */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/customized-holidays" className="flex items-center gap-1.5 font-bold text-[13px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-0.5 xl:px-1">
+        <Link href="/customized-holidays" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
           Customized Holidays
         </Link>
       </div>
 
       {/* CORPORATE TRAVEL */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/corporate-travel" className="flex items-center gap-1.5 font-bold text-[13px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-0.5 xl:px-1">
+        <Link href="/corporate-travel" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
           Corporate Travel
         </Link>
       </div>
 
       {/* INBOUND */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/inbound" className="flex items-center gap-1.5 font-bold text-[13px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-0.5 xl:px-1">
+        <Link href="/inbound" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
           Inbound
         </Link>
       </div>
 
       {/* TRAVEL GUIDE */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/travel-guide" className="flex items-center gap-1.5 font-bold text-[13px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-0.5 xl:px-1">
+        <Link href="/travel-guide" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
           Travel Guide
         </Link>
       </div>
 
       {/* B2B */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/b2b" className="flex items-center gap-1.5 font-bold text-[13px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-0.5 xl:px-1">
+        <Link href="/b2b" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
           B2B
         </Link>
       </div>
 
       {/* CONTACT US */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/contact" className="flex items-center gap-1.5 font-bold text-[13px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-0.5 xl:px-1">
+        <Link href="/contact" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
           Contact Us
         </Link>
       </div>
