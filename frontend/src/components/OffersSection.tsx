@@ -76,7 +76,7 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
 
         <div className="bg-white rounded-[2rem] shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 px-3 pt-2 pb-2 md:px-6 md:pt-4 md:pb-2 lg:px-8 lg:pt-4 lg:pb-2 relative">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-50 pb-2 mb-2">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-50 pb-1">
             <div className="flex items-end gap-6">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
           </div>
 
           {/* Mobile Tabs */}
-          <div className="md:hidden flex overflow-x-auto no-scrollbar pb-5 gap-2 border-b border-slate-50/50 mb-6 px-1">
+          <div className="md:hidden flex overflow-x-auto no-scrollbar pb-2 gap-2 border-b border-slate-50/50 mb-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}

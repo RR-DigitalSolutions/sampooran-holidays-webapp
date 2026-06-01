@@ -541,7 +541,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
 
           case "B2B":
             return (
-              <div key={idx} className="container mx-auto px-2 md:px-4 my-6">
+              <div key={idx} className="container mx-auto px-2 md:px-4 mt-6 mb-2 md:my-6">
                 <section className="py-10 md:py-12 bg-primary relative overflow-hidden rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
                   <div className="px-4 md:px-8 relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">

@@ -90,15 +90,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
             </div>
           </div>
 
-          {/* Mobile Navigation */}
-          <div className="flex md:hidden items-center justify-center gap-4 mb-10">
-            <button onClick={scrollPrev} className="w-11 h-11 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center text-slate-600 active:scale-95">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <button onClick={scrollNext} className="w-11 h-11 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center text-slate-600 active:scale-95">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
+
 
           {/* Integrated CTA & Inquiry Banner */}
           <div className="mt-4 relative rounded-2xl overflow-hidden bg-primary shadow-2xl shadow-primary/20">

@@ -63,7 +63,7 @@ export function InclusionsSection() {
   const [isReadMore, setIsReadMore] = useState(false);
 
   return (
-    <section className="py-10 bg-white">
+    <section className="pt-2 pb-10 md:py-10 bg-white">
       <div className="container mx-auto px-4">
         {/* Top Header */}
         <div className="text-center mb-8">
