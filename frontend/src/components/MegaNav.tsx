@@ -18,7 +18,7 @@ const INDIA_DATA = {
     { name: "Andaman and Nicobar", href: "/andaman-tour-packages" },
     { name: "Himachal Pradesh", href: "/himachal-tour-packages" },
   ],
-  regions: []
+  regions: [] as any[]
 };
 
 const WORLD_DATA = {
@@ -30,7 +30,7 @@ const WORLD_DATA = {
     { name: "Africa", href: "/africa-tour-packages" },
     { name: "America", href: "/america-tour-packages" },
   ],
-  regions: []
+  regions: [] as any[]
 };
 
 export function MegaNav() {
