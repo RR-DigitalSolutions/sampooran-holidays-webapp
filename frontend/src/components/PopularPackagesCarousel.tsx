@@ -53,7 +53,6 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="max-w-3xl px-2 md:px-2">
               <div className="flex items-center gap-2">
-                <span className="h-[2px] w-8 bg-accent" />
                 <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">Trending Now</p>
               </div>
               <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary mb-1 leading-tight">

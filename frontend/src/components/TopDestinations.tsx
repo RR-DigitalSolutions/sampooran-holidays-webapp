@@ -17,7 +17,7 @@ type Destination = {
   packageCount: number;
   startingPrice?: number;
   places: string[];
-  gallery: { name: string; image: string; slug: string }[];
+  gallery: { name: string; image: string; slug: string; packageCount?: number; startingPrice?: number }[];
   type: string;
 };
 
@@ -88,15 +88,14 @@ export default function TopDestinations() {
       <section className="py-4 md:py-4 bg-white overflow-hidden rounded-[2rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="px-2 md:px-4">
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row justify-between items-end mb-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4 md:gap-0">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
               <div className="flex items-center gap-2 mb-1">
-                <span className="h-[2px] w-8 bg-accent" />
-                <p className="text-accent font-bold text-sm uppercase tracking-[0.2em]">World Explorer</p>
+                <p className="text-accent font-bold text-xs uppercase tracking-[0.2em]">World Explorer</p>
               </div>
               <h2 className="text-2xl md:text-4xl font-serif font-bold text-primary">
                 Top Popular <span className="text-accent italic font-light">Destinations</span>
@@ -104,12 +103,12 @@ export default function TopDestinations() {
             </motion.div>
 
             {/* Futuristic Tabs */}
-            <div className="flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200 backdrop-blur-sm">
+            <div className="flex w-full md:w-auto overflow-x-auto no-scrollbar p-1.5 bg-slate-100 rounded-2xl border border-slate-200 backdrop-blur-sm">
               {(["all", "international", "domestic"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`relative px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
+                  className={`relative shrink-0 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
                     }`}
                 >
                   {activeTab === tab && (
@@ -203,26 +202,26 @@ export default function TopDestinations() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                      <div className="absolute top-6 left-6 flex flex-wrap gap-2">
-                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                      <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-wrap gap-1.5 md:gap-2 pr-4">
+                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest shadow-lg">
                           Featured Destination
                         </span>
-                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
+                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest">
                           {selectedDest.packageCount} Packages Available
                         </span>
-                        {selectedDest.startingPrice && (
-                          <span className="bg-primary/80 backdrop-blur-md text-white border border-white/20 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest">
-                            Starts at ₹{selectedDest.startingPrice.toLocaleString('en-IN')}
-                          </span>
-                        )}
                       </div>
 
-                      <div className="absolute bottom-6 left-8 right-8 flex justify-between items-end">
-                        <div>
-                          <h2 className="text-4xl md:text-5xl font-serif font-bold text-white mb-2 leading-none">
+                      <div className="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-8 md:right-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-0">
+                        <div className="flex flex-col gap-1 w-full md:w-auto">
+                          {selectedDest.startingPrice && (
+                            <span className="text-white font-black text-[10px] md:text-xs uppercase tracking-widest bg-black/50 w-fit px-2 py-0.5 rounded drop-shadow-md">
+                              Starts at ₹{selectedDest.startingPrice.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                          <h2 className="text-3xl md:text-5xl font-serif font-bold text-white leading-tight md:leading-none drop-shadow-md break-words">
                             {selectedDest.name}
                           </h2>
-                          <p className="text-white/70 text-sm max-w-md hidden md:block">
+                          <p className="text-white/80 text-xs md:text-sm max-w-md hidden md:block mt-1">
                             Explore the most enchanting corners of {selectedDest.name}. A journey curated for the modern traveler.
                           </p>
                         </div>
@@ -263,11 +262,22 @@ export default function TopDestinations() {
                               />
                               <div className={`absolute inset-0 transition-opacity duration-300 ${hoveredPlace === place.name ? "bg-black/50" : "bg-black/25"}`} />
 
-                              <div className="absolute bottom-4 left-4 right-4">
-                                <h4 className="text-white font-bold text-sm md:text-base mb-1 drop-shadow-md">{place.name}</h4>
-                                <div className="flex items-center gap-1 opacity-0 group-hover/place:opacity-100 transition-opacity">
-                                  <span className="text-[10px] text-accent font-bold uppercase tracking-wider">Explore</span>
-                                  <ArrowUpRight className="h-3 w-3 text-accent" />
+                              <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4">
+                                <h4 className="text-white font-bold text-sm md:text-base mb-0.5 drop-shadow-md">{place.name}</h4>
+                                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                  {place.packageCount > 0 && (
+                                    <span className="text-white/90 text-[9px] md:text-[10px] font-semibold tracking-wide drop-shadow-sm">{place.packageCount} Packages</span>
+                                  )}
+                                  {place.startingPrice > 0 && (
+                                    <>
+                                      <span className="text-white/50 text-[8px]">•</span>
+                                      <span className="text-accent text-[9px] md:text-[10px] font-black tracking-wide drop-shadow-sm">Starts ₹{place.startingPrice.toLocaleString('en-IN')}</span>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 opacity-0 group-hover/place:opacity-100 transition-all translate-y-2 group-hover/place:translate-y-0 duration-300">
+                                  <span className="text-[9px] md:text-[10px] text-white font-bold uppercase tracking-wider">Explore</span>
+                                  <ArrowUpRight className="h-3 w-3 text-white" />
                                 </div>
                               </div>
                             </motion.div>

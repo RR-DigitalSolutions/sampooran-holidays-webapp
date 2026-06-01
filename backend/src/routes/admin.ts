@@ -400,6 +400,44 @@ router.get("/regions", requirePermission("DESTINATIONS"), async (req, res) => {
   }
 });
 
+router.post("/regions", requirePermission("DESTINATIONS"), async (req, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.createdAt; delete data.updatedAt;
+    if (!data.slug && data.name) {
+      data.slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+    }
+    const [inserted] = await db.insert(regionsTable).values(data).returning();
+    clearCachePattern("cache:/api/ota/home/top-destinations*");
+    res.status(201).json(inserted);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to create region: " + e.message });
+  }
+});
+
+router.patch("/regions/:id", requirePermission("DESTINATIONS"), async (req, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.createdAt; delete data.updatedAt;
+    const [updated] = await db.update(regionsTable).set({ ...data, updatedAt: new Date() })
+      .where(eq(regionsTable.id, Number(req.params.id))).returning();
+    clearCachePattern("cache:/api/ota/home/top-destinations*");
+    res.json(updated);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update region" });
+  }
+});
+
+router.delete("/regions/:id", requirePermission("DESTINATIONS"), async (req, res) => {
+  try {
+    await db.delete(regionsTable).where(eq(regionsTable.id, Number(req.params.id)));
+    clearCachePattern("cache:/api/ota/home/top-destinations*");
+    res.json({ message: "Region deleted" });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete region" });
+  }
+});
+
 router.get("/countries", requirePermission("DESTINATIONS"), async (req, res) => {
   try {
     const list = await db.select().from(countriesTable).orderBy(countriesTable.name);

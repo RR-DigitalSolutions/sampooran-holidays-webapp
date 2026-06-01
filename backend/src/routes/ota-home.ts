@@ -200,13 +200,25 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
       slug: destinationsTable.slug, 
       imageUrl: destinationsTable.imageUrl,
       stateId: destinationsTable.stateId,
-      countryId: destinationsTable.countryId
+      countryId: destinationsTable.countryId,
+      packageCount: sql<number>`count(${packagesTable.id})::int`.as('packageCount'),
+      startingPrice: sql<number>`min(${packagesTable.pricePerPerson})`.as('startingPrice')
     })
     .from(destinationsTable)
+    .leftJoin(packagesTable, eq(packagesTable.destinationId, destinationsTable.id))
     .where(and(
       eq(destinationsTable.isActive, true),
+      eq(destinationsTable.isFeatured, true),
       or(...orFilters)
-    ));
+    ))
+    .groupBy(
+      destinationsTable.id,
+      destinationsTable.name,
+      destinationsTable.slug,
+      destinationsTable.imageUrl,
+      destinationsTable.stateId,
+      destinationsTable.countryId
+    );
 
     // 4. Group sub-places by country/state
     const placesByState: Record<number, any[]> = {};
@@ -232,7 +244,9 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
         gallery: (placesByCountry[c.id] || []).map(p => ({ 
           name: p.name, 
           image: p.imageUrl || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400", 
-          slug: p.slug 
+          slug: p.slug,
+          packageCount: p.packageCount || 0,
+          startingPrice: p.startingPrice || 0
         }))
       })),
       ...featuredStates.filter(s => s.countrySlug !== 'india').map(s => ({
@@ -242,7 +256,9 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
         gallery: (placesByState[s.id] || []).map(p => ({ 
           name: p.name, 
           image: p.imageUrl || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400", 
-          slug: p.slug 
+          slug: p.slug,
+          packageCount: p.packageCount || 0,
+          startingPrice: p.startingPrice || 0
         }))
       }))
     ];
@@ -255,7 +271,9 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
       gallery: (placesByState[s.id] || []).map(p => ({ 
         name: p.name, 
         image: p.imageUrl || "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400", 
-        slug: p.slug 
+        slug: p.slug,
+        packageCount: p.packageCount || 0,
+        startingPrice: p.startingPrice || 0
       }))
     }));
 

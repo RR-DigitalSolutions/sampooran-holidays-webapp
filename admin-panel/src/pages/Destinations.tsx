@@ -195,10 +195,15 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
       <div className="grid grid-cols-2 gap-4">
         <FieldInput label="Country Name *" value={form.name} onChange={v => setForm({ ...form, name: v })} />
         <div className="col-span-1">
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Continent / Region *</label>
-          <select value={form.regionId} onChange={e => setForm({ ...form, regionId: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white">
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Continent / Region *</label>
+          <select 
+            value={form.regionId || ""} 
+            onChange={e => setForm({ ...form, regionId: Number(e.target.value) })}
+            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-800 font-medium"
+            required
+          >
             <option value="">Select Continent...</option>
-            {regions?.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            {regions?.filter((r: any) => r.isActive !== false).map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </div>
         <FieldInput label="ISO Code (e.g. IN)" value={form.code} onChange={v => setForm({ ...form, code: v })} />

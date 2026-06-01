@@ -30,80 +30,7 @@ const WORLD_DATA = {
     { name: "Africa", href: "/africa-tour-packages" },
     { name: "America", href: "/america-tour-packages" },
   ],
-  regions: [
-    {
-      id: "europe",
-      name: "Europe",
-      groups: [
-        {
-          title: "Western Europe",
-          items: ["Switzerland", "France", "Netherlands", "Belgium"]
-        },
-        {
-          title: "Central Europe",
-          items: ["Germany", "Austria", "Hungary", "Czech Republic"]
-        },
-        {
-          title: "Mediterranean",
-          items: ["Italy", "Greece", "Spain", "Portugal"]
-        },
-        {
-          title: "Scandinavia",
-          items: ["Norway", "Sweden", "Finland", "Denmark", "Iceland"]
-        }
-      ]
-    },
-    {
-      id: "asia",
-      name: "Asia",
-      groups: [
-        {
-          title: "South East Asia",
-          items: ["Thailand", "Singapore", "Malaysia", "Vietnam", "Bali"]
-        },
-        {
-          title: "Far East",
-          items: ["Japan", "South Korea", "China", "Taiwan"]
-        },
-        {
-          title: "Middle East",
-          items: ["Dubai", "Abu Dhabi", "Jordan", "Israel", "Turkey"]
-        }
-      ]
-    },
-    {
-      id: "africa",
-      name: "Africa",
-      groups: [
-        {
-          title: "South Africa",
-          items: ["Cape Town", "Johannesburg", "Kruger National Park", "Sun City"]
-        },
-        {
-          title: "East Africa",
-          items: ["Kenya", "Tanzania", "Masai Mara"]
-        },
-        {
-          title: "North Africa",
-          items: ["Egypt", "Morocco"]
-        }
-      ]
-    },
-    {
-      id: "americas",
-      name: "Americas",
-      groups: [
-        {
-          title: "North America",
-          items: ["USA East Coast", "USA West Coast", "Canada", "Alaska"]
-        },
-        {
-          title: "South America",
-          items: ["Brazil", "Argentina", "Peru", "Chile"]
-        }
-      ]
-    }
-  ]
+  regions: []
 };
 
 export function MegaNav() {
@@ -156,21 +83,17 @@ export function MegaNav() {
           }))
         }))
       };
-    } else if (type === 'world' && dynamicData?.worldRegions) {
+    } else if (type === 'world' && dynamicData?.worldRegions && dynamicData.worldRegions.length > 0) {
       data = {
         topRecommended: WORLD_DATA.topRecommended,
         regions: dynamicData.worldRegions.map((region: any) => ({
           id: region.slug || region.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           name: region.name,
-          groups: [
-            {
-              title: "Popular Destinations",
-              items: region.countries.map((country: any) => ({
-                name: country.name,
-                slug: country.slug
-              }))
-            }
-          ]
+          groups: region.countries.map((country: any) => ({
+            title: country.name,
+            slug: country.slug,
+            items: country.destinations || []
+          }))
         }))
       };
     }
@@ -290,16 +213,16 @@ export function MegaNav() {
   };
 
   return (
-    <nav className="hidden lg:flex items-center gap-0 xl:gap-1 2xl:gap-2 h-full relative font-sans">
+    <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full relative font-sans">
 
       {/* INDIA */}
       <div
-        className="h-full flex items-center px-0.5 xl:px-1"
+        className="h-full flex items-center px-1"
         onMouseEnter={() => handleMouseEnter('india')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap transition-all py-2 px-1.5 xl:px-2 rounded-lg",
+          "flex items-center gap-1 font-bold md text-[12px] transition-all py-2 px-2 rounded-lg",
           activeMenu === 'india' ? 'text-accent bg-slate-50 shadow-sm' : 'text-slate-700 hover:bg-slate-50'
         )}>
           India <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", activeMenu === 'india' && "rotate-180")} />
@@ -308,12 +231,12 @@ export function MegaNav() {
 
       {/* WORLD */}
       <div
-        className="h-full flex items-center px-0.5 xl:px-1"
+        className="h-full flex items-center px-1"
         onMouseEnter={() => handleMouseEnter('world')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap transition-all py-2 px-1.5 xl:px-2 rounded-lg",
+          "flex items-center gap-1 font-bold text-[12px] transition-all py-2 px-2 rounded-lg",
           activeMenu === 'world' ? 'text-accent bg-slate-50 shadow-sm' : 'text-slate-700 hover:bg-slate-50'
         )}>
           World <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", activeMenu === 'world' && "rotate-180")} />
@@ -321,43 +244,43 @@ export function MegaNav() {
       </div>
 
       {/* CUSTOMIZED HOLIDAYS */}
-      <div className="h-full flex items-center px-0.5 xl:px-1">
-        <Link href="/customized-holidays" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-1">
+        <Link href="/customized-holidays" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
           Customized Holidays
         </Link>
       </div>
 
       {/* CORPORATE TRAVEL */}
-      <div className="h-full flex items-center px-0.5 xl:px-1">
-        <Link href="/corporate-travel" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-1">
+        <Link href="/corporate-travel" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
           Corporate Travel
         </Link>
       </div>
 
       {/* INBOUND */}
-      <div className="h-full flex items-center px-0.5 xl:px-1">
-        <Link href="/inbound" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-1">
+        <Link href="/inbound" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
           Inbound
         </Link>
       </div>
 
       {/* TRAVEL GUIDE */}
-      <div className="h-full flex items-center px-0.5 xl:px-1">
-        <Link href="/travel-guide" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-1">
+        <Link href="/travel-guide" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
           Travel Guide
         </Link>
       </div>
 
       {/* B2B */}
-      <div className="h-full flex items-center px-0.5 xl:px-1">
-        <Link href="/b2b" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-1">
+        <Link href="/b2b" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
           B2B
         </Link>
       </div>
 
       {/* CONTACT US */}
-      <div className="h-full flex items-center px-0.5 xl:px-1">
-        <Link href="/contact" className="flex items-center gap-1 font-bold text-[11px] xl:text-[12px] 2xl:text-[13px] whitespace-nowrap text-slate-700 hover:text-accent transition-all py-2 px-1.5 xl:px-2 rounded-lg hover:bg-slate-50">
+      <div className="h-full flex items-center px-1">
+        <Link href="/contact" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
           Contact Us
         </Link>
       </div>

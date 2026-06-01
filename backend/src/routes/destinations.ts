@@ -126,10 +126,54 @@ router.get("/destinations/mega-menu", async (_req, res): Promise<void> => {
       )
     ).orderBy(asc(countriesTable.navMenuOrder));
     
-    const worldRegions = regions.map(region => ({
-      ...region,
-      countries: allCountries.filter(c => c.regionId === region.id && c.slug !== "india")
-    })).filter(r => r.countries.length > 0);
+    const worldRegions = regions.map(region => {
+      const regionCountries = allCountries.filter(c => c.regionId === region.id && c.slug !== "india");
+      
+      return {
+        ...region,
+        countries: regionCountries
+      };
+    }).filter(r => r.countries.length > 0);
+
+    // Fetch destinations and states for world countries
+    if (allCountries.length > 0) {
+      const worldDestinations = await db.select({
+        name: destinationsTable.name,
+        slug: destinationsTable.slug,
+        countryId: destinationsTable.countryId,
+      }).from(destinationsTable).where(
+        and(
+          inArray(destinationsTable.countryId, allCountries.map(c => c.id)),
+          eq(destinationsTable.showInMenu, true)
+        )
+      );
+
+      const worldStates = await db.select({
+        name: statesTable.name,
+        slug: statesTable.slug,
+        countryId: statesTable.countryId,
+      }).from(statesTable).where(
+        and(
+          inArray(statesTable.countryId, allCountries.map(c => c.id)),
+          eq(statesTable.showInMenu, true)
+        )
+      );
+
+      // Attach destinations and states to the countries
+      worldRegions.forEach(region => {
+        region.countries.forEach(country => {
+          const cDests = worldDestinations
+            .filter(d => d.countryId === country.id)
+            .map(d => ({ name: d.name, slug: d.slug }));
+            
+          const cStates = worldStates
+            .filter(s => s.countryId === country.id)
+            .map(s => ({ name: s.name, slug: s.slug }));
+            
+          (country as any).destinations = [...cStates, ...cDests];
+        });
+      });
+    }
 
     // Group India states by Region (North, South, East, West) if they have region field
     const orderedRegions = [

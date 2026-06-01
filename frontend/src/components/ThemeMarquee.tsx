@@ -42,7 +42,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
     dragFree: false,
     loop: true,
   }, [
-    Autoplay({ 
+    Autoplay({
       delay: 3000,
       stopOnInteraction: false,
       stopOnMouseEnter: true
@@ -64,11 +64,11 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-2">
+      <section className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
         <div className="px-6 py-2 flex items-end justify-between mb-2">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="h-[2px] w-8 bg-accent" />
+
               <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">
                 {subtitle || "Handpicked Collections"}
               </p>
@@ -118,7 +118,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                 const linkHref = theme.href || `/packages?theme=${theme.slug || themeLabel}`;
 
                 return (
-                  <div key={theme.id || idx} className="flex-none w-[120px] md:w-[150px]">
+                  <div key={theme.id || idx} className="flex-none w-[110px] md:w-[125px]">
                     <Link href={linkHref} className="flex flex-col items-center gap-3 group">
 
                       <div className="relative p-[2px] rounded-full flex items-center justify-center">
@@ -149,18 +149,18 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                       </div>
 
                       {/* Theme Title & Dynamic Data */}
-                      <div className="flex flex-col items-center space-y-1.5">
+                      <div className="flex flex-col items-center ">
                         <span
                           className="text-[12px] md:text-[13px] font-black text-primary tracking-[0.12em] uppercase group-hover:text-accent transition-colors text-center leading-tight"
                           style={{ fontFamily: "'Poppins', sans-serif" }}
                         >
                           {theme.label}
                         </span>
-                        <div className="flex flex-col items-center gap-0.5">
-                          <span className="text-[10px] font-black text-accent bg-accent/10 px-3 py-0.5 rounded-full uppercase tracking-tighter">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[10px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-tighter">
                             {theme.packageCount || 0} Tours
                           </span>
-                          <span className="text-[9px] font-bold text-slate-400 mt-0.5">
+                          <span className="text-[9px] font-bold text-slate-400">
                             From ₹{theme.startingPrice?.toLocaleString('en-IN') || "9,999"}
                           </span>
                         </div>
@@ -180,7 +180,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 export function ThemeMarqueeSkeleton() {
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-2">
+      <section className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
         <div className="px-6 py-2 flex items-end justify-between mb-4">
           <div className="flex flex-col gap-2">
             <div className="h-4 w-32 bg-slate-100 animate-pulse rounded" />

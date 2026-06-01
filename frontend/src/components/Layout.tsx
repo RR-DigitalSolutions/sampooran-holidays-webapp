@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { MegaNav } from "./MegaNav";
 import { InclusionsSection } from "./InclusionsSection";
 import { BottomNav } from "./BottomNav";
+import { MobileNav } from "./MobileNav";
 import dynamic from "next/dynamic";
 
 const ChatWidget = dynamic(() => import("./ChatWidget"), { ssr: false });
@@ -251,56 +252,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Mobile Drawer */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: "100%" }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: "100%" }}
-            className="fixed inset-0 z-[60] lg:hidden bg-white overflow-y-auto"
-          >
-            <div className="p-6 flex items-center justify-between border-b">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <img src="/logo.png" className="w-5 h-5 brightness-0 invert" alt="" />
-                </div>
-                <span className="font-serif font-bold text-primary">Sampooran</span>
-              </Link>
-              <button onClick={() => setMobileOpen(false)} className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center" aria-label="Close menu">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 pb-24">
-              {NAV.map((item) => (
-                <div key={item.label} className="mb-6">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{item.label}</h4>
-                  <div className="grid grid-cols-1 gap-4">
-                    {item.isMega ? (
-                      item.columns?.flatMap(c => c.links).map(l => (
-                        <Link key={l.label} href={l.href} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                          <span className="text-lg">{l.icon}</span>
-                          <span className="font-bold text-slate-700">{l.label}</span>
-                        </Link>
-                      ))
-                    ) : (
-                      (item as any).children?.map((c: any) => (
-                        <Link key={c.label} href={c.href} className="font-bold text-slate-700 pl-4">{c.label}</Link>
-                      )) || (
-                        <Link href={item.href} className="font-bold text-slate-700 px-4 py-3 bg-slate-50 rounded-2xl">{item.label}</Link>
-                      )
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-white border-t flex gap-4">
-              {/* Mobile Call button uses correct number */}
-              <a href="tel:+918595513009" className="flex-1 bg-primary text-white py-4 rounded-2xl font-bold uppercase text-xs tracking-widest text-center">Call Expert</a>
-              <Link href="/customized-holidays" className="flex-1 bg-accent text-accent-foreground py-4 rounded-2xl font-bold uppercase text-xs tracking-widest text-center">Enquire Now</Link>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MobileNav isOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <BottomNav />
 

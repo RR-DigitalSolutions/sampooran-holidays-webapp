@@ -270,7 +270,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
               <section key={idx} className="relative h-[75vh] min-h-[520px] md:h-screen md:min-h-[600px] max-h-[960px] flex flex-col justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0 overflow-hidden" ref={emblaRef}>
                   <div className="flex h-full w-full">
-                  {slides.map((slide: any, i: number) => (
+                    {slides.map((slide: any, i: number) => (
                       <div key={i} className="relative flex-[0_0_100%] min-w-0 h-full">
                         {slide.videoUrl ? (
                           <video src={slide.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover select-none pointer-events-none" />
@@ -415,7 +415,6 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                   <div className="flex justify-between items-end mb-2">
                     <div className="max-w-3xl">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="h-[2px] w-8 bg-accent" />
                         <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">Premium Stays</p>
                       </div>
                       <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary mb-1 leading-tight">

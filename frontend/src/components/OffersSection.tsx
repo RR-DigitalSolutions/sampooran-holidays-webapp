@@ -80,7 +80,6 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
             <div className="flex items-end gap-6">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="h-[2px] w-8 bg-accent" />
                   <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">
                     {subtitle || "Exclusive Deals"}
                   </p>
@@ -155,14 +154,14 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                   <div key={offer.id} className="flex-[0_0_88%] min-w-0 md:flex-auto">
                     <Link key={offer.id} href={offer.ctaLink || "/"} className="block group group/card">
                       <div className={cn(
-                        "flex h-[130px] md:h-[180px] rounded-3xl overflow-hidden bg-white relative transition-all duration-500",
+                        "flex h-[130px] md:h-[150px] rounded-2xl overflow-hidden bg-white relative transition-all duration-500",
                         "border-0 md:border md:border-slate-100 hover:border-accent/40",
                         "shadow-[0_10px_35px_rgba(0,0,0,0.05)] md:shadow-none hover:shadow-2xl hover:shadow-accent/10"
                       )}>
 
                         {/* Left Image - Overlapping slightly to prevent seam lines */}
                         <div className="relative w-[41%] md:w-[44%] h-full overflow-hidden shrink-0 z-10">
-                          <div className="absolute right-[-2px] top-[-5%] bottom-[-5%] w-8 bg-white z-20 rounded-l-[500%] md:shadow-[-12px_0_20px_rgba(0,0,0,0.04)] transition-transform duration-500 group-hover/card:scale-x-125 origin-right" />
+                          <div className="absolute right-[-2px] top-[-5%] bottom-[-5%] w-2 bg-white z-20  md:shadow-[-12px_0_20px_rgba(0,0,0,0.04)] transition-transform duration-500 group-hover/card:scale-x-125 origin-right" />
                           <Image
                             src={offer.imageUrl || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
                             alt={offer.title}
@@ -171,14 +170,14 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                             className="object-cover group-hover/card:scale-110 transition-transform duration-[1.5s] ease-out"
                           />
                           {offer.termsAndConditions && (
-                            <div className="absolute top-2 left-2 z-30 bg-accent text-primary text-[8px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest shadow-lg animate-badge-pulse">
+                            <div className="absolute top-2 left-2 z-30 bg-accent text-primary text-[6px] md:text-[8px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest shadow-lg animate-badge-pulse">
                               {offer.termsAndConditions}
                             </div>
                           )}
                         </div>
 
                         {/* Right Content - Negative margin to cover the seam */}
-                        <div className="flex-1 p-3 md:p-5 flex flex-col justify-between pl-4 md:pl-6 -ml-1 border-l-0 relative z-0">
+                        <div className="flex-1 p-1 md:p-2 flex flex-col justify-between border-l-0 relative z-0">
                           <div>
                             <div className="flex items-center gap-1.5 mb-1 opacity-70">
                               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
