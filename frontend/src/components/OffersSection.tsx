@@ -213,7 +213,7 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
             </div>
           </div>
 
-          <div className="mt-2 flex justify-center border-t border-slate-50 pt-2">
+          <div className="flex justify-center border-t border-slate-50">
             <Link href="/offers" className="text-primary font-bold uppercase tracking-widest text-[10px] hover:text-accent flex items-center gap-2 group">
               View All Offers
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />

@@ -18,7 +18,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/destinations/mega-menu")
+    fetch("/api/destinations/mega-menu")
       .then(res => res.json())
       .then(setData)
       .catch(console.error);
