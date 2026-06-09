@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   Star, MapPin, Share2, Heart, ShieldCheck, Check, Info, Calendar,
   Users, Building2, Utensils, Wifi, Coffee, Phone, MessageSquare,
-  Plus, Minus, X, ChevronRight, ChevronLeft, Bed, Sparkles, Clock, AlertTriangle
+  Plus, Minus, X, ChevronRight, ChevronLeft, Bed, Sparkles, Clock, AlertTriangle,
+  Plane, Bus, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,15 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
   const router = useRouter();
   const [hotel, setHotel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "policies" | "reviews">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "location" | "gallery" | "policies" | "reviews" | "faqs">("overview");
+  const [galleryFilter, setGalleryFilter] = useState<"ALL" | "EXTERIOR" | "INTERIOR" | "ROOM" | "BATHROOM" | "DINING" | "POOL" | "OTHER">("ALL");
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+  // Room Gallery state
+  const [roomGalleryOpen, setRoomGalleryOpen] = useState(false);
+  const [selectedRoomImages, setSelectedRoomImages] = useState<string[]>([]);
+  const [selectedRoomName, setSelectedRoomName] = useState("");
+  const [roomActiveImageIndex, setRoomActiveImageIndex] = useState(0);
 
   // Dates state (default to tomorrow and day-after-tomorrow)
   const [checkIn, setCheckIn] = useState<string>(() => {
@@ -95,13 +104,33 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
     );
   }
 
-  const images = hotel.photos?.length > 0
-    ? hotel.photos.map((p: any) => p.url)
-    : (hotel.images?.length > 0 ? hotel.images : [
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200",
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
-      "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=800"
-    ]);
+  // Combine hotel photos & room images for the unified gallery
+  const hotelPhotos = hotel.photos || [];
+  const roomPhotos = (hotel.rooms || []).flatMap((r: any) =>
+    (r.images || []).map((img: string) => ({
+      url: img,
+      category: "ROOM",
+      caption: `${r.name} - Room view`
+    }))
+  );
+
+  const getMappedCategory = (cat: string) => {
+    const uppercaseCat = (cat || "").toUpperCase();
+    if (["EXTERIOR", "INTERIOR", "ROOM", "BATHROOM", "DINING", "POOL"].includes(uppercaseCat)) {
+      return uppercaseCat;
+    }
+    return "OTHER";
+  };
+
+  const allGalleryImages = [...hotelPhotos, ...roomPhotos].length > 0
+    ? [...hotelPhotos, ...roomPhotos]
+    : [
+      { url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200", category: "EXTERIOR", caption: "Hotel Exterior" },
+      { url: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800", category: "INTERIOR", caption: "Lobby" },
+      { url: "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=800", category: "ROOM", caption: "Bedroom" }
+    ];
+
+  const images = allGalleryImages.map(x => x.url);
 
   // Formatter for cancellation hours
   const formatCancellation = (hours: number) => {
@@ -195,14 +224,17 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
       {/* 2. TABS & DETAIL BODY CONTROLLER */}
       <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
-        <div className="flex-1 space-y-8">
+        <div className="flex-1 space-y-6">
           {/* Navigation Tabs */}
-          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-xs flex gap-1 sticky top-[10vh] z-10">
+          <div className="bg-white p-1 rounded-md border border-slate-100 shadow-xs flex gap-1 sticky top-[80px] lg:top-[76px] z-30 overflow-x-auto no-scrollbar">
             {[
               { id: "overview", label: "Overview" },
               { id: "rooms", label: "Rooms & Rates" },
+              { id: "location", label: "Location" },
+              { id: "gallery", label: "Gallery" },
               { id: "policies", label: "Policies" },
               { id: "reviews", label: `Reviews (${hotel.reviews?.length || 0})` },
+              { id: "faqs", label: "FAQs" },
             ].map((t) => (
               <button
                 key={t.id}
@@ -214,7 +246,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                   }
                 }}
                 className={cn(
-                  "flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all text-center",
+                  "flex-1 p-2 rounded-sm text-sm font-bold transition-all text-center",
                   activeTab === t.id
                     ? "bg-[#1B3A6B] text-white shadow-sm"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
@@ -227,7 +259,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
           {/* Section: Overview */}
           <div id="overview" className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
               <div className="flex items-center gap-1">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className={cn("h-4 w-4", i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
@@ -240,8 +272,8 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
               </div>
             </div>
 
-            <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-3">Property Description</h3>
-            <p className="text-slate-600 leading-relaxed">
+            <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 mb-2">Property Description</h3>
+            <p className="text-xs md:text-sm text-slate-600 leading-relaxed">
               {hotel.description || "Welcome to a sanctuary of absolute hospitality. Nestled in prime settings, our properties guarantee world-class utilities, seasoned staff availability, and dynamic dining configurations perfectly aligned with customer travel guides."}
             </p>
 
@@ -296,9 +328,29 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                     <Card key={room.id} className={cn("overflow-hidden rounded-3xl border border-slate-200/60 shadow-xs transition-all hover:shadow-md bg-white", isOccupancyExceeded && "opacity-75")}>
                       <div className="flex flex-col md:flex-row">
                         {/* Room Image Carousel Placeholder */}
-                        <div className="w-full md:w-72 h-48 md:h-auto relative bg-slate-100 shrink-0">
+                        <div
+                          onClick={() => {
+                            if (room.images && room.images.length > 0) {
+                              setSelectedRoomImages(room.images);
+                              setSelectedRoomName(room.name);
+                              setRoomActiveImageIndex(0);
+                              setRoomGalleryOpen(true);
+                            }
+                          }}
+                          className={cn(
+                            "w-full md:w-72 h-48 md:h-auto relative bg-slate-100 shrink-0 select-none overflow-hidden",
+                            room.images?.length > 0 && "cursor-pointer group"
+                          )}
+                        >
                           {room.images?.[0] ? (
-                            <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover" />
+                            <>
+                              <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                              {room.images.length > 1 && (
+                                <div className="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg text-white text-[9px] font-bold">
+                                  + {room.images.length} Photos
+                                </div>
+                              )}
+                            </>
                           ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                               <Building2 className="w-10 h-10 mb-1" />
@@ -396,6 +448,165 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                 <p className="text-xs text-slate-400 mt-1">Please contact the admin desk or check back later.</p>
               </div>
             )}
+          </div>
+
+          {/* Section: Location (Proximity Points) */}
+          <div id="location" className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-6">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3 flex-wrap gap-2">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-rose-500" /> Location & Surroundings
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">{hotel.address || `${hotel.city || ""}, ${hotel.state || ""}`}</p>
+              </div>
+              {hotel.starRating && (
+                <div className="text-right">
+                  <span className="text-sm font-black text-sky-600">Very Good {hotel.starRating + 4.9}</span>
+                  <p className="text-[10px] text-slate-400 font-medium">Location rating</p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Airports */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                  <Plane className="w-4 h-4 text-sky-500" /> Airports
+                </h4>
+                <div className="space-y-3">
+                  {(hotel.proximity || []).filter((p: any) => p.category === "Airports").length > 0 ? (
+                    (hotel.proximity || []).filter((p: any) => p.category === "Airports").map((point: any, i: number) => (
+                      <div key={i} className="flex items-start justify-between text-xs text-slate-600">
+                        <span className="font-medium text-slate-700">{point.name}</span>
+                        <span className="text-slate-400 shrink-0 font-bold ml-2">{point.distance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No airport distance data provided.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Public Transportation */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                  <Bus className="w-4 h-4 text-emerald-500" /> Public Transportation
+                </h4>
+                <div className="space-y-3">
+                  {(hotel.proximity || []).filter((p: any) => p.category === "Public transportation").length > 0 ? (
+                    (hotel.proximity || []).filter((p: any) => p.category === "Public transportation").map((point: any, i: number) => (
+                      <div key={i} className="flex items-start justify-between text-xs text-slate-600">
+                        <span className="font-medium text-slate-700">{point.name}</span>
+                        <span className="text-slate-400 shrink-0 font-bold ml-2">{point.distance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No transit distance data provided.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Hospital or Clinic */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm text-slate-800 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-rose-500" /> Hospital or Clinic
+                </h4>
+                <div className="space-y-3">
+                  {(hotel.proximity || []).filter((p: any) => p.category === "Hospital or clinic").length > 0 ? (
+                    (hotel.proximity || []).filter((p: any) => p.category === "Hospital or clinic").map((point: any, i: number) => (
+                      <div key={i} className="flex items-start justify-between text-xs text-slate-600">
+                        <span className="font-medium text-slate-700">{point.name}</span>
+                        <span className="text-slate-400 shrink-0 font-bold ml-2">{point.distance}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No medical distance data provided.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400 italic pt-2 border-t border-slate-50">
+              Distances shown are straight-line distances on the map. Actual travel distances may vary.
+            </p>
+          </div>
+
+          {/* Section: Hotel Gallery */}
+          <div id="gallery" className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-6">
+            <div className="border-b border-slate-100 pb-3 flex justify-between items-center flex-wrap gap-3">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-indigo-500" /> Property Gallery & Rooms
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Explore all photos of rooms, interiors, exteriors, and dining points.</p>
+              </div>
+              <span className="bg-[#1B3A6B]/5 text-[#1B3A6B] text-xs font-bold px-3 py-1.5 rounded-xl border border-[#1B3A6B]/15">
+                {allGalleryImages.length} Photos total
+              </span>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { key: "ALL", label: "All Photos" },
+                { key: "EXTERIOR", label: "Exterior" },
+                { key: "INTERIOR", label: "Interior" },
+                { key: "ROOM", label: "Room" },
+                { key: "BATHROOM", label: "Bathroom" },
+                { key: "DINING", label: "Dining" },
+                { key: "POOL", label: "Pool" },
+                { key: "OTHER", label: "Other" }
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setGalleryFilter(f.key as any)}
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5",
+                    galleryFilter === f.key
+                      ? "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-sm"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid of photos */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
+              {allGalleryImages
+                .map((img: any, idx: number) => ({ ...img, originalIdx: idx }))
+                .filter((img: any) => {
+                  if (galleryFilter === "ALL") return true;
+                  return getMappedCategory(img.category) === galleryFilter;
+                })
+                .map((img: any) => (
+                  <div
+                    key={img.originalIdx}
+                    onClick={() => {
+                      setActiveImageIndex(img.originalIdx);
+                      setGalleryOpen(true);
+                    }}
+                    className="relative group aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100/50 cursor-pointer shadow-xs"
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.caption || "Property Photo"}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end p-3 opacity-0 group-hover:opacity-100">
+                      <span className="text-[10px] font-bold text-white bg-black/40 backdrop-blur-xs px-2.5 py-1 rounded-lg truncate max-w-full">
+                        {img.caption || img.category || "View Photo"}
+                      </span>
+                    </div>
+                    {img.category && (
+                      <span className="absolute top-2.5 left-2.5 bg-black/60 backdrop-blur-xs text-white text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                        {img.category}
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
           </div>
 
           {/* Section: Policies */}
@@ -504,7 +715,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                       </div>
                     </div>
                     {r.title && <h5 className="font-bold text-sm text-slate-800">{r.title}</h5>}
-                    <p className="text-xs text-slate-600 leading-relaxed">{r.body}</p>
+                    <p className="text-[8px] text-slate leading-relaxed">{r.body}</p>
                     {r.stayDate && <p className="text-[10px] text-slate-400 font-medium">Stayed on {new Date(r.stayDate).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</p>}
                   </div>
                 ))}
@@ -516,11 +727,77 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
               </div>
             )}
           </div>
+
+          {/* Section: FAQs Accordion */}
+          <div id="faqs" className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs space-y-6">
+            <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-[#1B3A6B]" /> Frequently Asked Questions
+            </h3>
+
+            {hotel.faqs && hotel.faqs.length > 0 ? (
+              <div className="space-y-3">
+                {hotel.faqs.map((faq: any, idx: number) => {
+                  const isOpen = openFaqIndex === idx;
+                  return (
+                    <div key={idx} className="border border-slate-100 rounded-2xl overflow-hidden transition-all duration-300 bg-slate-50/50 hover:bg-slate-50">
+                      <button
+                        onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                        className="w-full flex items-center justify-between p-4 text-left font-bold text-sm text-slate-800 focus:outline-none"
+                      >
+                        <span>{faq.question}</span>
+                        <Plus className={cn("w-4 h-4 text-slate-400 transition-transform duration-300 shrink-0 ml-4", isOpen && "rotate-45 text-[#1B3A6B]")} />
+                      </button>
+                      <div className={cn(
+                        "grid transition-all duration-300 ease-in-out",
+                        isOpen ? "grid-rows-[1fr] opacity-100 border-t border-slate-100/50" : "grid-rows-[0fr] opacity-0"
+                      )}>
+                        <div className="overflow-hidden">
+                          <p className="p-4 text-xs leading-relaxed text-slate-600 bg-white">
+                            {faq.answer}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center border border-dashed border-slate-200 rounded-2xl">
+                <Info className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p className="text-xs text-slate-400">No FAQs provided for this property yet.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 3. STICKY BOOKING WIDGET */}
-        <div className="w-full lg:w-[400px]">
-          <Card className="sticky top-[10vh] shadow-xl border-none rounded-[2.2rem] overflow-hidden bg-[#0F1E3D] text-white p-7 space-y-6">
+        <div className="w-full lg:w-[400px] space-y-4">
+          {/* Visual Map Embed Section */}
+          <Card className="lg:sticky lg:top-[80px] lg:z-20 shadow-sm border border-slate-100 rounded-xl overflow-hidden bg-white p-4">
+            <h4 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-[#1B3A6B]" /> Property Location Map
+            </h4>
+            <div className="relative w-full h-[180px] bg-slate-50 rounded-xl overflow-hidden group border border-slate-100">
+              <iframe
+                title="Hotel Location Map"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                marginHeight={0}
+                marginWidth={0}
+                src={`https://maps.google.com/maps?q=${hotel.latitude && hotel.longitude ? `${hotel.latitude},${hotel.longitude}` : encodeURIComponent(`${hotel.name}, ${hotel.city || ""}`)}&z=15&output=embed`}
+                className="rounded-xl filter contrast-105"
+              />
+              <div className="absolute inset-0 bg-black/5 pointer-events-none" />
+            </div>
+            <div className="mt-3 text-xs text-slate-500 flex items-start gap-1.5 leading-relaxed">
+              <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+              <span>{hotel.address || `${hotel.city || ""}, ${hotel.state || ""}`}</span>
+            </div>
+          </Card>
+
+          <Card className="lg:sticky lg:top-[376px] lg:z-10 shadow-xl border-none rounded-xl overflow-hidden bg-[#0F1E3D] text-white p-7 space-y-6">
             <div>
               <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mb-1.5">Starting at</p>
               <div className="flex items-baseline gap-2">
@@ -744,6 +1021,47 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                 key={idx}
                 onClick={() => setActiveImageIndex(idx)}
                 className={cn("w-14 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all opacity-60 hover:opacity-100", activeImageIndex === idx ? "border-sky-400 scale-105 opacity-100" : "border-transparent")}
+              >
+                <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 5. ROOM GALLERY FULLSCREEN MODAL */}
+      {roomGalleryOpen && selectedRoomImages.length > 0 && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between p-4 md:p-8">
+          <div className="flex justify-between items-center text-white">
+            <span className="text-xs font-bold tracking-widest uppercase">{selectedRoomName} Gallery ({roomActiveImageIndex + 1}/{selectedRoomImages.length})</span>
+            <button onClick={() => setRoomGalleryOpen(false)} className="p-2 hover:bg-white/10 rounded-full text-white/80 transition-colors"><X className="w-6 h-6" /></button>
+          </div>
+
+          <div className="relative flex-1 flex items-center justify-center max-h-[80vh]">
+            <button
+              onClick={() => setRoomActiveImageIndex(prev => (prev - 1 + selectedRoomImages.length) % selectedRoomImages.length)}
+              className="absolute left-0 md:left-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+
+            <img src={selectedRoomImages[roomActiveImageIndex]} alt="Room gallery slide" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-in" />
+
+            <button
+              onClick={() => setRoomActiveImageIndex(prev => (prev + 1) % selectedRoomImages.length)}
+              className="absolute right-0 md:right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Thumbnail list */}
+          <div className="flex gap-2.5 overflow-x-auto justify-center pb-2 pt-4 px-2 max-w-2xl mx-auto scrollbar-thin">
+            {selectedRoomImages.map((img: string, idx: number) => (
+              <button
+                key={idx}
+                onClick={() => setRoomActiveImageIndex(idx)}
+                className={cn("w-14 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all opacity-60 hover:opacity-100", roomActiveImageIndex === idx ? "border-sky-400 scale-105 opacity-100" : "border-transparent")}
               >
                 <img src={img} alt="Thumb" className="w-full h-full object-cover" />
               </button>

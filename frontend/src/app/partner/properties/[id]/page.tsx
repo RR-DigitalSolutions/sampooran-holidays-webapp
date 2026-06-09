@@ -109,8 +109,80 @@ function EditableField({ label, value, type = "text", onChange, options }: {
 }
 
 // ─── Room Form ───────────────────────────────────────────────────────────────
-function RoomForm({ room, onSave, onCancel }: {
-  room?: any; onSave: (data: any) => void; onCancel: () => void;
+// ─── Browser Image Compressor & Cloudinary Uploader Helper ──────────────────
+const compressAndUploadFile = async (file: File, hotelId: number, token: string | null): Promise<string> => {
+  const compressedFile = await new Promise<File>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const MAX_WIDTH = 1920;
+        const MAX_HEIGHT = 1080;
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          if (width > height) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          } else {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas context is null"));
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.8;
+        const getBlob = (q: number): Promise<Blob | null> => {
+          return new Promise((res) => canvas.toBlob(res, "image/webp", q));
+        };
+
+        const compress = async () => {
+          let blob = await getBlob(quality);
+          while (blob && blob.size > 250 * 1024 && quality > 0.1) {
+            quality -= 0.1;
+            blob = await getBlob(quality);
+          }
+          if (blob) {
+            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: "image/webp" }));
+          } else {
+            reject(new Error("Compression failed"));
+          }
+        };
+        compress();
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+
+  const formData = new FormData();
+  formData.append("file", compressedFile);
+
+  const uploadRes = await fetch(`${API_BASE}/media/upload?folder=vendors/hotel_${hotelId}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!uploadRes.ok) {
+    const uploadErr = await uploadRes.json().catch(() => ({}));
+    throw new Error(uploadErr.message || "Failed to upload image to server");
+  }
+
+  const uploadData = await uploadRes.json();
+  return uploadData.url;
+};
+
+// ─── Room Form ───────────────────────────────────────────────────────────────
+function RoomForm({ room, hotelId, token, onSave, onCancel }: {
+  room?: any; hotelId: number; token: string | null; onSave: (data: any) => void; onCancel: () => void;
 }) {
   const [form, setForm] = useState({
     name: room?.name || "",
@@ -127,6 +199,7 @@ function RoomForm({ room, onSave, onCancel }: {
     refundable: room?.refundable !== false,
     cancellationHours: room?.cancellationHours || 24,
     amenities: room?.amenities || [],
+    images: room?.images || [],
   });
   const [cancellationVal, setCancellationVal] = useState(() => {
     const hrs = room?.cancellationHours ?? 24;
@@ -140,6 +213,7 @@ function RoomForm({ room, onSave, onCancel }: {
     if (hrs % 24 === 0) return "Days";
     return "Hours";
   });
+  const [uploading, setUploading] = useState(false);
 
   const u = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
@@ -214,6 +288,40 @@ function RoomForm({ room, onSave, onCancel }: {
         <textarea value={form.description} onChange={e => u("description", e.target.value)}
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] resize-none"
           rows={2} placeholder="Describe the room..." />
+      </div>
+      <div>
+        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Images (Max 5)</label>
+        <div className="flex flex-wrap gap-3 mt-1 mb-2">
+          {form.images.map((img: string, idx: number) => (
+            <div key={idx} className="relative w-24 h-16 rounded-xl overflow-hidden border border-gray-200 group">
+              <img src={img} alt="Room preview" className="w-full h-full object-cover" />
+              <button type="button" onClick={() => u("images", form.images.filter((_: any, i: number) => i !== idx))}
+                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-md transition-colors">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ))}
+          {form.images.length < 5 && (
+            <label className="w-24 h-16 border-2 border-dashed border-gray-200 rounded-xl hover:border-[#1B3A6B] hover:bg-slate-50 flex flex-col items-center justify-center cursor-pointer transition-all relative">
+              <ImageIcon className="w-5 h-5 text-gray-400" />
+              <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{uploading ? "Uploading" : "Add Image"}</span>
+              <input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setUploading(true);
+                try {
+                  const url = await compressAndUploadFile(file, hotelId, token);
+                  u("images", [...form.images, url]);
+                } catch (err: any) {
+                  alert(err.message || "Upload failed");
+                } finally {
+                  setUploading(false);
+                }
+              }} className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+            </label>
+          )}
+        </div>
+        <p className="text-[9px] text-gray-400 font-medium">Upload photos to represent this room type. Drag-drop files or browse.</p>
       </div>
       <label className="flex items-center gap-2 cursor-pointer text-sm flex-wrap">
         <input type="checkbox" checked={form.refundable} onChange={e => u("refundable", e.target.checked)} className="w-4 h-4 accent-[#1B3A6B]" />
@@ -819,6 +927,9 @@ export default function VendorPropertyManagerPage() {
                   <EditableField label="Type" value={hotel.type || ""} options={["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp"]} onChange={v => saveHotelField("type", v)} />
                   <EditableField label="City" value={hotel.city || ""} onChange={v => saveHotelField("city", v)} />
                   <EditableField label="State" value={hotel.state || ""} onChange={v => saveHotelField("state", v)} />
+                  <EditableField label="Location Address" value={hotel.address || ""} onChange={v => saveHotelField("address", v)} />
+                  <EditableField label="Latitude" value={hotel.latitude ?? ""} type="number" onChange={v => saveHotelField("latitude", v ? parseFloat(v) : null)} />
+                  <EditableField label="Longitude" value={hotel.longitude ?? ""} type="number" onChange={v => saveHotelField("longitude", v ? parseFloat(v) : null)} />
                   <EditableField label="Check-in Time" value={hotel.checkInTime || ""} type="time" onChange={v => saveHotelField("checkInTime", v)} />
                   <EditableField label="Check-out Time" value={hotel.checkOutTime || ""} type="time" onChange={v => saveHotelField("checkOutTime", v)} />
                   <EditableField label="Starting Price (₹)" value={hotel.minPrice || ""} type="number" onChange={v => saveHotelField("minPrice", Number(v))} />
@@ -856,6 +967,134 @@ export default function VendorPropertyManagerPage() {
                   })}
                 </div>
               </div>
+
+              {/* Proximity Location Points */}
+              <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-5">
+                <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2"><MapPin className="w-4 h-4 text-[#1B3A6B]" /> Proximity & Nearby Places</h3>
+                <p className="text-xs text-gray-400 mb-4">Add nearby airports, transit stations, and medical clinics to guide guests on their travel proximity.</p>
+                
+                {/* Form to add a new point */}
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Category</label>
+                    <select id="new-proximity-category" aria-label="Surroundings Category" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B]">
+                      <option value="Airports">Airports</option>
+                      <option value="Public transportation">Public transportation</option>
+                      <option value="Hospital or clinic">Hospital or clinic</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Place Name</label>
+                    <input id="new-proximity-name" placeholder="e.g. Manali Bus Depot" type="text" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Distance</label>
+                      <input id="new-proximity-distance" placeholder="e.g. 5.0 km" type="text" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                    </div>
+                    <button type="button" onClick={() => {
+                      const catEl = document.getElementById("new-proximity-category") as HTMLSelectElement;
+                      const nameEl = document.getElementById("new-proximity-name") as HTMLInputElement;
+                      const distEl = document.getElementById("new-proximity-distance") as HTMLInputElement;
+                      if (!nameEl || !distEl || !nameEl.value.trim() || !distEl.value.trim()) return;
+                      const newPoint = { category: catEl.value, name: nameEl.value.trim(), distance: distEl.value.trim() };
+                      const current = hotel.proximity || [];
+                      const updated = [...current, newPoint];
+                      saveHotelField("proximity", updated);
+                      nameEl.value = "";
+                      distEl.value = "";
+                    }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-3.5 py-2 rounded-lg text-xs font-bold transition-colors shrink-0">
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* List of current proximity points */}
+                <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                  {(hotel.proximity || []).length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No proximity locations added yet.</p>
+                  ) : (
+                    (hotel.proximity || []).map((point: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl p-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className={cn("px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider",
+                            point.category === "Airports" ? "bg-sky-50 text-sky-700 border border-sky-100" :
+                            point.category === "Public transportation" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                            "bg-rose-50 text-rose-700 border border-rose-100"
+                          )}>
+                            {point.category}
+                          </span>
+                          <span className="font-semibold text-gray-700">{point.name}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-bold text-[#1B3A6B]">{point.distance}</span>
+                          <button type="button" onClick={() => {
+                            const updated = (hotel.proximity || []).filter((_: any, idx: number) => idx !== index);
+                            saveHotelField("proximity", updated);
+                          }} className="text-red-400 hover:text-red-600 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Property FAQs */}
+              <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-5">
+                <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-[#1B3A6B]" /> Property FAQs</h3>
+                <p className="text-xs text-gray-400 mb-4">Add questions and answers to help guests understand property policies, rules, and facilities.</p>
+
+                {/* Form to add a new FAQ */}
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-4 space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Question</label>
+                    <input id="new-faq-question" placeholder="e.g. Is early check-in available?" type="text" className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Answer</label>
+                    <textarea id="new-faq-answer" placeholder="e.g. Yes, subject to availability. Extra charges may apply." rows={2} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B] resize-none" />
+                  </div>
+                  <div className="flex justify-end">
+                    <button type="button" onClick={() => {
+                      const qEl = document.getElementById("new-faq-question") as HTMLInputElement;
+                      const aEl = document.getElementById("new-faq-answer") as HTMLTextAreaElement;
+                      if (!qEl || !aEl || !qEl.value.trim() || !aEl.value.trim()) return;
+                      const newFaq = { question: qEl.value.trim(), answer: aEl.value.trim() };
+                      const current = hotel.faqs || [];
+                      const updated = [...current, newFaq];
+                      saveHotelField("faqs", updated);
+                      qEl.value = "";
+                      aEl.value = "";
+                    }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-lg text-xs font-bold transition-colors">
+                      Add FAQ
+                    </button>
+                  </div>
+                </div>
+
+                {/* List of current FAQs */}
+                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                  {(hotel.faqs || []).length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No FAQs added yet.</p>
+                  ) : (
+                    (hotel.faqs || []).map((faq: any, index: number) => (
+                      <div key={index} className="bg-white border border-gray-100 rounded-xl p-4 text-xs space-y-2">
+                        <div className="flex justify-between items-start">
+                          <p className="font-bold text-gray-800 flex-1 pr-4">Q: {faq.question}</p>
+                          <button type="button" onClick={() => {
+                            const updated = (hotel.faqs || []).filter((_: any, idx: number) => idx !== index);
+                            saveHotelField("faqs", updated);
+                          }} className="text-red-400 hover:text-red-600 transition-colors shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <p className="text-gray-600 pl-4 border-l-2 border-slate-100">A: {faq.answer}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -873,7 +1112,7 @@ export default function VendorPropertyManagerPage() {
               </div>
 
               {showRoomForm && !editingRoom && (
-                <RoomForm onSave={addRoom} onCancel={() => setShowRoomForm(false)} />
+                <RoomForm hotelId={hotelId} token={token} onSave={addRoom} onCancel={() => setShowRoomForm(false)} />
               )}
 
               {rooms.length === 0 && !showRoomForm ? (
@@ -891,7 +1130,7 @@ export default function VendorPropertyManagerPage() {
                   {rooms.map(room => (
                     <div key={room.id}>
                       {editingRoom?.id === room.id ? (
-                        <RoomForm room={editingRoom} onSave={d => updateRoom(room.id, d)} onCancel={() => setEditingRoom(null)} />
+                        <RoomForm room={editingRoom} hotelId={hotelId} token={token} onSave={d => updateRoom(room.id, d)} onCancel={() => setEditingRoom(null)} />
                       ) : (
                         <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-4 hover:shadow-md transition-shadow">
                           <div className="w-full sm:w-36 h-28 bg-gray-100 rounded-xl overflow-hidden shrink-0">
@@ -1242,7 +1481,7 @@ export default function VendorPropertyManagerPage() {
                         aria-label="Photo Category"
                         className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
                       >
-                        {["EXTERIOR", "INTERIOR", "ROOM", "BATHROOM", "DINING", "POOL", "VIEW", "AMENITY", "OTHER"].map(c => (
+                        {["EXTERIOR", "INTERIOR", "ROOM", "BATHROOM", "DINING", "POOL", "OTHER"].map(c => (
                           <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>
                         ))}
                       </select>

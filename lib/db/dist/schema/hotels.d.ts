@@ -275,6 +275,40 @@ export declare const hotelsTable: import("drizzle-orm/pg-core").PgTableWithColum
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        proximity: import("drizzle-orm/pg-core").PgColumn<{
+            name: "proximity";
+            tableName: "hotels";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        faqs: import("drizzle-orm/pg-core").PgColumn<{
+            name: "faqs";
+            tableName: "hotels";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         totalRooms: import("drizzle-orm/pg-core").PgColumn<{
             name: "total_rooms";
             tableName: "hotels";
@@ -2255,17 +2289,13 @@ export declare const hotelPhotosTable: import("drizzle-orm/pg-core").PgTableWith
     dialect: "pg";
 }>;
 export declare const insertHotelSchema: z.ZodObject<{
+    ownerId: z.ZodInt;
+    destinationId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     name: z.ZodString;
     slug: z.ZodString;
-    destinationId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    isFeatured: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-    metaTitle: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    metaDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    displayOrder: z.ZodOptional<z.ZodInt>;
-    ownerId: z.ZodInt;
     type: z.ZodOptional<z.ZodString>;
     starRating: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     address: z.ZodString;
     city: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     pincode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -2274,6 +2304,8 @@ export declare const insertHotelSchema: z.ZodObject<{
     website: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    proximity: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
+    faqs: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
     totalRooms: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     amenities: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
@@ -2284,6 +2316,10 @@ export declare const insertHotelSchema: z.ZodObject<{
     breakfastIncluded: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     vendorCommissionPct: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     status: z.ZodOptional<z.ZodString>;
+    isFeatured: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    displayOrder: z.ZodOptional<z.ZodInt>;
+    metaTitle: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    metaDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};
@@ -2292,9 +2328,8 @@ export type InsertHotel = z.infer<typeof insertHotelSchema>;
 export type Hotel = typeof hotelsTable.$inferSelect;
 export declare const insertHotelRoomSchema: z.ZodObject<{
     name: z.ZodString;
-    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    isActive: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     type: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     totalRooms: z.ZodOptional<z.ZodInt>;
     amenities: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
@@ -2313,6 +2348,7 @@ export declare const insertHotelRoomSchema: z.ZodObject<{
     availableRooms: z.ZodOptional<z.ZodInt>;
     refundable: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     cancellationHours: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    isActive: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
 }, {
     out: {};
     in: {};

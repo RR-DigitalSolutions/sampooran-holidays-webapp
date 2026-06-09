@@ -26,6 +26,8 @@ export const hotelsTable = pgTable("hotels", {
   website: text("website"),
   latitude: real("latitude"),
   longitude: real("longitude"),
+  proximity: jsonb("proximity").default([]),
+  faqs: jsonb("faqs").default([]),
 
   // Property Specs
   totalRooms: integer("total_rooms").default(0),
