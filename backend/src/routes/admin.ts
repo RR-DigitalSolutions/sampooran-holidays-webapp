@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { logger } from "../lib/logger";
-import { notifyVendorOfApproval } from "../lib/notifications";
+import { notifyVendorOfApproval, notifyVendorOfVerification } from "../lib/notifications";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { clearCachePattern } from "../lib/cache";
@@ -23,8 +23,13 @@ router.post("/auth/seed-admin", async (req, res) => {
     return res.status(403).json({ error: "Forbidden" });
   }
   try {
-    const passwordHash = await bcrypt.hash(process.env.ADMIN_DEFAULT_PASS || "changeme_on_first_login", 10);
-    const existing = await db.select().from(usersTable).where(eq(usersTable.email, "admin@sampooran.com")).limit(1);
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPass = process.env.ADMIN_PASS;
+    if (!adminEmail || !adminPass) {
+      return res.status(400).json({ error: "ADMIN_EMAIL and ADMIN_PASS environment variables are not set on backend" });
+    }
+    const passwordHash = await bcrypt.hash(adminPass, 10);
+    const existing = await db.select().from(usersTable).where(eq(usersTable.email, adminEmail)).limit(1);
     
     if (existing.length > 0) {
       await db.update(usersTable).set({ passwordHash, role: "SUPERADMIN", name: "admin" }).where(eq(usersTable.id, existing[0].id));
@@ -32,7 +37,7 @@ router.post("/auth/seed-admin", async (req, res) => {
     } else {
       await db.insert(usersTable).values({
         name: "admin",
-        email: "admin@sampooran.com",
+        email: adminEmail,
         passwordHash,
         role: "SUPERADMIN",
         referralCode: "SUPERADMIN_1",
@@ -132,7 +137,7 @@ router.get("/users", requirePermission("USERS"), async (req, res) => {
 router.patch("/users/:id", requirePermission("USERS"), async (req: AuthenticatedRequest, res) => {
   try {
     const { id } = req.params;
-    const { role, badge, pointsBalance, name, adminPermissions } = req.body;
+    const { role, badge, pointsBalance, name, adminPermissions, vendorVerified } = req.body;
 
     const [currentUser] = await db
       .select()
@@ -157,11 +162,15 @@ router.patch("/users/:id", requirePermission("USERS"), async (req: Authenticated
         badge,
         pointsBalance,
         name,
+        vendorVerified: vendorVerified !== undefined ? vendorVerified : currentUser.vendorVerified,
         adminPermissions: adminPermissions ? JSON.stringify(adminPermissions) : currentUser.adminPermissions,
-        updatedAt: new Date(),
       })
       .where(eq(usersTable.id, Number(id)))
       .returning();
+
+    if (vendorVerified === true && currentUser.vendorVerified !== true) {
+      await notifyVendorOfVerification(currentUser.email, updated.name);
+    }
 
     res.json(updated);
   } catch (e: any) {
@@ -273,7 +282,7 @@ router.get("/ledger", requirePermission("FINANCE"), async (req, res) => {
 // GET /admin/approvals/hotels
 router.get("/approvals/hotels", requirePermission("PACKAGES"), async (req, res) => {
   try {
-    const list = await db.select().from(hotelsTable).where(eq(hotelsTable.status, "PENDING"));
+    const list = await db.select().from(hotelsTable).where(eq(hotelsTable.status, "PENDING_APPROVAL"));
     res.json(list);
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch pending hotels" });
@@ -286,6 +295,15 @@ router.patch("/approvals/hotels/:id", requirePermission("PACKAGES"), async (req,
     const { id } = req.params;
     const { status } = req.body; // 'APPROVED' or 'REJECTED'
     const [updated] = await db.update(hotelsTable).set({ status }).where(eq(hotelsTable.id, Number(id))).returning();
+    
+    // Invalidate hotels cache so new properties show up immediately
+    try {
+      const { clearCachePattern } = require("../lib/cache");
+      await clearCachePattern("cache:/api/hotels*");
+    } catch (err) {
+      console.error("Cache invalidation failed", err);
+    }
+    
     res.json(updated);
   } catch (e) {
     res.status(500).json({ error: "Failed to update hotel status" });
@@ -863,53 +881,6 @@ router.delete("/home/offers/:id", requirePermission("SETTINGS"), async (req, res
 // HOTEL MANAGEMENT
 // ─────────────────────────────────────────────────────────────
 
-router.get("/hotels", requirePermission("PACKAGES"), async (req, res) => {
-  try {
-    const list = await db.select({
-      hotel: hotelsTable,
-      destinationName: destinationsTable.name,
-      ownerName: usersTable.name,
-    })
-    .from(hotelsTable)
-    .leftJoin(destinationsTable, eq(hotelsTable.destinationId, destinationsTable.id))
-    .leftJoin(usersTable, eq(hotelsTable.ownerId, usersTable.id))
-    .orderBy(desc(hotelsTable.createdAt));
-    res.json(list.map(l => ({ ...l.hotel, destinationName: l.destinationName, ownerName: l.ownerName })));
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to fetch hotels" });
-  }
-});
-
-router.post("/hotels", requirePermission("PACKAGES"), async (req, res) => {
-  try {
-    const data = { ...req.body };
-    if (!data.slug && data.name) {
-      data.slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-    }
-    const [inserted] = await db.insert(hotelsTable).values(data).returning();
-    res.status(201).json(inserted);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to create hotel: " + e.message });
-  }
-});
-
-router.patch("/hotels/:id", requirePermission("PACKAGES"), async (req, res) => {
-  try {
-    const [updated] = await db.update(hotelsTable).set({ ...req.body, updatedAt: new Date() }).where(eq(hotelsTable.id, Number(req.params.id))).returning();
-    res.json(updated);
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to update hotel" });
-  }
-});
-
-router.delete("/hotels/:id", requirePermission("PACKAGES"), async (req, res) => {
-  try {
-    await db.delete(hotelsTable).where(eq(hotelsTable.id, Number(req.params.id)));
-    res.json({ message: "Hotel deleted" });
-  } catch (e: any) {
-    res.status(500).json({ error: "Failed to delete hotel" });
-  }
-});
 
 // ─────────────────────────────────────────────────────────────
 // LIVE CHAT MANAGEMENT
@@ -947,6 +918,7 @@ router.get("/conversations", async (req, res) => {
 
     res.json(result);
   } catch (e: any) {
+    console.error("GET /admin/conversations ERROR:", e);
     res.status(500).json({ error: "Failed to fetch conversations" });
   }
 });
@@ -1287,6 +1259,155 @@ router.delete("/travel-guides/:id", requirePermission("DESTINATIONS"), async (re
   }
 });
 
-export default router;
 
-// Trigger restart
+// ─────────────────────────────────────────────────────────────
+// HOTELS — Full Admin CRUD (OTA)
+// ─────────────────────────────────────────────────────────────
+
+// GET /admin/hotels — all hotels with destination & owner info
+router.get("/hotels", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const results = await db
+      .select({
+        hotel: hotelsTable,
+        destinationName: destinationsTable.name,
+        ownerName: usersTable.name,
+        ownerEmail: usersTable.email,
+      })
+      .from(hotelsTable)
+      .leftJoin(destinationsTable, eq(hotelsTable.destinationId, destinationsTable.id))
+      .leftJoin(usersTable, eq(hotelsTable.ownerId, usersTable.id))
+      .orderBy(desc(hotelsTable.createdAt));
+
+    res.json(results.map(r => ({
+      ...r.hotel,
+      destinationName: r.destinationName,
+      ownerName: r.ownerName,
+      ownerEmail: r.ownerEmail,
+    })));
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch hotels" });
+  }
+});
+
+// POST /admin/hotels — admin creates a hotel directly
+router.post("/hotels", requirePermission("PACKAGES"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const data = { ...req.body };
+    if (!data.slug && data.name) {
+      data.slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString().slice(-6);
+    }
+    if (!data.ownerId) data.ownerId = req.user!.id;
+    if (!data.destinationId) {
+      const [firstDest] = await db.select().from(destinationsTable).limit(1);
+      data.destinationId = firstDest?.id || 1;
+    }
+    delete data.id; delete data.createdAt; delete data.updatedAt;
+
+    const [inserted] = await db.insert(hotelsTable).values(data as any).returning();
+    // Create default policies
+    await db.execute(sql`INSERT INTO hotel_policies (hotel_id) VALUES (${inserted.id}) ON CONFLICT DO NOTHING`);
+    res.status(201).json(inserted);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin hotel creation error");
+    res.status(500).json({ error: "Failed to create hotel: " + e.message });
+  }
+});
+
+// GET /admin/hotels/:id — full hotel detail
+router.get("/hotels/:id", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const [hotel] = await db.select().from(hotelsTable).where(eq(hotelsTable.id, Number(req.params.id))).limit(1);
+    if (!hotel) return res.status(404).json({ error: "Hotel not found" });
+    const rooms = await db.select().from(hotelRoomsTable).where(eq(hotelRoomsTable.hotelId, hotel.id));
+    const [policies] = await db.select().from(hotelPoliciesTable).where(eq(hotelPoliciesTable.hotelId, hotel.id)).limit(1);
+    res.json({ ...hotel, rooms, policies: policies || null });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch hotel" });
+  }
+});
+
+// PATCH /admin/hotels/:id — edit any field
+router.patch("/hotels/:id", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.slug; delete data.ownerId; delete data.createdAt;
+    const [updated] = await db.update(hotelsTable)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(hotelsTable.id, Number(req.params.id)))
+      .returning();
+      
+    if (data.status === "APPROVED") {
+      const [owner] = await db.select().from(usersTable).where(eq(usersTable.id, updated.ownerId)).limit(1);
+      if (owner) {
+        await notifyVendorOfApproval(owner.email, updated.name);
+      }
+    }
+    
+    res.json(updated);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update hotel" });
+  }
+});
+
+// DELETE /admin/hotels/:id
+router.delete("/hotels/:id", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    await db.delete(hotelsTable).where(eq(hotelsTable.id, Number(req.params.id)));
+    res.json({ message: "Hotel deleted" });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete hotel" });
+  }
+});
+
+// GET /admin/hotels/:id/rooms
+router.get("/hotels/:id/rooms", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const rooms = await db.select().from(hotelRoomsTable).where(eq(hotelRoomsTable.hotelId, Number(req.params.id)));
+    res.json(rooms);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch rooms" });
+  }
+});
+
+// POST /admin/hotels/:id/rooms
+router.post("/hotels/:id/rooms", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    const [room] = await db.insert(hotelRoomsTable).values({ hotelId, ...req.body } as any).returning();
+    await db.execute(sql`UPDATE hotels SET total_rooms = (SELECT count(*) FROM hotel_rooms WHERE hotel_id = ${hotelId}) WHERE id = ${hotelId}`);
+    res.status(201).json(room);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to add room: " + e.message });
+  }
+});
+
+// PATCH /admin/hotels/:id/rooms/:roomId
+router.patch("/hotels/:id/rooms/:roomId", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.hotelId;
+    const [updated] = await db.update(hotelRoomsTable)
+      .set(data as any)
+      .where(and(eq(hotelRoomsTable.id, Number(req.params.roomId)), eq(hotelRoomsTable.hotelId, Number(req.params.id))))
+      .returning();
+    res.json(updated);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update room" });
+  }
+});
+
+// DELETE /admin/hotels/:id/rooms/:roomId
+router.delete("/hotels/:id/rooms/:roomId", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    await db.delete(hotelRoomsTable)
+      .where(and(eq(hotelRoomsTable.id, Number(req.params.roomId)), eq(hotelRoomsTable.hotelId, hotelId)));
+    await db.execute(sql`UPDATE hotels SET total_rooms = (SELECT count(*) FROM hotel_rooms WHERE hotel_id = ${hotelId}) WHERE id = ${hotelId}`);
+    res.json({ message: "Room deleted" });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete room" });
+  }
+});
+
+export default router;

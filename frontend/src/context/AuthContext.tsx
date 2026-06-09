@@ -12,6 +12,8 @@ interface User {
   pointsBalance: number;
   referralCode: string;
   badge?: string;
+  phone?: string;
+  phoneNumber?: string;
 }
 
 interface AuthContextType {

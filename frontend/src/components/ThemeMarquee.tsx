@@ -64,7 +64,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
+      <section className="bg-white rounded-lg overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
         <div className="px-6 py-2 flex items-end justify-between mb-2">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
@@ -180,7 +180,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 export function ThemeMarqueeSkeleton() {
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
+      <section className="bg-white rounded-lg overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
         <div className="px-6 py-2 flex items-end justify-between mb-4">
           <div className="flex flex-col gap-2">
             <div className="h-4 w-32 bg-slate-100 animate-pulse rounded" />

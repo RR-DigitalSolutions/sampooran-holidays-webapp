@@ -3,11 +3,15 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
-const ADMIN_EMAIL = "admin@sampooran.com";
-const ADMIN_NAME  = "admin";
-const ADMIN_PASS  = "admin@sampooran";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_NAME  = process.env.ADMIN_NAME || "admin";
+const ADMIN_PASS  = process.env.ADMIN_PASS;
 
 export async function seedAdmin() {
+  if (!ADMIN_EMAIL || !ADMIN_PASS) {
+    logger.warn("⚠️ ADMIN_EMAIL and ADMIN_PASS environment variables are not set. Skipping admin seed.");
+    return;
+  }
   try {
     const [existing] = await db
       .select()
@@ -30,7 +34,7 @@ export async function seedAdmin() {
         isFirstLogin: false,
       });
 
-      logger.info("✅ Default SUPERADMIN seeded: admin@sampooran.com / admin@sampooran");
+      logger.info(`✅ Default SUPERADMIN seeded: ${ADMIN_EMAIL}`);
     } else {
       // Ensure existing admin has SUPERADMIN role
       if (existing.role !== "SUPERADMIN" && existing.role !== "ADMIN") {

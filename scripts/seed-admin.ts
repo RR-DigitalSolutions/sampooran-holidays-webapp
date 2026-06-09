@@ -4,9 +4,15 @@ import bcrypt from "bcryptjs";
 
 async function seedAdmin() {
   console.log("🌱 Verifying Admin User...");
-  try {
-    const passwordHash = await bcrypt.hash("admin@sampooran", 10);
-    const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, "admin@sampooran.com")).limit(1);
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    const ADMIN_PASS = process.env.ADMIN_PASS;
+    if (!ADMIN_EMAIL || !ADMIN_PASS) {
+      console.error("❌ ADMIN_EMAIL and ADMIN_PASS environment variables must be set!");
+      process.exit(1);
+    }
+    try {
+      const passwordHash = await bcrypt.hash(ADMIN_PASS, 10);
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, ADMIN_EMAIL)).limit(1);
 
     if (existing) {
       await db.update(usersTable).set({
@@ -18,7 +24,7 @@ async function seedAdmin() {
     } else {
       await db.insert(usersTable).values({
         name: "admin",
-        email: "admin@sampooran.com",
+        email: ADMIN_EMAIL,
         passwordHash,
         role: "SUPERADMIN",
         referralCode: "SUPERADMIN_1",

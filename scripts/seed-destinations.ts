@@ -3,14 +3,17 @@
  * Seeds Countries, States, Destinations and one showcase Package via the Admin API.
  * Run with: npx tsx seed-destinations.ts
  */
+import "dotenv/config";
 
 const BASE = "http://localhost:8080/api/admin";
 
 async function login() {
+  const username = process.env.ADMIN_EMAIL || process.env.ADMIN_NAME || "admin";
+  const password = process.env.ADMIN_PASS || "admin@sampooran";
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: "admin", password: "admin@sampooran" }),
+    body: JSON.stringify({ username, password }),
   });
   const data = await res.json() as any;
   if (!data.token) throw new Error("Login failed: " + JSON.stringify(data));

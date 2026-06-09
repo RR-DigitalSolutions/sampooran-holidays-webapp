@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { eq } from 'drizzle-orm';
 import { db, usersTable, hotelsTable, transportServicesTable } from './lib/db/src/index.ts';
 import bcrypt from 'bcryptjs';
@@ -9,9 +10,8 @@ async function runTest() {
   console.log("🚀 Starting OTA Listing Live API Test...");
 
   try {
-    // 1. Get superadmin user credentials
-    const adminEmail = "admin@sampooran.com";
-    const password = "admin@sampooran";
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@sampooran.com";
+    const password = process.env.ADMIN_PASS || "admin@sampooran";
 
     console.log("🔐 Authenticating Admin Backend Flow...");
     const adminLoginRes = await fetch(`${API_URL}/admin/auth/login`, {

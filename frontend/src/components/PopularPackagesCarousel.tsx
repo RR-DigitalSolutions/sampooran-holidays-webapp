@@ -45,7 +45,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
 
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="py-2 md:py-4 bg-white relative overflow-hidden rounded-[2rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+      <section className="py-2 md:py-4 bg-white relative overflow-hidden rounded-[1rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
 
         <div className="px-2 md:px-2 relative z-10">
 
@@ -69,10 +69,10 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                 All Holiday Packages <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <div className="flex items-center gap-2">
-                <button onClick={scrollPrev} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
+                <button aria-label="Previous Package" title="Previous Package" onClick={scrollPrev} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <button onClick={scrollNext} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
+                <button aria-label="Next Package" title="Next Package" onClick={scrollNext} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -93,7 +93,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
 
 
           {/* Integrated CTA & Inquiry Banner */}
-          <div className="mt-4 relative rounded-2xl overflow-hidden bg-primary shadow-2xl shadow-primary/20">
+          <div className="mt-4 relative rounded-md overflow-hidden bg-primary shadow-2xl shadow-primary/20">
             {/* Banner Background */}
             <div className="absolute inset-0 bg-primary/20 bg-cover bg-center opacity-10 mix-blend-overlay" />
             <div className="absolute inset-0 bg-primary/95" />
@@ -118,6 +118,8 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="relative">
                       <input
+                        aria-label="Your Name"
+                        title="Your Name"
                         type="text"
                         placeholder="Your Name"
                         required
@@ -128,6 +130,8 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                     </div>
                     <div className="relative">
                       <input
+                        aria-label="Phone Number"
+                        title="Phone Number"
                         type="tel"
                         placeholder="Phone Number"
                         required

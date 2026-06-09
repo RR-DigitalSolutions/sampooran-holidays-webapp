@@ -6,6 +6,7 @@ import { ChevronRight, MapPin, Star, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { customFetch } from "@workspace/api-client-react";
+import { validateImageUrl } from "@/lib/utils";
 
 const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+";
 
@@ -27,10 +28,10 @@ type TopDestinationsData = {
   all: Destination[];
 };
 
-export default function TopDestinations() {
+export default function TopDestinations({ initialData }: { initialData?: TopDestinationsData | null }) {
   const [activeTab, setActiveTab] = useState<"all" | "international" | "domestic">("all");
-  const [data, setData] = useState<TopDestinationsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<TopDestinationsData | null>(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
   const [selectedDest, setSelectedDest] = useState<Destination | null>(null);
   const [hoveredPlace, setHoveredPlace] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -46,11 +47,17 @@ export default function TopDestinations() {
   };
 
   useEffect(() => {
+    if (initialData) {
+      if (initialData.all?.length > 0 && !selectedDest) {
+        setSelectedDest(initialData.all[0]);
+      }
+      return;
+    }
     const fetchData = async () => {
       try {
         const json = await customFetch<TopDestinationsData>("/api/ota/home/top-destinations");
         setData(json);
-        if (json.all?.length > 0) {
+        if (json.all?.length > 0 && !selectedDest) {
           setSelectedDest(json.all[0]);
         }
       } catch (error) {
@@ -60,7 +67,7 @@ export default function TopDestinations() {
       }
     };
     fetchData();
-  }, []);
+  }, [initialData]);
 
   useEffect(() => {
     if (data) {
@@ -81,18 +88,17 @@ export default function TopDestinations() {
     );
   }
 
-  const destinations = data ? data[activeTab] : [];
+  const destinations = data && data[activeTab] ? data[activeTab] : [];
 
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="py-4 md:py-4 bg-white overflow-hidden rounded-[2rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+      <section className="py-4 md:py-4 bg-white overflow-hidden rounded-lg border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="px-2 md:px-4">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4 md:gap-0">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, x: 0 }}
             >
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-accent font-bold text-xs uppercase tracking-[0.2em]">World Explorer</p>
@@ -114,7 +120,7 @@ export default function TopDestinations() {
                   {activeTab === tab && (
                     <motion.div
                       layoutId="activeTab"
-                      className="absolute inset-0 bg-primary rounded-xl shadow-lg shadow-primary/20"
+                      className="absolute inset-0 bg-primary rounded-md shadow-lg shadow-primary/20"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
@@ -128,7 +134,7 @@ export default function TopDestinations() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
             {/* Left Column: Destination List */}
-            <div className="lg:col-span-4 max-h-[300px] overflow-y-auto lg:max-h-[650px] lg:pr-2 custom-scrollbar grid grid-cols-2 lg:flex lg:flex-col gap-2 md:gap-3 pb-4 lg:pb-0">
+            <div className="lg:col-span-4 max-h-[300px] overflow-y-auto lg:max-h-[650px] lg:p-2 custom-scrollbar grid grid-cols-2 lg:flex lg:flex-col gap-2 md:gap-3 pb-4 lg:pb-0">
               <AnimatePresence mode="popLayout">
                 {destinations.map((dest, idx) => (
                   <motion.div
@@ -141,14 +147,14 @@ export default function TopDestinations() {
                     onMouseEnter={() => {
                       if (window.innerWidth > 1024) setSelectedDest(dest);
                     }}
-                    className={`group relative p-2 rounded-2xl border transition-all cursor-pointer w-full ${selectedDest?.slug === dest.slug
+                    className={`group relative p-1 rounded-lg border transition-all cursor-pointer w-full ${selectedDest?.slug === dest.slug
                       ? "bg-primary border-primary shadow-xl shadow-primary/10"
                       : "bg-white border-slate-100 hover:border-accent/30 hover:bg-slate-50/50"
                       }`}
                   >
                     <div className="flex items-center gap-1 md:gap-1">
                       <div className="relative h-12 w-12 md:h-14 md:w-14 rounded-xl overflow-hidden shrink-0 border-2 border-white/20 shadow-sm">
-                        <Image src={dest.imageUrl || PLACEHOLDER} alt={dest.name || "Destination"} fill className="object-cover transition-transform duration-700 group-hover:scale-125" />
+                        <Image src={validateImageUrl(dest.imageUrl)} alt={dest.name || "Destination"} fill sizes="60px" className="object-cover transition-transform duration-700 group-hover:scale-125" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
@@ -194,9 +200,10 @@ export default function TopDestinations() {
                     {/* Featured Card Header */}
                     <div className="relative h-[180px] md:h-[240px] rounded-[1.5rem] overflow-hidden mb-2 shadow-2xl group/header">
                       <Image
-                        src={selectedDest.imageUrl || PLACEHOLDER}
+                        src={validateImageUrl(selectedDest.imageUrl)}
                         alt={selectedDest.name || "Destination"}
                         fill
+                        sizes="(max-width: 1024px) 100vw, 66vw"
                         priority
                         className="object-cover transition-transform duration-1000 group-hover/header:scale-105"
                       />
@@ -252,12 +259,13 @@ export default function TopDestinations() {
                               transition={{ delay: pIdx * 0.1 }}
                               onMouseEnter={() => setHoveredPlace(place.name)}
                               onMouseLeave={() => setHoveredPlace(null)}
-                              className="w-full h-full"
+                              className="relative w-full h-full"
                             >
                               <Image
-                                src={place.image || PLACEHOLDER}
+                                src={validateImageUrl(place.image)}
                                 alt={place.name}
                                 fill
+                                sizes="(max-width: 768px) 50vw, 33vw"
                                 className="object-cover transition-transform duration-700 group-hover/place:scale-110"
                               />
                               <div className={`absolute inset-0 transition-opacity duration-300 ${hoveredPlace === place.name ? "bg-black/50" : "bg-black/25"}`} />

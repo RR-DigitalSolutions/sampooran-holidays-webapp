@@ -90,7 +90,7 @@ export function SponsoredAdsSection({
       <div className="container mx-auto px-4">
 
         {/* Banner Carousel */}
-        <div className="relative group/banner rounded-2xl overflow-hidden shadow-xl border border-slate-200">
+        <div className="relative group/banner rounded-lg overflow-hidden shadow-xl border border-slate-200">
           {/* Embla viewport */}
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex">
@@ -172,8 +172,8 @@ export function SponsoredAdsSection({
                   key={i}
                   onClick={() => emblaApi?.scrollTo(i)}
                   className={`rounded-full transition-all duration-300 ${i === selectedIndex
-                      ? "bg-accent w-6 h-2"
-                      : "bg-white/50 hover:bg-white/80 w-2 h-2"
+                    ? "bg-accent w-6 h-2"
+                    : "bg-white/50 hover:bg-white/80 w-2 h-2"
                     }`}
                   aria-label={`Go to ad ${i + 1}`}
                 />

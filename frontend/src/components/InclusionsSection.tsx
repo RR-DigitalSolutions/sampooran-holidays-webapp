@@ -81,8 +81,7 @@ export function InclusionsSection() {
             <motion.div
               key={idx}
               initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               className="flex flex-col items-center text-center p-2 rounded-3xl border border-slate-50 hover:border-accent/20 hover:bg-slate-50/50 transition-all duration-500 group"
             >

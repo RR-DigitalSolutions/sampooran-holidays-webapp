@@ -63,9 +63,19 @@ router.post("/upload", upload.single("file"), async (req: Request, res: Response
       return;
     }
 
-    // Resolve the target Cloudinary folder (strict allowlist)
+    // Resolve the target Cloudinary folder (strict allowlist + dynamic vendor property pattern)
     const requestedFolder = String(req.query.folder || "").trim();
-    const cloudinaryFolder = ALLOWED_FOLDERS[requestedFolder] ?? `${ROOT}/misc`;
+    let cloudinaryFolder = `${ROOT}/misc`;
+
+    if (requestedFolder.startsWith("vendors/hotel_")) {
+      const parts = requestedFolder.split("/");
+      const hotelId = parts[1]?.replace("hotel_", "");
+      if (hotelId && /^\d+$/.test(hotelId)) {
+        cloudinaryFolder = `${ROOT}/vendors/hotel_${hotelId}`;
+      }
+    } else {
+      cloudinaryFolder = ALLOWED_FOLDERS[requestedFolder] ?? `${ROOT}/misc`;
+    }
 
     // Wrap Cloudinary's upload_stream in a promise
     const uploadToCloudinary = () => {

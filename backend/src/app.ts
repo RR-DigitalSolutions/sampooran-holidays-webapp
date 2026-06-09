@@ -6,10 +6,32 @@ import rateLimit from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
+// ── Environment ──────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001")
+  .split(",")
+  .map(o => o.trim())
+  .filter(Boolean);
+
+const isDev = process.env.NODE_ENV !== "production";
+
 const app: Express = express();
 
-// Secure HTTP headers
-app.use(helmet());
+// ── Trust proxy (for correct IP behind Render/Nginx/Cloudflare) ───────────────
+app.set("trust proxy", 1);
+
+// ── Secure HTTP headers (Helmet) ─────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // tighten after audit
+      imgSrc: ["'self'", "data:", "https:", "*.cloudinary.com", "*.unsplash.com", "*.neon.tech"],
+      connectSrc: ["'self'", ...ALLOWED_ORIGINS],
+      upgradeInsecureRequests: isDev ? null : [],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Needed for Cloudinary images
+}));
 
 // ── Health check BEFORE rate limiter ──────────────────────────────────
 // Render pings /api/healthz every ~5 seconds.  With 150 req / 15 min
@@ -19,40 +41,53 @@ app.get("/api/healthz", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// Apply rate limiting to all OTHER requests
+// ── General API rate limiter ──────────────────────────────────────────────────
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // limit each IP to 500 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 500,
   message: { error: "Too many requests from this IP, please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
-  // Skip rate limiting for health checks (belt-and-suspenders)
   skip: (req) => req.path === "/api/healthz",
 });
 app.use(limiter);
+
+// ── CORS (restricted to allowed origins) ─────────────────────────────────────
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow same-origin requests (no origin header) and health probes
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    if (isDev) return callback(null, true); // Permissive in dev only
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+}));
+
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 
 app.use(
   pinoHttp({
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
-  }),
+  })
 );
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// ── API version header ────────────────────────────────────────────────────────
+app.use((_req, res, next) => {
+  res.setHeader("X-API-Version", "1.0");
+  res.setHeader("X-Powered-By", "Sampooran-API"); // Override Express default
+  next();
+});
 
 app.use("/api", router);
 

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useListPackages, useListTestimonials } from "@workspace/api-client-react";
+import { useListTestimonials } from "@workspace/api-client-react";
 import { PackageCard } from "@/components/PackageCard";
 import { getApiUrl } from "@/lib/api-url";
 import { Star, Phone, Shield, Headphones, Award, Users, CheckCircle, ChevronRight, ChevronLeft, Search, Calendar, MapPin, Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, Clock, ArrowRight, TrendingUp, Percent, Navigation, Sparkles } from "lucide-react";
@@ -20,6 +20,8 @@ const OffersSection = dynamic(() => import("@/components/OffersSection").then(mo
 const PopularPackagesCarousel = dynamic(() => import("@/components/PopularPackagesCarousel").then(mod => mod.PopularPackagesCarousel), { ssr: true });
 const InclusionsSection = dynamic(() => import("@/components/InclusionsSection").then(mod => mod.InclusionsSection), { ssr: true });
 const SponsoredAdsSection = dynamic(() => import("@/components/SponsoredAdsSection").then(mod => mod.SponsoredAdsSection), { ssr: true });
+const TrendingHotelsSection = dynamic(() => import("@/components/TrendingHotelsSection"), { ssr: true });
+const VendorCTA = dynamic(() => import("@/components/VendorCTA"), { ssr: true });
 
 
 
@@ -28,42 +30,7 @@ const ICON_MAP: Record<string, any> = {
   Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, TrendingUp, Percent, Users, Star, Phone, Shield, Headphones, Award, CheckCircle, Search, Calendar, MapPin, Clock, ArrowRight, Navigation
 };
 
-const FALLBACK_SLIDES = [
-  { imageUrl: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=1920&q=80", videoUrl: "https://res.cloudinary.com/demo/video/upload/v1605698305/snow_mountains.mp4", title: "Discover Manali", subtitle: "Snow peaks, adventure sports & Himalayan magic", tag: "TRENDING" },
-  { imageUrl: "https://images.unsplash.com/photo-1585136917228-84d90aa03a77?w=1920&q=80", title: "Leh Ladakh", subtitle: "Azure lakes, ancient monasteries & high altitude passes", tag: "POPULAR" },
-  { imageUrl: "https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=1920&q=80", title: "Kashmir — Paradise", subtitle: "Dal Lake houseboats, Mughal gardens & meadows", tag: "HOT DEAL" },
-];
 
-const FALLBACK_CATEGORIES = [
-  { iconName: "Mountain", label: "Adventure", color: "text-orange-600 bg-orange-50", href: "/packages?category=Adventure" },
-  { iconName: "Heart", label: "Honeymoon", color: "text-pink-600 bg-pink-50", href: "/packages?category=Honeymoon" },
-  { iconName: "Users", label: "Family", color: "text-blue-600 bg-blue-50", href: "/packages?category=Family" },
-  { iconName: "TreePine", label: "Wildlife", color: "text-green-600 bg-green-50", href: "/packages?category=Wildlife" },
-  { iconName: "Waves", label: "Beach", color: "text-cyan-600 bg-cyan-50", href: "/packages?category=Beach" },
-  { iconName: "Sunset", label: "Spiritual", color: "text-amber-600 bg-amber-50", href: "/packages?category=Spiritual" },
-  { iconName: "Zap", label: "Luxury", color: "text-purple-600 bg-purple-50", href: "/packages?category=Luxury" },
-];
-
-const POPULAR_HOTELS = [
-  { name: "Goa", imageUrl: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=500", startsFrom: "₹2,499", properties: 120 },
-  { name: "Manali", imageUrl: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=500", startsFrom: "₹1,999", properties: 85 },
-  { name: "Jaipur", imageUrl: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=500", startsFrom: "₹2,999", properties: 150 },
-  { name: "Kerala", imageUrl: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=500", startsFrom: "₹3,499", properties: 90 },
-  { name: "Shimla", imageUrl: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=500", startsFrom: "₹2,199", properties: 65 },
-  { name: "Udaipur", imageUrl: "https://images.unsplash.com/photo-1615836245337-f589b247f12d?w=500", startsFrom: "₹3,999", properties: 110 },
-  { name: "Delhi", imageUrl: "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=500", startsFrom: "₹1,499", properties: 250 },
-  { name: "Srinagar", imageUrl: "https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=500", startsFrom: "₹2,799", properties: 75 },
-  { name: "Munnar", imageUrl: "https://images.unsplash.com/photo-1593181629936-11c609b8db9b?w=500", startsFrom: "₹2,299", properties: 45 },
-  { name: "Agra", imageUrl: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=500", startsFrom: "₹1,899", properties: 130 },
-  { name: "Leh", imageUrl: "https://images.unsplash.com/photo-1581791534721-e599df4408bc?w=500", startsFrom: "₹3,199", properties: 40 },
-  { name: "Mussoorie", imageUrl: "https://images.unsplash.com/photo-1622308644420-9150186299f1?w=500", startsFrom: "₹2,599", properties: 55 },
-];
-
-const FEATURED_FALLBACK = [
-  { id: 1, name: "Manali Adventure Package", slug: "manali-adventure-package", destinationName: "Manali", stateName: "Himachal Pradesh", imageUrl: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=600", shortDescription: "6 days of adventure — Rohtang, Solang Valley, river rafting", duration: 6, nights: 5, pricePerPerson: 14999, originalPrice: 18999, discountPercent: 21, category: "Adventure", packageType: "both" as const, isFeatured: true, isTrending: true, rating: 4.8, reviewCount: 320 },
-  { id: 2, name: "Leh Ladakh Grand Tour", slug: "leh-ladakh-grand-tour", destinationName: "Leh", stateName: "Ladakh", imageUrl: "https://images.unsplash.com/photo-1585136917228-84d90aa03a77?w=600", shortDescription: "8 days covering Pangong Lake, Nubra Valley, Khardung La", duration: 8, nights: 7, pricePerPerson: 24999, originalPrice: 29999, discountPercent: 17, category: "Adventure", packageType: "both" as const, isFeatured: true, isTrending: true, rating: 4.9, reviewCount: 280 },
-  { id: 3, name: "Kashmir Honeymoon Package", slug: "kashmir-honeymoon-package", destinationName: "Srinagar", stateName: "J&K", imageUrl: "https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?w=600", shortDescription: "Romantic 7 nights — Dal Lake houseboat, Gulmarg, Pahalgam", duration: 8, nights: 7, pricePerPerson: 22999, originalPrice: 27999, discountPercent: 18, category: "Honeymoon", packageType: "b2c" as const, isFeatured: true, isTrending: true, rating: 4.9, reviewCount: 195 },
-];
 
 export default function HomeClient({ initialData }: { initialData?: any }) {
   const [heroIdx, setHeroIdx] = useState(0);
@@ -75,9 +42,14 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   // Ken Burns zoom refs — one per slide, restarted via rAF on slide change
   const zoomDivsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  const { data: pkgData, isLoading: isPkgLoading } = useListPackages({ featured: true, limit: 6 });
-  const { data: trendingData, isLoading: isTrendingLoading } = useListPackages({ isTrending: true, limit: 10 } as any);
-  const { data: testimonialData, isLoading: isTestimonialLoading } = useListTestimonials({ featured: true });
+  const pkgData = initialData?.pkgData || { packages: [] };
+  const isPkgLoading = false;
+
+  const trendingData = initialData?.trendingData || { packages: [] };
+  const isTrendingLoading = false;
+
+  const testimonialData = initialData?.testimonialData || { testimonials: [] };
+  const isTestimonialLoading = false;
 
   useEffect(() => {
     // 1. Fetch Geolocation
@@ -97,6 +69,8 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   }, []);
 
   useEffect(() => {
+    if (initialData?.config) return;
+
     // 2. Client-side Config Fetch for real-time CMS sync
     const fetchConfig = async () => {
       setIsConfigLoading(true);
@@ -116,7 +90,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
       }
     };
     fetchConfig();
-  }, []);
+  }, [initialData?.config]);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 60 }, [
     Autoplay({ delay: 6000, stopOnInteraction: false }),
@@ -180,8 +154,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   }, [emblaApi]);
 
   const slides = useMemo(() => {
-    const list = config?.slides?.filter((s: any) => s.isActive) || [];
-    return list.length ? list : FALLBACK_SLIDES;
+    return config?.slides?.filter((s: any) => s.isActive) || [];
   }, [config]);
 
   const categories = useMemo(() => {
@@ -215,11 +188,6 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
       });
     }
 
-    // Only use fallback if we literally have no config data at all (not even from initialData)
-    if (list.length === 0 && (!config || Object.keys(config).length === 0)) {
-      return FALLBACK_CATEGORIES;
-    }
-
     return list;
   }, [config]);
 
@@ -232,11 +200,13 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
       { sectionType: "OFFERS" },
       { sectionType: "SPONSORED_ADS" },
       { sectionType: "CATEGORIES" },
+      { sectionType: "TRENDING_HOTELS" },
       { sectionType: "TOP_DESTINATIONS" },
       { sectionType: "FEATURED_PACKAGES" },
       { sectionType: "INTERNATIONAL" },
       { sectionType: "TRANSPORT" },
       { sectionType: "TESTIMONIALS" },
+      { sectionType: "VENDOR_CTA" },
       { sectionType: "B2B" }
     ];
 
@@ -257,8 +227,9 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   }, [config]);
 
   const offers = config?.offers || [];
-  const packages = pkgData?.packages || initialData?.pkgData?.packages || FEATURED_FALLBACK;
-  const trending = trendingData?.packages || initialData?.trendingData?.packages || FEATURED_FALLBACK.filter(p => p.isTrending).slice(0, 3);
+  const packages = pkgData?.packages || initialData?.pkgData?.packages || [];
+  const trending = trendingData?.packages || initialData?.trendingData?.packages || [];
+  const trendingHotels = initialData?.trendingHotelsData || [];
   const testimonials = testimonialData?.testimonials?.length ? testimonialData.testimonials : (initialData?.testimonialData?.testimonials || []);
 
   return (
@@ -346,6 +317,10 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
               </section>
             );
 
+          case "TRENDING_HOTELS":
+            return <TrendingHotelsSection key={idx} hotels={trendingHotels} />;
+          case "VENDOR_CTA":
+            return <VendorCTA key={idx} />;
           case "STATS":
             return (
               <div key={idx} className="bg-gradient-to-r from-primary via-[#0A1931] to-primary text-white">
@@ -387,7 +362,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
             return null; // Removed section
 
           case "TOP_DESTINATIONS":
-            return <TopDestinations key={idx} />;
+            return <TopDestinations key={idx} initialData={initialData?.topDestinations} />;
 
           case "FEATURED_PACKAGES":
             return <PopularPackagesCarousel key={idx} packages={trending.length ? trending : packages} loading={isTrendingLoading || isPkgLoading} />;
@@ -407,68 +382,13 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
           case "TRENDING_PACKAGES":
             return null; // Removed — trending packages are now shown in FEATURED_PACKAGES section
 
-          case "INTERNATIONAL": {
-            const currentMonthYear = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(new Date());
-            return (
-              <section key={idx} className="py-4 bg-slate-50/50">
-                <div className="container mx-auto px-4">
-                  <div className="flex justify-between items-end mb-2">
-                    <div className="max-w-3xl">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">Premium Stays</p>
-                      </div>
-                      <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary mb-1 leading-tight">
-                        Trending Hotels in <span className="text-accent italic font-light">{currentMonthYear}</span>
-                      </h2>
-                      <p className="text-slate-500 text-xs md:text-xs">
-                        Discover top-rated luxury resorts, premium boutique stays, and exclusive budget hotel deals for your perfect holiday getaway.
-                      </p>
-                    </div>
-                    <Link href="/hotels" className="hidden md:flex items-center gap-2 text-primary border border-primary/20 bg-white text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm">
-                      All Hotels <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                  <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 pb-4 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-                    {POPULAR_HOTELS.slice(0, 8).map(hotel => (
-                      <Link key={hotel.name} href={`/hotels?destination=${encodeURIComponent(hotel.name)}`} className="shrink-0 w-[80vw] md:w-auto snap-center md:snap-align-none">
-                        <div className="group relative rounded-2xl overflow-hidden border border-slate-100 bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-                          <div className="relative h-40 overflow-hidden">
-                            <Image
-                              src={hotel.imageUrl}
-                              alt={hotel.name}
-                              fill
-                              className="object-cover transition-transform duration-700 group-hover:scale-110"
-                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                              <h3 className="font-bold text-white text-base leading-tight drop-shadow-md">{hotel.name} Hotels</h3>
-                              <span className="bg-accent text-primary text-[10px] font-black px-2 py-0.5 rounded-full">{hotel.startsFrom}</span>
-                            </div>
-                          </div>
-                          <div className="p-3 flex items-center justify-between bg-primary">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-accent" />
-                              <span className="text-[11px] font-bold text-white uppercase tracking-wider">{hotel.properties}+ Properties</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {[1, 2, 3, 4, 5].slice(0, 4).map(s => <Star key={s} className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />)}
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            );
-          }
-
+          case "INTERNATIONAL":
+            return null;
           case "TRANSPORT":
             return (
               <section key={idx} className="pt-4 pb-4 bg-white">
                 <div className="container mx-auto px-4">
-                  <div className="rounded-3xl bg-gradient-to-r from-primary to-[#163175] overflow-hidden">
+                  <div className="rounded-lg bg-gradient-to-r from-primary to-[#163175] overflow-hidden">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                       <div className="p-10 md:p-14 flex flex-col justify-center text-white">
                         <p className="text-accent font-bold text-sm mb-3">{section.subtitle || "Reliable Fleet"}</p>
@@ -542,7 +462,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
           case "B2B":
             return (
               <div key={idx} className="container mx-auto px-2 md:px-4 mt-6 mb-2 md:my-6">
-                <section className="py-10 md:py-12 bg-primary relative overflow-hidden rounded-[2rem] shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+                <section className="py-10 md:py-12 bg-primary relative overflow-hidden rounded-[1rem] shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
                   <div className="px-4 md:px-8 relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                       <div className="text-white">

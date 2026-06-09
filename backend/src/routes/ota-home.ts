@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { cacheMiddleware } from "../lib/cache";
-import { db, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, themesTable, packagesTable, packageThemesTable, offersTable } from "@workspace/db";
-import { eq, and, asc, ne, sql, inArray, or, ilike } from "drizzle-orm";
+import { db, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, themesTable, packagesTable, packageThemesTable, offersTable, hotelsTable } from "@workspace/db";
+import { eq, and, asc, desc, ne, sql, inArray, or, ilike } from "drizzle-orm";
 
 const router = Router();
 
@@ -285,6 +285,43 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
   } catch (error: any) {
     console.error("Error fetching top destinations:", error);
     res.status(500).json({ error: "Failed to fetch top destinations: " + error.message });
+  }
+});
+
+/**
+ * GET /api/ota/home/trending-hotels
+ * Returns top destinations grouped by hotels for the homepage.
+ */
+router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
+  try {
+    const trendingHotels = await db.select({
+      id: hotelsTable.id,
+      name: hotelsTable.name,
+      slug: hotelsTable.slug,
+      images: hotelsTable.images,
+      starRating: hotelsTable.starRating,
+      city: hotelsTable.city,
+      startingPrice: hotelsTable.minPrice
+    })
+    .from(hotelsTable)
+    .where(and(eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.isFeatured, true)))
+    .orderBy(desc(hotelsTable.createdAt))
+    .limit(8);
+
+    const formattedHotels = trendingHotels.map(h => ({
+      id: h.id,
+      name: h.name,
+      slug: h.slug,
+      imageUrl: Array.isArray(h.images) && h.images.length > 0 ? h.images[0] : "https://images.unsplash.com/photo-1542314831-c6a4d14d837e?w=800",
+      starRating: h.starRating || 3,
+      city: h.city || "Unknown",
+      startingPrice: h.startingPrice || 0
+    }));
+
+    res.json(formattedHotels);
+  } catch (error: any) {
+    console.error("Error fetching trending hotels:", error);
+    res.status(500).json({ error: "Failed to fetch trending hotels" });
   }
 });
 

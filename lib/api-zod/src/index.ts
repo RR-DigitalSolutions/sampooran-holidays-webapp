@@ -25,6 +25,7 @@ export const ListPackagesQueryParams = z.object({
   maxPrice: z.coerce.number().optional(),
   type: z.string().optional(),
   featured: z.coerce.boolean().optional(),
+  trending: z.coerce.boolean().optional(),
   search: z.string().optional(),
 });
 export type ListPackagesQueryParams = z.infer<typeof ListPackagesQueryParams>;

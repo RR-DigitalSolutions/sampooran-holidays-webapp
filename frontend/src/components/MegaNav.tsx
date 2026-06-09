@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ChevronDown, MapPin, Globe, ChevronRight, Briefcase, Send, CircleDollarSign, Gift, Phone } from "lucide-react";
+import { ChevronDown, MapPin, Globe, ChevronRight, Briefcase, Plane, BookOpen, Handshake, Phone, Building2, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -41,7 +41,19 @@ export function MegaNav() {
 
   useEffect(() => {
     fetch('/api/destinations/mega-menu')
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+          console.warn(`Mega menu fetch failed with status: ${res.status}`);
+          return null;
+        }
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn("Invalid JSON response from mega menu");
+          return null;
+        }
+      })
       .then(data => {
         if (data && data.indiaZones) {
           setDynamicData(data);
@@ -50,7 +62,7 @@ export function MegaNav() {
           }
         }
       })
-      .catch(err => console.error("Failed to load mega menu data:", err));
+      .catch(err => console.warn("Failed to load mega menu data:", err));
   }, []);
 
   const handleMouseEnter = (menu: string) => {
@@ -121,9 +133,9 @@ export function MegaNav() {
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-[13px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
+                className="text-[11px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
               >
-                {item.name}
+                {item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}
               </Link>
             ))}
           </div>
@@ -163,7 +175,7 @@ export function MegaNav() {
                     <div key={group.title} className="space-y-3">
                       <h4 className="text-[14px] font-black text-primary border-b border-slate-100 pb-2 mb-4 tracking-tight group-hover:text-accent transition-colors">
                         <Link href={`/${groupSlug}-tour-packages`}>
-                          {group.title}
+                          {group.title.toLowerCase().endsWith('tours') ? group.title : `${group.title} Tours`}
                         </Link>
                       </h4>
                       <ul className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-hidden hover:overflow-y-auto pr-2 pb-2">
@@ -175,9 +187,10 @@ export function MegaNav() {
                             <li key={itemSlug || index}>
                               <Link
                                 href={`/${itemSlug}-tour-packages`}
-                                className="text-[13px] text-slate-500 hover:text-primary hover:font-bold transition-all block py-0.5"
+                                className="group flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-primary hover:font-bold transition-all py-0.5"
                               >
-                                {itemName}
+                                <MapPin className="w-3 h-3 text-slate-300 group-hover:text-accent transition-colors shrink-0" />
+                                <span className="truncate">{itemName.toLowerCase().endsWith('tours') ? itemName : `${itemName} Tours`}</span>
                               </Link>
                             </li>
                           );
@@ -222,10 +235,13 @@ export function MegaNav() {
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "flex items-center gap-1 font-bold md text-[12px] transition-all py-2 px-2 rounded-lg",
-          activeMenu === 'india' ? 'text-accent bg-slate-50 shadow-sm' : 'text-slate-700 hover:bg-slate-50'
+          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          activeMenu === 'india'
+            ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
+            : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
         )}>
-          India <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", activeMenu === 'india' && "rotate-180")} />
+          <MapPin className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'india' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          India Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'india' && "rotate-180")} />
         </button>
       </div>
 
@@ -236,52 +252,96 @@ export function MegaNav() {
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "flex items-center gap-1 font-bold text-[12px] transition-all py-2 px-2 rounded-lg",
-          activeMenu === 'world' ? 'text-accent bg-slate-50 shadow-sm' : 'text-slate-700 hover:bg-slate-50'
+          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          activeMenu === 'world'
+            ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
+            : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
         )}>
-          World <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", activeMenu === 'world' && "rotate-180")} />
+          <Globe className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'world' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          World Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'world' && "rotate-180")} />
         </button>
       </div>
 
-      {/* CUSTOMIZED HOLIDAYS */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/customized-holidays" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
-          Customized Holidays
-        </Link>
-      </div>
+      {/* SERVICES DROPDOWN */}
+      <div
+        className="h-full flex items-center px-1 relative"
+        onMouseEnter={() => handleMouseEnter('services')}
+        onMouseLeave={handleMouseLeave}
+      >
+        <button className={cn(
+          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          activeMenu === 'services'
+            ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
+            : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
+        )}>
+          <Briefcase className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'services' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          Group Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'services' && "rotate-180")} />
+        </button>
 
-      {/* CORPORATE TRAVEL */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/corporate-travel" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
-          Corporate Travel
-        </Link>
+        <AnimatePresence>
+          {activeMenu === 'services' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute top-[80%] left-0 mt-2 w-64 bg-white rounded-md shadow-xl border border-slate-100 overflow-hidden z-[100]"
+            >
+              <div className="p-2 space-y-1">
+                <Link href="/customized-holidays" className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all group">
+                  <MapPin className="w-4 h-4 text-primary group-hover:text-accent shrink-0 transition-colors" />
+                  <span className="text-[13px] font-semibold">Customize Holidays</span>
+                </Link>
+                <Link href="/corporate-travel" className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all group">
+                  <Briefcase className="w-4 h-4 text-primary group-hover:text-accent shrink-0 transition-colors" />
+                  <span className="text-[13px] font-semibold">Corporate Travel</span>
+                </Link>
+                <Link href="/school-collage-trip" className="flex items-center gap-3 px-3 py-2.5 rounded-sm text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all group">
+                  <GraduationCap className="w-4 h-4 text-primary group-hover:text-accent shrink-0 transition-colors" />
+                  <span className="text-[13px] font-semibold">School & Collage Trip</span>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* INBOUND */}
       <div className="h-full flex items-center px-1">
-        <Link href="/inbound" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+        <Link href="/inbound" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
+          <Plane className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
           Inbound
         </Link>
       </div>
 
       {/* TRAVEL GUIDE */}
       <div className="h-full flex items-center px-1">
-        <Link href="/travel-guide" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+        <Link href="/travel-guide" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
+          <BookOpen className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
           Travel Guide
+        </Link>
+      </div>
+
+      {/* HOTELS */}
+      <div className="h-full flex items-center px-1">
+        <Link href="/hotels" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
+          <Building2 className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
+          Hotels
         </Link>
       </div>
 
       {/* B2B */}
       <div className="h-full flex items-center px-1">
-        <Link href="/b2b" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
+        <Link href="/b2b" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
+          <Handshake className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
           B2B
         </Link>
       </div>
 
       {/* CONTACT US */}
       <div className="h-full flex items-center px-1">
-        <Link href="/contact" className="flex items-center font-bold text-[12px] text-slate-700 hover:text-accent transition-all py-2 px-2 rounded-lg hover:bg-slate-50">
-          Contact Us
+        <Link href="/contact" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
+          <Phone className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
+          Contact
         </Link>
       </div>
 

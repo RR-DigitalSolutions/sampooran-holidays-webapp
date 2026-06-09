@@ -17,6 +17,7 @@ import attractionsRouter from "./attractions";
 import activitiesRouter from "./activities";
 import diningRouter from "./dining";
 import travelGuidesRouter from "./travel-guides";
+import hotelsRouter from "./hotels";
 
 // Inline public chat-history route
 import { db, messagesTable, conversationsTable } from "@workspace/db";
@@ -57,5 +58,6 @@ router.use(attractionsRouter);
 router.use(activitiesRouter);
 router.use(diningRouter);
 router.use(travelGuidesRouter);
+router.use("/hotels", hotelsRouter);
 
 export default router;

@@ -62,3 +62,17 @@ coverage/
 
 # System Files
 Thumbs.db
+
+# Developer Scratch & Recovery Tools
+scripts/decompress.js
+scripts/extracted_strings.txt
+scripts/inspect.js
+scripts/recover.js
+scripts/recover.py
+seed-demo-hotels.js
+tsc_errors.txt
+
+# Local Test Scripts
+backend/src/scripts/test-*
+backend/test*
+

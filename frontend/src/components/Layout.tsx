@@ -23,47 +23,47 @@ const NAV: Array<{
   isMega: boolean;
   columns?: Array<{ links: Array<{ label: string; href: string; icon: ReactNode }> }>;
 }> = [
-  {
-    label: "India",
-    href: "/india-tour-packages",
-    isMega: true,
-  },
-  {
-    label: "World",
-    href: "/world-tour-packages",
-    isMega: true,
-  },
-  {
-    label: "Customized Holidays",
-    href: "/customized-holidays",
-    isMega: false,
-  },
-  {
-    label: "Corporate Travel",
-    href: "/corporate-travel",
-    isMega: false,
-  },
-  {
-    label: "Inbound",
-    href: "/inbound",
-    isMega: false,
-  },
-  {
-    label: "Travel Guide",
-    href: "/travel-guide",
-    isMega: false,
-  },
-  {
-    label: "B2B",
-    href: "/b2b",
-    isMega: false,
-  },
-  {
-    label: "Contact Us",
-    href: "/contact",
-    isMega: false,
-  },
-];
+    {
+      label: "India",
+      href: "/india-tour-packages",
+      isMega: true,
+    },
+    {
+      label: "World",
+      href: "/world-tour-packages",
+      isMega: true,
+    },
+    {
+      label: "Customized Holidays",
+      href: "/customized-holidays",
+      isMega: false,
+    },
+    {
+      label: "Corporate Travel",
+      href: "/corporate-travel",
+      isMega: false,
+    },
+    {
+      label: "Inbound",
+      href: "/inbound",
+      isMega: false,
+    },
+    {
+      label: "Travel Guide",
+      href: "/travel-guide",
+      isMega: false,
+    },
+    {
+      label: "B2B",
+      href: "/b2b",
+      isMega: false,
+    },
+    {
+      label: "Contact Us",
+      href: "/contact",
+      isMega: false,
+    },
+  ];
 
 export function Layout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -95,6 +95,18 @@ export function Layout({ children }: { children: ReactNode }) {
       : "bg-gradient-to-b from-black/40 via-black/20 to-transparent border-transparent py-3 md:py-6"
   );
 
+  const isDashboardRoute = pathname?.startsWith("/partner") || pathname?.startsWith("/admin");
+
+  if (isDashboardRoute) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col bg-slate-50 font-sans selection:bg-primary selection:text-white">
+        <main className="flex-1 pb-20 lg:pb-0">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-white font-sans selection:bg-primary selection:text-white">
       <header className={headerClass}>
@@ -111,16 +123,6 @@ export function Layout({ children }: { children: ReactNode }) {
                   <img src="/logo.png" alt="S" className="w-7 h-7 object-contain brightness-0 invert" />
                 </motion.div>
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full border-2 border-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className={cn(
-                  "font-serif font-bold text-xl leading-none tracking-tight transition-colors duration-500",
-                  !scrolled ? "text-white" : "text-primary"
-                )}>Sampooran</span>
-                <span className={cn(
-                  "text-[10px] font-bold tracking-widest leading-none mt-1 transition-colors duration-500",
-                  !scrolled ? "text-white/80" : "text-accent"
-                )}>Holidays</span>
               </div>
             </Link>
 
@@ -163,14 +165,12 @@ export function Layout({ children }: { children: ReactNode }) {
                 ) : (
                   <>
                     <button className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-xl border text-sm font-semibold transition-all",
+                      "flex items-center justify-center w-10 h-10 rounded-xl border transition-all hover:scale-105 active:scale-95 group",
                       !scrolled
-                        ? "border-white/40 text-white hover:bg-white/15"
-                        : "border-slate-200 text-slate-700 hover:border-primary hover:text-primary"
+                        ? "border-white/30 bg-white/10 text-white hover:bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+                        : "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/30 shadow-[0_4px_10px_rgba(0,0,0,0.05)]"
                     )}>
-                      <User className="w-4 h-4" />
-                      Login
-                      <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", loginOpen && "rotate-180")} />
+                      <User className="w-4 h-4 transition-transform group-hover:scale-110" />
                     </button>
 
                     {/* Role-based Login Dropdown */}
@@ -194,6 +194,15 @@ export function Layout({ children }: { children: ReactNode }) {
                               <div>
                                 <p className="text-sm font-bold text-slate-800">Traveler Login</p>
                                 <p className="text-xs text-slate-500">Manage bookings & itineraries</p>
+                              </div>
+                            </Link>
+                            <Link href="/my-hotel-bookings" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
+                              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+                                <Hotel className="w-5 h-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-800">My Hotel Bookings</p>
+                                <p className="text-xs text-slate-500">View & manage stay history</p>
                               </div>
                             </Link>
                             <Link href="/b2b" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
@@ -236,7 +245,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 </button>
               </Link>
 
-                <button
+              <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className={cn(
                   "lg:hidden w-10 h-10 rounded-xl flex items-center justify-center transition-all",
@@ -404,17 +413,29 @@ export function Layout({ children }: { children: ReactNode }) {
                   </ul>
                 </div>
                 <div className="space-y-6">
-                  <h4 className="text-xs font-semibold uppercase tracking-widest text-white border-b border-accent/30 pb-2 inline-block">Resources</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-widest text-white border-b border-accent/30 pb-2 inline-block">Hotels & Stays</h4>
                   <ul className="space-y-2.5">
-                    {["Tour Status", "Blog", "Podcasts", "Video Blogs", "Articles By Experts", "Travel Planners"].map(l => (
-                      <li key={l}><Link href="#" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">{l}</Link></li>
-                    ))}
+                    <li><Link href="/hotels" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Browse All Hotels</Link></li>
+                    <li><Link href="/hotels?type=Resort" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Luxury Resorts</Link></li>
+                    <li><Link href="/hotels?type=Cottage" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Cottages & Chalets</Link></li>
+                    <li><Link href="/hotels?type=Homestay" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Homestays</Link></li>
+                    <li><Link href="/hotels?type=Camp" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Camps & Glamping</Link></li>
+                    <li className="pt-1 border-t border-white/10">
+                      <Link href="/partner/register" className="text-accent text-xs font-bold hover:underline transition-colors flex items-center gap-1">
+                        🏨 List Your Property →
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/partner/login" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Partner Login</Link>
+                    </li>
+                    <li><Link href="#" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Blog</Link></li>
+                    <li><Link href="#" className="text-blue-100/70 text-xs font-normal hover:text-accent transition-colors">Travel Planners</Link></li>
                   </ul>
                 </div>
               </div>
             </div>
-{/* Caution Bar */}
-            <div className="bg-white/10 rounded-xl p-2 mb-6 border border-white/10">
+            {/* Caution Bar */}
+            <div className="bg-white/10 rounded-md p-2 mb-6 border border-white/10">
               <p className="text-[9px] md:text-[10px] text-blue-100/60 leading-relaxed">
                 <span className="text-accent font-semibold uppercase not-italic mr-2">Caution:</span>
                 Beware of Fake Promotions or Offers! Please do not believe or engage with any promotional emails, SMS or Web-links which ask you to click on a link and fill in your details. All Sampooran Holidays authorized email communications are delivered from domain @sampooranholidays.com. Sampooran Holidays bears no liability or responsibility whatsoever for any communication which is fraudulent or misleading in nature and not received from registered domain.

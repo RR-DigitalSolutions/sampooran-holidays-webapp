@@ -11,6 +11,7 @@ import {
 import { PackageCard } from "@/components/PackageCard";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { validateImageUrl } from "@/lib/utils";
 import {
   Accordion,
   AccordionContent,
@@ -101,7 +102,7 @@ export default function DestinationDetailClient({ slug: propSlug }: { slug?: str
           />
         ) : (
           <Image
-            src={d.imageUrl || "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=1920"}
+            src={validateImageUrl(d.imageUrl)}
             alt={d.name || "Destination"}
             fill
             className="absolute inset-0 w-full h-full object-cover"

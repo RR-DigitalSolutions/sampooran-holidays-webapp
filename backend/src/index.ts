@@ -91,6 +91,178 @@ async function runStartupMigrations() {
   }
 }
 
+/**
+ * OTA Hotel System Migrations — idempotent, safe to run on every restart.
+ * Adds new columns to hotels/hotel_rooms and creates all new OTA hotel tables.
+ */
+async function runHotelMigrations() {
+  try {
+    // ── Extend hotels table with OTA columns ─────────────────────────────────
+    const hotelCols: [string, string][] = [
+      ["city", "TEXT"],
+      ["pincode", "TEXT"],
+      ["phone", "TEXT"],
+      ["email", "TEXT"],
+      ["website", "TEXT"],
+      ["total_rooms", "INTEGER DEFAULT 0"],
+      ["min_price", "REAL DEFAULT 0"],
+      ["booking_type", "TEXT DEFAULT 'INSTANT'"],
+      ["check_in_time", "TEXT DEFAULT '14:00'"],
+      ["check_out_time", "TEXT DEFAULT '12:00'"],
+      ["breakfast_included", "BOOLEAN DEFAULT false"],
+      ["vendor_commission_pct", "REAL DEFAULT 15.0"],
+      ["meta_title", "TEXT"],
+      ["meta_description", "TEXT"],
+    ];
+    for (const [col, def] of hotelCols) {
+      await db.execute(sql`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='hotels' AND column_name=${col}) THEN
+            EXECUTE 'ALTER TABLE hotels ADD COLUMN ' || ${col} || ' ' || ${def};
+          END IF;
+        END $$;
+      `);
+    }
+
+    // ── Extend hotel_rooms table ──────────────────────────────────────────────
+    const roomCols: [string, string][] = [
+      ["description", "TEXT"],
+      ["bed_type", "TEXT DEFAULT 'DOUBLE'"],
+      ["max_adults", "INTEGER DEFAULT 2"],
+      ["max_children", "INTEGER DEFAULT 1"],
+      ["size_sqft", "INTEGER"],
+      ["floor_number", "INTEGER"],
+      ["extra_adult_price", "REAL DEFAULT 0"],
+      ["extra_child_price", "REAL DEFAULT 0"],
+      ["tax_included", "BOOLEAN DEFAULT false"],
+      ["meal_plan", "TEXT DEFAULT 'EP'"],
+      ["refundable", "BOOLEAN DEFAULT true"],
+      ["cancellation_hours", "INTEGER DEFAULT 24"],
+      ["is_active", "BOOLEAN DEFAULT true"],
+    ];
+    for (const [col, def] of roomCols) {
+      await db.execute(sql`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='hotel_rooms' AND column_name=${col}) THEN
+            EXECUTE 'ALTER TABLE hotel_rooms ADD COLUMN ' || ${col} || ' ' || ${def};
+          END IF;
+        END $$;
+      `);
+    }
+
+    // ── Create hotel_room_inventory table ─────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hotel_room_inventory (
+        id SERIAL PRIMARY KEY,
+        room_id INTEGER NOT NULL,
+        hotel_id INTEGER NOT NULL,
+        date DATE NOT NULL,
+        available_count INTEGER NOT NULL DEFAULT 0,
+        price_override REAL,
+        is_blocked BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(room_id, date)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_inv_room_date ON hotel_room_inventory(room_id, date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_inv_hotel_date ON hotel_room_inventory(hotel_id, date)`);
+
+    // ── Create hotel_policies table ───────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hotel_policies (
+        id SERIAL PRIMARY KEY,
+        hotel_id INTEGER NOT NULL UNIQUE,
+        check_in_time TEXT DEFAULT '14:00',
+        check_out_time TEXT DEFAULT '12:00',
+        early_check_in TEXT,
+        late_check_out TEXT,
+        cancellation_policy TEXT DEFAULT 'FREE',
+        cancellation_deadline_hours INTEGER DEFAULT 24,
+        cancellation_penalty_pct REAL DEFAULT 0,
+        cancellation_details TEXT,
+        children_allowed BOOLEAN DEFAULT true,
+        child_age_limit INTEGER DEFAULT 12,
+        extra_bed_available BOOLEAN DEFAULT false,
+        extra_bed_price REAL DEFAULT 0,
+        pets_allowed BOOLEAN DEFAULT false,
+        smoking_allowed BOOLEAN DEFAULT false,
+        unmarried_couples_allowed BOOLEAN DEFAULT true,
+        alcohol_allowed BOOLEAN DEFAULT true,
+        payment_methods TEXT[],
+        pay_at_hotel_allowed BOOLEAN DEFAULT true,
+        house_rules TEXT,
+        important_info TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // ── Create hotel_reviews table ────────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hotel_reviews (
+        id SERIAL PRIMARY KEY,
+        hotel_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        booking_id INTEGER,
+        rating REAL NOT NULL,
+        cleanliness_rating REAL,
+        comfort_rating REAL,
+        location_rating REAL,
+        facilities_rating REAL,
+        service_rating REAL,
+        value_rating REAL,
+        title TEXT,
+        body TEXT,
+        travel_type TEXT,
+        stay_date DATE,
+        photos TEXT[],
+        is_verified BOOLEAN DEFAULT false,
+        is_published BOOLEAN DEFAULT true,
+        vendor_reply TEXT,
+        vendor_replied_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_reviews_hotel ON hotel_reviews(hotel_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_reviews_published ON hotel_reviews(is_published)`);
+
+    // ── Create hotel_photos table ─────────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hotel_photos (
+        id SERIAL PRIMARY KEY,
+        hotel_id INTEGER NOT NULL,
+        room_id INTEGER,
+        url TEXT NOT NULL,
+        caption TEXT,
+        category TEXT DEFAULT 'EXTERIOR',
+        is_primary BOOLEAN DEFAULT false,
+        display_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_photos_hotel ON hotel_photos(hotel_id)`);
+
+    // ⚡ Performance indexes for hotel search queries
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_status ON hotels(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_status_featured ON hotels(status, is_featured, display_order)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_city ON hotels(city)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_type ON hotels(type)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_star_rating ON hotels(star_rating)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_min_price ON hotels(min_price)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_destination ON hotels(destination_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotels_owner ON hotels(owner_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_reviews_rating ON hotel_reviews(hotel_id, is_published)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_bookings_user_hotel ON bookings(user_id, booking_type)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_rooms_hotel ON hotel_rooms(hotel_id, is_active)`);
+
+    logger.info("✅ Hotel OTA migrations complete: inventory, policies, reviews, photos tables ready");
+
+  } catch (err: any) {
+    logger.warn({ err: err.message }, "Hotel migration warning (non-fatal)");
+  }
+}
 
 const rawPort = process.env["PORT"];
 
@@ -221,4 +393,6 @@ server.listen(port, () => {
   seedAdmin();
   // Create any new tables that don't exist yet (idempotent).
   runStartupMigrations();
+  // OTA Hotel system — create new tables and extend existing ones (idempotent).
+  runHotelMigrations();
 });

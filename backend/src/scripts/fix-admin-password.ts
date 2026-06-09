@@ -3,9 +3,14 @@ import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const ADMIN_EMAIL = "admin@sampooran.com";
-const ADMIN_NAME  = "admin";
-const ADMIN_PASS  = "admin@sampooran";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_NAME  = process.env.ADMIN_NAME || "admin";
+const ADMIN_PASS  = process.env.ADMIN_PASS;
+
+if (!ADMIN_EMAIL || !ADMIN_PASS) {
+  console.error("❌ ADMIN_EMAIL and ADMIN_PASS environment variables must be set!");
+  process.exit(1);
+}
 
 async function main() {
   console.log("Checking admin user in database...");

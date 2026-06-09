@@ -7,7 +7,6 @@
     { "path": "./admin-panel" },
     { "path": "./lib/api-client-react" },
     { "path": "./lib/db" },
-    { "path": "./lib/api-spec" },
     { "path": "./lib/api-zod" }
   ]
 }

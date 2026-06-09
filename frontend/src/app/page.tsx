@@ -38,21 +38,25 @@ async function getHomeConfig() {
   };
 
   try {
-    const [config, pkgData, trendingData, testimonialData] = await Promise.all([
-      safeFetch(`${API_URL}/ota/home/config`, { cache: 'no-store' }),
+    const [config, pkgData, trendingData, testimonialData, topDestinations, trendingHotelsData] = await Promise.all([
+      safeFetch(`${API_URL}/ota/home/config`, { next: { revalidate: 120 } }),
       safeFetch(`${API_URL}/packages?limit=6&featured=true`, { next: { revalidate: 120 } }),
-      safeFetch(`${API_URL}/packages?limit=4&trending=true`, { next: { revalidate: 120 } }),
-      safeFetch(`${API_URL}/testimonials`, { next: { revalidate: 120 } })
+      safeFetch(`${API_URL}/packages?limit=12&trending=true`, { next: { revalidate: 120 } }),
+      safeFetch(`${API_URL}/testimonials`, { next: { revalidate: 120 } }),
+      safeFetch(`${API_URL}/ota/home/top-destinations`, { next: { revalidate: 120 } }),
+      safeFetch(`${API_URL}/ota/home/trending-hotels`, { next: { revalidate: 120 } })
     ]);
 
     return { 
       config: config || {}, 
       pkgData: pkgData || { packages: [] }, 
       trendingData: trendingData || { packages: [] }, 
-      testimonialData: testimonialData || { testimonials: [] } 
+      testimonialData: testimonialData || { testimonials: [] },
+      topDestinations: topDestinations || { international: [], domestic: [], all: [] },
+      trendingHotelsData: trendingHotelsData || []
     };
   } catch (error) {
-    return { config: {}, pkgData: { packages: [] }, trendingData: { packages: [] }, testimonialData: { testimonials: [] } };
+    return { config: {}, pkgData: { packages: [] }, trendingData: { packages: [] }, testimonialData: { testimonials: [] }, topDestinations: { international: [], domestic: [], all: [] }, trendingHotelsData: [] };
   }
 }
 

@@ -11,13 +11,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch dynamic pages from backend API (not directly from DB)
   let packageRoutes: MetadataRoute.Sitemap = [];
   let destinationRoutes: MetadataRoute.Sitemap = [];
+  let hotelRoutes: MetadataRoute.Sitemap = [];
 
   try {
     const backendBase = getApiUrl();
 
-    const [pkgRes, destRes] = await Promise.allSettled([
+    const [pkgRes, destRes, hotelRes] = await Promise.allSettled([
       fetch(`${backendBase}/packages?limit=500`, { next: { revalidate: 3600 } }),
       fetch(`${backendBase}/destinations?limit=500`, { next: { revalidate: 3600 } }),
+      fetch(`${backendBase}/hotels?limit=500`, { next: { revalidate: 3600 } }),
     ]);
 
     if (pkgRes.status === 'fulfilled' && pkgRes.value.ok) {
@@ -43,6 +45,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.7,
       }));
     }
+
+    if (hotelRes.status === 'fulfilled' && hotelRes.value.ok) {
+      const hotelData = await hotelRes.value.json();
+      const hotels: Array<{ slug: string; updatedAt?: string; createdAt?: string }> =
+        hotelData.hotels || [];
+      hotelRoutes = hotels.map((hotel) => ({
+        url: `${BASE_URL}/hotels/${hotel.slug}`,
+        lastModified: hotel.updatedAt || hotel.createdAt || new Date().toISOString(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.85,
+      }));
+    }
   } catch {
     // If backend is unavailable during build, serve a minimal sitemap
     // Dynamic entries will be available at runtime
@@ -54,6 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/india',
     '/asia',
     '/transport',
+    '/hotels',
     '/b2b',
     '/about',
     '/contact',
@@ -61,12 +76,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/customize',
     '/packages',
     '/destinations',
+    '/partner',
+    '/partner/register',
+    '/partner/login',
   ].map((route) => ({
     url: `${BASE_URL}${route}`,
     lastModified: new Date().toISOString(),
     changeFrequency: 'daily' as const,
-    priority: route === '' ? 1.0 : 0.9,
+    priority: route === '' ? 1.0 : route === '/hotels' ? 0.95 : 0.9,
   }));
 
-  return [...staticRoutes, ...packageRoutes, ...destinationRoutes];
+  return [...staticRoutes, ...packageRoutes, ...destinationRoutes, ...hotelRoutes];
 }

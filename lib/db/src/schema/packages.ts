@@ -44,6 +44,7 @@ export const packagesTable = pgTable("packages", {
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
   metaKeywords: text("meta_keywords"),
+  monthsToTravel: text("months_to_travel").array().default([]),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   // Standard B-Tree Indexes

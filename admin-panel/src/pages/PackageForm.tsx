@@ -61,6 +61,7 @@ export default function PackageForm() {
   const [pricePerPerson, setPricePerPerson] = useState(0);
   const [originalPrice, setOriginalPrice] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [monthsToTravel, setMonthsToTravel] = useState<string[]>([]);
 
   useEffect(() => {
     if (discountType === "none") {
@@ -198,6 +199,7 @@ export default function PackageForm() {
         setImportantNotes(pkg.importantNotes || []); setHighlights(pkg.highlights || []); 
         setCancellationPolicy(pkg.cancellationPolicy || DEFAULT_CANCELLATION);
         setPaymentPolicy(pkg.paymentPolicy || DEFAULT_PAYMENT);
+        setMonthsToTravel(pkg.monthsToTravel || []);
         
         const bPrice = pkg.originalPrice || pkg.pricePerPerson || 0;
         setBasePrice(bPrice);
@@ -223,7 +225,7 @@ export default function PackageForm() {
       shortDescription, longDescription, destinationIds: selectedDestIds, destinationId: selectedDestIds[0] || null,
       stateId: stateId || null, countryId: countryId || null, duration, nights, pricePerPerson, originalPrice, discountPercent,
       inclusionIcons, inclusions, exclusions, importantNotes, highlights, cancellationPolicy, paymentPolicy, faqs, hotels: [], itinerary,
-      galleryImages, metaTitle, metaDescription, metaKeywords
+      galleryImages, metaTitle, metaDescription, metaKeywords, monthsToTravel
     };
     try {
       if (isEdit) await customFetch(`/api/admin/packages/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -304,8 +306,39 @@ export default function PackageForm() {
                 />
                 <p className="mt-2 text-xs text-blue-600">These highlights will appear on the package details page as key selling points.</p>
               </div>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={isFeatured} onChange={e=>setIsFeatured(e.target.checked)} className="w-5 h-5" /> <span className="font-bold text-sm text-gray-700">Featured Package</span></label>
-              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={isTrending} onChange={e=>setIsTrending(e.target.checked)} className="w-5 h-5" /> <span className="font-bold text-sm text-gray-700">Trending Now</span></label>
+              <div className="col-span-2 flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={isFeatured} onChange={e=>setIsFeatured(e.target.checked)} className="w-5 h-5" /> <span className="font-bold text-sm text-gray-700">Featured Package</span></label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={isTrending} onChange={e=>setIsTrending(e.target.checked)} className="w-5 h-5" /> <span className="font-bold text-sm text-gray-700">Trending Now</span></label>
+              </div>
+
+              {/* Months to Travel Selector */}
+              <div className="col-span-2 bg-gray-50/50 p-5 rounded-2xl border border-gray-100 mt-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-3">Best Months to Travel</label>
+                <div className="flex flex-wrap gap-2">
+                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map(month => {
+                    const isSel = monthsToTravel.includes(month);
+                    return (
+                      <button
+                        type="button"
+                        key={month}
+                        onClick={() => {
+                          setMonthsToTravel(isSel 
+                            ? monthsToTravel.filter(m => m !== month)
+                            : [...monthsToTravel, month]
+                          );
+                        }}
+                        className={`text-xs px-4 py-2 rounded-xl font-bold border transition-colors ${
+                          isSel 
+                            ? "bg-[#1B3A6B] text-white border-[#1B3A6B]" 
+                            : "bg-white text-gray-500 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
+                        }`}
+                      >
+                        {month}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )}

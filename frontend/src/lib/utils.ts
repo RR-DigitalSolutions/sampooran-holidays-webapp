@@ -9,6 +9,22 @@ export function validateImageUrl(url: string | null | undefined): string {
   if (!url) return "/images/placeholder-packages.jpg";
   if (url.startsWith("http")) {
     if (url.includes("unsplash.com/photos/")) return "/images/placeholder-packages.jpg";
+    try {
+      const parsedUrl = new URL(url);
+      const host = parsedUrl.hostname.toLowerCase();
+      const isAllowed = 
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "unsplash.com" ||
+        host.endsWith(".unsplash.com") ||
+        host === "cloudinary.com" ||
+        host.endsWith(".cloudinary.com");
+      if (!isAllowed) {
+        return "/images/placeholder-packages.jpg";
+      }
+    } catch {
+      return "/images/placeholder-packages.jpg";
+    }
     return url;
   }
   return url.startsWith("/") ? url : "/images/placeholder-packages.jpg";

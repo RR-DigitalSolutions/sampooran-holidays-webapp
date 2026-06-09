@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { X, ChevronRight, ChevronLeft, MapPin, Globe, Sparkles, Building2, User, Phone, Briefcase, Compass, ChevronDown } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, MapPin, Globe, Sparkles, Building2, User, Phone, Briefcase, Compass, ChevronDown, GraduationCap, Plane, Handshake, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -10,7 +10,7 @@ type DynamicData = {
   worldRegions?: any[];
 };
 
-type ViewState = 'main' | 'india' | 'world';
+type ViewState = 'main' | 'india' | 'world' | 'services';
 
 export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [view, setView] = useState<ViewState>('main');
@@ -19,9 +19,13 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 
   useEffect(() => {
     fetch("/api/destinations/mega-menu")
-      .then(res => res.json())
-      .then(setData)
-      .catch(console.error);
+      .then(async res => {
+        if (!res.ok) return null;
+        const text = await res.text();
+        try { return JSON.parse(text); } catch { return null; }
+      })
+      .then(data => { if (data) setData(data); })
+      .catch(err => console.warn("Failed to load mega menu:", err));
   }, []);
 
   // Reset view when closed
@@ -114,10 +118,10 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                          <MapPin className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                          <MapPin className="w-5 h-5 text-accent" />
                         </div>
-                        <span className="font-bold text-slate-700 text-[15px]">India</span>
+                        <span className="font-bold text-slate-700 text-[15px]">India Tours</span>
                       </div>
                       <ChevronRight className="w-5 h-5 text-slate-400" />
                     </button>
@@ -127,10 +131,23 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                          <Globe className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                          <Globe className="w-5 h-5 text-accent" />
                         </div>
-                        <span className="font-bold text-slate-700 text-[15px]">World</span>
+                        <span className="font-bold text-slate-700 text-[15px]">World Tours</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                    </button>
+
+                    <button 
+                      onClick={() => setView('services')}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                          <Briefcase className="w-5 h-5 text-accent" />
+                        </div>
+                        <span className="font-bold text-slate-700 text-[15px]">Group Tours</span>
                       </div>
                       <ChevronRight className="w-5 h-5 text-slate-400" />
                     </button>
@@ -140,20 +157,22 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-3">More Links</h4>
                       <div className="space-y-1">
                         {[
-                          { icon: Sparkles, label: "Customized Holidays", href: "/customized-holidays" },
-                          { icon: Briefcase, label: "Corporate Travel", href: "/corporate-travel" },
-                          { icon: Compass, label: "Travel Guide", href: "/travel-guide" },
-                          { icon: Building2, label: "B2B Login", href: "/b2b" },
+                          { icon: Plane, label: "Inbound", href: "/inbound" },
+                          { icon: BookOpen, label: "Travel Guide", href: "/travel-guide" },
+                          { icon: Building2, label: "Hotels", href: "/hotels" },
+                          { icon: Handshake, label: "B2B", href: "/b2b" },
                           { icon: Phone, label: "Contact Us", href: "/contact" }
                         ].map(item => (
                           <Link 
                             key={item.label} 
                             href={item.href}
                             onClick={onClose}
-                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors"
+                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors group"
                           >
-                            <item.icon className="w-4 h-4 text-slate-400" />
-                            <span className="font-semibold text-[14px]">{item.label}</span>
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                              <item.icon className="w-4 h-4 text-accent" />
+                            </div>
+                            <span className="font-semibold text-[14px] group-hover:text-primary transition-colors">{item.label}</span>
                           </Link>
                         ))}
                       </div>
@@ -204,7 +223,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                         onClick={onClose}
                                         className="text-[13px] font-bold text-primary block mb-2"
                                       >
-                                        {state.title}
+                                        {state.title.toLowerCase().endsWith('tours') ? state.title : `${state.title} Tours`}
                                       </Link>
                                       <div className="flex flex-wrap gap-2">
                                         {state.items.map((item: any) => (
@@ -212,9 +231,10 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                             key={item.slug || item.name}
                                             href={`/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
                                             onClick={onClose}
-                                            className="text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full"
+                                            className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
                                           >
-                                            {item.name}
+                                            <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                            <span>{item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}</span>
                                           </Link>
                                         ))}
                                       </div>
@@ -234,6 +254,44 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                           View All India Packages
                         </Link>
                       </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {view === 'services' && (
+                  <motion.div
+                    key="services"
+                    custom={1}
+                    variants={slideVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="absolute inset-0 w-full h-fit bg-white"
+                  >
+                    <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 p-4 border-b border-slate-100 flex items-center gap-3">
+                      <button onClick={() => setView('main')} className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100">
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <span className="font-bold text-slate-800 text-lg">Group Tours</span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                        {[
+                          { icon: MapPin, label: "Customize Holidays", href: "/customized-holidays" },
+                          { icon: Briefcase, label: "Corporate Travel", href: "/corporate-travel" },
+                          { icon: GraduationCap, label: "School & Collage Trip", href: "/school-collage-trip" }
+                        ].map(item => (
+                          <Link 
+                            key={item.label} 
+                            href={item.href}
+                            onClick={onClose}
+                            className="flex items-center gap-3 p-4 rounded-xl border border-slate-100 shadow-sm active:scale-95 transition-all bg-white group hover:border-primary/20"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                              <item.icon className="w-5 h-5 text-accent" />
+                            </div>
+                            <span className="font-bold text-slate-700 text-[15px] group-hover:text-primary transition-colors">{item.label}</span>
+                          </Link>
+                        ))}
                     </div>
                   </motion.div>
                 )}
@@ -281,7 +339,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                         onClick={onClose}
                                         className="text-[13px] font-bold text-primary block mb-2"
                                       >
-                                        {country.name}
+                                        {country.name.toLowerCase().endsWith('tours') ? country.name : `${country.name} Tours`}
                                       </Link>
                                       {country.destinations && country.destinations.length > 0 && (
                                         <div className="flex flex-wrap gap-2">
@@ -290,9 +348,10 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                               key={dest.slug || dest.name}
                                               href={`/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
                                               onClick={onClose}
-                                              className="text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full"
+                                              className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
                                             >
-                                              {dest.name}
+                                              <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                              <span>{dest.name.toLowerCase().endsWith('tours') ? dest.name : `${dest.name} Tours`}</span>
                                             </Link>
                                           ))}
                                         </div>

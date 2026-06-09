@@ -170,10 +170,11 @@ router.get("/packages", cacheMiddleware(300), async (req, res): Promise<void> =>
     return;
   }
 
-  const { destinationSlug, state, country, category, minDays, maxDays, minPrice, maxPrice, type, featured, limit = 50, offset = 0, search } = params.data;
+  const { destinationSlug, state, country, category, minDays, maxDays, minPrice, maxPrice, type, featured, trending, limit = 50, offset = 0, search } = params.data;
 
   const filters: any[] = [];
   if (featured !== undefined) filters.push(eq(packagesTable.isFeatured, featured));
+  if (trending !== undefined) filters.push(eq(packagesTable.isTrending, trending));
   if (state) filters.push(or(ilike(packageStates.name, `%${state}%`), ilike(statesTable.name, `%${state}%`)));
   if (country) filters.push(or(ilike(packageCountries.name, `%${country}%`), ilike(countriesTable.name, `%${country}%`)));
   if (category) {

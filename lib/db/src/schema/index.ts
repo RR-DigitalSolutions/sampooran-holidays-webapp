@@ -2,7 +2,7 @@ export * from "./destinations";
 export * from "./packages";
 export * from "./transport";
 export * from "./home_page";
-export * from "./hotels";
+export * from "./hotels"; // includes hotelsTable, hotelRoomsTable, hotelPoliciesTable, hotelReviewsTable, hotelPhotosTable, hotelRoomInventoryTable
 export * from "./inquiries";
 export * from "./testimonials";
 export * from "./blog";
