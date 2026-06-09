@@ -97,7 +97,7 @@ router.get("/hotels/nearby", cacheMiddleware(60), async (req, res) => {
 router.get("/hotels/:slug", cacheMiddleware(300), async (req, res) => {
   try {
     const [hotel] = await db.select().from(hotelsTable).where(
-      and(eq(hotelsTable.slug, req.params.slug), eq(hotelsTable.status, "APPROVED"))
+      and(eq(hotelsTable.slug, req.params.slug as string), eq(hotelsTable.status, "APPROVED"))
     ).limit(1);
     
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });

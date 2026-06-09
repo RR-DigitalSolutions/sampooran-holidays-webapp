@@ -672,9 +672,18 @@ router.post("/transport", async (req: AuthenticatedRequest, res: Response) => {
     const { name, type, capacity, pricePerDay, features, images, description, vehicleModel } = req.body;
     const slug = name.toLowerCase().replace(/ /g, "-") + "-" + Date.now().toString().slice(-4);
     const [newTransport] = await db.insert(transportServicesTable).values({
-      ownerId, name, slug, type, capacity, pricePerDay, features,
-      imageUrl: images?.[0] || null, description, vehicleModel, status: "PENDING"
-    }).returning();
+      ownerId,
+      name,
+      slug,
+      type,
+      capacity: Number(capacity) || 0,
+      basePrice: pricePerDay ? parseFloat(pricePerDay) : null,
+      features,
+      imageUrl: images?.[0] || null,
+      description,
+      vehicleModel,
+      status: "PENDING"
+    } as any).returning();
     res.status(201).json(newTransport);
   } catch (error) {
     logger.error({ error }, "Transport creation error");

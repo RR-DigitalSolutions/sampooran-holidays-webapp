@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Star, MapPin, Share2, Heart, ShieldCheck, Check, Info, Calendar, 
-  Users, Building2, Utensils, Wifi, Coffee, Phone, MessageSquare, 
-  Plus, Minus, X, ChevronRight, ChevronLeft, Bed, Sparkles, Clock, AlertTriangle 
+import {
+  Star, MapPin, Share2, Heart, ShieldCheck, Check, Info, Calendar,
+  Users, Building2, Utensils, Wifi, Coffee, Phone, MessageSquare,
+  Plus, Minus, X, ChevronRight, ChevronLeft, Bed, Sparkles, Clock, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,13 +95,13 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
     );
   }
 
-  const images = hotel.photos?.length > 0 
-    ? hotel.photos.map((p: any) => p.url) 
+  const images = hotel.photos?.length > 0
+    ? hotel.photos.map((p: any) => p.url)
     : (hotel.images?.length > 0 ? hotel.images : [
-        "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200",
-        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
-        "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=800"
-      ]);
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200",
+      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800",
+      "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=800"
+    ]);
 
   // Formatter for cancellation hours
   const formatCancellation = (hours: number) => {
@@ -163,7 +163,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
   return (
     <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
       {/* 1. LUXURY HERO GALLERY */}
-      <div className="container mx-auto px-4 pt-6">
+      <div className="container mx-auto px-4 pt-20">
         <div className="grid grid-cols-1 md:grid-cols-4 h-[55vh] gap-3">
           <div onClick={() => { setActiveImageIndex(0); setGalleryOpen(true); }} className="md:col-span-2 relative overflow-hidden rounded-3xl group cursor-pointer shadow-md">
             <img src={images[0]} alt="Main cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -197,7 +197,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
       <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-8">
           {/* Navigation Tabs */}
-          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-xs flex gap-1 sticky top-20 z-10">
+          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-xs flex gap-1 sticky top-15 z-10">
             {[
               { id: "overview", label: "Overview" },
               { id: "rooms", label: "Rooms & Rates" },
@@ -366,7 +366,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                                 <div className="text-xl font-black text-[#1B3A6B] mt-0.5">₹{stayTotal.toLocaleString()}</div>
                                 <div className="text-[9px] text-slate-400 font-medium">Excludes 12% GST</div>
                               </div>
-                              
+
                               {isOccupancyExceeded ? (
                                 <div className="group relative">
                                   <Button disabled className="bg-slate-200 text-slate-400 font-bold rounded-xl h-11 px-5 border-none">
@@ -520,7 +520,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
         {/* 3. STICKY BOOKING WIDGET */}
         <div className="w-full lg:w-[400px]">
-          <Card className="sticky top-24 shadow-xl border-none rounded-[2.2rem] overflow-hidden bg-[#0F1E3D] text-white p-7 space-y-6">
+          <Card className="sticky top-[5vh] shadow-xl border-none rounded-[2.2rem] overflow-hidden bg-[#0F1E3D] text-white p-7 space-y-6">
             <div>
               <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mb-1.5">Starting at</p>
               <div className="flex items-baseline gap-2">
@@ -726,7 +726,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
-            
+
             <img src={images[activeImageIndex]} alt="Gallery slide" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-in" />
 
             <button

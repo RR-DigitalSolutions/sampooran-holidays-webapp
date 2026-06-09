@@ -207,7 +207,7 @@ router.get("/:slug", cacheMiddleware(180), async (req: Request, res: Response) =
       })
       .from(hotelsTable)
       .leftJoin(destinationsTable, eq(hotelsTable.destinationId, destinationsTable.id))
-      .where(and(eq(hotelsTable.slug, slug), eq(hotelsTable.status, "APPROVED")))
+      .where(and(eq(hotelsTable.slug, slug as string), eq(hotelsTable.status, "APPROVED")))
       .limit(1);
 
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
@@ -281,7 +281,7 @@ router.get("/:slug/availability", async (req: Request, res: Response) => {
     }
 
     const [hotel] = await db.select({ id: hotelsTable.id })
-      .from(hotelsTable).where(eq(hotelsTable.slug, slug)).limit(1);
+      .from(hotelsTable).where(eq(hotelsTable.slug, slug as string)).limit(1);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
     const rooms = await db.select().from(hotelRoomsTable)
@@ -359,7 +359,7 @@ router.post("/:slug/book", authenticate, async (req: AuthenticatedRequest, res: 
       totalAmount, specialRequests, paymentMethod, roomsConfig
     } = req.body;
 
-    const [hotel] = await db.select().from(hotelsTable).where(eq(hotelsTable.slug, slug)).limit(1);
+    const [hotel] = await db.select().from(hotelsTable).where(eq(hotelsTable.slug, slug as string)).limit(1);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
     const [room] = await db.select().from(hotelRoomsTable)
@@ -468,7 +468,7 @@ router.post("/:slug/book", authenticate, async (req: AuthenticatedRequest, res: 
 
     // Fire-and-forget email notifications
     const guestEmail = req.body.guestEmail || req.user!.email;
-    const guestName = req.body.guestName || req.user!.name || "Valued Guest";
+    const guestName = req.body.guestName || "Valued Guest";
     if (guestEmail) {
       sendHotelBookingConfirmation({
         guestEmail, guestName,
@@ -523,7 +523,7 @@ router.post("/:slug/reviews", authenticate, async (req: AuthenticatedRequest, re
     const userId = req.user!.id;
 
     const [hotel] = await db.select({ id: hotelsTable.id }).from(hotelsTable)
-      .where(eq(hotelsTable.slug, slug)).limit(1);
+      .where(eq(hotelsTable.slug, slug as string)).limit(1);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
     const {

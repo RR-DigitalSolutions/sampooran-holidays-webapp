@@ -3,9 +3,13 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false,
+    "composite": false
   },
   "include": ["src"],
+  "exclude": ["src/scripts"],
   "references": [
     {
       "path": "../lib/db"

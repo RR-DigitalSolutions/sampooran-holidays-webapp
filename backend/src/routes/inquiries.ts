@@ -17,7 +17,19 @@ router.post("/inquiries", async (req, res): Promise<void> => {
   const [inquiry] = await db
     .insert(inquiriesTable)
     .values({
-      ...parsed.data,
+      name: parsed.data.name,
+      email: parsed.data.email,
+      phone: parsed.data.phone || "",
+      inquiryType: parsed.data.inquiryType || "general",
+      packageId: parsed.data.packageId,
+      hotelId: parsed.data.hotelId,
+      transportId: parsed.data.transportId,
+      vendorId: parsed.data.vendorId,
+      destination: parsed.data.destination,
+      travelDate: parsed.data.travelDate,
+      numberOfPersons: (parsed.data.adults || 0) + (parsed.data.children || 0),
+      message: parsed.data.message || "",
+      budget: parsed.data.budget ? parseFloat(parsed.data.budget) : null,
       status: "new",
     })
     .returning();
