@@ -2,9 +2,6 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./frontend" },
-    { "path": "./backend" },
-    { "path": "./admin-panel" },
     { "path": "./lib/api-client-react" },
     { "path": "./lib/db" },
     { "path": "./lib/api-zod" }

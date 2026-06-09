@@ -1,4 +1,4 @@
-import { db, homePageCategoriesTable } from "../index";
+import { db, homePageCategoriesTable } from "./index";
 import { sql } from "drizzle-orm";
 
 const THEMES = [

@@ -197,7 +197,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
       <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-8">
           {/* Navigation Tabs */}
-          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-xs flex gap-1 sticky top-15 z-10">
+          <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-xs flex gap-1 sticky top-[10vh] z-10">
             {[
               { id: "overview", label: "Overview" },
               { id: "rooms", label: "Rooms & Rates" },
@@ -520,11 +520,11 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
         {/* 3. STICKY BOOKING WIDGET */}
         <div className="w-full lg:w-[400px]">
-          <Card className="sticky top-[5vh] shadow-xl border-none rounded-[2.2rem] overflow-hidden bg-[#0F1E3D] text-white p-7 space-y-6">
+          <Card className="sticky top-[10vh] shadow-xl border-none rounded-[2.2rem] overflow-hidden bg-[#0F1E3D] text-white p-7 space-y-6">
             <div>
               <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mb-1.5">Starting at</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-serif font-black tracking-tight">₹{(hotel.minPrice || hotel.startingPrice || 3500).toLocaleString()}</span>
+                <span className="text-4xl font-black tracking-tight">₹{(hotel.minPrice || hotel.startingPrice || 3500).toLocaleString()}</span>
                 <span className="text-xs text-white/40 font-bold italic">/night</span>
               </div>
             </div>
