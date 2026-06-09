@@ -7,10 +7,21 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 // ── Environment ──────────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001")
-  .split(",")
-  .map(o => o.trim())
-  .filter(Boolean);
+const DEFAULT_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+  "http://localhost:5175",
+  "https://sampooran-admin.pages.dev",
+  "https://sampooranholidays.com",
+  "https://www.sampooranholidays.com"
+];
+
+const userOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()).filter(Boolean)
+  : [];
+
+const ALLOWED_ORIGINS = Array.from(new Set([...DEFAULT_ORIGINS, ...userOrigins]));
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -58,6 +69,8 @@ app.use(cors({
     // Allow same-origin requests (no origin header) and health probes
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     if (isDev) return callback(null, true); // Permissive in dev only
+    
+    logger.warn({ origin, allowedOrigins: ALLOWED_ORIGINS }, "CORS request rejected: Origin not allowed");
     callback(new Error(`Origin ${origin} not allowed by CORS`));
   },
   credentials: true,

@@ -11,7 +11,9 @@ import {
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 import { cn } from "@/lib/utils";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+import { getApiUrl } from "@/lib/api-url";
+
+const API_BASE = getApiUrl();
 
 const PROPERTY_TYPES = ["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp", "Hostel", "Apartment", "Farmhouse", "Treehouse"];
 const AMENITY_OPTIONS = [

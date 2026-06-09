@@ -1,7 +1,9 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+import { getApiUrl } from "@/lib/api-url";
+
+const API_BASE = getApiUrl();
 const STORAGE_KEY = "sh_vendor_token";
 
 interface VendorUser {

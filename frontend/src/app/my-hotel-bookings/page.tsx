@@ -9,8 +9,9 @@ import {
   Wallet, CreditCard, MapPin, ArrowRight, RefreshCw, Hotel
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getApiUrl } from "@/lib/api-url";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+const API_BASE = getApiUrl();
 
 const STATUS_STYLES: Record<string, { label: string; className: string; icon: any }> = {
   CONFIRMED: { label: "Confirmed", className: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle },

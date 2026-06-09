@@ -9,7 +9,9 @@ import {
   ChevronDown, Phone, Mail, Download, Eye
 } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+import { getApiUrl } from "@/lib/api-url";
+
+const API_BASE = getApiUrl();
 
 interface Booking {
   id: number;

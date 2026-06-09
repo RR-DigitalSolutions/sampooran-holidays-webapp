@@ -10,8 +10,9 @@ import {
   Dumbbell, ArrowUpDown, Grid3X3, LayoutList, Sparkles, ChevronDown, Check, AlertCircle
 } from "lucide-react";
 import { cn, validateImageUrl } from "@/lib/utils";
+import { getApiUrl } from "@/lib/api-url";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const API_BASE = getApiUrl();
 
 const PROPERTY_TYPES = ["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp", "Hostel", "Apartment"];
 const STAR_OPTS = [5, 4, 3, 2, 1];

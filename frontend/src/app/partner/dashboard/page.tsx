@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+import { getApiUrl } from "@/lib/api-url";
+
+const API_BASE = getApiUrl();
 
 interface DashboardStats {
   totalBookings: number;

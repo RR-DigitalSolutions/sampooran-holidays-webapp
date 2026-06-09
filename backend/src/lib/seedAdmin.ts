@@ -43,6 +43,20 @@ export async function seedAdmin() {
           .where(eq(usersTable.email, ADMIN_EMAIL));
         logger.info("✅ Upgraded existing admin to SUPERADMIN");
       }
+
+      // Sync password ONLY if forced via environment variable
+      if (process.env.FORCE_SEED_ADMIN === "true") {
+        const isMatch = await bcrypt.compare(ADMIN_PASS, existing.passwordHash);
+        if (!isMatch) {
+          const passwordHash = await bcrypt.hash(ADMIN_PASS, 12);
+          await db.update(usersTable)
+            .set({ passwordHash })
+            .where(eq(usersTable.email, ADMIN_EMAIL));
+          logger.info("✅ Admin password synced/updated in database to match current environment configuration");
+        }
+      } else {
+        logger.info("ℹ️ Admin user already exists. Skipping credentials sync to prevent overwriting active passwords. Use FORCE_SEED_ADMIN=true to force reset.");
+      }
     }
   } catch (err: any) {
     logger.error({ err: err.message }, "❌ seedAdmin failed — admin may not be seeded");

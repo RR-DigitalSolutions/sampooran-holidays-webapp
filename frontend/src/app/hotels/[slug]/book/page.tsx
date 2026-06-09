@@ -12,7 +12,9 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+import { getApiUrl } from "@/lib/api-url";
+
+const API_BASE = getApiUrl();
 
 const PAYMENT_METHODS = [
   { id: "PAY_AT_HOTEL", label: "Pay at Hotel", desc: "No payment now, pay during check-in", icon: Wallet, badge: "Most Popular" },

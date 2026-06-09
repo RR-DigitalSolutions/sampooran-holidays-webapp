@@ -61,7 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!res.ok) return false;
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "No response body");
+        console.error(`[Admin Login] Authentication failed with status ${res.status}:`, errText);
+        return false;
+      }
 
       const data = await res.json();
       const userData: AuthUser = {
@@ -77,7 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("sh_admin_token", JSON.stringify(stored));
       setUser(userData);
       return true;
-    } catch {
+    } catch (err: any) {
+      console.error("[Admin Login] Network or CORS error occurred during login. Please check if VITE_API_URL is correct and ALLOWED_ORIGINS is configured on the backend.", {
+        targetUrl: `${API_BASE}/api/admin/auth/login`,
+        error: err?.message || err,
+      });
       return false;
     }
   };

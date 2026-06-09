@@ -386,11 +386,9 @@ io.on("connection", (socket) => {
 
 server.listen(port, () => {
   logger.info({ port }, "Server listening (HTTP & WebSocket) on all interfaces");
-  // Bootstrap: only creates the SUPERADMIN account if it doesn't exist yet.
-  // This is a safe, idempotent check — it never overwrites existing data.
-  // To seed home config (themes, sections) for the first time, run:
-  //   npx tsx backend/src/scripts/seed-home-config.ts
-  seedAdmin();
+  if (process.env.NODE_ENV !== "production" || process.env.FORCE_SEED_ADMIN === "true") {
+    seedAdmin();
+  }
   // Create any new tables that don't exist yet (idempotent).
   runStartupMigrations();
   // OTA Hotel system — create new tables and extend existing ones (idempotent).

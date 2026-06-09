@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 import { cn } from "@/lib/utils";
+import { getApiUrl } from "@/lib/api-url";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+const API_BASE = getApiUrl();
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   APPROVED: { label: "Live", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle },
