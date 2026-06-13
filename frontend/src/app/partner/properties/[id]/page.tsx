@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -196,10 +196,16 @@ function RoomForm({ room, hotelId, token, onSave, onCancel }: {
     mealPlan: room?.mealPlan || "CP",
     sizeSqft: room?.sizeSqft || "",
     description: room?.description || "",
+    discountType: room?.discountType || "PERCENT",
+    discountPercent: room?.discountPercent || 0,
+    discountFlat: room?.discountFlat || 0,
     refundable: room?.refundable !== false,
     cancellationHours: room?.cancellationHours || 24,
     amenities: room?.amenities || [],
     images: room?.images || [],
+    viewType: room?.viewType || "",
+    highlights: room?.highlights || [],
+    facilities: room?.facilities || [],
   });
   const [cancellationVal, setCancellationVal] = useState(() => {
     const hrs = room?.cancellationHours ?? 24;
@@ -260,6 +266,29 @@ function RoomForm({ room, hotelId, token, onSave, onCancel }: {
             placeholder="500" />
         </div>
         <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount Type</label>
+          <select value={form.discountType} onChange={e => u("discountType", e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
+            <option value="PERCENT">Percentage (%)</option>
+            <option value="FLAT">Flat Amount (₹)</option>
+          </select>
+        </div>
+        {form.discountType === "PERCENT" ? (
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Default Discount (%)</label>
+            <input type="number" min="0" max="100" value={form.discountPercent} onChange={e => { u("discountPercent", Number(e.target.value)); u("discountFlat", 0); }}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+              placeholder="10" />
+          </div>
+        ) : (
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Default Flat Discount (₹)</label>
+            <input type="number" min="0" value={form.discountFlat} onChange={e => { u("discountFlat", Number(e.target.value)); u("discountPercent", 0); }}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+              placeholder="500" />
+          </div>
+        )}
+        <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Max Occupancy</label>
           <input aria-label="Max Occupancy" title="Max Occupancy" placeholder="Max Occupancy" type="number" min="1" max="20" value={form.maxOccupancy} onChange={e => u("maxOccupancy", Number(e.target.value))}
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
@@ -289,6 +318,108 @@ function RoomForm({ room, hotelId, token, onSave, onCancel }: {
           className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] resize-none"
           rows={2} placeholder="Describe the room..." />
       </div>
+      
+      {/* 🗺️ New Fields: View Type, Highlights, Facilities, Amenities */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">View Type</label>
+          <input value={form.viewType} onChange={e => u("viewType", e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+            placeholder="e.g. Mountain View, Pool View, Garden View" />
+        </div>
+        
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Highlight</label>
+          <div className="flex gap-2">
+            <input id="new-room-highlight" placeholder="e.g. King-size bed" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+            <button type="button" onClick={() => {
+              const el = document.getElementById("new-room-highlight") as HTMLInputElement;
+              if (el && el.value.trim()) {
+                u("highlights", [...form.highlights, el.value.trim()]);
+                el.value = "";
+              }
+            }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
+          </div>
+        </div>
+
+        <div className="col-span-2">
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Highlights</label>
+          <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-50 border border-gray-150 rounded-xl">
+            {form.highlights.length === 0 ? (
+              <span className="text-xs text-gray-400 italic">No highlights added. Add highlights above.</span>
+            ) : (
+              form.highlights.map((h: string, idx: number) => (
+                <span key={idx} className="bg-amber-50 text-amber-800 border border-amber-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
+                  {h}
+                  <button type="button" onClick={() => u("highlights", form.highlights.filter((_: any, i: number) => i !== idx))} className="text-amber-500 hover:text-amber-700 font-bold">&times;</button>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Facility</label>
+          <div className="flex gap-2">
+            <input id="new-room-facility" placeholder="e.g. Mini Bar" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+            <button type="button" onClick={() => {
+              const el = document.getElementById("new-room-facility") as HTMLInputElement;
+              if (el && el.value.trim()) {
+                u("facilities", [...form.facilities, el.value.trim()]);
+                el.value = "";
+              }
+            }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Amenity</label>
+          <div className="flex gap-2">
+            <input id="new-room-amenity" placeholder="e.g. Wi-Fi" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+            <button type="button" onClick={() => {
+              const el = document.getElementById("new-room-amenity") as HTMLInputElement;
+              if (el && el.value.trim()) {
+                u("amenities", [...form.amenities, el.value.trim()]);
+                el.value = "";
+              }
+            }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
+          </div>
+        </div>
+
+        <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Facilities</label>
+            <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-50 border border-gray-150 rounded-xl">
+              {form.facilities.length === 0 ? (
+                <span className="text-xs text-gray-400 italic">No facilities added.</span>
+              ) : (
+                form.facilities.map((f: string, idx: number) => (
+                  <span key={idx} className="bg-sky-50 text-sky-800 border border-sky-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
+                    {f}
+                    <button type="button" onClick={() => u("facilities", form.facilities.filter((_: any, i: number) => i !== idx))} className="text-sky-500 hover:text-sky-700 font-bold">&times;</button>
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Amenities</label>
+            <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-50 border border-gray-150 rounded-xl">
+              {form.amenities.length === 0 ? (
+                <span className="text-xs text-gray-400 italic">No amenities added.</span>
+              ) : (
+                form.amenities.map((a: string, idx: number) => (
+                  <span key={idx} className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
+                    {a}
+                    <button type="button" onClick={() => u("amenities", form.amenities.filter((_: any, i: number) => i !== idx))} className="text-emerald-500 hover:text-emerald-700 font-bold">&times;</button>
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div>
         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Images (Max 5)</label>
         <div className="flex flex-wrap gap-3 mt-1 mb-2">
@@ -386,6 +517,9 @@ export default function VendorPropertyManagerPage() {
   const [invAvailableCount, setInvAvailableCount] = useState<string>("1");
   const [invPriceOverride, setInvPriceOverride] = useState<string>("");
   const [invIsBlocked, setInvIsBlocked] = useState<boolean>(false);
+  const [invDiscountType, setInvDiscountType] = useState<string>("PERCENT");
+  const [invDiscountPercent, setInvDiscountPercent] = useState<string>("0");
+  const [invDiscountFlat, setInvDiscountFlat] = useState<string>("0");
   const [savingInv, setSavingInv] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showRoomForm, setShowRoomForm] = useState(false);
@@ -708,74 +842,148 @@ export default function VendorPropertyManagerPage() {
 
     const totalDays = new Date(year, month + 1, 0).getDate();
     const firstDayIndex = new Date(year, month, 1).getDay();
+    const today = new Date().toISOString().split("T")[0];
 
-    const days = [];
-    // Padding days
+    const days: React.ReactNode[] = [];
+
+    // Padding cells
     for (let i = 0; i < firstDayIndex; i++) {
-      days.push(<div key={`pad-${i}`} className="bg-slate-50 border border-gray-100 min-h-20" />);
+      days.push(<div key={`pad-${i}`} />);
     }
 
     const selectedRoom = rooms.find(r => r.id === Number(selectedRoomForInv));
-    const basePrice = selectedRoom?.basePrice || 0;
+    const baseRoomPrice = selectedRoom?.basePrice || 0;
     const baseTotalRooms = selectedRoom?.totalRooms || 0;
+    // Room-level defaults for discount
+    const roomDiscountType = selectedRoom?.discountType || "PERCENT";
+    const roomDiscountPercent = Number(selectedRoom?.discountPercent ?? 0);
+    const roomDiscountFlat = Number(selectedRoom?.discountFlat ?? 0);
 
     for (let d = 1; d <= totalDays; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const invRecord = inventoryData.find(x => x.date.split("T")[0] === dateStr);
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const inv = inventoryData.find(x => x.date.split("T")[0] === dateStr);
+      const isPast = dateStr < today;
+      const isToday = dateStr === today;
 
-      const isBlocked = invRecord ? invRecord.isBlocked : false;
-      const availableCount = invRecord ? invRecord.availableCount : baseTotalRooms;
-      const price = invRecord && invRecord.priceOverride !== null ? invRecord.priceOverride : basePrice;
-      const isOverride = invRecord && invRecord.priceOverride !== null;
+      // Determine values – fall back to room-level defaults when no inventory override
+      const isBlocked = inv ? Boolean(inv.isBlocked) : false;
+      const availableCount = inv ? Number(inv.availableCount) : baseTotalRooms;
+      const price = inv && inv.priceOverride != null ? Number(inv.priceOverride) : baseRoomPrice;
+      const isPriceOverride = inv && inv.priceOverride != null;
 
-      let cellBg = "bg-emerald-50 border-emerald-200 text-emerald-800";
-      let statusLabel = "Available";
+      const discountType = inv ? (inv.discountType || roomDiscountType) : roomDiscountType;
+      const discountPercent = inv ? Number(inv.discountPercent ?? 0) : roomDiscountPercent;
+      const discountFlat = inv ? Number(inv.discountFlat ?? 0) : roomDiscountFlat;
 
-      if (isBlocked) {
-        cellBg = "bg-rose-100 border-rose-300 text-rose-800";
-        statusLabel = "Stop Sales";
-      } else if (availableCount === 0) {
-        cellBg = "bg-rose-50 border-rose-200 text-rose-700";
-        statusLabel = "Sold Out";
-      } else if (availableCount <= 2) {
-        cellBg = "bg-amber-50 border-amber-200 text-amber-800";
-        statusLabel = "Low Avail";
-      }
-
-      let priceBorder = "border-gray-100";
-      let priceLabel = null;
-      if (!isBlocked && isOverride) {
-        if (price > basePrice) {
-          priceBorder = "border-blue-300 ring-1 ring-blue-100";
-          priceLabel = <span className="text-[7px] font-black uppercase text-white bg-blue-600 px-1 py-0.5 rounded leading-none">Peak</span>;
-        } else if (price < basePrice) {
-          priceBorder = "border-orange-300 ring-1 ring-orange-100";
-          priceLabel = <span className="text-[7px] font-black uppercase text-white bg-orange-500 px-1 py-0.5 rounded leading-none">Promo</span>;
+      let discountedPrice = price;
+      if (!isBlocked) {
+        if (discountType === "PERCENT" && discountPercent > 0) {
+          discountedPrice = Math.max(0, price - (price * discountPercent) / 100);
+        } else if (discountType === "FLAT" && discountFlat > 0) {
+          discountedPrice = Math.max(0, price - discountFlat);
         }
       }
+      const hasDiscount = !isBlocked && discountedPrice < price;
+      const savedAmount = price - discountedPrice;
+
+      // Status determination
+      type StatusKey = "past" | "today" | "blocked" | "soldout" | "lowstock" | "discount" | "peakprice" | "available";
+      let status: StatusKey = "available";
+      if (isPast) status = "past";
+      else if (isBlocked) status = "blocked";
+      else if (availableCount === 0) status = "soldout";
+      else if (availableCount <= 2) status = "lowstock";
+      else if (hasDiscount) status = "discount";
+      else if (isPriceOverride && price > baseRoomPrice) status = "peakprice";
+      else if (isToday) status = "today";
+
+      const STYLES: Record<StatusKey, { cell: string; dayNum: string; badge: string; badgeText: string }> = {
+        past:      { cell: "bg-gray-50 border-gray-100 opacity-50 cursor-default",     dayNum: "text-gray-300", badge: "", badgeText: "" },
+        today:     { cell: "bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md", dayNum: "text-blue-700 bg-blue-200 rounded-full w-5 h-5 flex items-center justify-center text-[10px]", badge: "bg-blue-600", badgeText: "Today" },
+        blocked:   { cell: "bg-rose-50 border-rose-300 cursor-pointer hover:shadow-md", dayNum: "text-rose-700", badge: "bg-rose-600", badgeText: "Blocked" },
+        soldout:   { cell: "bg-slate-100 border-slate-200 cursor-pointer hover:shadow-md", dayNum: "text-slate-500", badge: "bg-slate-500", badgeText: "Sold Out" },
+        lowstock:  { cell: "bg-amber-50 border-amber-300 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-amber-900", badge: "bg-amber-500", badgeText: `${availableCount} Left!` },
+        discount:  { cell: "bg-emerald-50 border-emerald-300 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-emerald-900", badge: "bg-emerald-600", badgeText: "Deal" },
+        peakprice: { cell: "bg-sky-50 border-sky-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-sky-900", badge: "bg-sky-600", badgeText: "Peak" },
+        available: { cell: "bg-white border-gray-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-[#1B3A6B]/40", dayNum: "text-gray-800", badge: "bg-teal-600", badgeText: "Open" },
+      };
+      const s = STYLES[status];
+
+      // Discount label: show both % and ₹ savings
+      const discountBadge = hasDiscount
+        ? (discountType === "PERCENT"
+          ? `${discountPercent}% · ₹${Math.round(savedAmount).toLocaleString()}`
+          : `₹${Math.round(savedAmount).toLocaleString()} off`)
+        : null;
 
       days.push(
-        <div key={d}
+        <div
+          key={d}
           onClick={() => {
+            if (isPast) return;
             setInvStartDate(dateStr);
             setInvEndDate(dateStr);
             setInvAvailableCount(String(availableCount));
-            setInvPriceOverride(invRecord && invRecord.priceOverride !== null ? String(invRecord.priceOverride) : "");
+            setInvPriceOverride(inv && inv.priceOverride != null ? String(inv.priceOverride) : "");
             setInvIsBlocked(isBlocked);
+            setInvDiscountType(inv ? (inv.discountType || "PERCENT") : "PERCENT");
+            setInvDiscountPercent(inv ? String(inv.discountPercent || 0) : "0");
+            setInvDiscountFlat(inv ? String(inv.discountFlat || 0) : "0");
           }}
-          className={cn("p-2 rounded-xl border text-left cursor-pointer transition-all hover:scale-102 hover:shadow-sm min-h-[90px] flex flex-col justify-between", cellBg, priceBorder)}
+          className={cn(
+            "rounded-xl border transition-all duration-150 flex flex-col select-none overflow-hidden",
+            "min-h-[92px]",
+            s.cell
+          )}
         >
-          <div className="flex justify-between items-start">
-            <span className="text-xs font-black text-slate-800">{d}</span>
-            {priceLabel}
+          {/* Row 1: Day number + status badge */}
+          <div className="flex items-start justify-between px-2 pt-2 pb-1 gap-1">
+            <span className={cn("text-[11px] font-black leading-none shrink-0", s.dayNum)}>{d}</span>
+            {!isPast && s.badge && (
+              <span className={cn("text-white text-[7px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none shrink-0", s.badge)}>
+                {s.badgeText}
+              </span>
+            )}
           </div>
 
-          <div className="mt-1">
-            <p className="text-xs font-black">₹{price.toLocaleString()}</p>
-            <p className="text-[9px] font-bold mt-0.5">{isBlocked ? "Blocked" : `${availableCount} Left`}</p>
+          {/* Row 2: Price with strikethrough and discounted */}
+          <div className="px-2 flex-1 flex flex-col justify-center">
+            {!isBlocked && !isPast ? (
+              <>
+                {hasDiscount ? (
+                  <>
+                    <span className="text-[9px] text-gray-400 line-through leading-none">₹{price.toLocaleString()}</span>
+                    <span className="text-[12px] font-black text-emerald-700 leading-tight mt-0.5">
+                      ₹{Math.round(discountedPrice).toLocaleString()}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[12px] font-black text-gray-800 leading-tight">
+                    ₹{price.toLocaleString()}
+                  </span>
+                )}
+                <span className="text-[8px] text-gray-400 leading-none mt-0.5">/night</span>
+              </>
+            ) : (
+              <span className="text-[9px] italic text-current opacity-50">
+                {isBlocked ? "Blocked" : "Sold Out"}
+              </span>
+            )}
           </div>
 
-          <span className="text-[7px] font-black uppercase tracking-wider block mt-1 text-slate-400">{statusLabel}</span>
+          {/* Row 3: Discount detail badge + rooms count */}
+          <div className="px-2 pb-2 flex items-end justify-between gap-1">
+            {!isPast && !isBlocked && discountBadge && (
+              <span className="text-[7px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full leading-none">
+                {discountBadge}
+              </span>
+            )}
+            {!isPast && !isBlocked && (
+              <span className="text-[7px] text-gray-400 font-bold ml-auto">
+                {availableCount > 0 ? `${availableCount}/${baseTotalRooms}` : "0"}
+              </span>
+            )}
+          </div>
         </div>
       );
     }
@@ -798,6 +1006,9 @@ export default function VendorPropertyManagerPage() {
           availableCount: parseInt(invAvailableCount, 10),
           priceOverride: invPriceOverride ? parseInt(invPriceOverride, 10) : null,
           isBlocked: invIsBlocked,
+          discountType: invDiscountType,
+          discountPercent: parseInt(invDiscountPercent, 10) || 0,
+          discountFlat: parseInt(invDiscountFlat, 10) || 0,
         }),
       });
       if (res.ok) {
@@ -1222,6 +1433,29 @@ export default function VendorPropertyManagerPage() {
                       placeholder="Leave blank for base price"
                       className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount Type</label>
+                    <select aria-label="Discount Type" title="Discount Type" value={invDiscountType} onChange={e => setInvDiscountType(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
+                      <option value="PERCENT">Percentage (%)</option>
+                      <option value="FLAT">Flat Amount (₹)</option>
+                    </select>
+                  </div>
+                  {invDiscountType === "PERCENT" ? (
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount Percent (%)</label>
+                      <input type="number" min="0" max="100" value={invDiscountPercent} onChange={e => { setInvDiscountPercent(e.target.value); setInvDiscountFlat("0"); }}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+                        placeholder="Discount Percent (%)" />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Flat Discount (₹)</label>
+                      <input type="number" min="0" value={invDiscountFlat} onChange={e => { setInvDiscountFlat(e.target.value); setInvDiscountPercent("0"); }}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+                        placeholder="Flat Discount Amount (₹)" />
+                    </div>
+                  )}
                   <div className="lg:col-span-2 flex items-center h-[42px]">
                     <label className="flex items-center gap-2 cursor-pointer text-sm">
                       <input type="checkbox" checked={invIsBlocked} onChange={e => setInvIsBlocked(e.target.checked)} className="w-4 h-4 accent-red-500" />
@@ -1295,6 +1529,24 @@ export default function VendorPropertyManagerPage() {
 
                   <div className="grid grid-cols-7 gap-1.5">
                     {renderCalendar()}
+                  </div>
+
+                  {/* Calendar Legend */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-2 pt-4 mt-3 border-t border-gray-100">
+                    {[
+                      { color: "bg-white border-gray-200", text: "Open" },
+                      { color: "bg-emerald-50 border-emerald-300", text: "Discounted" },
+                      { color: "bg-amber-50 border-amber-300", text: "Low Stock" },
+                      { color: "bg-sky-50 border-sky-200", text: "Peak Price" },
+                      { color: "bg-rose-50 border-rose-300", text: "Blocked" },
+                      { color: "bg-slate-100 border-slate-200", text: "Sold Out" },
+                      { color: "bg-gray-50 border-gray-100 opacity-60", text: "Past" },
+                    ].map(item => (
+                      <div key={item.text} className="flex items-center gap-1">
+                        <span className={`w-3 h-3 rounded border ${item.color}`} />
+                        <span className="text-[9px] font-bold text-gray-400">{item.text}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

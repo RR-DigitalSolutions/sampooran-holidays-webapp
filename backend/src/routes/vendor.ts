@@ -406,7 +406,7 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
     if (!isAdmin && hotel.ownerId !== ownerId) return res.status(403).json({ error: "Forbidden" });
 
-    const { roomId, startDate, endDate, availableCount, priceOverride, isBlocked } = req.body;
+    const { roomId, startDate, endDate, availableCount, priceOverride, isBlocked, discountType, discountPercent, discountFlat } = req.body;
 
     if (!roomId || !startDate || !endDate) {
       return res.status(400).json({ error: "roomId, startDate, endDate are required" });
@@ -425,6 +425,9 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
         availableCount: availableCount ?? 0,
         priceOverride: priceOverride ?? null,
         isBlocked: isBlocked ?? false,
+        discountType: discountType ?? 'PERCENT',
+        discountPercent: discountPercent ? Number(discountPercent) : 0,
+        discountFlat: discountFlat ? Number(discountFlat) : 0,
         updatedAt: new Date(),
       });
       cursor.setDate(cursor.getDate() + 1);
@@ -433,12 +436,15 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
     // Upsert each record
     for (const record of records) {
       await db.execute(sql`
-        INSERT INTO hotel_room_inventory (room_id, hotel_id, date, available_count, price_override, is_blocked, updated_at)
-        VALUES (${record.roomId}, ${record.hotelId}, ${record.date}, ${record.availableCount}, ${record.priceOverride}, ${record.isBlocked}, NOW())
+        INSERT INTO hotel_room_inventory (room_id, hotel_id, date, available_count, price_override, is_blocked, discount_type, discount_percent, discount_flat, updated_at)
+        VALUES (${record.roomId}, ${record.hotelId}, ${record.date}, ${record.availableCount}, ${record.priceOverride}, ${record.isBlocked}, ${record.discountType}, ${record.discountPercent}, ${record.discountFlat}, NOW())
         ON CONFLICT (room_id, date) DO UPDATE SET
           available_count = EXCLUDED.available_count,
           price_override = EXCLUDED.price_override,
           is_blocked = EXCLUDED.is_blocked,
+          discount_type = EXCLUDED.discount_type,
+          discount_percent = EXCLUDED.discount_percent,
+          discount_flat = EXCLUDED.discount_flat,
           updated_at = NOW()
       `);
     }

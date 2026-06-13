@@ -115,13 +115,13 @@ async function runHotelMigrations() {
       ["meta_description", "TEXT"],
     ];
     for (const [col, def] of hotelCols) {
-      await db.execute(sql`
-        DO $$ BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='hotels' AND column_name=${col}) THEN
-            EXECUTE 'ALTER TABLE hotels ADD COLUMN ' || ${col} || ' ' || ${def};
-          END IF;
-        END $$;
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='hotels' AND column_name=${col}
       `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE hotels ADD COLUMN ${col} ${def}`));
+      }
     }
 
     // ── Extend hotel_rooms table ──────────────────────────────────────────────
@@ -139,15 +139,18 @@ async function runHotelMigrations() {
       ["refundable", "BOOLEAN DEFAULT true"],
       ["cancellation_hours", "INTEGER DEFAULT 24"],
       ["is_active", "BOOLEAN DEFAULT true"],
+      ["discount_type", "TEXT DEFAULT 'PERCENT'"],
+      ["discount_percent", "INTEGER DEFAULT 0"],
+      ["discount_flat", "INTEGER DEFAULT 0"],
     ];
     for (const [col, def] of roomCols) {
-      await db.execute(sql`
-        DO $$ BEGIN
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='hotel_rooms' AND column_name=${col}) THEN
-            EXECUTE 'ALTER TABLE hotel_rooms ADD COLUMN ' || ${col} || ' ' || ${def};
-          END IF;
-        END $$;
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='hotel_rooms' AND column_name=${col}
       `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE hotel_rooms ADD COLUMN ${col} ${def}`));
+      }
     }
 
     // ── Create hotel_room_inventory table ─────────────────────────────────────
@@ -167,6 +170,22 @@ async function runHotelMigrations() {
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_inv_room_date ON hotel_room_inventory(room_id, date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_hotel_inv_hotel_date ON hotel_room_inventory(hotel_id, date)`);
+
+    // Add discount columns to hotel_room_inventory if they don't exist
+    const invCols: [string, string][] = [
+      ["discount_type", "TEXT DEFAULT 'PERCENT'"],
+      ["discount_percent", "INTEGER DEFAULT 0"],
+      ["discount_flat", "INTEGER DEFAULT 0"],
+    ];
+    for (const [col, def] of invCols) {
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='hotel_room_inventory' AND column_name=${col}
+      `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE hotel_room_inventory ADD COLUMN ${col} ${def}`));
+      }
+    }
 
     // ── Create hotel_policies table ───────────────────────────────────────────
     await db.execute(sql`

@@ -362,6 +362,7 @@ function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
   const [newRoom, setNewRoom] = useState({
     name: "", type: "Standard", bedType: "DOUBLE", basePrice: "",
     maxOccupancy: 2, mealPlan: "EP", totalRooms: 1,
+    discountType: "PERCENT", discountPercent: 0, discountFlat: 0,
   });
 
   const fetchRooms = async () => {
@@ -375,7 +376,12 @@ function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
   const addRoom = async () => {
     await fetch(`${API_URL}/admin/hotels/${hotel.id}/rooms`, {
       method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ ...newRoom, basePrice: Number(newRoom.basePrice) }),
+      body: JSON.stringify({ 
+        ...newRoom, 
+        basePrice: Number(newRoom.basePrice),
+        discountPercent: Number(newRoom.discountPercent || 0),
+        discountFlat: Number(newRoom.discountFlat || 0),
+      }),
     });
     setShowAddRoom(false);
     fetchRooms();
@@ -433,6 +439,18 @@ function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
               placeholder="Max occupancy" className="input" />
             <input type="number" value={newRoom.totalRooms} onChange={e => setNewRoom(r => ({ ...r, totalRooms: Number(e.target.value) }))}
               placeholder="Total rooms" className="input" />
+            
+            <select aria-label="Discount Type" title="Discount Type" value={newRoom.discountType} onChange={e => setNewRoom(r => ({ ...r, discountType: e.target.value }))} className="input">
+              <option value="PERCENT">Percentage Discount (%)</option>
+              <option value="FLAT">Flat Discount Amount (₹)</option>
+            </select>
+            {newRoom.discountType === "PERCENT" ? (
+              <input type="number" value={newRoom.discountPercent || ""} onChange={e => setNewRoom(r => ({ ...r, discountPercent: Number(e.target.value), discountFlat: 0 }))}
+                placeholder="Discount Percent (%)" className="input" min="0" max="100" />
+            ) : (
+              <input type="number" value={newRoom.discountFlat || ""} onChange={e => setNewRoom(r => ({ ...r, discountFlat: Number(e.target.value), discountPercent: 0 }))}
+                placeholder="Discount Flat Amount (₹)" className="input" min="0" />
+            )}
             <div className="col-span-3 flex justify-end gap-2">
               <button onClick={() => setShowAddRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-xl">Cancel</button>
               <button onClick={addRoom} className="px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-xl">Save Room</button>

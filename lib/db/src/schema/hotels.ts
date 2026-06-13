@@ -83,6 +83,11 @@ export const hotelRoomsTable = pgTable("hotel_rooms", {
   extraChildPrice: real("extra_child_price").default(0),
   taxIncluded: boolean("tax_included").default(false),
 
+  // Discounting
+  discountType: text("discount_type").default("PERCENT"), // 'PERCENT' | 'FLAT'
+  discountPercent: integer("discount_percent").default(0),
+  discountFlat: integer("discount_flat").default(0),
+
   // Meal Plan
   mealPlan: text("meal_plan").default("EP"), // 'EP'=Room Only, 'CP'=Breakfast, 'MAP'=Breakfast+Dinner, 'AP'=All Inclusive
 
@@ -93,6 +98,11 @@ export const hotelRoomsTable = pgTable("hotel_rooms", {
   // Policies
   refundable: boolean("refundable").default(true),
   cancellationHours: integer("cancellation_hours").default(24), // Free cancellation window
+
+  // Room Content (for SEO detail pages)
+  viewType: text("view_type"),              // e.g. 'Mountain View', 'Pool View', 'Garden View'
+  highlights: jsonb("highlights").default([]),  // ["King-size bed", "Private balcony", "Jacuzzi"]
+  facilities: jsonb("facilities").default([]),  // ["Air Conditioning", "Mini Bar", "Safe", "Flat-screen TV"]
 
   // Media
   amenities: text("amenities").array(),
@@ -117,6 +127,9 @@ export const hotelRoomInventoryTable = pgTable("hotel_room_inventory", {
   availableCount: integer("available_count").notNull().default(0),
   priceOverride: real("price_override"), // NULL = use room base_price
   isBlocked: boolean("is_blocked").default(false), // Admin/vendor can block dates
+  discountType: text("discount_type").default("PERCENT"), // 'PERCENT' | 'FLAT'
+  discountPercent: integer("discount_percent").default(0),
+  discountFlat: integer("discount_flat").default(0),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

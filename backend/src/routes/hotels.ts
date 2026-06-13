@@ -570,4 +570,84 @@ router.post("/:slug/reviews", authenticate, async (req: AuthenticatedRequest, re
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// PUBLIC: Get Room Calendar (Rates & Inventory month-wise)
+// GET /api/hotels/:slug/rooms/:roomId/calendar?startDate=&endDate=
+// ─────────────────────────────────────────────────────────────
+router.get("/:slug/rooms/:roomId/calendar", async (req: Request, res: Response) => {
+  try {
+    const { slug, roomId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "startDate and endDate dates are required" });
+    }
+
+    const [hotel] = await db.select({ id: hotelsTable.id })
+      .from(hotelsTable).where(eq(hotelsTable.slug, slug as string)).limit(1);
+    if (!hotel) return res.status(404).json({ error: "Hotel not found" });
+
+    const [room] = await db.select().from(hotelRoomsTable)
+      .where(and(
+        eq(hotelRoomsTable.id, Number(roomId)),
+        eq(hotelRoomsTable.hotelId, hotel.id),
+        eq(hotelRoomsTable.isActive, true)
+      )).limit(1);
+
+    if (!room) return res.status(404).json({ error: "Room not found" });
+
+    // Fetch all inventory overrides for the room in this date range
+    const inventory = await db.select().from(hotelRoomInventoryTable)
+      .where(and(
+        eq(hotelRoomInventoryTable.roomId, room.id),
+        gte(hotelRoomInventoryTable.date, startDate as string),
+        lte(hotelRoomInventoryTable.date, endDate as string)
+      ));
+
+    const inventoryMap = new Map<string, typeof inventory[0]>();
+    for (const inv of inventory) {
+      const rawDate = inv.date;
+      const dateStr = rawDate instanceof Date 
+        ? rawDate.toISOString().split("T")[0] 
+        : String(rawDate).split("T")[0];
+      inventoryMap.set(dateStr, inv);
+    }
+
+    // Generate all dates in the range
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+    const days = [];
+    const current = new Date(start);
+
+    while (current <= end) {
+      const dStr = current.toISOString().split("T")[0];
+      const override = inventoryMap.get(dStr);
+
+      const availableCount = override ? override.availableCount : (room.totalRooms || 1);
+      const isBlocked = override ? override.isBlocked : false;
+      const basePrice = override && override.priceOverride !== null ? override.priceOverride : room.basePrice;
+      const discountType = override ? (override.discountType || "PERCENT") : (room.discountType || "PERCENT");
+      const discountPercent = override ? (override.discountPercent ?? 0) : (room.discountPercent ?? 0);
+      const discountFlat = override ? (override.discountFlat ?? 0) : (room.discountFlat ?? 0);
+
+      days.push({
+        date: dStr,
+        availableCount,
+        isBlocked,
+        basePrice,
+        discountType,
+        discountPercent,
+        discountFlat,
+      });
+
+      current.setDate(current.getDate() + 1);
+    }
+
+    res.json(days);
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Get room calendar error");
+    res.status(500).json({ error: "Failed to fetch room calendar", details: error.message });
+  }
+});
+
 export default router;

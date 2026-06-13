@@ -119,25 +119,104 @@ export default function BookHotelPage() {
 
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
 
-  // Dynamic Occupancy Surcharge Price Calculator
-  const calculateTotalSubtotal = () => {
-    if (!room) return 0;
-    let total = 0;
-    const baseRoomPrice = room.basePrice;
+  const [calendarData, setCalendarData] = useState<any[]>([]);
 
+  useEffect(() => {
+    if (!slug || !roomId || !checkIn || !checkOut) return;
+    fetch(`${API_BASE}/hotels/${slug}/rooms/${roomId}/calendar?startDate=${checkIn}&endDate=${checkOut}`)
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d)) {
+          setCalendarData(d);
+        }
+      })
+      .catch(err => console.error("Error fetching calendar data for checkout", err));
+  }, [slug, roomId, checkIn, checkOut]);
+
+  // Original Price Calculator (without discount)
+  const calculateOriginalSubtotal = () => {
+    if (!room) return 0;
+    
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const dates: string[] = [];
+    const current = new Date(start);
+    while (current < end) {
+      dates.push(current.toISOString().split("T")[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    const getOriginalDailyPrice = (dStr: string) => {
+      const record = calendarData.find((x) => x.date === dStr);
+      return record ? Number(record.basePrice) : room.basePrice;
+    };
+
+    let total = 0;
     for (const config of roomsConfig) {
-      let dailyPrice = baseRoomPrice;
-      if (config.adults > 2) {
-        dailyPrice += (config.adults - 2) * (room.extraAdultPrice || 0);
+      let configTotal = 0;
+      for (const dStr of dates) {
+        let daily = getOriginalDailyPrice(dStr);
+        if (config.adults > 2) {
+          daily += (config.adults - 2) * (room.extraAdultPrice || 0);
+        }
+        if (config.children > 0) {
+          daily += config.children * (room.extraChildPrice || 0);
+        }
+        configTotal += daily;
       }
-      if (config.children > 0) {
-        dailyPrice += config.children * (room.extraChildPrice || 0);
-      }
-      total += dailyPrice * nights;
+      total += configTotal;
     }
     return total;
   };
 
+  // Discounted Surcharge Price Calculator
+  const calculateTotalSubtotal = () => {
+    if (!room) return 0;
+    
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const dates: string[] = [];
+    const current = new Date(start);
+    while (current < end) {
+      dates.push(current.toISOString().split("T")[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    const getDailyPrice = (dStr: string) => {
+      const record = calendarData.find((x) => x.date === dStr);
+      const base = record ? Number(record.basePrice) : room.basePrice;
+      const discountType = record ? record.discountType : (room.discountType || "PERCENT");
+      const discountPercent = record ? Number(record.discountPercent) : Number(room.discountPercent || 0);
+      const discountFlat = record ? Number(record.discountFlat) : Number(room.discountFlat || 0);
+
+      let final = base;
+      if (discountType === "PERCENT" && discountPercent > 0) {
+        final = Math.max(0, base - (base * discountPercent) / 100);
+      } else if (discountType === "FLAT" && discountFlat > 0) {
+        final = Math.max(0, base - discountFlat);
+      }
+      return final;
+    };
+
+    let total = 0;
+    for (const config of roomsConfig) {
+      let configTotal = 0;
+      for (const dStr of dates) {
+        let daily = getDailyPrice(dStr);
+        if (config.adults > 2) {
+          daily += (config.adults - 2) * (room.extraAdultPrice || 0);
+        }
+        if (config.children > 0) {
+          daily += config.children * (room.extraChildPrice || 0);
+        }
+        configTotal += daily;
+      }
+      total += configTotal;
+    }
+    return total;
+  };
+
+  const originalSubtotal = calculateOriginalSubtotal();
   const subtotal = calculateTotalSubtotal();
   const taxes = Math.round(subtotal * 0.12); // 12% GST
   const totalAmount = subtotal + taxes;
@@ -443,8 +522,16 @@ export default function BookHotelPage() {
               <div className="space-y-3.5 pt-2">
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>Room Stay Charge (including occupancy surcharges)</span>
-                  <span className="font-bold text-slate-700">₹{subtotal.toLocaleString()}</span>
+                  <span className={cn("font-bold text-slate-700", originalSubtotal > subtotal && "line-through text-slate-400")}>
+                    ₹{originalSubtotal.toLocaleString()}
+                  </span>
                 </div>
+                {originalSubtotal > subtotal && (
+                  <div className="flex justify-between text-xs text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100/50">
+                    <span>Discount Applied</span>
+                    <span>-₹{(originalSubtotal - subtotal).toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs text-slate-500">
                   <span>GST & Tourism Taxes (12%)</span>
                   <span className="font-bold text-slate-700">₹{taxes.toLocaleString()}</span>
