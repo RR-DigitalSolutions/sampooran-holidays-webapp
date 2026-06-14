@@ -640,16 +640,16 @@ export declare const insertActivitySchema: z.ZodObject<{
     latitude: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     longitude: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     destinationId: z.ZodInt;
-    shortDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     type: z.ZodOptional<z.ZodString>;
-    address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    shortDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     coverImage: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     timingInfo: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     entryFee: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    tips: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     priceMin: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     priceMax: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    tips: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
 }, {
     out: {};
     in: {};

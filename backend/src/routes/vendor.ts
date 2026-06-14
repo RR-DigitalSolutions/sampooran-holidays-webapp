@@ -2,7 +2,8 @@ import { Router, Response } from "express";
 import {
   db, hotelsTable, hotelRoomsTable, hotelPoliciesTable, hotelReviewsTable,
   hotelPhotosTable, hotelRoomInventoryTable, transportServicesTable,
-  bookingsTable, inquiriesTable, destinationsTable, usersTable
+  bookingsTable, inquiriesTable, destinationsTable, statesTable, countriesTable,
+  usersTable, pendingCityRequestsTable
 } from "@workspace/db";
 import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
@@ -115,16 +116,61 @@ router.post("/hotels", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ownerId = req.user!.id;
     const {
-      name, destinationId, address, city, pincode, phone, email: hotelEmail, website,
+      name, destinationId, stateId, countryId,
+      address, city, pincode, phone, email: hotelEmail, website,
       description, starRating, type, images, amenities,
-      checkInTime, checkOutTime, totalRooms, bookingType, metaTitle, metaDescription
+      checkInTime, checkOutTime, totalRooms, bookingType, metaTitle, metaDescription,
+      // Custom city fallback (when vendor city isn't in CMS)
+      customCity, customStateName, customCountryName,
     } = req.body;
+
+    // ── Resolve location slugs from IDs ──────────────────────────────
+    let destinationSlug: string | null = null;
+    let stateSlug: string | null = null;
+    let countrySlug: string | null = null;
+    let resolvedStateId = stateId || null;
+    let resolvedCountryId = countryId || null;
+
+    if (destinationId) {
+      const [dest] = await db.select({
+        slug: destinationsTable.slug,
+        stateId: destinationsTable.stateId,
+        countryId: destinationsTable.countryId,
+      }).from(destinationsTable).where(eq(destinationsTable.id, Number(destinationId))).limit(1);
+
+      if (dest) {
+        destinationSlug = dest.slug;
+        if (dest.stateId && !resolvedStateId) resolvedStateId = dest.stateId;
+        if (dest.countryId && !resolvedCountryId) resolvedCountryId = dest.countryId;
+      }
+    }
+
+    if (resolvedStateId) {
+      const [st] = await db.select({ slug: statesTable.slug, countryId: statesTable.countryId })
+        .from(statesTable).where(eq(statesTable.id, Number(resolvedStateId))).limit(1);
+      if (st) {
+        stateSlug = st.slug;
+        if (st.countryId && !resolvedCountryId) resolvedCountryId = st.countryId;
+      }
+    }
+
+    if (resolvedCountryId) {
+      const [cn] = await db.select({ slug: countriesTable.slug })
+        .from(countriesTable).where(eq(countriesTable.id, Number(resolvedCountryId))).limit(1);
+      if (cn) countrySlug = cn.slug;
+    }
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString().slice(-6);
 
     const [newHotel] = await db.insert(hotelsTable).values({
       ownerId,
-      destinationId: destinationId || null,
+      destinationId: destinationId ? Number(destinationId) : null,
+      stateId: resolvedStateId ? Number(resolvedStateId) : null,
+      countryId: resolvedCountryId ? Number(resolvedCountryId) : null,
+      destinationSlug,
+      stateSlug,
+      countrySlug,
+      customCity: customCity || null,
       name, slug, address, city, pincode, phone, email: hotelEmail, website,
       description, starRating, type, images, amenities,
       checkInTime: checkInTime || "14:00",
@@ -137,6 +183,20 @@ router.post("/hotels", async (req: AuthenticatedRequest, res: Response) => {
 
     // Create default policies record
     await db.insert(hotelPoliciesTable).values({ hotelId: newHotel.id } as any).onConflictDoNothing();
+
+    // If vendor entered a custom city not in our CMS, create a pendingCityRequest
+    if (customCity) {
+      await db.insert(pendingCityRequestsTable as any).values({
+        vendorId: ownerId,
+        hotelId: newHotel.id,
+        cityName: customCity,
+        stateName: customStateName || null,
+        countryName: customCountryName || null,
+        stateId: resolvedStateId ? Number(resolvedStateId) : null,
+        countryId: resolvedCountryId ? Number(resolvedCountryId) : null,
+        status: "PENDING",
+      }).onConflictDoNothing();
+    }
 
     res.status(201).json(newHotel);
   } catch (error: any) {
@@ -156,11 +216,59 @@ router.patch("/hotels/:id", async (req: AuthenticatedRequest, res: Response) => 
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
     if (!isAdmin && hotel.ownerId !== ownerId) return res.status(403).json({ error: "Forbidden" });
 
-    // Prevent vendors from self-approving
-    const updateData = { ...req.body };
+    const updateData: any = { ...req.body };
     if (!isAdmin) delete updateData.status;
     delete updateData.id; delete updateData.ownerId; delete updateData.slug;
     delete updateData.createdAt; delete updateData.updatedAt;
+
+    // ── Re-resolve geo slugs if location fields changed ─────────────────────
+    const hasLocationChange = updateData.destinationId || updateData.stateId || updateData.countryId;
+    if (hasLocationChange) {
+      let resolvedStateId = updateData.stateId || hotel.stateId;
+      let resolvedCountryId = updateData.countryId || hotel.countryId;
+
+      if (updateData.destinationId) {
+        const [dest] = await db.select({
+          slug: destinationsTable.slug, stateId: destinationsTable.stateId, countryId: destinationsTable.countryId,
+        }).from(destinationsTable).where(eq(destinationsTable.id, Number(updateData.destinationId))).limit(1);
+        if (dest) {
+          updateData.destinationSlug = dest.slug;
+          if (dest.stateId) resolvedStateId = dest.stateId;
+          if (dest.countryId) resolvedCountryId = dest.countryId;
+        }
+      }
+      if (resolvedStateId) {
+        const [st] = await db.select({ slug: statesTable.slug, countryId: statesTable.countryId })
+          .from(statesTable).where(eq(statesTable.id, Number(resolvedStateId))).limit(1);
+        if (st) {
+          updateData.stateSlug = st.slug;
+          updateData.stateId = resolvedStateId;
+          if (st.countryId) resolvedCountryId = st.countryId;
+        }
+      }
+      if (resolvedCountryId) {
+        const [cn] = await db.select({ slug: countriesTable.slug })
+          .from(countriesTable).where(eq(countriesTable.id, Number(resolvedCountryId))).limit(1);
+        if (cn) { updateData.countrySlug = cn.slug; updateData.countryId = resolvedCountryId; }
+      }
+
+      // If vendor added a custom city during update, create pendingCityRequest
+      if (updateData.customCity && updateData.customCity !== hotel.customCity) {
+        await db.insert(pendingCityRequestsTable as any).values({
+          vendorId: ownerId,
+          hotelId,
+          cityName: updateData.customCity,
+          stateName: updateData.customStateName || null,
+          countryName: updateData.customCountryName || null,
+          stateId: resolvedStateId ? Number(resolvedStateId) : null,
+          countryId: resolvedCountryId ? Number(resolvedCountryId) : null,
+          status: "PENDING",
+        }).onConflictDoNothing();
+      }
+      // Clean up non-schema fields
+      delete updateData.customStateName;
+      delete updateData.customCountryName;
+    }
 
     const [updated] = await db.update(hotelsTable)
       .set({ ...updateData, updatedAt: new Date() })
@@ -296,9 +404,22 @@ router.post("/hotels/:id/rooms", async (req: AuthenticatedRequest, res: Response
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
     if (!isAdmin && hotel.ownerId !== ownerId) return res.status(403).json({ error: "Forbidden" });
 
+    // Generate slug
+    const roomSlug = req.body.slug || req.body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const existingRooms = await db.select({ slug: hotelRoomsTable.slug }).from(hotelRoomsTable)
+      .where(eq(hotelRoomsTable.hotelId, hotelId));
+    const existingSlugs = new Set(existingRooms.map(r => r.slug).filter(Boolean));
+    let finalSlug = roomSlug || `room-${Date.now().toString().slice(-4)}`;
+    let counter = 2;
+    while (existingSlugs.has(finalSlug)) {
+      finalSlug = `${roomSlug}-${counter}`;
+      counter++;
+    }
+
     const [newRoom] = await db.insert(hotelRoomsTable).values({
       hotelId,
       ...req.body,
+      slug: finalSlug,
     } as any).returning();
 
     // Update hotel total_rooms count
@@ -326,6 +447,23 @@ router.patch("/hotels/:id/rooms/:roomId", async (req: AuthenticatedRequest, res:
 
     const updateData = { ...req.body };
     delete updateData.id; delete updateData.hotelId;
+
+    if (updateData.name || updateData.slug) {
+      const roomSlug = updateData.slug || (updateData.name ? updateData.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : "");
+      if (roomSlug) {
+        const existingRooms = await db.select({ id: hotelRoomsTable.id, slug: hotelRoomsTable.slug })
+          .from(hotelRoomsTable)
+          .where(and(eq(hotelRoomsTable.hotelId, hotelId), sql`id != ${Number(req.params.roomId)}`));
+        const existingSlugs = new Set(existingRooms.map(r => r.slug).filter(Boolean));
+        let finalSlug = roomSlug;
+        let counter = 2;
+        while (existingSlugs.has(finalSlug)) {
+          finalSlug = `${roomSlug}-${counter}`;
+          counter++;
+        }
+        updateData.slug = finalSlug;
+      }
+    }
 
     const [updated] = await db.update(hotelRoomsTable)
       .set({ ...updateData, updatedAt: new Date() } as any)
@@ -406,7 +544,7 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
     if (!isAdmin && hotel.ownerId !== ownerId) return res.status(403).json({ error: "Forbidden" });
 
-    const { roomId, startDate, endDate, availableCount, priceOverride, isBlocked, discountType, discountPercent, discountFlat } = req.body;
+    const { roomId, startDate, endDate, availableCount, priceOverride, isBlocked, discountType, discountPercent, discountFlat, customPricing } = req.body;
 
     if (!roomId || !startDate || !endDate) {
       return res.status(400).json({ error: "roomId, startDate, endDate are required" });
@@ -428,6 +566,7 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
         discountType: discountType ?? 'PERCENT',
         discountPercent: discountPercent ? Number(discountPercent) : 0,
         discountFlat: discountFlat ? Number(discountFlat) : 0,
+        customPricing: customPricing ? (typeof customPricing === 'string' ? customPricing : JSON.stringify(customPricing)) : null,
         updatedAt: new Date(),
       });
       cursor.setDate(cursor.getDate() + 1);
@@ -436,8 +575,8 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
     // Upsert each record
     for (const record of records) {
       await db.execute(sql`
-        INSERT INTO hotel_room_inventory (room_id, hotel_id, date, available_count, price_override, is_blocked, discount_type, discount_percent, discount_flat, updated_at)
-        VALUES (${record.roomId}, ${record.hotelId}, ${record.date}, ${record.availableCount}, ${record.priceOverride}, ${record.isBlocked}, ${record.discountType}, ${record.discountPercent}, ${record.discountFlat}, NOW())
+        INSERT INTO hotel_room_inventory (room_id, hotel_id, date, available_count, price_override, is_blocked, discount_type, discount_percent, discount_flat, custom_pricing, updated_at)
+        VALUES (${record.roomId}, ${record.hotelId}, ${record.date}, ${record.availableCount}, ${record.priceOverride}, ${record.isBlocked}, ${record.discountType}, ${record.discountPercent}, ${record.discountFlat}, ${record.customPricing}, NOW())
         ON CONFLICT (room_id, date) DO UPDATE SET
           available_count = EXCLUDED.available_count,
           price_override = EXCLUDED.price_override,
@@ -445,6 +584,7 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
           discount_type = EXCLUDED.discount_type,
           discount_percent = EXCLUDED.discount_percent,
           discount_flat = EXCLUDED.discount_flat,
+          custom_pricing = EXCLUDED.custom_pricing,
           updated_at = NOW()
       `);
     }

@@ -125,6 +125,7 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
       bestTimeToVisit: "", visaInfo: "", imageUrl: "", heroVideoUrl: "", metaTitle: "", metaDescription: "", metaKeywords: "",
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
       showInMenu: false, navMenuOrder: 0,
+      showInHotelsMenu: false, hotelsMenuOrder: 0,
       howToReach: "", highlights: "", thingsToDo: "", localAttractions: "", famousFor: "", activities: "", localCuisine: "", travelTips: "", safetyInfo: "", festivals: "",
       historyAndCulture: "", geography: "", weatherAndClimate: "", transportation: "", currencyAndPayments: "", languageAndCommunication: "", localEtiquette: "", healthTips: "", emergencyNumbers: "", packingList: "", shopping: ""
     };
@@ -142,6 +143,8 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
       faqs: parseFaqs(item.faqs),
       showInMenu: !!item.showInMenu,
       navMenuOrder: Number(item.navMenuOrder || 0),
+      showInHotelsMenu: !!item.showInHotelsMenu,
+      hotelsMenuOrder: Number(item.hotelsMenuOrder || 0),
     };
   };
 
@@ -176,6 +179,8 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
         faqs: cleanFaqs,
         showInMenu: Boolean(form.showInMenu),
         navMenuOrder: Number(form.navMenuOrder || 0),
+        showInHotelsMenu: Boolean(form.showInHotelsMenu),
+        hotelsMenuOrder: Number(form.hotelsMenuOrder || 0),
         regionId: form.regionId ? Number(form.regionId) : null,
       };
       if (!payload.slug && payload.name) payload.slug = payload.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
@@ -208,6 +213,7 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
         </div>
         <FieldInput label="ISO Code (e.g. IN)" value={form.code} onChange={v => setForm({ ...form, code: v })} />
         <FieldInput label="Slug (Auto)" value={form.slug} onChange={v => setForm({ ...form, slug: v })} />
+
         <FieldInput label="Capital City" value={form.capital} onChange={v => setForm({ ...form, capital: v })} />
         <FieldInput label="Currency" value={form.currency} onChange={v => setForm({ ...form, currency: v })} />
         <FieldInput label="Language" value={form.language} onChange={v => setForm({ ...form, language: v })} />
@@ -253,8 +259,43 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
           faqs={form.faqs as FaqItem[]}
           onChange={v => setForm({ ...form, faqs: v })}
         />
+
+        {/* Navigation & Hotels Menu Visibility Settings */}
+        <div className="col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-wrap gap-6 items-center">
+          <div className="w-full">
+            <p className="text-xs font-black text-[#1B3A6B] uppercase tracking-wider">Navbar / Dropdown Visibility</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">Control if this Country appears in the main Tour packages dropdown or the Hotels dropdown.</p>
+          </div>
+          <div className="flex flex-wrap gap-6 items-center w-full">
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4 rounded text-[#1B3A6B] focus:ring-[#1B3A6B]" />
+                <span className="text-sm font-bold text-slate-700">📌 Show in Tours Dropdown</span>
+              </label>
+              {form.showInMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.navMenuOrder || 0)} onChange={v => setForm({ ...form, navMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-8 bg-gray-200" />
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInHotelsMenu} onChange={e => setForm({ ...form, showInHotelsMenu: e.target.checked })} className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm font-bold text-slate-700">🏨 Show in Hotels Dropdown</span>
+              </label>
+              {form.showInHotelsMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.hotelsMenuOrder || 0)} onChange={v => setForm({ ...form, hotelsMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         
-        <div className="col-span-2 flex flex-wrap gap-10 items-center">
+        <div className="col-span-2 flex flex-wrap gap-10 items-center border-t border-gray-100 pt-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({ ...form, isFeatured: e.target.checked })} className="w-4 h-4" />
             <span className="text-sm font-medium text-gray-700">⭐ Featured on Homepage</span>
@@ -262,18 +303,6 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
           <div className="w-32">
             <FieldInput label="Display Order" value={String(form.displayOrder || 0)} onChange={v => setForm({ ...form, displayOrder: Number(v) })} />
           </div>
-          
-          <div className="w-px h-8 bg-gray-200 mx-4" />
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4" />
-            <span className="text-sm font-medium text-gray-700">📌 Feature in NavMenu</span>
-          </label>
-          {form.showInMenu && (
-            <div className="w-32">
-              <FieldInput label="NavMenu Order" value={String(form.navMenuOrder || 0)} onChange={v => setForm({ ...form, navMenuOrder: Number(v) })} />
-            </div>
-          )}
         </div>
       </div>
     </ModalWrapper>
@@ -294,6 +323,7 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
       bestTimeToVisit: "", howToReach: "", metaTitle: "", metaDescription: "", metaKeywords: "",
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
       showInMenu: false, navMenuOrder: 0,
+      showInHotelsMenu: false, hotelsMenuOrder: 0,
       highlights: "", thingsToDo: "", localAttractions: "", famousFor: "", activities: "", localCuisine: "", travelTips: "", safetyInfo: "", festivals: "",
       historyAndCulture: "", geography: "", weatherAndClimate: "", transportation: "", currencyAndPayments: "", languageAndCommunication: "", localEtiquette: "", healthTips: "", emergencyNumbers: "", packingList: "", shopping: ""
     };
@@ -311,6 +341,8 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
       faqs: parseFaqs(item.faqs),
       showInMenu: !!item.showInMenu,
       navMenuOrder: Number(item.navMenuOrder || 0),
+      showInHotelsMenu: !!item.showInHotelsMenu,
+      hotelsMenuOrder: Number(item.hotelsMenuOrder || 0),
     };
   };
 
@@ -345,6 +377,8 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
         faqs: cleanFaqs,
         showInMenu: Boolean(form.showInMenu),
         navMenuOrder: Number(form.navMenuOrder || 0),
+        showInHotelsMenu: Boolean(form.showInHotelsMenu),
+        hotelsMenuOrder: Number(form.hotelsMenuOrder || 0),
       };
       if (!payload.slug && payload.name) payload.slug = String(payload.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) {
@@ -466,8 +500,43 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
           faqs={form.faqs as FaqItem[]}
           onChange={v => setForm({ ...form, faqs: v })}
         />
+
+        {/* Navigation & Hotels Menu Visibility Settings */}
+        <div className="col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-wrap gap-6 items-center">
+          <div className="w-full">
+            <p className="text-xs font-black text-[#1B3A6B] uppercase tracking-wider">Navbar / Dropdown Visibility</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">Control if this State appears in the main Tour packages dropdown or the Hotels dropdown.</p>
+          </div>
+          <div className="flex flex-wrap gap-6 items-center w-full">
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4 rounded text-[#1B3A6B] focus:ring-[#1B3A6B]" />
+                <span className="text-sm font-bold text-gray-700">📌 Show in Tours Dropdown</span>
+              </label>
+              {form.showInMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.navMenuOrder || 0)} onChange={v => setForm({ ...form, navMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-8 bg-gray-200" />
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInHotelsMenu} onChange={e => setForm({ ...form, showInHotelsMenu: e.target.checked })} className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm font-bold text-gray-700">🏨 Show in Hotels Dropdown</span>
+              </label>
+              {form.showInHotelsMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.hotelsMenuOrder || 0)} onChange={v => setForm({ ...form, hotelsMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
         
-        <div className="col-span-2 flex flex-wrap gap-10 items-center">
+        <div className="col-span-2 flex flex-wrap gap-10 items-center border-t border-gray-100 pt-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({ ...form, isFeatured: e.target.checked })} className="w-4 h-4" />
             <span className="text-sm font-medium text-gray-700">⭐ Featured State</span>
@@ -475,18 +544,6 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
           <div className="w-32">
             <FieldInput label="Display Order" value={String(form.displayOrder || 0)} onChange={v => setForm({ ...form, displayOrder: Number(v) })} />
           </div>
-
-          <div className="w-px h-8 bg-gray-200 mx-4" />
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4" />
-            <span className="text-sm font-medium text-gray-700">📌 Feature in NavMenu</span>
-          </label>
-          {form.showInMenu && (
-            <div className="w-32">
-              <FieldInput label="NavMenu Order" value={String(form.navMenuOrder || 0)} onChange={v => setForm({ ...form, navMenuOrder: Number(v) })} />
-            </div>
-          )}
         </div>
       </div>
     </ModalWrapper>
@@ -512,6 +569,7 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
       activities: "", localCuisine: "", travelTips: "", safetyInfo: "",
       metaTitle: "", metaDescription: "", metaKeywords: "",
       latitude: "", longitude: "", isFeatured: false, isActive: true, showInMenu: false, displayOrder: 0,
+      showInHotelsMenu: false, hotelsMenuOrder: 0,
       faqs: [] as FaqItem[],
     };
     if (!item) return base;
@@ -519,6 +577,8 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
       ...base,
       ...item,
       showInMenu: !!item.showInMenu,
+      showInHotelsMenu: !!item.showInHotelsMenu,
+      hotelsMenuOrder: Number(item.hotelsMenuOrder || 0),
       highlights: arr(item.highlights),
       thingsToDo: arr(item.thingsToDo),
       localAttractions: arr(item.localAttractions),
@@ -549,6 +609,8 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
         localCuisine: toArray(form.localCuisine),
         travelTips: toArray(form.travelTips),
         faqs: cleanFaqs,
+        showInHotelsMenu: Boolean(form.showInHotelsMenu),
+        hotelsMenuOrder: Number(form.hotelsMenuOrder || 0),
       };
       const p = payload as Record<string, any>;
       if (!p.slug && p.name) p.slug = String(p.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
@@ -623,7 +685,42 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
           onChange={v => setForm({ ...form, faqs: v })}
         />
 
-        <div className="col-span-2 flex gap-10 items-center">
+        {/* Navigation & Hotels Menu Visibility Settings */}
+        <div className="col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-100/80 flex flex-wrap gap-6 items-center">
+          <div className="w-full">
+            <p className="text-xs font-black text-[#1B3A6B] uppercase tracking-wider">Navbar / Dropdown Visibility</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">Control if this Place appears in the main Tour packages dropdown or the Hotels dropdown.</p>
+          </div>
+          <div className="flex flex-wrap gap-6 items-center w-full">
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4 rounded text-[#1B3A6B] focus:ring-[#1B3A6B]" />
+                <span className="text-sm font-bold text-gray-700">📌 Show in Tours Dropdown</span>
+              </label>
+              {form.showInMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.displayOrder || 0)} onChange={v => setForm({ ...form, displayOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-8 bg-gray-200" />
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInHotelsMenu} onChange={e => setForm({ ...form, showInHotelsMenu: e.target.checked })} className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm font-bold text-gray-700">🏨 Show in Hotels Dropdown</span>
+              </label>
+              {form.showInHotelsMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.hotelsMenuOrder || 0)} onChange={v => setForm({ ...form, hotelsMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-2 flex gap-10 items-center border-t border-gray-100 pt-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isFeatured} onChange={e => setForm({ ...form, isFeatured: e.target.checked })} className="w-4 h-4" />
             <span className="text-sm font-medium text-gray-700">⭐ Featured Destination</span>
@@ -632,13 +729,6 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
             <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4" />
             <span className="text-sm font-medium text-gray-700">✅ Active / Published</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.showInMenu} onChange={e => setForm({ ...form, showInMenu: e.target.checked })} className="w-4 h-4" />
-            <span className="text-sm font-medium text-gray-700">🧭 Show in Navbar</span>
-          </label>
-          <div className="w-32">
-            <FieldInput label="Display Order" value={String(form.displayOrder || 0)} onChange={v => setForm({ ...form, displayOrder: Number(v) })} />
-          </div>
         </div>
       </div>
     </ModalWrapper>
@@ -802,6 +892,14 @@ export default function Destinations() {
       {modal?.type === "states" && <StateModal item={modal.item} countries={countries} states={states} onClose={closeModal} onSave={afterSave} />}
       {modal?.type === "places" && <PlaceModal item={modal.item} states={states} onClose={closeModal} onSave={afterSave} />}
 
+      {/* Info Help Banner */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-5 flex gap-3 items-start shadow-sm">
+        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-blue-800 leading-relaxed">
+          <span className="font-bold">🏨 Update Navbar & Dropdown Visibility:</span> To configure which Countries, States, and Cities/Places appear in the website navigation dropdown menu for <span className="font-semibold text-[#1B3A6B]">Tours</span> or <span className="font-semibold text-emerald-600">Hotels</span>, click the <span className="font-bold">Edit</span> button on any card below, scroll down to the <span className="font-bold">very bottom</span> of the edit modal, and check the respective checkbox under <span className="font-bold">"Navbar / Dropdown Visibility"</span>.
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 mb-5 border-b border-gray-100 pb-4">
         {tabs.map(t => (
@@ -840,6 +938,7 @@ export default function Destinations() {
             <DestCard key={item.id} title={item.name} sub={`${item.code || ""} • ${item.packageCount || 0} packages`}
               featured={item.isFeatured} active={item.isActive} order={item.displayOrder}
               navMenuOrder={item.showInMenu ? item.navMenuOrder : undefined}
+              hotelsMenuOrder={item.showInHotelsMenu ? item.hotelsMenuOrder : undefined}
               onEdit={() => setModal({ type: "countries", item })}
               onDelete={() => handleDelete("countries", item.id)} />
           ))}
@@ -847,6 +946,7 @@ export default function Destinations() {
             <DestCard key={item.id} title={item.name} sub={item.countryName || ""}
               featured={item.isFeatured} active={item.isActive} order={item.displayOrder}
               navMenuOrder={item.showInMenu ? item.navMenuOrder : undefined}
+              hotelsMenuOrder={item.showInHotelsMenu ? item.hotelsMenuOrder : undefined}
               onEdit={() => setModal({ type: "states", item })}
               onDelete={() => handleDelete("states", item.id)} />
           ))}
@@ -854,6 +954,7 @@ export default function Destinations() {
             <DestCard key={item.id} title={item.name} sub={`${item.stateName || ""}, ${item.countryName || ""}`}
               featured={item.isFeatured} active={item.isActive}
               badges={[item.altitude, item.bestTimeToVisit].filter(Boolean)}
+              hotelsMenuOrder={item.showInHotelsMenu ? item.hotelsMenuOrder : undefined}
               onEdit={() => setModal({ type: "places", item })}
               onDelete={() => handleDelete("places", item.id)} />
           ))}
@@ -870,15 +971,18 @@ export default function Destinations() {
   );
 }
 
-function DestCard({ title, sub, featured, active, badges, order, navMenuOrder, onEdit, onDelete }: any) {
+function DestCard({ title, sub, featured, active, badges, order, navMenuOrder, hotelsMenuOrder, onEdit, onDelete }: any) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden group hover:shadow-md transition-all" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
       <div className="h-24 relative flex items-center justify-center" style={{ background: "linear-gradient(135deg, #EEF2FF, #DBEAFE)" }}>
         <Mountain className="w-8 h-8 text-[#1B3A6B] opacity-30" />
         {featured && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-white">FEATURED</span>}
-        <div className="absolute bottom-2 left-2 flex gap-1">
-          {order !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-[#1B3A6B] shadow-sm">HOME #{order}</span>}
-          {navMenuOrder !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-blue-600 shadow-sm">MENU #{navMenuOrder}</span>}
+        <div className="absolute bottom-2 left-2 flex flex-col gap-1 items-start">
+          <div className="flex gap-1">
+            {order !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-[#1B3A6B] shadow-sm">HOME #{order}</span>}
+            {navMenuOrder !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-blue-600 shadow-sm">MENU #{navMenuOrder}</span>}
+          </div>
+          {hotelsMenuOrder !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white/80 text-emerald-600 shadow-sm">HOTELS #{hotelsMenuOrder}</span>}
         </div>
         <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${active !== false ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
           {active !== false ? <CheckCircle className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}

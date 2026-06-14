@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -43,18 +43,40 @@ interface Hotel {
   avgRating?: number;
   reviewCount?: number;
   destinationName?: string;
+  destinationSlug?: string;
+  stateSlug?: string;
+  countrySlug?: string;
+  customCity?: string;
   bookingType?: string;
   breakfastIncluded?: boolean;
   checkInTime?: string;
   checkOutTime?: string;
 }
 
+/** Build the canonical hotel URL from geo slugs */
+function buildHotelUrl(hotel: Hotel): string {
+  const country = hotel.countrySlug;
+  const state = hotel.stateSlug;
+  const dest = hotel.destinationSlug;
+  const custom = hotel.customCity;
+
+  if (country && state && (dest || custom)) {
+    const cityPart = dest
+      ? `hotels-in-${dest}`
+      : `hotels-in-${(custom || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    return `/hotels/${country}/${state}/${cityPart}/${hotel.slug}`;
+  }
+  // fallback to old URL (will redirect server-side)
+  return `/hotels/${hotel.slug}`;
+}
+
 function HotelCard({ hotel }: { hotel: Hotel }) {
   const [imgErr, setImgErr] = useState(false);
   const img = !imgErr && hotel.images?.[0] ? validateImageUrl(hotel.images[0]) : null;
+  const hotelUrl = buildHotelUrl(hotel);
 
   return (
-    <Link href={`/hotels/${hotel.slug}`} className="group block bg-white rounded-3xl border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1">
+    <Link href={hotelUrl} className="group block bg-white rounded-3xl border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1">
       {/* Image — using next/image for lazy loading + WebP optimization */}
       <div className="relative h-52 bg-slate-100 overflow-hidden">
         {img ? (
@@ -242,7 +264,22 @@ function FilterSidebar({
   );
 }
 
-export default function HotelsClient() {
+interface GeoFilter { country?: string; state?: string; city?: string; }
+interface Breadcrumb { label: string; href: string; }
+
+export default function HotelsClient({
+  geoFilter,
+  pageTitle,
+  pageSubtitle,
+  breadcrumbs,
+  cityInfo,
+}: {
+  geoFilter?: GeoFilter;
+  pageTitle?: string;
+  pageSubtitle?: string;
+  breadcrumbs?: Breadcrumb[];
+  cityInfo?: any;
+} = {}) {
   const searchParams = useSearchParams();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,24 +316,31 @@ export default function HotelsClient() {
       params.set("minPrice", min);
       params.set("maxPrice", max);
     }
+    // Geo filters from props
+    if (geoFilter?.country) params.set("country", geoFilter.country);
+    if (geoFilter?.state && geoFilter.state !== "all") params.set("state", geoFilter.state);
+    if (geoFilter?.city) params.set("city", geoFilter.city);
     params.set("sort", sort);
     params.set("limit", String(LIMIT));
     params.set("offset", String(page * LIMIT));
     return params.toString();
-  }, [debouncedSearch, filters, sort, page]);
+  }, [debouncedSearch, filters, sort, page, geoFilter]);
 
   useEffect(() => {
-    // ⚡ AbortController — cancels stale in-flight requests
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    fetch(`${API_BASE}/hotels?${buildQuery()}`, { signal: controller.signal })
+    // Use by-location endpoint when geo filters are active
+    const endpoint = geoFilter
+      ? `${API_BASE}/hotels/by-location?${buildQuery()}`
+      : `${API_BASE}/hotels?${buildQuery()}`;
+    fetch(endpoint, { signal: controller.signal })
       .then(r => r.json())
       .then(d => { setHotels(d.hotels || []); setTotal(d.total || 0); })
       .catch(e => { if (e.name !== "AbortError") setError("Failed to load hotels. Please try again."); })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [buildQuery]);
+  }, [buildQuery, geoFilter]);
 
 
   const destinations = Array.from(new Set(hotels.map(h => h.destinationName || h.city || "Himalayas").filter(Boolean)));
@@ -304,24 +348,52 @@ export default function HotelsClient() {
 
   return (
     <div className="bg-slate-50 min-h-screen pb-32">
+      {/* ── Breadcrumbs (geo pages) ── */}
+      {breadcrumbs && breadcrumbs.length > 0 && (
+        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-3">
+            <nav className="flex items-center gap-2 text-xs text-slate-500">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={crumb.href} className="flex items-center gap-2">
+                  {i > 0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+                  {i === breadcrumbs.length - 1 ? (
+                    <span className="font-bold text-slate-700">{crumb.label}</span>
+                  ) : (
+                    <Link href={crumb.href} className="hover:text-primary transition-colors">{crumb.label}</Link>
+                  )}
+                </span>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero ── */}
       <div className="relative bg-[#0A0D17] pt-32 pb-44 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600"
-            className="w-full h-full object-cover opacity-30 grayscale-[0.3]" alt="Himalayan stays" />
+          <img src={cityInfo?.imageUrl || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600"}
+            className="w-full h-full object-cover opacity-30 grayscale-[0.3]" alt={pageTitle || "Himalayan stays"} />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A0D17] via-transparent to-[#0A0D17]" />
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center">
           <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/10">
               <Sparkles className="h-4 w-4 text-accent" />
-              <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Himalayan Luxury Collection</span>
+              <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">
+                {pageSubtitle || "Himalayan Luxury Collection"}
+              </span>
             </div>
             <h1 className="text-6xl md:text-8xl font-serif font-black text-white tracking-tighter leading-none italic">
-              Extraordinary <span className="text-accent not-italic">Stays.</span>
+              {pageTitle ? (
+                <>{pageTitle.split(" ").slice(0, -1).join(" ")} <span className="text-accent not-italic">{pageTitle.split(" ").slice(-1)[0]}.</span></>
+              ) : (
+                <>Extraordinary <span className="text-accent not-italic">Stays.</span></>
+              )}
             </h1>
             <p className="text-slate-300 text-lg font-medium max-w-2xl mx-auto leading-relaxed opacity-80">
-              Hotels, Resorts, Cottages, Homestays & more — verified and curated across the Himalayas.
+              {cityInfo?.description
+                ? cityInfo.description.slice(0, 180)
+                : "Hotels, Resorts, Cottages, Homestays & more — verified and curated across the Himalayas."}
             </p>
 
             {/* Search Bar */}
@@ -466,7 +538,7 @@ export default function HotelsClient() {
                     viewMode === "grid" ? (
                       <HotelCard key={hotel.id} hotel={hotel} />
                     ) : (
-                      <Link key={hotel.id} href={`/hotels/${hotel.slug}`}
+                      <Link key={hotel.id} href={buildHotelUrl(hotel)}
                         className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all flex gap-0">
                         <div className="w-48 h-36 relative shrink-0 overflow-hidden">
                           {hotel.images?.[0] ? (

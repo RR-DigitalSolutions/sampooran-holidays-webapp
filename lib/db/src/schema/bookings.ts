@@ -15,7 +15,13 @@ export const bookingsTable = pgTable("bookings", {
   
   travelDate: timestamp("travel_date").notNull(),
   travelersCount: integer("travelers_count").notNull().default(1),
-  
+
+  // ── Hotel Booking: Advanced Occupancy Fields ────────────────────────────
+  mealPlan: text("meal_plan"),                       // Selected meal plan code: EP/CP/MAP/AP
+  childrenWithBed: integer("children_with_bed").default(0),       // Children with dedicated bed
+  childrenWithoutBed: integer("children_without_bed").default(0), // Children without bed (sharing)
+  priceBreakdown: jsonb("price_breakdown"),           // Full itemized breakdown for audit/display
+
   totalAmount: real("total_amount").notNull(),
   pointsUsed: real("points_used").default(0),
   finalPaidAmount: real("final_paid_amount").notNull(),

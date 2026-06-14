@@ -1,33 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Building2, MapPin, Image as ImageIcon, Settings, Check,
-  ChevronRight, ChevronLeft, ArrowRight, Star, Wifi, Car,
-  Utensils, Waves, Dumbbell, Coffee, Flame, Umbrella, Tv,
+  ChevronRight, ChevronLeft, ArrowRight, Star,
   AlertCircle, Plus, X, Plane, LogOut, BarChart3, BookOpen, Wallet, User
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 import { cn } from "@/lib/utils";
-
 import { getApiUrl } from "@/lib/api-url";
+import { AmenitiesSelector } from "@/components/AmenitiesSelector";
 
 const API_BASE = getApiUrl();
 
 const PROPERTY_TYPES = ["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp", "Hostel", "Apartment", "Farmhouse", "Treehouse"];
-const AMENITY_OPTIONS = [
-  { key: "WIFI", label: "Free Wi-Fi", icon: Wifi },
-  { key: "POOL", label: "Swimming Pool", icon: Waves },
-  { key: "RESTAURANT", label: "Restaurant", icon: Utensils },
-  { key: "PARKING", label: "Free Parking", icon: Car },
-  { key: "GYM", label: "Fitness Centre", icon: Dumbbell },
-  { key: "SPA", label: "Spa", icon: Flame },
-  { key: "CAFE", label: "Café / Bar", icon: Coffee },
-  { key: "BONFIRE", label: "Bonfire Area", icon: Flame },
-  { key: "GARDEN", label: "Garden", icon: Umbrella },
-  { key: "TV", label: "Flat-Screen TV", icon: Tv },
-];
 const MEAL_PLANS = [
   { val: "EP", label: "Room Only", desc: "No meals included" },
   { val: "CP", label: "Breakfast", desc: "Complimentary breakfast" },
@@ -86,8 +73,6 @@ export default function AddPropertyPage() {
     amenities: [] as string[],
     address: "",
     city: "",
-    state: "",
-    country: "India",
     pincode: "",
     latitude: "",
     longitude: "",
@@ -100,20 +85,55 @@ export default function AddPropertyPage() {
     minPrice: "",
   });
 
-  const update = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
+  // ── GEO HIERARCHY STATE ───────────────────────────────────
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [selectedState, setSelectedState] = useState<any>(null);
+  const [selectedCity, setSelectedCity] = useState<any>(null);
+  const [customCity, setCustomCity] = useState("");
+  const [useCustomCity, setUseCustomCity] = useState(false);
 
-  const toggleAmenity = (key: string) => {
-    setForm(f => ({
-      ...f,
-      amenities: f.amenities.includes(key)
-        ? f.amenities.filter(a => a !== key)
-        : [...f.amenities, key]
-    }));
-  };
+  // Load countries on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/destinations/countries`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCountries(Array.isArray(data) ? data : (data.countries || [])))
+      .catch(() => {});
+  }, []);
+
+  // Load states when country changes
+  useEffect(() => {
+    if (!selectedCountry) { setStates([]); setSelectedState(null); setCities([]); setSelectedCity(null); return; }
+    fetch(`${API_BASE}/destinations/states?countryId=${selectedCountry.id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setStates(Array.isArray(data) ? data : (data.states || [])))
+      .catch(() => {});
+    setSelectedState(null); setCities([]); setSelectedCity(null);
+  }, [selectedCountry]);
+
+  // Load cities/destinations when state changes
+  useEffect(() => {
+    if (!selectedState) { setCities([]); setSelectedCity(null); return; }
+    fetch(`${API_BASE}/destinations?stateId=${selectedState.id}&limit=200`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCities(Array.isArray(data) ? data : (data.destinations || [])))
+      .catch(() => {});
+    setSelectedCity(null);
+  }, [selectedState]);
+
+  const update = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const validateStep = () => {
     if (step === 1 && (!form.name || !form.type)) { setError("Please fill in Property Name and Type."); return false; }
-    if (step === 2 && (!form.address || !form.city || !form.state)) { setError("Please fill in Address, City, and State."); return false; }
+    if (step === 2) {
+      if (!selectedCountry) { setError("Please select a Country."); return false; }
+      if (!selectedState) { setError("Please select a State / Region."); return false; }
+      if (!selectedCity && !useCustomCity) { setError("Please select or enter a City / Place."); return false; }
+      if (useCustomCity && !customCity.trim()) { setError("Please enter your city name."); return false; }
+      if (!form.address) { setError("Please fill in the full address."); return false; }
+    }
     setError("");
     return true;
   };
@@ -125,7 +145,7 @@ export default function AddPropertyPage() {
     setError("");
     try {
       const images = imageUrls.filter(u => u.trim());
-      const payload = {
+      const payload: any = {
         ...form,
         starRating: Number(form.starRating),
         totalRooms: form.totalRooms ? Number(form.totalRooms) : undefined,
@@ -133,7 +153,21 @@ export default function AddPropertyPage() {
         latitude: form.latitude ? parseFloat(form.latitude) : undefined,
         longitude: form.longitude ? parseFloat(form.longitude) : undefined,
         images,
+        // Geo hierarchy fields
+        countryId: selectedCountry?.id || null,
+        stateId: selectedState?.id || null,
+        destinationId: useCustomCity ? null : (selectedCity?.id || null),
+        // City display name
+        city: useCustomCity ? customCity : (selectedCity?.name || ""),
       };
+
+      // If vendor entered a custom city
+      if (useCustomCity && customCity.trim()) {
+        payload.customCity = customCity.trim();
+        payload.customStateName = selectedState?.name || null;
+        payload.customCountryName = selectedCountry?.name || null;
+      }
+
       const res = await fetch(`${API_BASE}/vendor/hotels`, {
         method: "POST",
         headers: vendorAuthHeader(token),
@@ -249,20 +283,7 @@ export default function AddPropertyPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-2">Amenities & Facilities</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {AMENITY_OPTIONS.map(a => (
-                        <button key={a.key} type="button" onClick={() => toggleAmenity(a.key)}
-                          className={cn("flex items-center gap-2 p-3 rounded-xl border-2 text-xs font-medium transition-all text-left",
-                            form.amenities.includes(a.key)
-                              ? "border-[#1B3A6B] bg-[#1B3A6B]/5 text-[#1B3A6B]"
-                              : "border-gray-100 text-gray-500 hover:border-gray-200")}>
-                          {form.amenities.includes(a.key)
-                            ? <Check className="w-3.5 h-3.5 shrink-0 text-[#1B3A6B] stroke-[3]" />
-                            : <a.icon className="w-3.5 h-3.5 shrink-0" />}
-                          {a.label}
-                        </button>
-                      ))}
-                    </div>
+                    <AmenitiesSelector selected={form.amenities} onChange={(amenities) => update("amenities", amenities)} compact={false} />
                   </div>
                 </div>
               )}
@@ -272,8 +293,110 @@ export default function AddPropertyPage() {
                 <div className="space-y-5">
                   <div>
                     <h2 className="text-xl font-black text-gray-900 mb-1">Location & Address</h2>
-                    <p className="text-sm text-gray-400">Where is your property located?</p>
+                    <p className="text-sm text-gray-400">Where is your property located? Select from our verified destinations.</p>
                   </div>
+
+                  {/* ── Country Dropdown ── */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5">Country *</label>
+                    <select
+                      value={selectedCountry?.id || ""}
+                      onChange={e => {
+                        const c = countries.find(c => String(c.id) === e.target.value);
+                        setSelectedCountry(c || null);
+                      }}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors bg-white"
+                    >
+                      <option value="">-- Select Country --</option>
+                      {countries.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* ── State / Region Dropdown ── */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5">State / Region *</label>
+                    <select
+                      value={selectedState?.id || ""}
+                      onChange={e => {
+                        const s = states.find(s => String(s.id) === e.target.value);
+                        setSelectedState(s || null);
+                      }}
+                      disabled={!selectedCountry || states.length === 0}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors bg-white disabled:opacity-50"
+                    >
+                      <option value="">
+                        {!selectedCountry ? "Select a country first" : states.length === 0 ? "Loading..." : "-- Select State / Region --"}
+                      </option>
+                      {states.map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* ── City / Place Dropdown + Custom Fallback ── */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5">City / Place *</label>
+                    {!useCustomCity ? (
+                      <>
+                        <select
+                          value={selectedCity?.id || ""}
+                          onChange={e => {
+                            if (e.target.value === "__custom__") {
+                              setUseCustomCity(true);
+                              setSelectedCity(null);
+                            } else {
+                              const c = cities.find(c => String(c.id) === e.target.value);
+                              setSelectedCity(c || null);
+                            }
+                          }}
+                          disabled={!selectedState || cities.length === 0}
+                          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors bg-white disabled:opacity-50"
+                        >
+                          <option value="">
+                            {!selectedState ? "Select a state first" : cities.length === 0 ? "Loading cities..." : "-- Select City / Place --"}
+                          </option>
+                          {cities.map((c: any) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                          <option value="__custom__">✏️ My city is not listed</option>
+                        </select>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                          <strong>📍 Custom City</strong> — We'll notify our team to add this location to our database.
+                          Your hotel will still be listed using the city name you provide.
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            value={customCity}
+                            onChange={e => setCustomCity(e.target.value)}
+                            placeholder="Enter your city / place name"
+                            className="flex-1 border border-amber-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 transition-colors"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => { setUseCustomCity(false); setCustomCity(""); }}
+                            className="px-4 py-3 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 hover:text-red-500 hover:border-red-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Selected location preview */}
+                  {(selectedCity || (useCustomCity && customCity)) && selectedState && selectedCountry && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+                      <strong>📌 URL will be:</strong>{" "}
+                      <code className="text-emerald-700">
+                        /hotels/{selectedCountry.slug}/{selectedState.slug}/hotels-in-{useCustomCity ? customCity.toLowerCase().replace(/\s+/g, "-") : selectedCity?.slug}/{"your-hotel-name"}
+                      </code>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1.5">Full Address *</label>
@@ -284,27 +407,18 @@ export default function AddPropertyPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5">City / Town *</label>
-                      <input value={form.city} onChange={e => update("city", e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
-                        placeholder="e.g. Manali" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5">State *</label>
-                      <input value={form.state} onChange={e => update("state", e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
-                        placeholder="e.g. Himachal Pradesh" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5">Country</label>
-                      <input value={form.country} onChange={e => update("country", e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors" />
-                    </div>
-                    <div>
                       <label className="block text-xs font-bold text-gray-500 mb-1.5">PIN Code</label>
                       <input value={form.pincode} onChange={e => update("pincode", e.target.value)}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                         placeholder="175101" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1.5">City (for display)</label>
+                      <input
+                        value={useCustomCity ? customCity : (selectedCity?.name || "")}
+                        readOnly
+                        className="w-full border border-gray-100 rounded-xl px-4 py-3 text-sm bg-gray-50 text-gray-500"
+                        placeholder="Auto-filled from selection" />
                     </div>
                   </div>
 
@@ -452,7 +566,11 @@ export default function AddPropertyPage() {
                     {[
                       { label: "Property Name", value: form.name },
                       { label: "Type", value: `${form.type} · ${form.starRating} Star` },
-                      { label: "Location", value: [form.city, form.state, form.country].filter(Boolean).join(", ") },
+                      { label: "Location", value: [
+                        useCustomCity ? customCity : selectedCity?.name,
+                        selectedState?.name,
+                        selectedCountry?.name
+                      ].filter(Boolean).join(", ") || "Not set" },
                       { label: "Starting Price", value: form.minPrice ? `₹${Number(form.minPrice).toLocaleString()}/night` : "Not set" },
                       { label: "Booking Type", value: form.bookingType === "INSTANT" ? "⚡ Instant Book" : "📋 Request to Book" },
                       { label: "Amenities", value: form.amenities.length > 0 ? `${form.amenities.length} selected` : "None" },

@@ -11,7 +11,7 @@ import { useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const MotionImage = motion(Image);
+const MotionImage = motion.create(Image);
 
 interface Pkg {
   id: number;

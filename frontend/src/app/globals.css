@@ -203,7 +203,6 @@
 
 .no-scrollbar, .scrollbar-hide {
   -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 .no-scrollbar::-webkit-scrollbar, .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -211,7 +210,6 @@
 
 /* Custom thin scrollbar for destination list */
 .custom-scrollbar {
-  scrollbar-width: none;
 }
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
@@ -229,17 +227,12 @@
   background: #94a3b8;
 }
 .custom-scrollbar:hover {
-  scrollbar-width: thin;
-}
-.custom-scrollbar:hover::-webkit-scrollbar {
-  display: block;
-}
+  }
+  .custom-scrollbar:hover::-webkit-scrollbar {
+    display: block;
+  }
 
-/* Performance: ensure hero images are visible immediately */
-html {
-  scroll-behavior: smooth;
-}
-
+  /* Performance: ensure hero images are visible immediately */
 /* Optimized image rendering */
 img {
   image-rendering: auto;

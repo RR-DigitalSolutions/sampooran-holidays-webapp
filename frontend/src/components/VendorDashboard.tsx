@@ -31,14 +31,14 @@ export default function VendorDashboard() {
   const fetchVendorData = async () => {
     try {
       // Fetch dynamic stats and listings from our new /vendor API
-      const statsRes = await fetch(`${API_BASE}/api/vendor/stats`, {
+      const statsRes = await fetch(`${API_BASE}/vendor/stats`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const statsData = await statsRes.json();
       setStats(statsData);
 
       const type = user?.role === 'HOTEL_OWNER' ? 'hotels' : 'transport';
-      const listRes = await fetch(`${API_BASE}/api/vendor/${type}`, {
+      const listRes = await fetch(`${API_BASE}/vendor/${type}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const listData = await listRes.json();

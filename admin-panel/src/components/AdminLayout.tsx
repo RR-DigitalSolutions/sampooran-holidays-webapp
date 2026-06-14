@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, API_BASE } from "../context/AuthContext";
 import { useChatContext } from "../context/ChatContext";
 import {
   LayoutDashboard, Package, MapPin, MessageSquare, Users, FileText,
@@ -41,6 +41,28 @@ export default function AdminLayout({ children, title, subtitle }: LayoutProps) 
   const { totalUnread, latestToast } = useChatContext();
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingCityCount, setPendingCityCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchPendingCitiesCount = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/pending-cities?status=PENDING`, {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPendingCityCount(data.pendingCount || 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch pending cities count in sidebar", err);
+      }
+    };
+    fetchPendingCitiesCount();
+    // Poll every 60 seconds
+    const interval = setInterval(fetchPendingCitiesCount, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Filter nav based on the logged-in user's permissions
   const navItems = ALL_NAV_ITEMS.filter(item => {
@@ -108,6 +130,10 @@ export default function AdminLayout({ children, title, subtitle }: LayoutProps) 
                   {isSupportItem && totalUnread > 0 ? (
                     <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
                       {totalUnread > 9 ? "9+" : totalUnread}
+                    </span>
+                  ) : href === "/hotels-manager" && pendingCityCount > 0 ? (
+                    <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center">
+                      {pendingCityCount}
                     </span>
                   ) : badge === "live" ? (
                     <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="Live" />

@@ -547,17 +547,17 @@ export declare const insertDiningPointSchema: z.ZodObject<{
     latitude: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     longitude: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     destinationId: z.ZodInt;
-    shortDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     type: z.ZodOptional<z.ZodString>;
-    address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    phone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    website: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    shortDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     coverImage: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    timingInfo: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     cuisine: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     specialItems: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    timingInfo: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     priceRange: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    phone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    website: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isEnrouteStop: z.ZodOptional<z.ZodBoolean>;
     suitableFor: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
 }, {

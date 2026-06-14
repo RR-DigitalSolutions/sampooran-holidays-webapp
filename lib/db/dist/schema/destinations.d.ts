@@ -1260,6 +1260,40 @@ export declare const countriesTable: import("drizzle-orm/pg-core").PgTableWithCo
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        showInHotelsMenu: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_in_hotels_menu";
+            tableName: "countries";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hotelsMenuOrder: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hotels_menu_order";
+            tableName: "countries";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "countries";
@@ -1347,6 +1381,8 @@ export declare const insertCountrySchema: z.ZodObject<{
     isFeatured: z.ZodOptional<z.ZodBoolean>;
     showInMenu: z.ZodOptional<z.ZodBoolean>;
     navMenuOrder: z.ZodOptional<z.ZodInt>;
+    showInHotelsMenu: z.ZodOptional<z.ZodBoolean>;
+    hotelsMenuOrder: z.ZodOptional<z.ZodInt>;
 }, {
     out: {};
     in: {};
@@ -2373,6 +2409,40 @@ export declare const statesTable: import("drizzle-orm/pg-core").PgTableWithColum
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        showInHotelsMenu: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_in_hotels_menu";
+            tableName: "states";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hotelsMenuOrder: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hotels_menu_order";
+            tableName: "states";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "states";
@@ -2454,6 +2524,8 @@ export declare const insertStateSchema: z.ZodObject<{
     isFeatured: z.ZodOptional<z.ZodBoolean>;
     showInMenu: z.ZodOptional<z.ZodBoolean>;
     navMenuOrder: z.ZodOptional<z.ZodInt>;
+    showInHotelsMenu: z.ZodOptional<z.ZodBoolean>;
+    hotelsMenuOrder: z.ZodOptional<z.ZodInt>;
     countryId: z.ZodInt;
     region: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
@@ -3440,6 +3512,40 @@ export declare const destinationsTable: import("drizzle-orm/pg-core").PgTableWit
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        showInHotelsMenu: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_in_hotels_menu";
+            tableName: "destinations";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hotelsMenuOrder: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hotels_menu_order";
+            tableName: "destinations";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "destinations";
@@ -3508,6 +3614,8 @@ export declare const insertDestinationSchema: z.ZodObject<{
     packageCount: z.ZodOptional<z.ZodInt>;
     isFeatured: z.ZodOptional<z.ZodBoolean>;
     showInMenu: z.ZodOptional<z.ZodBoolean>;
+    showInHotelsMenu: z.ZodOptional<z.ZodBoolean>;
+    hotelsMenuOrder: z.ZodOptional<z.ZodInt>;
     countryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     stateId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     altitude: z.ZodOptional<z.ZodNullable<z.ZodString>>;

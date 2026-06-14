@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Car, Search, ShieldCheck, MapPin, PhoneCall, Filter, LayoutGrid, List } from "lucide-react";
 import { VehicleCard } from "@/components/VehicleCard";
 import { Button } from "@/components/ui/button";

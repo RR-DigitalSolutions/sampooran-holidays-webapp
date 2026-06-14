@@ -17,6 +17,7 @@ router.get("/destinations", async (req, res): Promise<void> => {
   }
 
   const { country, state, featured, limit = 50, offset = 0 } = params.data;
+  const { stateId, countryId } = req.query;
 
   const allDestinations = await db
     .select({
@@ -26,6 +27,7 @@ router.get("/destinations", async (req, res): Promise<void> => {
       stateId: destinationsTable.stateId,
       stateName: statesTable.name,
       countryName: countriesTable.name,
+      countryId: statesTable.countryId,
       imageUrl: destinationsTable.imageUrl,
       thumbnailUrl: destinationsTable.thumbnailUrl,
       description: destinationsTable.description,
@@ -45,10 +47,14 @@ router.get("/destinations", async (req, res): Promise<void> => {
   if (featured !== undefined) {
     filtered = filtered.filter(d => d.isFeatured === featured);
   }
-  if (state) {
+  if (stateId) {
+    filtered = filtered.filter(d => d.stateId === Number(stateId));
+  } else if (state) {
     filtered = filtered.filter(d => d.stateName?.toLowerCase() === String(state).toLowerCase());
   }
-  if (country) {
+  if (countryId) {
+    filtered = filtered.filter(d => d.countryId === Number(countryId));
+  } else if (country) {
     filtered = filtered.filter(d => d.countryName?.toLowerCase() === String(country).toLowerCase());
   }
 
@@ -330,6 +336,7 @@ router.get("/destinations/resolve-slug/:slug", async (req, res): Promise<void> =
 
 router.get("/destinations/states", async (req, res): Promise<void> => {
   const countryParam = req.query.country as string | undefined;
+  const countryIdParam = req.query.countryId as string | undefined;
   let statesQuery = db
     .select({
       id: statesTable.id,
@@ -346,7 +353,9 @@ router.get("/destinations/states", async (req, res): Promise<void> => {
 
   const states = await statesQuery;
   let filtered = states;
-  if (countryParam) {
+  if (countryIdParam) {
+    filtered = states.filter(s => s.countryId === Number(countryIdParam));
+  } else if (countryParam) {
     filtered = states.filter(s => s.countryName?.toLowerCase() === countryParam.toLowerCase());
   }
   res.json({ states: filtered });

@@ -1,9 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import * as Tabs from "@radix-ui/react-tabs";
 import {
   Star,
   Check,
@@ -13,7 +12,6 @@ import {
   Phone,
   Download,
   Share2,
-  Heart,
   Building2,
   Utensils,
   Plane,
@@ -103,19 +101,120 @@ type PackageData = {
   themes?: unknown[];
 };
 
+type AttractionActivityData = Record<string, unknown>;
+
 type PackageDetailsPageProps = {
   packageData: PackageData;
 };
 
+function normalizeTextItem(item: unknown): string {
+  if (item === undefined || item === null) return "";
+  if (typeof item === "string") return item.trim();
+  if (typeof item === "number") return String(item);
+  if (typeof item === "boolean") return item ? "Yes" : "No";
+  if (Array.isArray(item)) return item.map(normalizeTextItem).filter(Boolean).join(", ");
+  if (typeof item === "object") {
+    const obj = item as Record<string, unknown>;
+    const diningPoint = obj.diningPoint as Record<string, unknown> | undefined;
+    const primaryText = normalizeTextItem(
+      obj.name ?? obj.title ?? obj.venueName ?? obj.notes ?? diningPoint?.name ?? diningPoint?.title
+    );
+    if (primaryText) return primaryText;
+    const fallback = Object.values(obj)
+      .map(normalizeTextItem)
+      .filter(Boolean)
+      .join(", ");
+    return fallback || JSON.stringify(item);
+  }
+  return String(item);
+}
+
+function dedupeStrings(items: string[]): string[] {
+  return Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+}
+
+function normalizeList(v: unknown): string[] {
+  if (v === undefined || v === null) return [];
+  if (Array.isArray(v)) return dedupeStrings(v.map(normalizeTextItem).filter(Boolean));
+  if (typeof v === "string") {
+    const hasComma = v.includes(",");
+    const hasNewline = v.includes("\n");
+    const values = hasComma
+      ? v.split(",")
+      : hasNewline
+      ? v.split(/\r?\n/)
+      : [v];
+    return dedupeStrings(values.map((s) => s.trim()).filter(Boolean));
+  }
+  if (typeof v === "object") {
+    return dedupeStrings(normalizeTextItem(v).split(",").map((s) => s.trim()).filter(Boolean));
+  }
+  return [String(v)];
+}
+
+function normalizeMeals(raw: unknown): string[] {
+  const canonicalizeMeal = (text: string): string => {
+    const cleaned = normalizeTextItem(text).replace(/\s+/g, " ").trim();
+    const mealTypes = ["breakfast", "lunch", "dinner", "snack"];
+    const found = mealTypes.find((type) => new RegExp(`\\b${type}\\b`, "i").test(cleaned));
+    if (found) return found.charAt(0).toUpperCase() + found.slice(1);
+    return cleaned;
+  };
+
+  if (raw === undefined || raw === null) return [];
+  if (Array.isArray(raw)) return dedupeStrings(raw.map((item) => canonicalizeMeal(normalizeTextItem(item))).filter(Boolean));
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>;
+    const entries = Object.entries(obj)
+      .filter(([, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => {
+        const mealLabel = String(key).replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
+        if (typeof value === "boolean") return value ? mealLabel : "";
+        if (typeof value === "object") {
+          const mealObj = value as Record<string, unknown>;
+          if (mealObj.included === false) return "";
+          return mealLabel;
+        }
+        const text = normalizeTextItem(value);
+        return text ? canonicalizeMeal(text) : mealLabel;
+      })
+      .filter(Boolean);
+    return dedupeStrings(entries);
+  }
+  return normalizeList(raw);
+}
+
+function normalizeDiningStops(raw: unknown): string[] {
+  if (raw === undefined || raw === null) return [];
+  if (Array.isArray(raw)) {
+    return dedupeStrings(
+      raw
+        .map((item) => {
+          if (typeof item === "string") return item.trim();
+          if (typeof item === "object" && item !== null) {
+            const obj = item as Record<string, unknown>;
+            const diningPoint = obj.diningPoint as Record<string, unknown> | undefined;
+            const venue = obj.venueName || diningPoint?.name || diningPoint?.title;
+            const notes = obj.notes ? String(obj.notes).trim() : undefined;
+            const output = [venue, notes].filter(Boolean).join(" • ");
+            return output || normalizeTextItem(item);
+          }
+          return String(item).trim();
+        })
+        .filter(Boolean)
+    );
+  }
+  return dedupeStrings(normalizeTextItem(raw).split(",").map((s) => s.trim()).filter(Boolean));
+}
+
 export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
-  const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
-  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [selectedAttraction, setSelectedAttraction] = useState<AttractionActivityData | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<AttractionActivityData | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [activitiesMap, setActivitiesMap] = useState<Map<string, any>>(new Map());
+  const [activitiesMap, setActivitiesMap] = useState<Map<string, AttractionActivityData>>(new Map());
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
 
   const handleAttractionClick = async (name: string) => {
@@ -124,7 +223,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       const response = await fetch(`/api/attractions?limit=100`);
       const attractions = await response.json();
       const found = attractions.find(
-        (a: any) => a.name.toLowerCase() === name.toLowerCase()
+        (a: AttractionActivityData) => String(a.name || "").toLowerCase() === name.toLowerCase()
       );
       if (found) {
         setSelectedAttraction(found);
@@ -154,7 +253,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           return;
         }
         const found = activities.find(
-          (a: any) => a?.name?.toLowerCase() === name.toLowerCase()
+          (a: AttractionActivityData) => String(a?.name || "").toLowerCase() === name.toLowerCase()
         );
         if (found) {
           setSelectedActivity(found);
@@ -193,9 +292,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           return;
         }
         const map = new Map();
-        activities.forEach((activity: any) => {
+        activities.forEach((activity: AttractionActivityData) => {
           if (activity?.name) {
-            map.set(activity.name.toLowerCase(), activity);
+            map.set(String(activity.name).toLowerCase(), activity);
           }
         });
         setActivitiesMap(map);
@@ -205,102 +304,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     };
     fetchActivities();
   }, []);
-
-  const normalizeTextItem = (item: unknown): string => {
-    if (item === undefined || item === null) return "";
-    if (typeof item === "string") return item.trim();
-    if (typeof item === "number") return String(item);
-    if (typeof item === "boolean") return item ? "Yes" : "No";
-    if (Array.isArray(item)) return item.map(normalizeTextItem).filter(Boolean).join(", ");
-    if (typeof item === "object") {
-      const obj = item as Record<string, unknown>;
-      const diningPoint = obj.diningPoint as Record<string, unknown> | undefined;
-      const primaryText = normalizeTextItem(obj.name ?? obj.title ?? obj.venueName ?? obj.notes ?? diningPoint?.name ?? diningPoint?.title);
-      if (primaryText) return primaryText;
-      const fallback = Object.values(obj)
-        .map(normalizeTextItem)
-        .filter(Boolean)
-        .join(", ");
-      return fallback || JSON.stringify(item);
-    }
-    return String(item);
-  };
-
-  const dedupeStrings = (items: string[]) => Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
-
-  const normalizeList = (v: unknown): string[] => {
-    if (v === undefined || v === null) return [];
-    if (Array.isArray(v)) return dedupeStrings(v.map(normalizeTextItem).filter(Boolean));
-    if (typeof v === "string") {
-      const hasComma = v.includes(",");
-      const hasNewline = v.includes("\n");
-      const values = hasComma
-        ? v.split(",")
-        : hasNewline
-          ? v.split(/\r?\n/)
-          : [v];
-      return dedupeStrings(values.map((s) => s.trim()).filter(Boolean));
-    }
-    if (typeof v === "object") {
-      return dedupeStrings(normalizeTextItem(v).split(",").map((s) => s.trim()).filter(Boolean));
-    }
-    return [String(v)];
-  };
-
-  const normalizeMeals = (raw: unknown): string[] => {
-    const canonicalizeMeal = (text: string): string => {
-      const cleaned = normalizeTextItem(text).replace(/\s+/g, " ").trim();
-      const mealTypes = ["breakfast", "lunch", "dinner", "snack"];
-      const found = mealTypes.find((type) => new RegExp(`\\b${type}\\b`, "i").test(cleaned));
-      if (found) return found.charAt(0).toUpperCase() + found.slice(1);
-      return cleaned;
-    };
-
-    if (raw === undefined || raw === null) return [];
-    if (Array.isArray(raw)) return dedupeStrings(raw.map((item) => canonicalizeMeal(normalizeTextItem(item))).filter(Boolean));
-    if (typeof raw === "object") {
-      const obj = raw as Record<string, unknown>;
-      const entries = Object.entries(obj)
-        .filter(([, value]) => value !== undefined && value !== null)
-        .map(([key, value]) => {
-          const mealLabel = String(key).replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
-          if (typeof value === "boolean") return value ? mealLabel : "";
-          if (typeof value === "object") {
-            const mealObj = value as Record<string, unknown>;
-            if (mealObj.included === false) return "";
-            return mealLabel;
-          }
-          const text = normalizeTextItem(value);
-          return text ? canonicalizeMeal(text) : mealLabel;
-        })
-        .filter(Boolean);
-      return dedupeStrings(entries);
-    }
-    return normalizeList(raw);
-  };
-
-  const normalizeDiningStops = (raw: unknown): string[] => {
-    if (raw === undefined || raw === null) return [];
-    if (Array.isArray(raw)) {
-      return dedupeStrings(
-        raw
-          .map((item) => {
-            if (typeof item === "string") return item.trim();
-            if (typeof item === "object" && item !== null) {
-              const obj = item as Record<string, unknown>;
-              const diningPoint = obj.diningPoint as Record<string, unknown> | undefined;
-              const venue = obj.venueName || diningPoint?.name || diningPoint?.title;
-              const notes = obj.notes ? String(obj.notes).trim() : undefined;
-              const output = [venue, notes].filter(Boolean).join(" • ");
-              return output || normalizeTextItem(item);
-            }
-            return String(item).trim();
-          })
-          .filter(Boolean)
-      );
-    }
-    return dedupeStrings(normalizeTextItem(raw).split(",").map((s) => s.trim()).filter(Boolean));
-  };
 
   const normalizedItinerary = useMemo<PackageItineraryDay[]>(() => {
     const normalizeDay = (d: Record<string, unknown>): PackageItineraryDay => {
@@ -332,8 +335,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     });
   }, [parsedItinerary]);
 
-  const activeDayIndex = normalizedItinerary.length ? Math.min(selectedDayIndex, normalizedItinerary.length - 1) : 0;
-
   const faqs = useMemo<PackageFaq[]>(() => {
     try {
       const data =
@@ -358,13 +359,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const originalPrice = Number(packageData.originalPrice || pricePerPerson);
   const savings = Math.max(0, originalPrice - pricePerPerson);
   const packageHighlights = packageData.highlights || [];
-  const packageTags = packageData.tags || [];
   const packageThemes = Array.isArray(packageData.themes)
     ? packageData.themes
-      .map((theme) => (typeof theme === "string" ? theme : String((theme as any).name || (theme as any).label || (theme as any).slug || "")))
+      .map((theme) => (typeof theme === "string" ? theme : normalizeTextItem(theme)))
       .filter(Boolean)
     : [];
-  const inclusionIcons = packageData.inclusionIcons || [];
   const packageInclusions = packageData.inclusions || [];
   const packageExclusions = packageData.exclusions || [];
   const packageHotels = packageData.hotels || [];
@@ -375,20 +374,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const heroBadges = Array.from(new Set(packageThemes)).filter(Boolean) as string[];
 
   // Build package detail rows only when CMS data is actually available (no wrong fallback values)
-  const packageDetailRows = [
-    packageData.pickupPoint ? { label: "Pickup", value: packageData.pickupPoint } : null,
-    packageData.mealsIncluded ? { label: "Meals", value: packageData.mealsIncluded } : null,
-    packageData.transportMode ? { label: "Transport", value: packageData.transportMode } : null,
-    packageData.hotelCategory ? { label: "Hotel", value: packageData.hotelCategory } : null,
-    packageData.packageType ? { label: "Package Type", value: packageData.packageType } : null,
-    packageData.tourType ? { label: "Tour Type", value: packageData.tourType } : null,
-  ].filter(Boolean) as { label: string; value: string }[];
-
   const ratingLabel = packageData.rating !== undefined ? packageData.rating.toFixed(1) : "4.5";
-  const summaryBadges = [packageData.tourType, packageData.packageType, packageData.groupSize]
-    .filter(Boolean)
-    .map((value) => String(value));
-
   const guestCount = Number(String(packageData.groupSize || "").match(/\d+/)?.[0]) || 2;
   const guestCountLabel = packageData.groupSize
     ? `${String(packageData.groupSize)} Guests`
@@ -426,20 +412,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     : [];
 
   // Normalize cities array for the daywise locations strip
-  const cityList: string[] = useMemo(() => {
-    const c = packageData.cities;
-    if (!c) {
-      if (packageData.destinationName) return [packageData.destinationName];
-      return [];
-    }
-    if (Array.isArray(c)) return c.map(String).filter(Boolean);
-    if (typeof c === "string") {
-      // split on common separators
-      return c.split(/--->|->|,|\||\\/).map((s) => s.trim()).filter(Boolean);
-    }
-    return [];
-  }, [packageData.cities, packageData.destinationName]);
-
   useEffect(() => {
     const handleScroll = () => setShowStickyBar(window.scrollY > 400);
     window.addEventListener("scroll", handleScroll);
@@ -707,7 +679,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     const uniqueActivities = activities.filter((activity) => !attractions.some((attr) => attr.toLowerCase() === activity.toLowerCase()));
                     const mealItems = normalizeMeals(day.meals);
                     const enrouteStops = normalizeDiningStops(day.enrouteDiningStops || day.diningStops);
-                    const dayHeader = day.title || day.location || `Day ${idx + 1}`;
                     const showSightseeing = Boolean(day.sightseeing || uniqueActivities.length > 0 || attractions.length > 0);
                     const formattedAccommodation = day.accommodation
                       ? `${day.accommodation}${/or similar$/i.test(day.accommodation) ? "" : " or similar"}`
@@ -1170,6 +1141,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {activeLightboxIndex + 1} / {galleryImages.length}
             </span>
             <button
+              aria-label="Close gallery"
               onClick={() => setActiveLightboxIndex(null)}
               className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all active:scale-95 cursor-pointer"
             >
@@ -1183,6 +1155,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden">
             {/* Left Button */}
             <button
+              aria-label="Previous image"
               onClick={() => setActiveLightboxIndex((prev) => (prev !== null ? (prev - 1 + galleryImages.length) % galleryImages.length : 0))}
               className="absolute left-2 md:left-4 z-[120] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
             >
@@ -1204,6 +1177,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
             {/* Right Button */}
             <button
+              aria-label="Next image"
               onClick={() => setActiveLightboxIndex((prev) => (prev !== null ? (prev + 1) % galleryImages.length : 0))}
               className="absolute right-2 md:right-4 z-[120] w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer"
             >
@@ -1218,6 +1192,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             {galleryImages.map((img, idx) => (
               <button
                 key={idx}
+                aria-label={`View image ${idx + 1}`}
                 onClick={() => setActiveLightboxIndex(idx)}
                 className={cn(
                   "relative w-16 h-12 md:w-20 md:h-14 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer",
@@ -1226,7 +1201,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               >
                 <Image
                   src={validateImageUrl(img)}
-                  alt="thumbnail"
+                  alt={`Thumbnail ${idx + 1}`}
                   fill
                   className="object-cover"
                 />

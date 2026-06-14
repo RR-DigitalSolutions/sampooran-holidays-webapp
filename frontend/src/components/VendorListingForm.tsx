@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, Upload, Save, Building2, Car, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,14 +28,123 @@ export default function VendorListingForm({ item, type, onClose, onSuccess }: Li
     type: item?.type || (type === 'HOTEL' ? 'Boutique Hotel' : 'SUV'),
     images: item?.images || [],
     amenities: item?.amenities || [],
+    countryId: item?.countryId || "",
+    stateId: item?.stateId || "",
+    destinationId: item?.destinationId || "",
   });
 
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [customCity, setCustomCity] = useState(item?.customCity || "");
+  const [useCustomCity, setUseCustomCity] = useState(!!item?.customCity);
+
+  // Load countries on mount
+  useEffect(() => {
+    if (type !== 'HOTEL') return;
+    fetch(`${API_BASE}/destinations/countries`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCountries(Array.isArray(data) ? data : (data.countries || [])))
+      .catch(() => {});
+  }, [type]);
+
+  // Load states when countryId changes
+  useEffect(() => {
+    if (type !== 'HOTEL' || !formData.countryId) { setStates([]); setCities([]); return; }
+    fetch(`${API_BASE}/destinations/states?countryId=${formData.countryId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setStates(Array.isArray(data) ? data : (data.states || [])))
+      .catch(() => {});
+  }, [formData.countryId, type]);
+
+  // Load cities when stateId changes
+  useEffect(() => {
+    if (type !== 'HOTEL' || !formData.stateId) { setCities([]); return; }
+    fetch(`${API_BASE}/destinations?stateId=${formData.stateId}&limit=200`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCities(Array.isArray(data) ? data : (data.destinations || [])))
+      .catch(() => {});
+  }, [formData.stateId, type]);
+
+  const handleCountryChange = (val: string) => {
+    setFormData(prev => ({
+      ...prev,
+      countryId: val ? Number(val) : "",
+      stateId: "",
+      destinationId: "",
+    }));
+    setStates([]);
+    setCities([]);
+  };
+
+  const handleStateChange = (val: string) => {
+    setFormData(prev => ({
+      ...prev,
+      stateId: val ? Number(val) : "",
+      destinationId: "",
+    }));
+    setCities([]);
+  };
+
+  const handleCityChange = (val: string) => {
+    if (val === "__custom__") {
+      setUseCustomCity(true);
+      setFormData(prev => ({ ...prev, destinationId: "" }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        destinationId: val ? Number(val) : "",
+      }));
+    }
+  };
+
   const handleSave = async () => {
+    if (type === 'HOTEL') {
+      if (!formData.countryId) {
+        toast.error("Please select a Country");
+        return;
+      }
+      if (!formData.stateId) {
+        toast.error("Please select a State / Region");
+        return;
+      }
+      if (!useCustomCity && !formData.destinationId) {
+        toast.error("Please select a City / Place");
+        return;
+      }
+      if (useCustomCity && !customCity.trim()) {
+        toast.error("Please enter your custom city name");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const endpoint = type === 'HOTEL' ? '/api/vendor/hotels' : '/api/vendor/transport';
       const method = item?.id ? 'PATCH' : 'POST';
       const url = item?.id ? `${API_BASE}${endpoint}/${item.id}` : `${API_BASE}${endpoint}`;
+
+      const payload: any = {
+        ...formData,
+      };
+
+      if (type === 'HOTEL') {
+        payload.countryId = formData.countryId ? Number(formData.countryId) : null;
+        payload.stateId = formData.stateId ? Number(formData.stateId) : null;
+        payload.destinationId = useCustomCity ? null : (formData.destinationId ? Number(formData.destinationId) : null);
+        payload.customCity = useCustomCity && customCity.trim() ? customCity.trim() : null;
+        
+        if (useCustomCity) {
+          payload.city = customCity.trim();
+          const selectedStateObj = states.find(s => s.id === Number(formData.stateId));
+          const selectedCountryObj = countries.find(c => c.id === Number(formData.countryId));
+          payload.customStateName = selectedStateObj ? selectedStateObj.name : null;
+          payload.customCountryName = selectedCountryObj ? selectedCountryObj.name : null;
+        } else {
+          const selectedCityObj = cities.find(c => c.id === Number(formData.destinationId));
+          payload.city = selectedCityObj ? selectedCityObj.name : "";
+        }
+      }
 
       const res = await fetch(url, {
         method,
@@ -43,10 +152,7 @@ export default function VendorListingForm({ item, type, onClose, onSuccess }: Li
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          // If it's a new transport, it has slightly different fields in schema (ownerId is handled by backend)
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!res.ok) throw new Error("Failed to save listing");
@@ -72,7 +178,7 @@ export default function VendorListingForm({ item, type, onClose, onSuccess }: Li
 
     toast.loading("Uploading image...", { id: "upload" });
     try {
-      const res = await fetch(`${API_BASE}/api/media/upload?folder=${folder}`, {
+      const res = await fetch(`${API_BASE}/media/upload?folder=${folder}`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: uploadData
@@ -144,6 +250,83 @@ export default function VendorListingForm({ item, type, onClose, onSuccess }: Li
                   className="rounded-xl border-primary/10 min-h-[120px]"
                 />
               </div>
+
+              {type === 'HOTEL' && (
+                <div className="space-y-4 p-4 bg-muted/40 rounded-2xl border border-primary/5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Country Selection */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground block">Country *</label>
+                      <select
+                        value={formData.countryId || ""}
+                        onChange={e => handleCountryChange(e.target.value)}
+                        className="w-full border border-primary/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors bg-background h-12"
+                      >
+                        <option value="">-- Select Country --</option>
+                        {countries.map((c: any) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* State Selection */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground block">State / Region *</label>
+                      <select
+                        value={formData.stateId || ""}
+                        onChange={e => handleStateChange(e.target.value)}
+                        disabled={!formData.countryId || states.length === 0}
+                        className="w-full border border-primary/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors bg-background disabled:opacity-50 h-12 text-ellipsis overflow-hidden"
+                      >
+                        <option value="">
+                          {!formData.countryId ? "Select country first" : states.length === 0 ? "Loading states..." : "-- Select State --"}
+                        </option>
+                        {states.map((s: any) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* City Selection */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground block">City / Place *</label>
+                      {!useCustomCity ? (
+                        <select
+                          value={formData.destinationId || ""}
+                          onChange={e => handleCityChange(e.target.value)}
+                          disabled={!formData.stateId || cities.length === 0}
+                          className="w-full border border-primary/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors bg-background disabled:opacity-50 h-12 text-ellipsis overflow-hidden"
+                        >
+                          <option value="">
+                            {!formData.stateId ? "Select state first" : cities.length === 0 ? "Loading cities..." : "-- Select City --"}
+                          </option>
+                          {cities.map((c: any) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                          <option value="__custom__">✏️ City not listed</option>
+                        </select>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Input
+                            value={customCity}
+                            onChange={e => setCustomCity(e.target.value)}
+                            placeholder="Enter city name"
+                            className="flex-1 rounded-xl border-amber-300 h-12"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => { setUseCustomCity(false); setCustomCity(""); setFormData(prev => ({ ...prev, destinationId: "" })); }}
+                            className="h-12 rounded-xl text-xs px-2 shrink-0 border-amber-300 text-amber-700 hover:bg-amber-50"
+                          >
+                            Existing
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Location Address</label>

@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} ${raleway.variable} h-full antialiased`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`${poppins.variable} ${raleway.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col pt-0 font-sans">
         <Providers>
           <Layout>

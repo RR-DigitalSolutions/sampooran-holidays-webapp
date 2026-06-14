@@ -6,38 +6,42 @@ import {
   Building2, Bed, Calendar, BookOpen, Star, MapPin, Plus, Trash2, Edit2,
   Save, X, Check, AlertTriangle, Clock, ArrowLeft, Eye, Settings,
   Image as ImageIcon, Plane, BarChart3, Wallet, User, LogOut, ChevronRight, ChevronLeft,
-  Wifi, Car, Utensils, Waves, Dumbbell, Coffee, Flame, Umbrella, Tv,
-  DollarSign, Users, CheckCircle, XCircle, MessageSquare, RefreshCw
+  DollarSign, Users, CheckCircle, XCircle, MessageSquare, RefreshCw, Utensils
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 import { cn } from "@/lib/utils";
-
 import { getApiUrl } from "@/lib/api-url";
+import { AmenitiesSelector } from "@/components/AmenitiesSelector";
 
 const API_BASE = getApiUrl();
 
-const AMENITY_OPTIONS = [
-  { key: "WIFI", label: "Wi-Fi", icon: Wifi },
-  { key: "POOL", label: "Pool", icon: Waves },
-  { key: "RESTAURANT", label: "Restaurant", icon: Utensils },
-  { key: "PARKING", label: "Parking", icon: Car },
-  { key: "GYM", label: "Gym", icon: Dumbbell },
-  { key: "SPA", label: "Spa", icon: Flame },
-  { key: "CAFE", label: "Café", icon: Coffee },
-  { key: "TV", label: "TV", icon: Tv },
-];
 const BED_TYPES = ["Single", "Twin", "Double", "King", "Queen", "Bunk", "Sofa"];
 const ROOM_TYPES = ["Standard", "Deluxe", "Super Deluxe", "Suite", "Dormitory", "Cottage", "Tent", "Villa"];
-const MEAL_PLANS = ["EP", "CP", "MAP", "AP"];
-const MEAL_LABELS: Record<string, string> = { EP: "Room Only", CP: "With Breakfast", MAP: "Half Board", AP: "All Inclusive" };
+const MEAL_PLANS = ["CP", "MAP", "AP"];
+const MEAL_LABELS: Record<string, string> = { CP: "With Breakfast", MAP: "Half Board (Breakfast+Dinner)", AP: "All Inclusive" };
+const MEAL_EMOJIS: Record<string, string> = { CP: "☕", MAP: "🍽️", AP: "⭐" };
+const DEFAULT_MEAL_OPTIONS = [
+  { code: "CP", label: "With Breakfast", adultPrice: 500, childPrice: 250, enabled: false },
+  { code: "MAP", label: "Half Board (Breakfast+Dinner)", adultPrice: 1000, childPrice: 500, enabled: false },
+  { code: "AP", label: "All Inclusive", adultPrice: 2000, childPrice: 1000, enabled: false },
+];
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const RATE_MODES = [
+  { key: "session", label: "Session Rates (Peak)", icon: "☀️", color: "border-amber-200 hover:border-amber-300 text-amber-700 bg-amber-50/50 hover:bg-amber-50", activeColor: "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20" },
+  { key: "off_session", label: "Off Session (Low)", icon: "❄️", color: "border-sky-200 hover:border-sky-300 text-sky-700 bg-sky-50/50 hover:bg-sky-50", activeColor: "bg-sky-500 text-white border-sky-500 shadow-md shadow-sky-500/20" },
+  { key: "mid_session", label: "Mid Session", icon: "🍂", color: "border-emerald-200 hover:border-emerald-300 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50", activeColor: "bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20" },
+  { key: "blackout", label: "Festival / Blackout", icon: "🎆", color: "border-indigo-200 hover:border-indigo-300 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50", activeColor: "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20" },
+  { key: "stop_sales", label: "Stop Sales", icon: "🚫", color: "border-rose-200 hover:border-rose-300 text-rose-700 bg-rose-50/50 hover:bg-rose-50", activeColor: "bg-rose-500 text-white border-rose-500 shadow-md shadow-rose-500/20" },
+];
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string; icon: any }> = {
-  APPROVED:         { label: "Live",         color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle },
-  PENDING_APPROVAL: { label: "Under Review", color: "text-amber-700",  bg: "bg-amber-50 border-amber-200",   icon: Clock },
-  PENDING:          { label: "Under Review", color: "text-amber-700",  bg: "bg-amber-50 border-amber-200",   icon: Clock },
-  REJECTED:         { label: "Rejected",     color: "text-red-700",    bg: "bg-red-50 border-red-200",       icon: AlertTriangle },
-  SUSPENDED:        { label: "Suspended",    color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: AlertTriangle },
-  DRAFT:            { label: "Draft",        color: "text-gray-500",   bg: "bg-gray-50 border-gray-200",     icon: Settings },
+  APPROVED: { label: "Live", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle },
+  PENDING_APPROVAL: { label: "Under Review", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
+  PENDING: { label: "Under Review", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: Clock },
+  REJECTED: { label: "Rejected", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: AlertTriangle },
+  SUSPENDED: { label: "Suspended", color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: AlertTriangle },
+  DRAFT: { label: "Draft", color: "text-gray-500", bg: "bg-gray-50 border-gray-200", icon: Settings },
 };
 
 function VendorSidebar({ active }: { active: string }) {
@@ -180,20 +184,66 @@ const compressAndUploadFile = async (file: File, hotelId: number, token: string 
   return uploadData.url;
 };
 
+// ─── Accordion Section ───────────────────────────────────────────────────────
+function AccordionSection({ title, icon, defaultOpen = false, children, accentColor = "text-[#1B3A6B]" }: {
+  title: string; icon: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode; accentColor?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-gray-100 rounded-2xl overflow-hidden">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50/70 hover:bg-gray-100/60 transition-colors">
+        <span className={cn("flex items-center gap-2 text-xs font-bold uppercase tracking-wide", accentColor)}>
+          {icon} {title}
+        </span>
+        <span className={cn("text-gray-400 transition-transform duration-200 text-[10px]", open ? "rotate-180" : "")}>▼</span>
+      </button>
+      {open && <div className="p-4 space-y-3 bg-white">{children}</div>}
+    </div>
+  );
+}
+
 // ─── Room Form ───────────────────────────────────────────────────────────────
 function RoomForm({ room, hotelId, token, onSave, onCancel }: {
   room?: any; hotelId: number; token: string | null; onSave: (data: any) => void; onCancel: () => void;
 }) {
+  // ── Build initial meal plan options from existing or defaults ───────────────
+  const buildInitialMealOptions = () => {
+    const existing = room?.mealPlanOptions || [];
+    return DEFAULT_MEAL_OPTIONS.map(o => {
+      const found = existing.find((x: any) => x.code === o.code);
+      if (o.code === "EP") {
+        return { ...o, enabled: true, adultPrice: 0, childPrice: 0 };
+      }
+      return found ? { ...found } : { ...o };
+    });
+  };
+
   const [form, setForm] = useState({
     name: room?.name || "",
     type: room?.type || "Standard",
     bedType: room?.bedType || "Double",
     basePrice: room?.basePrice || "",
+    // Occupancy
+    baseAdults: room?.baseAdults ?? 2,
+    baseChildren: room?.baseChildren ?? 0,
+    maxAdults: room?.maxAdults ?? 3,
+    maxChildren: room?.maxChildren ?? 2,
+    maxOccupancy: room?.maxOccupancy || 4,
+    // Extra Person Charges
     extraAdultPrice: room?.extraAdultPrice || "",
-    extraChildPrice: room?.extraChildPrice || "",
-    maxOccupancy: room?.maxOccupancy || 2,
+    extraChildWithBedPrice: room?.extraChildWithBedPrice || "",
+    extraChildWithoutBedPrice: room?.extraChildWithoutBedPrice || "",
+    extraChildPrice: room?.extraChildPrice || "", // legacy
+    // Weekend Pricing
+    weekendPrice: room?.weekendPrice || "",
+    weekendDays: Array.isArray(room?.weekendDays) && room.weekendDays.length > 0
+      ? room.weekendDays : ["Friday", "Saturday"],
+    // Inventory
     totalRooms: room?.totalRooms || 1,
-    mealPlan: room?.mealPlan || "CP",
+    // Default Meal Plan
+    mealPlan: room?.mealPlan || "EP",
+    // Room Details
     sizeSqft: room?.sizeSqft || "",
     description: room?.description || "",
     discountType: room?.discountType || "PERCENT",
@@ -207,6 +257,9 @@ function RoomForm({ room, hotelId, token, onSave, onCancel }: {
     highlights: room?.highlights || [],
     facilities: room?.facilities || [],
   });
+
+  const [mealPlanOptions, setMealPlanOptions] = useState<any[]>(buildInitialMealOptions);
+
   const [cancellationVal, setCancellationVal] = useState(() => {
     const hrs = room?.cancellationHours ?? 24;
     if (hrs % 168 === 0) return hrs / 168;
@@ -223,278 +276,350 @@ function RoomForm({ room, hotelId, token, onSave, onCancel }: {
 
   const u = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
+  const toggleWeekendDay = (day: string) => {
+    setForm(f => ({
+      ...f,
+      weekendDays: f.weekendDays.includes(day)
+        ? f.weekendDays.filter((d: string) => d !== day)
+        : [...f.weekendDays, day],
+    }));
+  };
+
+  const updateMealOption = (code: string, key: string, value: any) => {
+    setMealPlanOptions(prev => prev.map(o => o.code === code ? { ...o, [key]: value } : o));
+  };
+
   return (
-    <div className="bg-white border border-[#1B3A6B]/20 rounded-2xl p-5 space-y-4">
-      <h3 className="font-bold text-gray-900 text-sm">{room ? "Edit Room" : "Add New Room Type"}</h3>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Name</label>
-          <input value={form.name} onChange={e => u("name", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-            placeholder="e.g. Deluxe Mountain View Room" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Type</label>
-          <select aria-label="Room Type" title="Room Type" value={form.type} onChange={e => u("type", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
-            {ROOM_TYPES.map(t => <option key={t}>{t}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bed Type</label>
-          <select aria-label="Bed Type" title="Bed Type" value={form.bedType} onChange={e => u("bedType", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
-            {BED_TYPES.map(t => <option key={t}>{t}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Base Price (₹/night)</label>
-          <input type="number" value={form.basePrice} onChange={e => u("basePrice", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-            placeholder="3500" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Extra Adult (₹/night)</label>
-          <input type="number" value={form.extraAdultPrice} onChange={e => u("extraAdultPrice", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-            placeholder="1000" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Extra Child (₹/night)</label>
-          <input type="number" value={form.extraChildPrice} onChange={e => u("extraChildPrice", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-            placeholder="500" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount Type</label>
-          <select value={form.discountType} onChange={e => u("discountType", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
-            <option value="PERCENT">Percentage (%)</option>
-            <option value="FLAT">Flat Amount (₹)</option>
-          </select>
-        </div>
-        {form.discountType === "PERCENT" ? (
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Default Discount (%)</label>
-            <input type="number" min="0" max="100" value={form.discountPercent} onChange={e => { u("discountPercent", Number(e.target.value)); u("discountFlat", 0); }}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-              placeholder="10" />
-          </div>
-        ) : (
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Default Flat Discount (₹)</label>
-            <input type="number" min="0" value={form.discountFlat} onChange={e => { u("discountFlat", Number(e.target.value)); u("discountPercent", 0); }}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-              placeholder="500" />
-          </div>
-        )}
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Max Occupancy</label>
-          <input aria-label="Max Occupancy" title="Max Occupancy" placeholder="Max Occupancy" type="number" min="1" max="20" value={form.maxOccupancy} onChange={e => u("maxOccupancy", Number(e.target.value))}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Number of Rooms</label>
-          <input aria-label="Number of Rooms" title="Number of Rooms" placeholder="Number of Rooms" type="number" min="1" value={form.totalRooms} onChange={e => u("totalRooms", Number(e.target.value))}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Meal Plan</label>
-          <select value={form.mealPlan} onChange={e => u("mealPlan", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
-            {MEAL_PLANS.map(m => <option key={m} value={m}>{MEAL_LABELS[m]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Size (sq.ft)</label>
-          <input type="number" value={form.sizeSqft} onChange={e => u("sizeSqft", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-            placeholder="250" />
-        </div>
-      </div>
-      <div>
-        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Description</label>
-        <textarea value={form.description} onChange={e => u("description", e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] resize-none"
-          rows={2} placeholder="Describe the room..." />
-      </div>
-      
-      {/* 🗺️ New Fields: View Type, Highlights, Facilities, Amenities */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">View Type</label>
-          <input value={form.viewType} onChange={e => u("viewType", e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-            placeholder="e.g. Mountain View, Pool View, Garden View" />
-        </div>
-        
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Highlight</label>
-          <div className="flex gap-2">
-            <input id="new-room-highlight" placeholder="e.g. King-size bed" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-            <button type="button" onClick={() => {
-              const el = document.getElementById("new-room-highlight") as HTMLInputElement;
-              if (el && el.value.trim()) {
-                u("highlights", [...form.highlights, el.value.trim()]);
-                el.value = "";
-              }
-            }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
-          </div>
-        </div>
-
-        <div className="col-span-2">
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Highlights</label>
-          <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-50 border border-gray-150 rounded-xl">
-            {form.highlights.length === 0 ? (
-              <span className="text-xs text-gray-400 italic">No highlights added. Add highlights above.</span>
-            ) : (
-              form.highlights.map((h: string, idx: number) => (
-                <span key={idx} className="bg-amber-50 text-amber-800 border border-amber-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
-                  {h}
-                  <button type="button" onClick={() => u("highlights", form.highlights.filter((_: any, i: number) => i !== idx))} className="text-amber-500 hover:text-amber-700 font-bold">&times;</button>
-                </span>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Facility</label>
-          <div className="flex gap-2">
-            <input id="new-room-facility" placeholder="e.g. Mini Bar" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-            <button type="button" onClick={() => {
-              const el = document.getElementById("new-room-facility") as HTMLInputElement;
-              if (el && el.value.trim()) {
-                u("facilities", [...form.facilities, el.value.trim()]);
-                el.value = "";
-              }
-            }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Amenity</label>
-          <div className="flex gap-2">
-            <input id="new-room-amenity" placeholder="e.g. Wi-Fi" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-            <button type="button" onClick={() => {
-              const el = document.getElementById("new-room-amenity") as HTMLInputElement;
-              if (el && el.value.trim()) {
-                u("amenities", [...form.amenities, el.value.trim()]);
-                el.value = "";
-              }
-            }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
-          </div>
-        </div>
-
-        <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Facilities</label>
-            <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-50 border border-gray-150 rounded-xl">
-              {form.facilities.length === 0 ? (
-                <span className="text-xs text-gray-400 italic">No facilities added.</span>
-              ) : (
-                form.facilities.map((f: string, idx: number) => (
-                  <span key={idx} className="bg-sky-50 text-sky-800 border border-sky-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
-                    {f}
-                    <button type="button" onClick={() => u("facilities", form.facilities.filter((_: any, i: number) => i !== idx))} className="text-sky-500 hover:text-sky-700 font-bold">&times;</button>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Current Amenities</label>
-            <div className="flex flex-wrap gap-1.5 min-h-[30px] p-2 bg-slate-50 border border-gray-150 rounded-xl">
-              {form.amenities.length === 0 ? (
-                <span className="text-xs text-gray-400 italic">No amenities added.</span>
-              ) : (
-                form.amenities.map((a: string, idx: number) => (
-                  <span key={idx} className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
-                    {a}
-                    <button type="button" onClick={() => u("amenities", form.amenities.filter((_: any, i: number) => i !== idx))} className="text-emerald-500 hover:text-emerald-700 font-bold">&times;</button>
-                  </span>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+    <div className="bg-white border border-[#1B3A6B]/20 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#1B3A6B] to-[#0f2548] px-5 py-3.5 flex items-center justify-between">
+        <h3 className="font-bold text-white text-sm flex items-center gap-2">
+          <Bed className="w-4 h-4 text-[#F5A623]" />
+          {room ? `Edit: ${room.name}` : "Add New Room Type"}
+        </h3>
+        <button onClick={onCancel} className="text-white/50 hover:text-white transition-colors">
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
-      <div>
-        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Images (Max 5)</label>
-        <div className="flex flex-wrap gap-3 mt-1 mb-2">
-          {form.images.map((img: string, idx: number) => (
-            <div key={idx} className="relative w-24 h-16 rounded-xl overflow-hidden border border-gray-200 group">
-              <img src={img} alt="Room preview" className="w-full h-full object-cover" />
-              <button type="button" onClick={() => u("images", form.images.filter((_: any, i: number) => i !== idx))}
-                className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-md transition-colors">
-                <X className="w-2.5 h-2.5" />
-              </button>
+      <div className="p-4 space-y-3">
+        {/* ── Core Identity (always visible) ─────────────────────── */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Name *</label>
+            <input value={form.name} onChange={e => u("name", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] font-medium"
+              placeholder="e.g. Deluxe Mountain View Room" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Type</label>
+            <select aria-label="Room Type" title="Room Type" value={form.type} onChange={e => u("type", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
+              {ROOM_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Bed Type</label>
+            <select aria-label="Bed Type" title="Bed Type" value={form.bedType} onChange={e => u("bedType", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
+              {BED_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Total Rooms (Inventory)</label>
+            <input type="number" min="1" value={form.totalRooms} onChange={e => u("totalRooms", Number(e.target.value))}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Base Price (₹/night) *</label>
+            <input type="number" value={form.basePrice} onChange={e => u("basePrice", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] font-medium"
+              placeholder="3500" />
+          </div>
+        </div>
+
+        {/* ── Occupancy ──────────────────────────────────────────── */}
+        <AccordionSection title="Occupancy Configuration" icon={<Users className="w-3.5 h-3.5" />} accentColor="text-blue-700" defaultOpen={!!room}>
+          <div className="bg-blue-50/60 border border-blue-100 rounded-xl px-3 py-2 mb-3 text-[10px] text-blue-700 font-medium leading-relaxed">
+            <strong>How it works:</strong> Base price covers <strong>{form.baseAdults} adult{form.baseAdults !== 1 ? "s" : ""}</strong> + <strong>{form.baseChildren} child{form.baseChildren !== 1 ? "ren" : ""}</strong>.
+            Max room capacity = <strong>{Number(form.maxAdults) + Number(form.maxChildren)} persons</strong> ({form.maxAdults} adults + {form.maxChildren} children).
+            Extra charges apply beyond the base count.
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Adults Included in Base Price</label>
+              <input type="number" min="1" max="10" value={form.baseAdults} onChange={e => u("baseAdults", Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+              <p className="text-[9px] text-blue-600 mt-0.5">Included in base price, no extra charge</p>
             </div>
-          ))}
-          {form.images.length < 5 && (
-            <label className="w-24 h-16 border-2 border-dashed border-gray-200 rounded-xl hover:border-[#1B3A6B] hover:bg-slate-50 flex flex-col items-center justify-center cursor-pointer transition-all relative">
-              <ImageIcon className="w-5 h-5 text-gray-400" />
-              <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{uploading ? "Uploading" : "Add Image"}</span>
-              <input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setUploading(true);
-                try {
-                  const url = await compressAndUploadFile(file, hotelId, token);
-                  u("images", [...form.images, url]);
-                } catch (err: any) {
-                  alert(err.message || "Upload failed");
-                } finally {
-                  setUploading(false);
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Children Included in Base Price</label>
+              <input type="number" min="0" max="10" value={form.baseChildren} onChange={e => u("baseChildren", Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+              <p className="text-[9px] text-blue-600 mt-0.5">Included in base price, no extra charge</p>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Max Adults Allowed</label>
+              <input type="number" min="1" max="20" value={form.maxAdults} onChange={e => u("maxAdults", Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Max Children Allowed</label>
+              <input type="number" min="0" max="10" value={form.maxChildren} onChange={e => u("maxChildren", Number(e.target.value))}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+            </div>
+          </div>
+        </AccordionSection>
+
+        {/* ── Extra Person Charges ─────────────────────────────────── */}
+        <AccordionSection title="Extra Person Charges" icon={<DollarSign className="w-3.5 h-3.5" />} accentColor="text-emerald-700">
+          <p className="text-[9px] text-emerald-600 -mt-1 mb-2">Charges applied per night for guests beyond the base occupancy count</p>
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Extra Adult (₹/night)</label>
+              <input type="number" value={form.extraAdultPrice} onChange={e => u("extraAdultPrice", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
+                placeholder="e.g. 1000" />
+              <p className="text-[9px] text-emerald-700 mt-0.5">Per adult beyond base count of {form.baseAdults}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">🛏️ Child WITH Extra Bed (₹)</label>
+                <input type="number" value={form.extraChildWithBedPrice} onChange={e => u("extraChildWithBedPrice", e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
+                  placeholder="e.g. 600" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">🤝 Child Sharing Bed (₹)</label>
+                <input type="number" value={form.extraChildWithoutBedPrice} onChange={e => u("extraChildWithoutBedPrice", e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
+                  placeholder="e.g. 250" />
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-[9px] text-amber-700">
+              💡 <strong>Tip:</strong> Weekend & seasonal price overrides are managed in the <strong>Inventory &amp; Rates</strong> tab. Promotional discounts are also set there.
+            </div>
+          </div>
+        </AccordionSection>
+
+
+        {/* ── Meal Plans ──────────────────────────────────────────── */}
+        <AccordionSection title="Meal Plan Options" icon={<Utensils className="w-3.5 h-3.5" />} accentColor="text-purple-700">
+          <p className="text-[9px] text-purple-500 -mt-1 mb-2">Guests choose their meal plan during booking</p>
+          <div className="space-y-2">
+            {mealPlanOptions.filter((opt: any) => opt.code !== "EP").map((opt: any) => (
+              <div key={opt.code}
+                className={cn(
+                  "border rounded-xl p-3 transition-all",
+                  opt.enabled ? "bg-white border-purple-200" : "bg-gray-50 border-gray-200 opacity-60"
+                )}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{MEAL_EMOJIS[opt.code]}</span>
+                    <span className="text-sm font-bold text-gray-800">{opt.label}</span>
+                    <span className="text-[9px] font-mono bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{opt.code}</span>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={opt.enabled}
+                      onChange={e => updateMealOption(opt.code, "enabled", e.target.checked)}
+                      className="w-4 h-4 accent-purple-600" />
+                    <span className="text-xs font-semibold text-gray-600">{opt.enabled ? "Offered" : "Off"}</span>
+                  </label>
+                </div>
+                {opt.enabled && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Adult (₹/night)</label>
+                      <input type="number" min="0" value={opt.adultPrice}
+                        onChange={e => updateMealOption(opt.code, "adultPrice", Number(e.target.value))}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-purple-300 bg-purple-50"
+                        placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Child (₹/night)</label>
+                      <input type="number" min="0" value={opt.childPrice}
+                        onChange={e => updateMealOption(opt.code, "childPrice", Number(e.target.value))}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-purple-300 bg-purple-50"
+                        placeholder="0" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </AccordionSection>
+
+        {/* ── Description, Highlights, Facilities, Media ──────────── */}
+        <AccordionSection title="Description, Highlights & Media" icon={<ImageIcon className="w-3.5 h-3.5" />} accentColor="text-gray-600">
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">View Type</label>
+              <input value={form.viewType} onChange={e => u("viewType", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+                placeholder="e.g. Mountain View, Pool View, Garden View" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Size (sq.ft)</label>
+              <input type="number" value={form.sizeSqft} onChange={e => u("sizeSqft", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
+                placeholder="250" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Description</label>
+              <textarea value={form.description} onChange={e => u("description", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] resize-none"
+                rows={2} placeholder="Describe the room..." />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Highlight</label>
+              <div className="flex gap-2">
+                <input id="new-room-highlight" placeholder="e.g. King-size bed" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+                <button type="button" onClick={() => {
+                  const el = document.getElementById("new-room-highlight") as HTMLInputElement;
+                  if (el && el.value.trim()) { u("highlights", [...form.highlights, el.value.trim()]); el.value = ""; }
+                }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-4 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
+              </div>
+              <div className="flex flex-wrap gap-1.5 min-h-[28px] p-2 mt-1.5 bg-slate-50 border border-gray-100 rounded-xl">
+                {form.highlights.length === 0
+                  ? <span className="text-xs text-gray-400 italic">No highlights yet.</span>
+                  : form.highlights.map((h: string, idx: number) => (
+                    <span key={idx} className="bg-amber-50 text-amber-800 border border-amber-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
+                      {h}
+                      <button type="button" onClick={() => u("highlights", form.highlights.filter((_: any, i: number) => i !== idx))} className="text-amber-500 hover:text-amber-700 font-bold">&times;</button>
+                    </span>
+                  ))
                 }
-              }} className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" />
-            </label>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Facility</label>
+                <div className="flex gap-2">
+                  <input id="new-room-facility" placeholder="e.g. Mini Bar" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+                  <button type="button" onClick={() => {
+                    const el = document.getElementById("new-room-facility") as HTMLInputElement;
+                    if (el && el.value.trim()) { u("facilities", [...form.facilities, el.value.trim()]); el.value = ""; }
+                  }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-3 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 min-h-[28px] p-2 mt-1.5 bg-slate-50 border border-gray-100 rounded-xl">
+                  {form.facilities.length === 0 ? <span className="text-xs text-gray-400 italic">None.</span>
+                    : form.facilities.map((f: string, idx: number) => (
+                      <span key={idx} className="bg-sky-50 text-sky-800 border border-sky-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">{f}
+                        <button type="button" onClick={() => u("facilities", form.facilities.filter((_: any, i: number) => i !== idx))} className="text-sky-500 hover:text-sky-700 font-bold">&times;</button>
+                      </span>
+                    ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add Amenity</label>
+                <div className="flex gap-2">
+                  <input id="new-room-amenity" placeholder="e.g. Wi-Fi" className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1B3A6B]" />
+                  <button type="button" onClick={() => {
+                    const el = document.getElementById("new-room-amenity") as HTMLInputElement;
+                    if (el && el.value.trim()) { u("amenities", [...form.amenities, el.value.trim()]); el.value = ""; }
+                  }} className="bg-[#1B3A6B] text-white hover:bg-[#0f2548] px-3 py-2 rounded-xl text-xs font-bold transition-colors">Add</button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 min-h-[28px] p-2 mt-1.5 bg-slate-50 border border-gray-100 rounded-xl">
+                  {form.amenities.length === 0 ? <span className="text-xs text-gray-400 italic">None.</span>
+                    : form.amenities.map((a: string, idx: number) => (
+                      <span key={idx} className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">{a}
+                        <button type="button" onClick={() => u("amenities", form.amenities.filter((_: any, i: number) => i !== idx))} className="text-emerald-500 hover:text-emerald-700 font-bold">&times;</button>
+                      </span>
+                    ))}
+                </div>
+              </div>
+            </div>
+            {/* Room Images */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Room Images (Max 5)</label>
+              <div className="flex flex-wrap gap-3 mt-1 mb-2">
+                {form.images.map((img: string, idx: number) => (
+                  <div key={idx} className="relative w-24 h-16 rounded-xl overflow-hidden border border-gray-200 group">
+                    <img src={img} alt="Room preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => u("images", form.images.filter((_: any, i: number) => i !== idx))}
+                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-md transition-colors">
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                ))}
+                {form.images.length < 5 && (
+                  <label className="w-24 h-16 border-2 border-dashed border-gray-200 rounded-xl hover:border-[#1B3A6B] hover:bg-slate-50 flex flex-col items-center justify-center cursor-pointer transition-all relative">
+                    <ImageIcon className="w-5 h-5 text-gray-400" />
+                    <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{uploading ? "Uploading" : "Add Image"}</span>
+                    <input type="file" accept="image/*" disabled={uploading} onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploading(true);
+                      try {
+                        const url = await compressAndUploadFile(file, hotelId, token);
+                        u("images", [...form.images, url]);
+                      } catch (err: any) {
+                        alert(err.message || "Upload failed");
+                      } finally {
+                        setUploading(false);
+                      }
+                    }} className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" />
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+        </AccordionSection>
+
+        {/* ── Cancellation Policy ─────────────────────────────────── */}
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl">
+          <input type="checkbox" checked={form.refundable} onChange={e => u("refundable", e.target.checked)} className="w-4 h-4 accent-[#1B3A6B]" id="refundable-check" />
+          <label htmlFor="refundable-check" className="font-medium text-gray-700 text-sm cursor-pointer flex-1">Free Cancellation</label>
+          {form.refundable && (
+            <div className="flex items-center gap-1">
+              <input type="number" value={cancellationVal} onChange={e => setCancellationVal(Number(e.target.value))} min="1"
+                className="w-14 border border-gray-200 rounded-lg px-2 py-1 text-xs" />
+              <select value={cancellationUnit} onChange={e => setCancellationUnit(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2 py-1 text-xs">
+                <option>Hours</option>
+                <option>Days</option>
+                <option>Weeks</option>
+              </select>
+              <span className="text-xs text-gray-400">before check-in</span>
+            </div>
           )}
         </div>
-        <p className="text-[9px] text-gray-400 font-medium">Upload photos to represent this room type. Drag-drop files or browse.</p>
-      </div>
-      <label className="flex items-center gap-2 cursor-pointer text-sm flex-wrap">
-        <input type="checkbox" checked={form.refundable} onChange={e => u("refundable", e.target.checked)} className="w-4 h-4 accent-[#1B3A6B]" />
-        <span className="font-medium text-gray-700">Free Cancellation</span>
-        {form.refundable && (
-          <div className="flex items-center gap-1 ml-1">
-            <input type="number" value={cancellationVal} onChange={e => setCancellationVal(Number(e.target.value))} min="1"
-              className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-xs" />
-            <select value={cancellationUnit} onChange={e => setCancellationUnit(e.target.value)}
-              className="border border-gray-200 rounded-lg px-2 py-1 text-xs">
-              <option>Hours</option>
-              <option>Days</option>
-              <option>Weeks</option>
-            </select>
-            <span className="text-xs text-gray-400">before check-in</span>
-          </div>
-        )}
-      </label>
-      <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-        <button onClick={onCancel} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-        <button onClick={() => {
-          let hrs = Number(cancellationVal);
-          if (cancellationUnit === "Days") hrs *= 24;
-          else if (cancellationUnit === "Weeks") hrs *= 168;
-          onSave({
-            ...form,
-            cancellationHours: hrs,
-            basePrice: Number(form.basePrice),
-            extraAdultPrice: Number(form.extraAdultPrice || 0),
-            extraChildPrice: Number(form.extraChildPrice || 0),
-            sizeSqft: form.sizeSqft ? Number(form.sizeSqft) : undefined
-          });
-        }}
-          className="px-5 py-2 bg-[#1B3A6B] text-white rounded-xl text-sm font-bold hover:bg-[#0f2548] transition-colors flex items-center gap-1.5">
-          <Save className="w-3.5 h-3.5" /> {room ? "Save Changes" : "Add Room"}
-        </button>
+
+        {/* ── Save / Cancel ────────────────────────────────────────── */}
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <button onClick={onCancel} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={() => {
+            let hrs = Number(cancellationVal);
+            if (cancellationUnit === "Days") hrs *= 24;
+            else if (cancellationUnit === "Weeks") hrs *= 168;
+            onSave({
+              ...form,
+              cancellationHours: hrs,
+              basePrice: Number(form.basePrice),
+              extraAdultPrice: Number(form.extraAdultPrice || 0),
+              extraChildWithBedPrice: Number(form.extraChildWithBedPrice || 0),
+              extraChildWithoutBedPrice: Number(form.extraChildWithoutBedPrice || 0),
+              extraChildPrice: Number(form.extraChildWithBedPrice || 0),
+              baseAdults: Number(form.baseAdults),
+              baseChildren: Number(form.baseChildren),
+              maxAdults: Number(form.maxAdults),
+              maxChildren: Number(form.maxChildren),
+              sizeSqft: form.sizeSqft ? Number(form.sizeSqft) : undefined,
+              mealPlanOptions: mealPlanOptions.filter((o: any) => o.enabled),
+              mealPlan: mealPlanOptions.find((o: any) => o.enabled && o.code === "EP") ? "EP" : (mealPlanOptions.find((o: any) => o.enabled)?.code || "EP"),
+            });
+          }}
+            className="px-5 py-2 bg-[#1B3A6B] text-white rounded-xl text-sm font-bold hover:bg-[#0f2548] transition-colors flex items-center gap-1.5">
+            <Save className="w-3.5 h-3.5" /> {room ? "Save Changes" : "Add Room"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ─── Main Property Management Page ──────────────────────────────────────────
+
 export default function VendorPropertyManagerPage() {
   const { vendor, token, isLoading } = useVendorAuth();
   const router = useRouter();
@@ -514,18 +639,37 @@ export default function VendorPropertyManagerPage() {
   const [selectedRoomForInv, setSelectedRoomForInv] = useState<string>("");
   const [invStartDate, setInvStartDate] = useState<string>("");
   const [invEndDate, setInvEndDate] = useState<string>("");
+  const [invRateType, setInvRateType] = useState<string>("session");
   const [invAvailableCount, setInvAvailableCount] = useState<string>("1");
   const [invPriceOverride, setInvPriceOverride] = useState<string>("");
   const [invIsBlocked, setInvIsBlocked] = useState<boolean>(false);
   const [invDiscountType, setInvDiscountType] = useState<string>("PERCENT");
   const [invDiscountPercent, setInvDiscountPercent] = useState<string>("0");
   const [invDiscountFlat, setInvDiscountFlat] = useState<string>("0");
+  const [invWeekendPrice, setInvWeekendPrice] = useState<string>("");
+  const [invWeekendDays, setInvWeekendDays] = useState<string[]>(["Friday", "Saturday"]);
+  const [invExtraAdultPrice, setInvExtraAdultPrice] = useState<string>("");
+  const [invExtraChildWithBedPrice, setInvExtraChildWithBedPrice] = useState<string>("");
+  const [invExtraChildWithoutBedPrice, setInvExtraChildWithoutBedPrice] = useState<string>("");
+  const [invMealPlanOptions, setInvMealPlanOptions] = useState<any[]>(DEFAULT_MEAL_OPTIONS);
   const [savingInv, setSavingInv] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [saving, setSaving] = useState(false);
   const [showRoomForm, setShowRoomForm] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
   const [editedHotel, setEditedHotel] = useState<any>({});
   const [savingField, setSavingField] = useState(false);
+
+  // Geolocation State for Location dropdowns
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [locCountryId, setLocCountryId] = useState<number | "">("");
+  const [locStateId, setLocStateId] = useState<number | "">("");
+  const [locDestinationId, setLocDestinationId] = useState<number | "">("");
+  const [locCustomCity, setLocCustomCity] = useState("");
+  const [useLocCustomCity, setUseLocCustomCity] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
 
   // Photo management state
   const [photos, setPhotos] = useState<any[]>([]);
@@ -561,11 +705,118 @@ export default function VendorPropertyManagerPage() {
       if (roomsRes.ok) setRooms(await roomsRes.json());
       if (bookingsRes.ok) setBookings(await bookingsRes.json());
       if (photosRes.ok) setPhotos(await photosRes.json());
-    } catch {}
+    } catch { }
     finally { setFetching(false); }
   }, [token, hotelId]);
 
   useEffect(() => { if (token) fetchData(); }, [token, fetchData]);
+
+  // Fetch countries on mount
+  useEffect(() => {
+    fetch(`${API_BASE}/destinations/countries`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCountries(Array.isArray(data) ? data : (data.countries || [])))
+      .catch(() => { });
+  }, []);
+
+  // Fetch states when selected country (or hotel country) is active
+  const activeCountryId = isEditingLocation ? locCountryId : hotel?.countryId;
+  useEffect(() => {
+    if (!activeCountryId) {
+      setStates([]);
+      setCities([]);
+      return;
+    }
+    fetch(`${API_BASE}/destinations/states?countryId=${activeCountryId}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setStates(Array.isArray(data) ? data : (data.states || [])))
+      .catch(() => { });
+  }, [activeCountryId]);
+
+  // Fetch cities when selected state (or hotel state) is active
+  const activeStateId = isEditingLocation ? locStateId : hotel?.stateId;
+  useEffect(() => {
+    if (!activeStateId) {
+      setCities([]);
+      return;
+    }
+    fetch(`${API_BASE}/destinations?stateId=${activeStateId}&limit=200`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCities(Array.isArray(data) ? data : (data.destinations || [])))
+      .catch(() => { });
+  }, [activeStateId]);
+
+  const startEditingLocation = () => {
+    setLocCountryId(hotel?.countryId || "");
+    setLocStateId(hotel?.stateId || "");
+    setLocDestinationId(hotel?.destinationId || "");
+    setLocCustomCity(hotel?.customCity || "");
+    setUseLocCustomCity(!!hotel?.customCity);
+    setIsEditingLocation(true);
+  };
+
+  const saveLocation = async () => {
+    if (!locCountryId) {
+      alert("Please select a Country");
+      return;
+    }
+    if (!locStateId) {
+      alert("Please select a State / Region");
+      return;
+    }
+    if (!useLocCustomCity && !locDestinationId) {
+      alert("Please select a City / Place");
+      return;
+    }
+    if (useLocCustomCity && !locCustomCity.trim()) {
+      alert("Please enter your custom city name");
+      return;
+    }
+
+    setSavingField(true);
+    try {
+      const payload: any = {
+        countryId: locCountryId ? Number(locCountryId) : null,
+        stateId: locStateId ? Number(locStateId) : null,
+        destinationId: useLocCustomCity ? null : (locDestinationId ? Number(locDestinationId) : null),
+        customCity: useLocCustomCity && locCustomCity.trim() ? locCustomCity.trim() : null,
+      };
+
+      if (useLocCustomCity) {
+        payload.city = locCustomCity.trim();
+        const selectedStateObj = states.find(s => s.id === Number(locStateId));
+        const selectedCountryObj = countries.find(c => c.id === Number(locCountryId));
+        payload.customStateName = selectedStateObj ? selectedStateObj.name : null;
+        payload.customCountryName = selectedCountryObj ? selectedCountryObj.name : null;
+      } else {
+        const selectedCityObj = cities.find(c => c.id === Number(locDestinationId));
+        payload.city = selectedCityObj ? selectedCityObj.name : "";
+      }
+
+      const selectedStateObj = states.find(s => s.id === Number(locStateId));
+      payload.state = selectedStateObj ? selectedStateObj.name : "";
+
+      const res = await fetch(`${API_BASE}/vendor/hotels/${hotelId}`, {
+        method: "PATCH",
+        headers: vendorAuthHeader(token),
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setHotel(updated);
+        setEditedHotel(updated);
+        setIsEditingLocation(false);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to update location");
+      }
+    } catch {
+      alert("Error saving location");
+    } finally {
+      setSavingField(false);
+    }
+  };
 
   const fetchInventory = useCallback(async () => {
     if (!token || !selectedRoomForInv) return;
@@ -581,7 +832,7 @@ export default function VendorPropertyManagerPage() {
         headers: vendorAuthHeader(token),
       });
       if (res.ok) setInventoryData(await res.json());
-    } catch {}
+    } catch { }
   }, [token, hotelId, selectedRoomForInv, currentCalendarMonth]);
 
   useEffect(() => {
@@ -597,7 +848,7 @@ export default function VendorPropertyManagerPage() {
         body: JSON.stringify({ [field]: value }),
       });
       if (res.ok) { const updated = await res.json(); setHotel(updated); setEditedHotel(updated); }
-    } catch {} finally { setSavingField(false); }
+    } catch { } finally { setSavingField(false); }
   };
 
   const addRoom = async (data: any) => {
@@ -711,7 +962,7 @@ export default function VendorPropertyManagerPage() {
       }
 
       const uploadData = await uploadRes.json();
-      
+
       const res = await fetch(`${API_BASE}/vendor/hotels/${hotelId}/photos`, {
         method: "POST",
         headers: vendorAuthHeader(token),
@@ -779,7 +1030,7 @@ export default function VendorPropertyManagerPage() {
         method: "DELETE", headers: vendorAuthHeader(token),
       });
       if (res.ok) setPhotos(p => p.filter(x => x.id !== photoId));
-    } catch {}
+    } catch { }
     finally { setDeletingPhotoId(null); }
   };
 
@@ -887,24 +1138,34 @@ export default function VendorPropertyManagerPage() {
       const savedAmount = price - discountedPrice;
 
       // Status determination
-      type StatusKey = "past" | "today" | "blocked" | "soldout" | "lowstock" | "discount" | "peakprice" | "available";
+      type StatusKey = "past" | "today" | "blocked" | "soldout" | "lowstock" | "discount" | "peakprice" | "session" | "off_session" | "mid_session" | "blackout" | "available";
       let status: StatusKey = "available";
+      const rateType = inv?.customPricing?.rateType;
+
       if (isPast) status = "past";
       else if (isBlocked) status = "blocked";
       else if (availableCount === 0) status = "soldout";
       else if (availableCount <= 2) status = "lowstock";
+      else if (rateType === "blackout") status = "blackout";
+      else if (rateType === "session") status = "session";
+      else if (rateType === "mid_session") status = "mid_session";
+      else if (rateType === "off_session") status = "off_session";
       else if (hasDiscount) status = "discount";
       else if (isPriceOverride && price > baseRoomPrice) status = "peakprice";
       else if (isToday) status = "today";
 
       const STYLES: Record<StatusKey, { cell: string; dayNum: string; badge: string; badgeText: string }> = {
-        past:      { cell: "bg-gray-50 border-gray-100 opacity-50 cursor-default",     dayNum: "text-gray-300", badge: "", badgeText: "" },
-        today:     { cell: "bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md", dayNum: "text-blue-700 bg-blue-200 rounded-full w-5 h-5 flex items-center justify-center text-[10px]", badge: "bg-blue-600", badgeText: "Today" },
-        blocked:   { cell: "bg-rose-50 border-rose-300 cursor-pointer hover:shadow-md", dayNum: "text-rose-700", badge: "bg-rose-600", badgeText: "Blocked" },
-        soldout:   { cell: "bg-slate-100 border-slate-200 cursor-pointer hover:shadow-md", dayNum: "text-slate-500", badge: "bg-slate-500", badgeText: "Sold Out" },
-        lowstock:  { cell: "bg-amber-50 border-amber-300 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-amber-900", badge: "bg-amber-500", badgeText: `${availableCount} Left!` },
-        discount:  { cell: "bg-emerald-50 border-emerald-300 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-emerald-900", badge: "bg-emerald-600", badgeText: "Deal" },
-        peakprice: { cell: "bg-sky-50 border-sky-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-sky-900", badge: "bg-sky-600", badgeText: "Peak" },
+        past: { cell: "bg-gray-50 border-gray-100 opacity-50 cursor-default", dayNum: "text-gray-300", badge: "", badgeText: "" },
+        today: { cell: "bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-blue-700 bg-blue-200 rounded-full w-5 h-5 flex items-center justify-center text-[10px]", badge: "bg-blue-600", badgeText: "Today" },
+        blocked: { cell: "bg-rose-50/70 border-rose-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-rose-700", badge: "bg-rose-500", badgeText: "Blocked" },
+        soldout: { cell: "bg-slate-100 border-slate-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-slate-500", badge: "bg-slate-500", badgeText: "Sold Out" },
+        lowstock: { cell: "bg-amber-50 border-amber-300 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-amber-950", badge: "bg-amber-500", badgeText: `${availableCount} Left!` },
+        session: { cell: "bg-amber-50/70 border-amber-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400", dayNum: "text-amber-950", badge: "bg-amber-500", badgeText: "Session" },
+        off_session: { cell: "bg-sky-50/70 border-sky-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-sky-400", dayNum: "text-sky-950", badge: "bg-sky-500", badgeText: "Off-Low" },
+        mid_session: { cell: "bg-emerald-50/70 border-emerald-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-400", dayNum: "text-emerald-950", badge: "bg-emerald-500", badgeText: "Mid-Season" },
+        blackout: { cell: "bg-indigo-50/70 border-indigo-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-indigo-400", dayNum: "text-indigo-950", badge: "bg-indigo-600", badgeText: "Festival" },
+        discount: { cell: "bg-emerald-50 border-emerald-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-emerald-950", badge: "bg-emerald-500", badgeText: "Deal" },
+        peakprice: { cell: "bg-sky-50 border-sky-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-sky-950", badge: "bg-sky-500", badgeText: "Peak" },
         available: { cell: "bg-white border-gray-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-[#1B3A6B]/40", dayNum: "text-gray-800", badge: "bg-teal-600", badgeText: "Open" },
       };
       const s = STYLES[status];
@@ -929,6 +1190,24 @@ export default function VendorPropertyManagerPage() {
             setInvDiscountType(inv ? (inv.discountType || "PERCENT") : "PERCENT");
             setInvDiscountPercent(inv ? String(inv.discountPercent || 0) : "0");
             setInvDiscountFlat(inv ? String(inv.discountFlat || 0) : "0");
+
+            const cp = inv?.customPricing || {};
+            setInvRateType(cp.rateType || (isBlocked ? "stop_sales" : "session"));
+            setInvWeekendPrice(cp.weekendPrice !== undefined && cp.weekendPrice !== null ? String(cp.weekendPrice) : "");
+            setInvWeekendDays(Array.isArray(cp.weekendDays) ? cp.weekendDays : (selectedRoom?.weekendDays || ["Friday", "Saturday"]));
+            setInvExtraAdultPrice(cp.extraAdultPrice !== undefined && cp.extraAdultPrice !== null ? String(cp.extraAdultPrice) : "");
+            setInvExtraChildWithBedPrice(cp.extraChildWithBedPrice !== undefined && cp.extraChildWithBedPrice !== null ? String(cp.extraChildWithBedPrice) : "");
+            setInvExtraChildWithoutBedPrice(cp.extraChildWithoutBedPrice !== undefined && cp.extraChildWithoutBedPrice !== null ? String(cp.extraChildWithoutBedPrice) : "");
+
+            const roomMealPlans = selectedRoom?.mealPlanOptions || DEFAULT_MEAL_OPTIONS;
+            const activeMealPlans = Array.isArray(cp.mealPlanOptions) && cp.mealPlanOptions.length > 0
+              ? cp.mealPlanOptions
+              : roomMealPlans;
+            const mergedMealPlans = DEFAULT_MEAL_OPTIONS.map(defOpt => {
+              const matched = activeMealPlans.find((x: any) => x.code === defOpt.code);
+              return matched ? { ...defOpt, ...matched } : defOpt;
+            });
+            setInvMealPlanOptions(mergedMealPlans);
           }}
           className={cn(
             "rounded-xl border transition-all duration-150 flex flex-col select-none overflow-hidden",
@@ -978,6 +1257,11 @@ export default function VendorPropertyManagerPage() {
                 {discountBadge}
               </span>
             )}
+            {!isPast && !isBlocked && inv?.customPricing && (
+              <span className="text-[7px] font-black text-[#1B3A6B] bg-blue-50 border border-blue-100 px-1 py-0.5 rounded leading-none shrink-0" title="Custom pricing override active">
+                ⚡ Rates
+              </span>
+            )}
             {!isPast && !isBlocked && (
               <span className="text-[7px] text-gray-400 font-bold ml-auto">
                 {availableCount > 0 ? `${availableCount}/${baseTotalRooms}` : "0"}
@@ -996,6 +1280,17 @@ export default function VendorPropertyManagerPage() {
     if (!selectedRoomForInv || !invStartDate || !invEndDate) return alert("Select room and date range.");
     setSavingInv(true);
     try {
+      const isBlockedSubmit = invRateType === "stop_sales";
+      const customPricing = {
+        rateType: invRateType,
+        weekendPrice: !isBlockedSubmit && invWeekendPrice ? parseInt(invWeekendPrice, 10) : null,
+        weekendDays: !isBlockedSubmit ? invWeekendDays : [],
+        extraAdultPrice: !isBlockedSubmit && invExtraAdultPrice ? parseInt(invExtraAdultPrice, 10) : null,
+        extraChildWithBedPrice: !isBlockedSubmit && invExtraChildWithBedPrice ? parseInt(invExtraChildWithBedPrice, 10) : null,
+        extraChildWithoutBedPrice: !isBlockedSubmit && invExtraChildWithoutBedPrice ? parseInt(invExtraChildWithoutBedPrice, 10) : null,
+        mealPlanOptions: !isBlockedSubmit ? invMealPlanOptions : [],
+      };
+
       const res = await fetch(`${API_BASE}/vendor/hotels/${hotelId}/inventory`, {
         method: "POST",
         headers: vendorAuthHeader(token),
@@ -1003,12 +1298,13 @@ export default function VendorPropertyManagerPage() {
           roomId: selectedRoomForInv,
           startDate: invStartDate,
           endDate: invEndDate,
-          availableCount: parseInt(invAvailableCount, 10),
-          priceOverride: invPriceOverride ? parseInt(invPriceOverride, 10) : null,
-          isBlocked: invIsBlocked,
-          discountType: invDiscountType,
-          discountPercent: parseInt(invDiscountPercent, 10) || 0,
-          discountFlat: parseInt(invDiscountFlat, 10) || 0,
+          availableCount: isBlockedSubmit ? 0 : parseInt(invAvailableCount, 10),
+          priceOverride: isBlockedSubmit ? null : (invPriceOverride ? parseInt(invPriceOverride, 10) : null),
+          isBlocked: isBlockedSubmit,
+          discountType: isBlockedSubmit ? "PERCENT" : invDiscountType,
+          discountPercent: isBlockedSubmit ? 0 : (parseInt(invDiscountPercent, 10) || 0),
+          discountFlat: isBlockedSubmit ? 0 : (parseInt(invDiscountFlat, 10) || 0),
+          customPricing,
         }),
       });
       if (res.ok) {
@@ -1109,9 +1405,9 @@ export default function VendorPropertyManagerPage() {
         <main className="flex-1 p-6">
           {/* ─── Overview Tab ─── */}
           {tab === "overview" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Quick stats */}
-              <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: "Total Rooms", value: rooms.length, icon: Bed, color: "bg-[#1B3A6B]" },
                   { label: "Total Bookings", value: bookings.length, icon: BookOpen, color: "bg-violet-500" },
@@ -1136,8 +1432,157 @@ export default function VendorPropertyManagerPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <EditableField label="Property Name" value={hotel.name || ""} onChange={v => saveHotelField("name", v)} />
                   <EditableField label="Type" value={hotel.type || ""} options={["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp"]} onChange={v => saveHotelField("type", v)} />
-                  <EditableField label="City" value={hotel.city || ""} onChange={v => saveHotelField("city", v)} />
-                  <EditableField label="State" value={hotel.state || ""} onChange={v => saveHotelField("state", v)} />
+                  {isEditingLocation ? (
+                    <div className="col-span-2 border border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4">
+                      <p className="text-xs font-bold text-[#1B3A6B] uppercase tracking-wider">Edit Location Details</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Country Selection */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400 block">Country *</label>
+                          <select
+                            value={locCountryId || ""}
+                            onChange={e => {
+                              const val = e.target.value ? Number(e.target.value) : "";
+                              setLocCountryId(val);
+                              setLocStateId("");
+                              setLocDestinationId("");
+                            }}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white h-9"
+                          >
+                            <option value="">-- Select Country --</option>
+                            {countries.map((c: any) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* State Selection */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400 block">State / Region *</label>
+                          <select
+                            value={locStateId || ""}
+                            onChange={e => {
+                              const val = e.target.value ? Number(e.target.value) : "";
+                              setLocStateId(val);
+                              setLocDestinationId("");
+                            }}
+                            disabled={!locCountryId || states.length === 0}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white disabled:opacity-50 h-9"
+                          >
+                            <option value="">
+                              {!locCountryId ? "Select country first" : states.length === 0 ? "Loading..." : "-- Select State --"}
+                            </option>
+                            {states.map((s: any) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* City Selection */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase font-bold tracking-widest text-gray-400 block">City / Place *</label>
+                          {!useLocCustomCity ? (
+                            <select
+                              value={locDestinationId || ""}
+                              onChange={e => {
+                                const val = e.target.value;
+                                if (val === "__custom__") {
+                                  setUseLocCustomCity(true);
+                                  setLocDestinationId("");
+                                } else {
+                                  setLocDestinationId(val ? Number(val) : "");
+                                }
+                              }}
+                              disabled={!locStateId || cities.length === 0}
+                              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white disabled:opacity-50 h-9"
+                            >
+                              <option value="">
+                                {!locStateId ? "Select state first" : cities.length === 0 ? "Loading..." : "-- Select City --"}
+                              </option>
+                              {cities.map((c: any) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                              <option value="__custom__">✏️ City not listed</option>
+                            </select>
+                          ) : (
+                            <div className="flex gap-1">
+                              <input
+                                value={locCustomCity}
+                                onChange={e => setLocCustomCity(e.target.value)}
+                                placeholder="Enter city name"
+                                className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white h-9"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => { setUseLocCustomCity(false); setLocCustomCity(""); setLocDestinationId(""); }}
+                                className="h-9 rounded-lg border border-gray-200 px-2 text-xs hover:bg-gray-50 text-gray-500 font-bold shrink-0"
+                              >
+                                List
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                        <button
+                          onClick={saveLocation}
+                          disabled={savingField}
+                          className="flex items-center gap-1.5 bg-[#1B3A6B] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-[#1B3A6B]/90 transition-all disabled:opacity-50"
+                        >
+                          {savingField ? "Saving..." : "Save Location"}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingLocation(false)}
+                          disabled={savingField}
+                          className="border border-gray-200 text-gray-500 px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 transition-all disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between group">
+                        <div>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Country</p>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {countries.find(c => c.id === hotel.countryId)?.name || hotel.customCountryName || "—"}
+                          </p>
+                        </div>
+                        <button onClick={startEditingLocation}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-[#1B3A6B]">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between group">
+                        <div>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">State / Region</p>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {states.find(s => s.id === hotel.stateId)?.name || hotel.customStateName || "—"}
+                          </p>
+                        </div>
+                        <button onClick={startEditingLocation}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-[#1B3A6B]">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between group">
+                        <div>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">City / Place</p>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {cities.find(c => c.id === hotel.destinationId)?.name || hotel.customCity || hotel.city || "—"}
+                          </p>
+                        </div>
+                        <button onClick={startEditingLocation}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-100 rounded-lg transition-all text-gray-400 hover:text-[#1B3A6B]">
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                   <EditableField label="Location Address" value={hotel.address || ""} onChange={v => saveHotelField("address", v)} />
                   <EditableField label="Latitude" value={hotel.latitude ?? ""} type="number" onChange={v => saveHotelField("latitude", v ? parseFloat(v) : null)} />
                   <EditableField label="Longitude" value={hotel.longitude ?? ""} type="number" onChange={v => saveHotelField("longitude", v ? parseFloat(v) : null)} />
@@ -1154,36 +1599,23 @@ export default function VendorPropertyManagerPage() {
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors resize-none"
                     rows={3} placeholder="Describe your property..." />
                 </div>
-              </div>
 
-              {/* Amenities */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                <h3 className="font-bold text-gray-900 mb-4">Amenities</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {AMENITY_OPTIONS.map(a => {
-                    const isSelected = hotel.amenities?.includes(a.key);
-                    return (
-                      <button key={a.key} type="button"
-                        onClick={() => {
-                          const current = hotel.amenities || [];
-                          const next = isSelected ? current.filter((x: string) => x !== a.key) : [...current, a.key];
-                          saveHotelField("amenities", next);
-                        }}
-                        className={cn("flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium transition-all text-left",
-                          isSelected ? "border-[#1B3A6B] bg-[#1B3A6B]/5 text-[#1B3A6B]" : "border-gray-100 text-gray-400 hover:border-gray-200")}>
-                        {isSelected ? <Check className="w-3 h-3 stroke-[3]" /> : <a.icon className="w-3 h-3" />}
-                        {a.label}
-                      </button>
-                    );
-                  })}
+                {/* Amenities */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4">Amenities</h3>
+                  <AmenitiesSelector
+                    selected={hotel.amenities || []}
+                    onChange={(amenities) => saveHotelField("amenities", amenities)}
+                    compact={false}
+                  />
                 </div>
               </div>
 
               {/* Proximity Location Points */}
-              <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5">
                 <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2"><MapPin className="w-4 h-4 text-[#1B3A6B]" /> Proximity & Nearby Places</h3>
                 <p className="text-xs text-gray-400 mb-4">Add nearby airports, transit stations, and medical clinics to guide guests on their travel proximity.</p>
-                
+
                 {/* Form to add a new point */}
                 <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                   <div>
@@ -1230,8 +1662,8 @@ export default function VendorPropertyManagerPage() {
                         <div className="flex items-center gap-3">
                           <span className={cn("px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider",
                             point.category === "Airports" ? "bg-sky-50 text-sky-700 border border-sky-100" :
-                            point.category === "Public transportation" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
-                            "bg-rose-50 text-rose-700 border border-rose-100"
+                              point.category === "Public transportation" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                                "bg-rose-50 text-rose-700 border border-rose-100"
                           )}>
                             {point.category}
                           </span>
@@ -1253,7 +1685,7 @@ export default function VendorPropertyManagerPage() {
               </div>
 
               {/* Property FAQs */}
-              <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5">
                 <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-[#1B3A6B]" /> Property FAQs</h3>
                 <p className="text-xs text-gray-400 mb-4">Add questions and answers to help guests understand property policies, rules, and facilities.</p>
 
@@ -1313,10 +1745,13 @@ export default function VendorPropertyManagerPage() {
           {tab === "rooms" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="font-bold text-gray-900">Room Types</h2>
-                {!showRoomForm && (
+                <div>
+                  <h2 className="font-bold text-gray-900">Room Types</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{rooms.length} room type{rooms.length !== 1 ? "s" : ""} configured</p>
+                </div>
+                {!showRoomForm && !editingRoom && (
                   <button onClick={() => { setShowRoomForm(true); setEditingRoom(null); }}
-                    className="flex items-center gap-1.5 bg-[#1B3A6B] text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-[#0f2548] transition-colors">
+                    className="flex items-center gap-1.5 bg-[#1B3A6B] text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-[#0f2548] transition-colors shadow-sm">
                     <Plus className="w-4 h-4" /> Add Room Type
                   </button>
                 )}
@@ -1343,45 +1778,84 @@ export default function VendorPropertyManagerPage() {
                       {editingRoom?.id === room.id ? (
                         <RoomForm room={editingRoom} hotelId={hotelId} token={token} onSave={d => updateRoom(room.id, d)} onCancel={() => setEditingRoom(null)} />
                       ) : (
-                        <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-4 hover:shadow-md transition-shadow">
-                          <div className="w-full sm:w-36 h-28 bg-gray-100 rounded-xl overflow-hidden shrink-0">
-                            {room.images?.[0] ? (
-                              <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center"><Bed className="w-8 h-8 text-gray-200" /></div>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h3 className="font-bold text-gray-900">{room.name}</h3>
-                                <div className="flex flex-wrap gap-1.5 mt-1">
-                                  <span className="text-[10px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">{room.type}</span>
-                                  {room.bedType && <span className="text-[10px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100 flex items-center gap-0.5"><Bed className="w-2.5 h-2.5" /> {room.bedType} Bed</span>}
-                                  <span className="text-[10px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100 flex items-center gap-0.5"><Users className="w-2.5 h-2.5" /> Max {room.maxOccupancy}</span>
-                                  {room.mealPlan && <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">{MEAL_LABELS[room.mealPlan]}</span>}
-                                  {room.refundable && <span className="text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Free Cancel</span>}
-                                </div>
-                                {room.description && <p className="text-xs text-gray-400 mt-2 line-clamp-1">{room.description}</p>}
-                              </div>
-                              <div className="flex items-center gap-1.5 ml-4">
-                                <button aria-label="Edit Room" title="Edit Room" onClick={() => { setEditingRoom(room); setShowRoomForm(false); }}
-                                  className="p-2 hover:bg-[#1B3A6B]/5 rounded-lg text-gray-400 hover:text-[#1B3A6B] transition-colors">
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button aria-label="Delete Room" title="Delete Room" onClick={() => deleteRoom(room.id)}
-                                  className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                        <div className="bg-white rounded-2xl border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all">
+                          {/* Room Card Header */}
+                          <div className="flex gap-4 p-4">
+                            <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0">
+                              {room.images?.[0] ? (
+                                <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center"><Bed className="w-7 h-7 text-gray-200" /></div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-50">
-                              <div>
-                                <span className="text-lg font-black text-[#1B3A6B]">₹{room.basePrice?.toLocaleString()}</span>
-                                <span className="text-xs text-gray-400 ml-1">/night</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <h3 className="font-bold text-gray-900 truncate">{room.name}</h3>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    <span className="text-[9px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100 font-bold uppercase tracking-wide">{room.type}</span>
+                                    {room.bedType && <span className="text-[9px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100 flex items-center gap-0.5"><Bed className="w-2 h-2" /> {room.bedType}</span>}
+                                    {room.sizeSqft && <span className="text-[9px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">{room.sizeSqft} sqft</span>}
+                                    {room.viewType && <span className="text-[9px] text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-100">{room.viewType}</span>}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button aria-label="Edit Room" title="Edit Room" onClick={() => { setEditingRoom(room); setShowRoomForm(false); }}
+                                    className="p-1.5 hover:bg-[#1B3A6B]/5 rounded-lg text-gray-400 hover:text-[#1B3A6B] transition-colors">
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button aria-label="Delete Room" title="Delete Room" onClick={() => deleteRoom(room.id)}
+                                    className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                              <span className="text-xs text-gray-400">{room.totalRooms} room{room.totalRooms > 1 ? "s" : ""}</span>
-                              {room.sizeSqft && <span className="text-xs text-gray-400">{room.sizeSqft} sq.ft</span>}
+                              {room.description && <p className="text-[11px] text-gray-400 mt-1.5 line-clamp-1">{room.description}</p>}
+                            </div>
+                          </div>
+
+                          {/* Room Stats Row */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-px border-t border-gray-100 bg-gray-100 rounded-b-2xl overflow-hidden">
+                            {/* Price */}
+                            <div className="bg-white px-3 py-2.5">
+                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Base Price</p>
+                              <p className="text-base font-black text-[#1B3A6B] leading-tight">₹{room.basePrice?.toLocaleString()}</p>
+                              <p className="text-[9px] text-gray-400">/night</p>
+                            </div>
+                            {/* Inventory */}
+                            <div className="bg-white px-3 py-2.5">
+                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Inventory</p>
+                              <p className="text-base font-black text-gray-800 leading-tight">{room.totalRooms}</p>
+                              <p className="text-[9px] text-gray-400">room{room.totalRooms > 1 ? "s" : ""}</p>
+                            </div>
+                            {/* Occupancy */}
+                            <div className="bg-white px-3 py-2.5">
+                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Occupancy</p>
+                              <p className="text-sm font-black text-gray-800 leading-tight">{room.baseAdults ?? 2}+{room.baseChildren ?? 0}</p>
+                              <p className="text-[9px] text-gray-400">adults+kids</p>
+                            </div>
+                            {/* Weekend Rate */}
+                            <div className="bg-white px-3 py-2.5">
+                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wide">Weekend</p>
+                              <p className="text-sm font-black text-amber-700 leading-tight">
+                                {room.weekendPrice ? `₹${room.weekendPrice.toLocaleString()}` : "Same"}
+                              </p>
+                              <p className="text-[9px] text-gray-400">/night</p>
+                            </div>
+                            {/* Status badges */}
+                            <div className="bg-white px-3 py-2.5 sm:col-span-4 lg:col-span-1">
+                              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wide mb-1">Features</p>
+                              <div className="flex flex-wrap gap-1">
+                                {room.refundable && <span className="text-[8px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100 font-bold">Free Cancel</span>}
+                                {room.discountPercent > 0 && <span className="text-[8px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-100 font-bold">{room.discountPercent}% OFF</span>}
+                                {room.discountFlat > 0 && <span className="text-[8px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-100 font-bold">₹{room.discountFlat} OFF</span>}
+                                {(room.mealPlanOptions || []).filter((m: any) => m.enabled).map((m: any) => (
+                                  <span key={m.code} className="text-[8px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-100 font-bold">{MEAL_EMOJIS[m.code]} {m.code}</span>
+                                ))}
+                                {!(room.mealPlanOptions || []).some((m: any) => m.enabled) && room.mealPlan && (
+                                  <span className="text-[8px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-full border border-purple-100 font-bold">{MEAL_EMOJIS[room.mealPlan]} {room.mealPlan}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1393,163 +1867,362 @@ export default function VendorPropertyManagerPage() {
             </div>
           )}
 
-          {/* ─── Inventory & Rates Tab ─── */}
+          {/* â”€â”€â”€ Inventory & Rates Tab â”€â”€â”€ */}
           {tab === "inventory" && (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-bold text-gray-900">Dynamic Inventory & Rates</h2>
-                <p className="text-xs text-gray-400">Update seasonal prices, availability, and blackout dates.</p>
+                <div>
+                  <h2 className="font-bold text-gray-900">Inventory &amp; Rates Calendar</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Set seasonal prices, availability counts, and blackout dates per room type.</p>
+                </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                <h3 className="font-bold text-gray-900 mb-4 text-sm">Bulk Update</h3>
-                <form onSubmit={handleBulkUpdateInventory} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                  <div className="lg:col-span-4">
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Room Type</label>
-                    <select aria-label="Select Room Type" title="Select Room Type" required value={selectedRoomForInv} onChange={e => setSelectedRoomForInv(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
-                      <option value="" disabled>-- Select a room --</option>
-                      {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Base: ₹{r.basePrice})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Date</label>
-                    <input aria-label="Start Date" title="Start Date" type="date" required value={invStartDate} onChange={e => setInvStartDate(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">End Date</label>
-                    <input aria-label="End Date" title="End Date" type="date" required value={invEndDate} onChange={e => setInvEndDate(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Daily Available Rooms</label>
-                    <input aria-label="Daily Available Rooms" title="Daily Available Rooms" type="number" required min="0" value={invAvailableCount} onChange={e => setInvAvailableCount(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Seasonal Price (₹/night)</label>
-                    <input type="number" min="0" value={invPriceOverride} onChange={e => setInvPriceOverride(e.target.value)}
-                      placeholder="Leave blank for base price"
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount Type</label>
-                    <select aria-label="Discount Type" title="Discount Type" value={invDiscountType} onChange={e => setInvDiscountType(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]">
-                      <option value="PERCENT">Percentage (%)</option>
-                      <option value="FLAT">Flat Amount (₹)</option>
-                    </select>
-                  </div>
-                  {invDiscountType === "PERCENT" ? (
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount Percent (%)</label>
-                      <input type="number" min="0" max="100" value={invDiscountPercent} onChange={e => { setInvDiscountPercent(e.target.value); setInvDiscountFlat("0"); }}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-                        placeholder="Discount Percent (%)" />
+              <div className="flex flex-col gap-4 items-start">
+                {/* ── Bulk Update Form ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full">
+                  <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#1B3A6B]" /> Bulk Rate &amp; Availability Update
+                  </h3>
+                  <form onSubmit={handleBulkUpdateInventory} className="space-y-3">
+                    {/* Compact Top Row: Room, Rate Type, Session Price, Discount */}
+                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Room Type *</label>
+                        <select aria-label="Select Room Type" title="Select Room Type" required value={selectedRoomForInv}
+                          onChange={e => {
+                            const roomIdVal = e.target.value;
+                            setSelectedRoomForInv(roomIdVal);
+                            const r = rooms.find(x => String(x.id) === roomIdVal);
+                            if (r) {
+                              setInvAvailableCount(String(r.totalRooms));
+                              setInvWeekendPrice(r.weekendPrice !== undefined && r.weekendPrice !== null ? String(r.weekendPrice) : "");
+                              setInvWeekendDays(Array.isArray(r.weekendDays) ? r.weekendDays : ["Friday", "Saturday"]);
+                              setInvExtraAdultPrice(r.extraAdultPrice !== undefined && r.extraAdultPrice !== null ? String(r.extraAdultPrice) : "");
+                              setInvExtraChildWithBedPrice(r.extraChildWithBedPrice !== undefined && r.extraChildWithBedPrice !== null ? String(r.extraChildWithBedPrice) : "");
+                              setInvExtraChildWithoutBedPrice(r.extraChildWithoutBedPrice !== undefined && r.extraChildWithoutBedPrice !== null ? String(r.extraChildWithoutBedPrice) : "");
+                              const roomMealPlans = r.mealPlanOptions || DEFAULT_MEAL_OPTIONS;
+                              const mergedMealPlans = DEFAULT_MEAL_OPTIONS.map(defOpt => {
+                                const matched = roomMealPlans.find((x: any) => x.code === defOpt.code);
+                                return matched ? { ...defOpt, ...matched } : defOpt;
+                              });
+                              setInvMealPlanOptions(mergedMealPlans);
+                            }
+                          }}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]">
+                          <option value="" disabled>-- Select a room --</option>
+                          {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Base: ₹{r.basePrice})</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Rate Type / Season</label>
+                        <div className="relative">
+                          <select
+                            aria-label="Rate Type"
+                            value={invRateType}
+                            onChange={e => setInvRateType(e.target.value)}
+                            className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:border-[#1B3A6B] appearance-none bg-white cursor-pointer"
+                          >
+                            {RATE_MODES.map(mode => (
+                              <option key={mode.key} value={mode.key}>{mode.icon} {mode.label}</option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                            <span className="text-gray-400 text-xs">▼</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Price Override (₹)</label>
+                        <input type="number" min="0" value={invPriceOverride} onChange={e => setInvPriceOverride(e.target.value)}
+                          placeholder="Blank = base price"
+                            className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount</label>
+                        <div className="flex gap-2">
+                          <select aria-label="Discount Type" title="Discount Type" value={invDiscountType} onChange={e => setInvDiscountType(e.target.value)}
+                            className="w-1/2 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]">
+                            <option value="PERCENT">%</option>
+                            <option value="FLAT">₹</option>
+                          </select>
+                          <input type="number" min="0" value={invDiscountType === 'PERCENT' ? invDiscountPercent : invDiscountFlat}
+                            onChange={e => { if (invDiscountType === 'PERCENT') { setInvDiscountPercent(e.target.value); setInvDiscountFlat('0'); } else { setInvDiscountFlat(e.target.value); setInvDiscountPercent('0'); } }}
+                            className="w-1/2 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" placeholder="0" />
+                        </div>
+                      </div>
                     </div>
-                  ) : (
+
+                    {/* Dates + Availability row */}
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 mt-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Date</label>
+                        <input aria-label="Start Date" title="Start Date" type="date" required value={invStartDate} onChange={e => setInvStartDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">End Date</label>
+                        <input aria-label="End Date" title="End Date" type="date" required value={invEndDate} onChange={e => setInvEndDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Daily Rooms Available</label>
+                        <input aria-label="Daily Available Rooms" title="Daily Available Rooms" type="number" required min="0" value={invAvailableCount} onChange={e => setInvAvailableCount(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+                      {/* price override moved to the top row to avoid duplicate inputs */}
+                    </div>
+
+                    <div className="mt-1 space-y-1">
+                      {invRateType === "session" && <p className="text-[9px] text-amber-600 font-medium">☀️ Peak/high season — set a premium rate for popular travel dates</p>}
+                      {invRateType === "off_session" && <p className="text-[9px] text-sky-600 font-medium">❄️ Low season — attract bookings with a reduced rate</p>}
+                      {invRateType === "mid_session" && <p className="text-[9px] text-emerald-600 font-medium">🍂 Shoulder season — moderate rates between peak and off-season</p>}
+                      {invRateType === "blackout" && <p className="text-[9px] text-indigo-600 font-medium">🎆 Festivals & events — special pricing for high demand periods</p>}
+                      {invRateType === "stop_sales" && <p className="text-[9px] text-rose-600 font-medium">🚫 Stop Sales — blocks all bookings for the selected date range</p>}
+                    </div>
+
+                    <p className="text-[10px] text-gray-500 mt-1">Price override applies to the selected <strong>Rate Type / Season</strong>; leave blank to use the base price.</p>
+
+                    {invRateType === "stop_sales" ? (
+                      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-rose-800 uppercase tracking-wide">Stop Sales Mode Active</p>
+                          <p className="text-[11px] text-rose-600 mt-1 font-medium leading-relaxed">
+                            This will block booking requests and close sales for the selected room type during this date range.
+                            Pricing and discounts are disabled.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+
+                        <div className="border-t border-gray-100 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvanced(!showAdvanced)}
+                            className="flex items-center gap-2 text-xs font-bold text-[#1B3A6B] hover:text-[#0f2548] transition-colors select-none focus:outline-none cursor-pointer"
+                          >
+                            <span className="text-[10px] transform transition-transform duration-200">
+                              {showAdvanced ? "▼" : "▶"}
+                            </span>
+                            <span>Advanced Overrides (Weekend, Occupancy & Meals)</span>
+                          </button>
+
+                          {showAdvanced && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 mt-3 animate-in fade-in duration-200">
+                              {/* Weekend Pricing override */}
+                              <div className="bg-white p-2 rounded-lg border border-slate-100 space-y-2">
+                                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-amber-500" /> Weekend pricing override
+                                </p>
+                                <div>
+                                  <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Weekend Price (₹/night)</label>
+                                  <input type="number" min="0" value={invWeekendPrice} onChange={e => setInvWeekendPrice(e.target.value)}
+                                    placeholder="Leave blank to use base"
+                                    className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-amber-400 bg-slate-50" />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Weekend Days</label>
+                                  <div className="flex flex-wrap gap-1">
+                                    {WEEKDAYS.map(day => (
+                                      <button type="button" key={day}
+                                        onClick={() => {
+                                          setInvWeekendDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+                                        }}
+                                        className={cn(
+                                          "px-2 py-1 rounded text-[10px] font-bold border transition-all",
+                                          invWeekendDays.includes(day)
+                                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                                            : "bg-white text-gray-400 border-gray-200 hover:border-amber-200"
+                                        )}>
+                                        {day.slice(0, 3)}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Occupancy Prices override */}
+                              <div className="bg-white p-2 rounded-lg border border-slate-100 space-y-2">
+                                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Users className="w-3.5 h-3.5 text-emerald-500" /> Occupant prices override
+                                </p>
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div>
+                                    <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Extra Adult Price (₹)</label>
+                                    <input type="number" min="0" value={invExtraAdultPrice} onChange={e => setInvExtraAdultPrice(e.target.value)}
+                                      placeholder="Leave blank to use default"
+                                      className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-400 bg-slate-50" />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Child with bed (₹)</label>
+                                      <input type="number" min="0" value={invExtraChildWithBedPrice} onChange={e => setInvExtraChildWithBedPrice(e.target.value)}
+                                        placeholder="Use default"
+                                        className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-400 bg-slate-50" />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Child no bed (₹)</label>
+                                      <input type="number" min="0" value={invExtraChildWithoutBedPrice} onChange={e => setInvExtraChildWithoutBedPrice(e.target.value)}
+                                        placeholder="Use default"
+                                        className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-400 bg-slate-50" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Meal plans card */}
+                              <div className="bg-white p-2 rounded-lg border border-slate-100 space-y-2">
+                                <p className="text-[10px] font-bold text-purple-800 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Utensils className="w-3.5 h-3.5 text-purple-500" /> Meal plan rates override
+                                </p>
+                                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                                  {invMealPlanOptions.map((opt: any) => (
+                                    <div key={opt.code} className="border border-purple-50 p-2 rounded-lg bg-slate-50 space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-slate-700">{MEAL_EMOJIS[opt.code]} {opt.label}</span>
+                                        <input type="checkbox" checked={opt.enabled}
+                                          onChange={e => {
+                                            setInvMealPlanOptions(prev => prev.map(o => o.code === opt.code ? { ...o, enabled: e.target.checked } : o));
+                                          }}
+                                          className="w-3.5 h-3.5 accent-purple-600 cursor-pointer" />
+                                      </div>
+                                      {opt.enabled && (
+                                        <div className="grid grid-cols-2 gap-1">
+                                          <div>
+                                            <label className="block text-[7px] text-gray-400 font-bold uppercase">Adult price</label>
+                                            <input type="number" min="0" value={opt.adultPrice}
+                                              onChange={e => {
+                                                setInvMealPlanOptions(prev => prev.map(o => o.code === opt.code ? { ...o, adultPrice: Number(e.target.value) } : o));
+                                              }}
+                                              placeholder="Adult ₹"
+                                              className="w-full border border-gray-100 rounded px-1.5 py-0.5 text-[10px] bg-white focus:outline-none" />
+                                          </div>
+                                          <div>
+                                            <label className="block text-[7px] text-gray-400 font-bold uppercase">Child price</label>
+                                            <input type="number" min="0" value={opt.childPrice}
+                                              onChange={e => {
+                                                setInvMealPlanOptions(prev => prev.map(o => o.code === opt.code ? { ...o, childPrice: Number(e.target.value) } : o));
+                                              }}
+                                              placeholder="Child ₹"
+                                              className="w-full border border-gray-100 rounded px-1.5 py-0.5 text-[10px] bg-white focus:outline-none" />
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex justify-stretch pt-1">
+                      <button type="submit" disabled={savingInv}
+                        className="w-full px-5 py-2 bg-[#1B3A6B] text-white rounded-xl text-sm font-bold hover:bg-[#0f2548] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+                        {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Updating...</> : <><Calendar className="w-4 h-4" /> Update Calendar</>}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* ── Right: Calendar ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 w-full min-w-0">
+                  <div className="flex items-center justify-between mb-5">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Flat Discount (₹)</label>
-                      <input type="number" min="0" value={invDiscountFlat} onChange={e => { setInvDiscountFlat(e.target.value); setInvDiscountPercent("0"); }}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B]"
-                        placeholder="Flat Discount Amount (₹)" />
+                      <h3 className="font-bold text-gray-900 text-sm">Availability &amp; Rate Calendar</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {selectedRoomForInv ? "Click any date to prefill the update form" : "Select a room type to view its calendar"}
+                      </p>
+                    </div>
+                    {selectedRoomForInv && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const today = new Date();
+                            const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                            const prev = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1);
+                            if (prev >= minMonth) setCurrentCalendarMonth(prev);
+                          }}
+                          disabled={
+                            currentCalendarMonth.getFullYear() === new Date().getFullYear() &&
+                            currentCalendarMonth.getMonth() === new Date().getMonth()
+                          }
+                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-sm font-bold text-gray-800 min-w-32 text-center">
+                          {currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const today = new Date();
+                            const maxMonth = new Date(today.getFullYear(), today.getMonth() + 11, 1);
+                            const next = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1);
+                            if (next <= maxMonth) setCurrentCalendarMonth(next);
+                          }}
+                          disabled={
+                            currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() &&
+                            currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()
+                          }
+                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedRoomForInv ? (
+                    <>
+                      {/* Calendar Grid */}
+                      <div className="grid grid-cols-7 gap-1.5 mb-4">
+                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
+                          <div key={day} className="text-center text-[10px] font-black text-gray-400 uppercase py-1 select-none">
+                            {day}
+                          </div>
+                        ))}
+                        {renderCalendar()}
+                      </div>
+
+                      {/* Calendar Legend */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4 mt-3 border-t border-gray-100">
+                        {[
+                          { color: "bg-white border-gray-200", text: "Open" },
+                          { color: "bg-amber-50/70 border-amber-200", text: "Session Rates (Peak)" },
+                          { color: "bg-emerald-50/70 border-emerald-200", text: "Mid-Season Rates" },
+                          { color: "bg-sky-50/70 border-sky-200", text: "Off-Low Rates" },
+                          { color: "bg-indigo-50/70 border-indigo-200", text: "Festival Rates" },
+                          { color: "bg-emerald-50 border-emerald-300", text: "Discounted" },
+                          { color: "bg-amber-50 border-amber-300", text: "Low Stock" },
+                          { color: "bg-rose-50/70 border-rose-200", text: "Blocked (Stop Sales)" },
+                          { color: "bg-slate-100 border-slate-200", text: "Sold Out" },
+                          { color: "bg-gray-50 border-gray-100 opacity-60", text: "Past" },
+                        ].map(item => (
+                          <div key={item.text} className="flex items-center gap-1.5">
+                            <span className={`w-3.5 h-3.5 rounded border ${item.color}`} />
+                            <span className="text-[9px] font-bold text-gray-500">{item.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Calendar className="w-12 h-12 text-gray-200 mb-3" />
+                      <p className="text-gray-500 font-medium text-sm">No room selected</p>
+                      <p className="text-gray-400 text-xs mt-1">Select a room type in the form to view its rate calendar</p>
                     </div>
                   )}
-                  <div className="lg:col-span-2 flex items-center h-[42px]">
-                    <label className="flex items-center gap-2 cursor-pointer text-sm">
-                      <input type="checkbox" checked={invIsBlocked} onChange={e => setInvIsBlocked(e.target.checked)} className="w-4 h-4 accent-red-500" />
-                      <span className="font-medium text-red-600">Blackout Dates (Stop Sales)</span>
-                    </label>
-                  </div>
-                  <div className="lg:col-span-2 flex justify-end">
-                    <button type="submit" disabled={savingInv}
-                      className="px-6 py-2.5 bg-[#1B3A6B] text-white rounded-xl text-sm font-bold hover:bg-[#0f2548] transition-colors disabled:opacity-50">
-                      {savingInv ? "Updating..." : "Update Calendar"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {selectedRoomForInv && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">Room Availability & Rate Calendar</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">Click a day to quickly pre-populate the Bulk Update form.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const today = new Date();
-                          const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                          const prev = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1);
-                          if (prev >= minMonth) setCurrentCalendarMonth(prev);
-                        }}
-                        disabled={
-                          currentCalendarMonth.getFullYear() === new Date().getFullYear() &&
-                          currentCalendarMonth.getMonth() === new Date().getMonth()
-                        }
-                        className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <span className="text-sm font-bold text-gray-800 min-w-32 text-center">
-                        {currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const today = new Date();
-                          const maxMonth = new Date(today.getFullYear(), today.getMonth() + 11, 1);
-                          const next = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1);
-                          if (next <= maxMonth) setCurrentCalendarMonth(next);
-                        }}
-                        disabled={
-                          currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() &&
-                          currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()
-                        }
-                        className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1 text-center font-bold text-[10px] text-gray-400 uppercase tracking-wider mb-2">
-                    <div>Sun</div>
-                    <div>Mon</div>
-                    <div>Tue</div>
-                    <div>Wed</div>
-                    <div>Thu</div>
-                    <div>Fri</div>
-                    <div>Sat</div>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1.5">
-                    {renderCalendar()}
-                  </div>
-
-                  {/* Calendar Legend */}
-                  <div className="flex flex-wrap gap-x-3 gap-y-2 pt-4 mt-3 border-t border-gray-100">
-                    {[
-                      { color: "bg-white border-gray-200", text: "Open" },
-                      { color: "bg-emerald-50 border-emerald-300", text: "Discounted" },
-                      { color: "bg-amber-50 border-amber-300", text: "Low Stock" },
-                      { color: "bg-sky-50 border-sky-200", text: "Peak Price" },
-                      { color: "bg-rose-50 border-rose-300", text: "Blocked" },
-                      { color: "bg-slate-100 border-slate-200", text: "Sold Out" },
-                      { color: "bg-gray-50 border-gray-100 opacity-60", text: "Past" },
-                    ].map(item => (
-                      <div key={item.text} className="flex items-center gap-1">
-                        <span className={`w-3 h-3 rounded border ${item.color}`} />
-                        <span className="text-[9px] font-bold text-gray-400">{item.text}</span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
-              )}
+              </div>{/* flex row end */}
             </div>
           )}
 
@@ -1571,9 +2244,9 @@ export default function VendorPropertyManagerPage() {
                         <div className="flex items-center gap-2 mb-2">
                           <span className={cn("text-[10px] font-black px-2.5 py-1 rounded-full border",
                             booking.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                            booking.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                            booking.status === "REJECTED" ? "bg-red-50 text-red-700 border-red-200" :
-                            "bg-gray-50 text-gray-500 border-gray-200"
+                              booking.status === "PENDING" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                booking.status === "REJECTED" ? "bg-red-50 text-red-700 border-red-200" :
+                                  "bg-gray-50 text-gray-500 border-gray-200"
                           )}>
                             {booking.status}
                           </span>
@@ -1679,7 +2352,7 @@ export default function VendorPropertyManagerPage() {
                 {/* Add Photo Form */}
                 <div className="border-t border-gray-100 pt-5">
                   <h3 className="text-sm font-bold text-gray-700 mb-3">Add New Photo</h3>
-                  
+
                   {photos.length >= 15 ? (
                     <div className="p-4 bg-red-50 border border-red-100 text-red-700 text-xs font-bold rounded-2xl mb-4">
                       ⚠️ Limit Reached: You have uploaded the maximum allowed 15 photos for this property. Delete existing photos to upload new ones.

@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Edit3, Search, Filter, Star, MapPin, CheckCircle, XCircle,
   ChevronRight, Building2, LayoutGrid, List, RefreshCw, Eye, Ban,
   Users, Wallet, BookOpen, Shield, ChevronDown, ChevronUp, X,
-  Save, Camera, Bed, Clock, Phone, Globe, Mail, AlertTriangle, TrendingUp
+  Save, Camera, Bed, Clock, Phone, Globe, Mail, AlertTriangle, TrendingUp, Info
 } from "lucide-react";
 import { getApiUrl } from "@/utils/api-url";
 
@@ -570,13 +570,130 @@ function HotelViewModal({ hotel, onClose }: { hotel: Hotel; onClose: () => void 
   );
 }
 
+// ─── Pending City Request Card ─────────────────────────────────────────────────
+function PendingCityCard({
+  request,
+  destinations,
+  onRefresh,
+}: {
+  request: any;
+  destinations: { id: number; name: string }[];
+  onRefresh: () => void;
+}) {
+  const [resolving, setResolving] = useState(false);
+  const [mapToExisting, setMapToExisting] = useState(false);
+  const [existingDestId, setExistingDestId] = useState("");
+
+  const handleAccept = async () => {
+    setResolving(true);
+    try {
+      const body: any = { action: "APPROVE" };
+      if (mapToExisting && existingDestId) {
+        body.existingDestinationId = Number(existingDestId);
+      } else {
+        body.createNew = true;
+      }
+      const res = await fetch(`${API_URL}/admin/pending-cities/${request.id}`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      onRefresh();
+    } catch (e: any) {
+      alert("Failed to accept: " + e.message);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    setResolving(true);
+    try {
+      await fetch(`${API_URL}/admin/pending-cities/${request.id}`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ action: "REJECT" }),
+      });
+      onRefresh();
+    } catch { } finally { setResolving(false); }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-amber-100 p-5">
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
+          <MapPin className="w-5 h-5 text-amber-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <p className="font-bold text-gray-900">{request.requestedCityName}</p>
+            <span className="text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full font-bold">NEW CITY</span>
+          </div>
+          <p className="text-xs text-gray-400">
+            Vendor: <strong>{request.vendorName || request.vendorEmail}</strong>
+            {request.stateName && <> · State: <strong>{request.stateName}</strong></>}
+            {request.countryName && <> · Country: <strong>{request.countryName}</strong></>}
+          </p>
+          {request.hotelName && (
+            <p className="text-xs text-gray-400 mt-0.5">For hotel: <strong className="text-gray-700">{request.hotelName}</strong></p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleReject} disabled={resolving}
+            className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors disabled:opacity-50"
+          >
+            <XCircle className="w-3.5 h-3.5 inline mr-1" /> Reject
+          </button>
+          <button
+            onClick={handleAccept} disabled={resolving || (mapToExisting && !existingDestId)}
+            className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-1"
+          >
+            {resolving ? <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+            {mapToExisting ? "Map to Existing" : "Accept & Add City"}
+          </button>
+        </div>
+      </div>
+
+      {/* Options */}
+      <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-3">
+        <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={mapToExisting}
+            onChange={e => setMapToExisting(e.target.checked)}
+            className="w-3.5 h-3.5"
+          />
+          Map to existing destination instead
+        </label>
+        {mapToExisting && (
+          <select
+            value={existingDestId}
+            onChange={e => setExistingDestId(e.target.value)}
+            className="flex-1 input text-xs"
+          >
+            <option value="">-- Select existing destination --</option>
+            {destinations.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Hotel Manager Page ───────────────────────────────────────────────────
 export default function HotelsManager() {
-  const [tab, setTab] = useState<"all" | "pending" | "bookings" | "vendors">("all");
+  const [tab, setTab] = useState<"all" | "pending" | "bookings" | "vendors" | "pending-cities">("all");
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [destinations, setDestinations] = useState<{ id: number; name: string }[]>([]);
+  const [pendingCities, setPendingCities] = useState<any[]>([]);
+  const [pendingCityCount, setPendingCityCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [search, setSearch] = useState("");
@@ -613,10 +730,20 @@ export default function HotelsManager() {
     } catch {}
   }, []);
 
+  const fetchPendingCities = React.useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/pending-cities?status=PENDING`, { headers: authHeaders() });
+      const data = await res.json();
+      setPendingCities(data.requests || []);
+      setPendingCityCount(data.pendingCount || 0);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchHotels();
     fetchDestinations();
     fetchVendors();
+    fetchPendingCities();
   }, []);
 
   const handleApprove = async (hotel: Hotel) => {
@@ -684,11 +811,20 @@ export default function HotelsManager() {
     { key: "pending", label: "Pending Approval", count: pendingHotels.length, badge: pendingHotels.length > 0 },
     { key: "bookings", label: "Bookings" },
     { key: "vendors", label: "Vendors", count: vendors.length },
+    { key: "pending-cities", label: "🏙️ City Requests", count: pendingCityCount, badge: pendingCityCount > 0 },
   ] as const;
 
   return (
     <AdminLayout title="Hotel Management" subtitle="Full OTA property management — vendors, rooms, inventory, bookings">
       <div className="space-y-6">
+
+        {/* Dropdown visibility redirect banner */}
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 items-start shadow-sm">
+          <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-800 leading-relaxed">
+            <span className="font-bold">🏨 Hotels Navbar Dropdown Settings:</span> To configure which Countries, States, and Cities appear under the Hotels dropdown menu on the website navbar, go to the <a href="/admin/destinations" className="underline font-black hover:text-blue-900 text-[#1B3A6B]">Destinations Manager</a>. Edit the desired place, state, or country card and check <span className="font-bold">"Show in Hotels Dropdown"</span> box located at the very bottom of the form.
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1016,6 +1152,42 @@ export default function HotelsManager() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ──────── TAB: PENDING CITY REQUESTS ──────── */}
+        {tab === "pending-cities" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-amber-100">
+              <div>
+                <h3 className="font-bold text-gray-900">Vendor City Requests</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Vendors submitted these city names that aren't in our CMS yet. Review and add them.
+                </p>
+              </div>
+              <button onClick={fetchPendingCities} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+
+            {pendingCities.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-gray-100 py-16 text-center text-gray-400">
+                <CheckCircle className="w-14 h-14 mx-auto mb-3 opacity-20 text-emerald-400" />
+                <p className="font-medium">All city requests resolved!</p>
+                <p className="text-sm mt-1">No pending city submissions from vendors.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingCities.map((req: any) => (
+                  <PendingCityCard
+                    key={req.id}
+                    request={req}
+                    destinations={destinations}
+                    onRefresh={fetchPendingCities}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -38,6 +38,7 @@ export function MegaNav() {
   const [activeRegion, setActiveRegion] = useState<string>("north-india");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [dynamicData, setDynamicData] = useState<any>(null);
+  const [hotelsData, setHotelsData] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/destinations/mega-menu')
@@ -65,12 +66,56 @@ export function MegaNav() {
       .catch(err => console.warn("Failed to load mega menu data:", err));
   }, []);
 
+  useEffect(() => {
+    fetch('/api/hotels/mega-menu')
+      .then(async res => {
+        if (!res.ok) {
+          console.warn(`Hotels mega menu fetch failed with status: ${res.status}`);
+          return null;
+        }
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.warn("Invalid JSON response from hotels mega menu");
+          return null;
+        }
+      })
+      .then(data => {
+        if (data && (data.indiaZones || data.worldRegions)) {
+          setHotelsData(data);
+        }
+      })
+      .catch(err => console.warn("Failed to load hotels mega menu data:", err));
+  }, []);
+
   const handleMouseEnter = (menu: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setActiveMenu(menu);
     // Default region based on menu
-    if (menu === 'india') setActiveRegion('north');
-    if (menu === 'world') setActiveRegion('europe');
+    if (menu === 'india') {
+      if (dynamicData?.indiaZones?.length > 0) {
+        setActiveRegion(dynamicData.indiaZones[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+      } else {
+        setActiveRegion('north-india');
+      }
+    }
+    if (menu === 'world') {
+      if (dynamicData?.worldRegions?.length > 0) {
+        setActiveRegion(dynamicData.worldRegions[0].slug || dynamicData.worldRegions[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+      } else {
+        setActiveRegion('europe');
+      }
+    }
+    if (menu === 'hotels') {
+      if (hotelsData?.indiaZones?.length > 0) {
+        setActiveRegion(hotelsData.indiaZones[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+      } else if (hotelsData?.worldRegions?.length > 0) {
+        setActiveRegion(hotelsData.worldRegions[0].slug || hotelsData.worldRegions[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+      } else {
+        setActiveRegion('north-india');
+      }
+    }
   };
 
   const handleMouseLeave = () => {
@@ -225,6 +270,162 @@ export function MegaNav() {
     );
   };
 
+  const renderHotelsMegaMenu = () => {
+    if (!hotelsData) return null;
+
+    const regions: any[] = [];
+
+    if (hotelsData.indiaZones) {
+      hotelsData.indiaZones.forEach((zone: any) => {
+        regions.push({
+          id: zone.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name: zone.name,
+          isIndia: true,
+          groups: zone.states.map((state: any) => ({
+            title: state.title,
+            slug: state.slug,
+            countrySlug: "india",
+            items: state.items
+          }))
+        });
+      });
+    }
+
+    if (hotelsData.worldRegions) {
+      hotelsData.worldRegions.forEach((region: any) => {
+        regions.push({
+          id: region.slug || region.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name: region.name,
+          isIndia: false,
+          groups: region.countries.map((country: any) => ({
+            title: country.name,
+            slug: country.slug,
+            countrySlug: country.slug,
+            items: country.destinations || []
+          }))
+        });
+      });
+    }
+
+    const currentRegionData = regions.find(r => r.id === activeRegion) || regions[0];
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        className="fixed top-[74px] left-0 w-full bg-white border-t border-slate-200 shadow-2xl z-[100] min-h-[500px]"
+        onMouseEnter={() => {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        }}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="container mx-auto">
+          <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 overflow-x-auto no-scrollbar bg-slate-50/50">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+              Hotels Directory:
+            </span>
+            <Link
+              href="/hotels"
+              className="text-[11px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
+            >
+              All Hotels
+            </Link>
+            <Link
+              href="/hotels/india"
+              className="text-[11px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
+            >
+              Hotels in India
+            </Link>
+          </div>
+
+          <div className="flex">
+            <div className="w-[280px] bg-slate-50/30 border-r border-slate-100 py-6 max-h-[450px] overflow-y-auto">
+              {regions.map((region) => {
+                if (!region) return null;
+                return (
+                  <div
+                    key={region.id}
+                    onMouseEnter={() => setActiveRegion(region.id)}
+                    className={cn(
+                      "px-8 py-3.5 cursor-pointer flex items-center justify-between transition-all group",
+                      activeRegion === region.id
+                        ? "bg-white text-primary border-r-4 border-accent shadow-sm"
+                        : "text-slate-500 hover:bg-slate-100/50 hover:text-primary"
+                    )}
+                  >
+                    <span className="text-[14px] font-bold">{region.name} Hotels</span>
+                    <ChevronRight className={cn(
+                      "w-4 h-4 transition-transform",
+                      activeRegion === region.id ? "translate-x-1 text-accent opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )} />
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex-1 p-8 bg-white min-h-[400px] max-h-[450px] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-10">
+                {currentRegionData?.groups?.map((group: any) => {
+                  const stateOrCountryHref = currentRegionData.isIndia
+                    ? `/hotels/india/${group.slug}`
+                    : `/hotels/${group.slug}`;
+
+                  return (
+                    <div key={group.title} className="space-y-3">
+                      <h4 className="text-[14px] font-black text-primary border-b border-slate-100 pb-2 mb-4 tracking-tight hover:text-accent transition-colors">
+                        <Link href={stateOrCountryHref}>
+                          {group.title.toLowerCase().endsWith('hotels') ? group.title : `${group.title} Hotels`}
+                        </Link>
+                      </h4>
+                      <ul className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-hidden hover:overflow-y-auto pr-2 pb-2">
+                        {group.items.map((item: any, index: number) => {
+                          const itemName = typeof item === 'string' ? item : item?.name;
+                          if (!itemName) return null;
+                          const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : item?.slug;
+                          const countrySlug = currentRegionData.isIndia ? "india" : group.slug;
+                          
+                          let stateSlug = "all";
+                          if (currentRegionData.isIndia) {
+                            stateSlug = group.slug;
+                          } else if (item.stateSlug) {
+                            stateSlug = item.stateSlug;
+                          }
+
+                          const isStateItem = item.isState;
+                          const itemHref = isStateItem
+                            ? `/hotels/${countrySlug}/${itemSlug}`
+                            : `/hotels/${countrySlug}/${stateSlug}/hotels-in-${itemSlug}`;
+
+                          return (
+                            <li key={itemSlug || index}>
+                              <Link
+                                href={itemHref}
+                                className="group flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-primary hover:font-bold transition-all py-0.5"
+                              >
+                                <MapPin className="w-3.5 h-3.5 text-slate-300 group-hover:text-accent transition-colors shrink-0" />
+                                <span className="truncate">{itemName.toLowerCase().endsWith('hotels') ? itemName : `${itemName} Hotels`}</span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+                {!currentRegionData && (
+                  <div className="col-span-full py-10 flex justify-center text-slate-400">
+                    Loading regions...
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full relative font-sans">
 
@@ -322,11 +523,20 @@ export function MegaNav() {
       </div>
 
       {/* HOTELS */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/hotels" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
-          <Building2 className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
-          Hotels
-        </Link>
+      <div
+        className="h-full flex items-center px-1"
+        onMouseEnter={() => handleMouseEnter('hotels')}
+        onMouseLeave={handleMouseLeave}
+      >
+        <button className={cn(
+          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          activeMenu === 'hotels'
+            ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
+            : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
+        )}>
+          <Building2 className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'hotels' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          Hotels <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'hotels' && "rotate-180")} />
+        </button>
       </div>
 
       {/* B2B */}
@@ -347,6 +557,7 @@ export function MegaNav() {
 
       <AnimatePresence>
         {(activeMenu === 'india' || activeMenu === 'world') && renderMegaMenu(activeMenu as 'india' | 'world')}
+        {activeMenu === 'hotels' && renderHotelsMegaMenu()}
       </AnimatePresence>
 
     </nav>

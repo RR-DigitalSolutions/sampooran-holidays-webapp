@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -1409,5 +1409,168 @@ router.delete("/hotels/:id/rooms/:roomId", requirePermission("PACKAGES"), async 
     res.status(500).json({ error: "Failed to delete room" });
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// PENDING CITY REQUESTS — Admin Alert System
+// Vendors submit custom cities not in our CMS — admin reviews and resolves
+// ─────────────────────────────────────────────────────────────
+
+// GET /admin/pending-cities — list with vendor info
+router.get("/pending-cities", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const { status = "PENDING" } = req.query;
+    const rows = await db.execute(sql`
+      SELECT 
+        pcr.id, pcr.city_name as "cityName", pcr.state_name as "stateName",
+        pcr.country_name as "countryName", pcr.status, pcr.hotel_id as "hotelId",
+        pcr.state_id as "stateId", pcr.country_id as "countryId",
+        pcr.admin_note as "adminNote", pcr.created_at as "createdAt",
+        pcr.resolved_at as "resolvedAt",
+        u.name as "vendorName", u.email as "vendorEmail",
+        h.name as "hotelName", h.slug as "hotelSlug"
+      FROM pending_city_requests pcr
+      LEFT JOIN users u ON pcr.vendor_id = u.id
+      LEFT JOIN hotels h ON pcr.hotel_id = h.id
+      WHERE pcr.status = ${status as string}
+      ORDER BY pcr.created_at DESC
+      LIMIT 100
+    `) as any;
+
+    // Count for alert badge
+    const countRow = await db.execute(sql`
+      SELECT COUNT(*)::int as count FROM pending_city_requests WHERE status = 'PENDING'
+    `) as any;
+
+    res.json({
+      requests: rows.rows || [],
+      pendingCount: Number(countRow.rows?.[0]?.count || 0),
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch pending city requests" });
+  }
+});
+
+// PATCH or POST /admin/pending-cities/:id — resolve (accept/approve or reject)
+const resolvePendingCity = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { action, adminNote, destinationData, existingDestinationId } = req.body;
+    // action: 'ACCEPT' | 'APPROVE' or 'REJECT'
+
+    const [pcr] = await db.execute(sql`
+      SELECT * FROM pending_city_requests WHERE id = ${Number(id)}
+    `) as any;
+    const request = (pcr as any).rows?.[0];
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const isApprove = action === "ACCEPT" || action === "APPROVE";
+
+    if (isApprove) {
+      let resolvedDestId: number;
+      let resolvedDestSlug: string;
+      let resolvedStateId: number | null = null;
+      let resolvedCountryId: number | null = null;
+      let resolvedStateSlug: string | null = null;
+      let resolvedCountrySlug: string | null = null;
+
+      if (existingDestinationId) {
+        // Link to existing destination
+        const [existingDest] = await db.select().from(destinationsTable)
+          .where(eq(destinationsTable.id, Number(existingDestinationId))).limit(1);
+        if (!existingDest) return res.status(400).json({ error: "Existing destination not found" });
+
+        resolvedDestId = existingDest.id;
+        resolvedDestSlug = existingDest.slug;
+        resolvedStateId = existingDest.stateId;
+        resolvedCountryId = existingDest.countryId;
+      } else {
+        // Create new destination in CMS
+        const data = destinationData || {};
+        const name = data.name || request.cityName;
+        const newDestSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-");
+
+        const [newDest] = await db.insert(destinationsTable).values({
+          name,
+          slug: data.slug || newDestSlug,
+          stateId: data.stateId || request.stateId || null,
+          countryId: data.countryId || request.countryId || null,
+          description: data.description || null,
+          isActive: true,
+          isFeatured: false,
+          packageCount: 0,
+          displayOrder: 0,
+        } as any).returning();
+
+        resolvedDestId = newDest.id;
+        resolvedDestSlug = newDest.slug;
+        resolvedStateId = newDest.stateId;
+        resolvedCountryId = newDest.countryId;
+      }
+
+      // Resolve state and country slugs
+      if (resolvedStateId) {
+        const [st] = await db.select({ slug: statesTable.slug, countryId: statesTable.countryId })
+          .from(statesTable).where(eq(statesTable.id, resolvedStateId)).limit(1);
+        if (st) {
+          resolvedStateSlug = st.slug;
+          if (st.countryId && !resolvedCountryId) resolvedCountryId = st.countryId;
+        }
+      }
+      if (resolvedCountryId) {
+        const [cn] = await db.select({ slug: countriesTable.slug })
+          .from(countriesTable).where(eq(countriesTable.id, resolvedCountryId)).limit(1);
+        if (cn) { resolvedCountrySlug = cn.slug; }
+      }
+
+      // Update the hotel to use the new proper destination
+      if (request.hotel_id) {
+        await db.execute(sql`
+          UPDATE hotels SET
+            destination_id = ${resolvedDestId},
+            destination_slug = ${resolvedDestSlug},
+            state_id = ${resolvedStateId},
+            state_slug = ${resolvedStateSlug},
+            country_id = ${resolvedCountryId},
+            country_slug = ${resolvedCountrySlug},
+            custom_city = NULL
+          WHERE id = ${request.hotel_id}
+        `);
+      }
+
+      // Mark request as resolved
+      await db.execute(sql`
+        UPDATE pending_city_requests SET
+          status = 'ADDED',
+          resolved_by_id = ${req.user!.id},
+          resolved_destination_id = ${resolvedDestId},
+          admin_note = ${adminNote || null},
+          resolved_at = NOW()
+        WHERE id = ${Number(id)}
+      `);
+
+      clearCachePattern("cache:/api/hotels*");
+      clearCachePattern("cache:/api/ota/home/top-destinations*");
+
+      res.json({ message: "City resolved and hotel updated", destinationId: resolvedDestId });
+    } else {
+      // REJECT
+      await db.execute(sql`
+        UPDATE pending_city_requests SET
+          status = 'REJECTED',
+          resolved_by_id = ${req.user!.id},
+          admin_note = ${adminNote || null},
+          resolved_at = NOW()
+        WHERE id = ${Number(id)}
+      `);
+      res.json({ message: "Request rejected" });
+    }
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Pending city resolution error");
+    res.status(500).json({ error: "Failed to resolve city request: " + e.message });
+  }
+};
+
+router.post("/pending-cities/:id", requirePermission("PACKAGES"), resolvePendingCity);
+router.patch("/pending-cities/:id", requirePermission("PACKAGES"), resolvePendingCity);
 
 export default router;

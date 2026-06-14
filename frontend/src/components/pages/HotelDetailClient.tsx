@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,13 +15,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { API_BASE } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FeaturedAmenities, AmenitiesDisplay } from "@/components/AmenitiesDisplay";
 
 interface RoomConfig {
   adults: number;
-  children: number;
+  childrenWithBed: number;
+  childrenWithoutBed: number;
 }
 
-export default function HotelDetailClient({ slug }: { slug: string }) {
+export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string; breadcrumbs?: { label: string; href: string }[] }) {
   const router = useRouter();
   const [hotel, setHotel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
   });
 
   // Multi-room configurations state
-  const [roomsConfig, setRoomsConfig] = useState<RoomConfig[]>([{ adults: 2, children: 0 }]);
+  const [roomsConfig, setRoomsConfig] = useState<RoomConfig[]>([{ adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }]);
   const [guestPopoverOpen, setGuestPopoverOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -170,23 +172,25 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
       return final;
     };
 
-    for (const config of roomsConfig) {
-      let dailyOriginal = baseRoomPrice;
-      if (config.adults > 2) {
-        dailyOriginal += (config.adults - 2) * (room.extraAdultPrice || 0);
-      }
-      if (config.children > 0) {
-        dailyOriginal += config.children * (room.extraChildPrice || 0);
-      }
+    const baseAdults = room.baseAdults ?? 2;
+    const baseChildren = room.baseChildren ?? 0;
 
-      const dailyDiscountedBase = getRoomDiscountedDailyPrice(baseRoomPrice);
-      let dailyDiscounted = dailyDiscountedBase;
-      if (config.adults > 2) {
-        dailyDiscounted += (config.adults - 2) * (room.extraAdultPrice || 0);
-      }
-      if (config.children > 0) {
-        dailyDiscounted += config.children * (room.extraChildPrice || 0);
-      }
+    for (const config of roomsConfig) {
+      const extraAdults = Math.max(0, config.adults - baseAdults);
+      const extraKidsWithBed = Math.max(0, (config.childrenWithBed || 0) - baseChildren);
+      const remainingBaseChildren = Math.max(0, baseChildren - (config.childrenWithBed || 0));
+      const extraKidsWithoutBed = Math.max(0, (config.childrenWithoutBed || 0) - remainingBaseChildren);
+
+      const extraAdultPriceVal = room.extraAdultPrice || 0;
+      const extraChildWithBedPriceVal = room.extraChildWithBedPrice || room.extraChildPrice || 0;
+      const extraChildWithoutBedPriceVal = room.extraChildWithoutBedPrice || 0;
+
+      const surcharge = (extraAdults * extraAdultPriceVal) +
+                        (extraKidsWithBed * extraChildWithBedPriceVal) +
+                        (extraKidsWithoutBed * extraChildWithoutBedPriceVal);
+
+      let dailyOriginal = baseRoomPrice + surcharge;
+      let dailyDiscounted = getRoomDiscountedDailyPrice(baseRoomPrice) + surcharge;
 
       original += dailyOriginal * nights;
       discounted += dailyDiscounted * nights;
@@ -196,9 +200,11 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
   // Check if a room type can accommodate the selected rooms layout
   const isRoomValid = (room: any, config: RoomConfig) => {
-    const maxAdults = room.maxAdults || room.maxOccupancy || 2;
+    const maxAdults = room.maxAdults || 2;
     const maxChildren = room.maxChildren || 1;
-    return config.adults <= maxAdults && config.children <= maxChildren;
+    const maxTotal = maxAdults + maxChildren;
+    const totalGuests = config.adults + (config.childrenWithBed || 0) + (config.childrenWithoutBed || 0);
+    return config.adults <= maxAdults && totalGuests <= maxTotal;
   };
 
   const handleBookNow = (room: any) => {
@@ -217,20 +223,35 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
   return (
     <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
       {/* ─── Breadcrumb Section (Navbar Offset Included) ─────────── */}
-      <div className="container mx-auto px-4 pt-24 pb-3">
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <Link href="/hotels" className="hover:text-[#1B3A6B] transition-colors">Hotels</Link>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="hover:text-[#1B3A6B] transition-colors">{hotel.city || hotel.destinationName}</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-          <span className="text-slate-800 font-semibold">{hotel.name}</span>
+      <div className="container mx-auto px-4 pt-16 pb-3">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
+          {breadcrumbs ? (
+            breadcrumbs.map((b, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
+                {i === breadcrumbs.length - 1 ? (
+                  <span className="text-slate-800 font-semibold truncate max-w-[200px] md:max-w-none">{b.label}</span>
+                ) : (
+                  <Link href={b.href} className="hover:text-[#1B3A6B] transition-colors truncate max-w-[150px] md:max-w-none">{b.label}</Link>
+                )}
+              </React.Fragment>
+            ))
+          ) : (
+            <>
+              <Link href="/hotels" className="hover:text-[#1B3A6B] transition-colors">Hotels</Link>
+              <ChevronRight className="w-3.5 h-3.5" />
+              <span className="hover:text-[#1B3A6B] transition-colors">{hotel.city || hotel.destinationName}</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+              <span className="text-slate-800 font-semibold">{hotel.name}</span>
+            </>
+          )}
         </div>
       </div>
 
       {/* ─── Hero Image Gallery (Top OTA Layout) ────────────────────── */}
       <div className="container mx-auto px-4">
         {/* Mobile View: Swipeable Carousel */}
-        <div className="md:hidden relative h-[300px] rounded-3xl overflow-hidden shadow-md bg-slate-100">
+        <div className="md:hidden relative aspect-[16/9] min-h-[300px] rounded-xl overflow-hidden shadow-md bg-slate-100">
           <div className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">
             {images.map((img: string, idx: number) => (
               <div
@@ -238,7 +259,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                 onClick={() => { setActiveImageIndex(idx); setGalleryOpen(true); }}
                 className="w-full h-full shrink-0 snap-center relative cursor-pointer"
               >
-                <img src={img} alt={`Cover ${idx}`} className="w-full h-full object-cover" />
+                <img loading="lazy" src={img} alt={`Cover ${idx}`} className="w-full h-full object-cover" />
                 {idx === 0 && (
                   <>
                     {/* Shadow overlay for readability */}
@@ -275,13 +296,13 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
         </div>
 
         {/* Desktop View: Grid Layout */}
-        <div className="hidden md:grid grid-cols-4 h-[420px] gap-3 rounded-3xl overflow-hidden shadow-md">
+        <div className="hidden md:grid grid-cols-4 gap-3 min-h-[420px] rounded-xl overflow-hidden shadow-md">
           {/* Main Cover Image (col-span-2) */}
           <div
             onClick={() => { setActiveImageIndex(0); setGalleryOpen(true); }}
             className="col-span-2 relative overflow-hidden group cursor-pointer h-full"
           >
-            <img src={images[0]} alt="Main cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <img loading="lazy" src={images[0]} alt="Main cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-end p-8" />
 
             {/* Overlay Details */}
@@ -308,16 +329,16 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
           <div className="grid grid-rows-2 gap-3 h-full">
             <div onClick={() => { setActiveImageIndex(1); setGalleryOpen(true); }} className="relative overflow-hidden group cursor-pointer h-full">
-              <img src={images[1] || images[0]} alt="Detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img loading="lazy" src={images[1] || images[0]} alt="Detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
             <div onClick={() => { setActiveImageIndex(2); setGalleryOpen(true); }} className="relative overflow-hidden group cursor-pointer h-full">
-              <img src={images[2] || images[0]} alt="Detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img loading="lazy" src={images[2] || images[0]} alt="Detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
           </div>
           <div onClick={() => setGalleryOpen(true)} className="relative overflow-hidden group cursor-pointer h-full">
-            <img src={images[3] || images[0]} alt="Detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 brightness-90" />
+            <img loading="lazy" src={images[3] || images[0]} alt="Detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 brightness-90" />
             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-              <Button variant="outline" className="text-white border-white/40 hover:bg-white/20 font-bold rounded-2xl backdrop-blur-md text-xs shadow-md">
+              <Button variant="outline" className="text-white border-white/40 hover:bg-white/20 font-bold rounded-xl backdrop-blur-md text-xs shadow-md">
                 + View All Photos ({images.length})
               </Button>
             </div>
@@ -326,7 +347,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
       </div>
 
       {/* 2. TABS & DETAIL BODY CONTROLLER */}
-      <div className="container mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
+      <div className="container mx-auto px-4 mt-6 flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-6">
           {/* Navigation Tabs */}
           <div className="bg-white p-1.5 rounded-sm border border-slate-100 shadow-sm flex gap-1.5 sticky top-[80px] lg:top-[76px] z-30 overflow-x-auto no-scrollbar scroll-smooth">
@@ -379,36 +400,6 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
             <p className="text-xs text-slate-500 leading-relaxed">
               {hotel.description || "Welcome to a sanctuary of absolute hospitality. Nestled in prime settings, our properties guarantee world-class utilities, seasoned staff availability, and dynamic dining configurations perfectly aligned with customer travel guides."}
             </p>
-
-            {/* Key Amenities */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-              {[
-                { icon: Wifi, label: "Free Wi-Fi", val: "High Speed" },
-                { icon: Utensils, label: "Dining", val: "Kitchen Desk" },
-                { icon: Coffee, label: "Breakfast", val: "Complimentary" },
-                { icon: ShieldCheck, label: "Sanitized", val: "Safe Stay" }
-              ].map((item, i) => (
-                <div key={i} className="bg-slate-50 p-2 rounded-xl border border-slate-100/50 flex gap-3 items-center">
-                  <div className="p-2.5 bg-sky-50 text-[#1B3A6B] rounded-xl"><item.icon className="h-5 w-5" /></div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{item.label}</p>
-                    <p className="text-xs font-black text-slate-700 mt-0.5">{item.val}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Full Amenities Chips List */}
-            <div className="space-y-3 pt-2">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">All Amenities Offered</p>
-              <div className="flex flex-wrap gap-2">
-                {(hotel.amenities || ["Wi-Fi", "Parking", "Room Service", "Laundry", "Complimentary Breakfast", "Hot Water", "Power Backup"]).map((amenity: string, i: number) => (
-                  <Badge key={i} variant="secondary" className="px-3 py-1.5 rounded-full text-slate-700 bg-slate-100 border-none hover:bg-slate-200">
-                    <Check className="w-3.5 h-3.5 mr-1 text-emerald-600 stroke-[3]" /> {amenity}
-                  </Badge>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Section: Rooms & Rates */}
@@ -544,7 +535,9 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                               ) : (
                                 <div className="flex items-center gap-2 shrink-0">
                                   <Link
-                                    href={`/hotels/${slug}/rooms/${room.id}`}
+                                    href={breadcrumbs && breadcrumbs.length >= 4 
+                                      ? `${breadcrumbs[3].href}/${slug}/${room.slug || room.id}` 
+                                      : `/hotels/${slug}/rooms/${room.id}`}
                                     className="inline-flex items-center justify-center border border-[#1B3A6B] text-[#1B3A6B] hover:bg-[#1B3A6B]/5 font-bold rounded-sm h-10 px-3.5 text-xs transition-all"
                                   >
                                     Room Detail
@@ -563,13 +556,21 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                 })}
               </div>
             ) : (
-              <div className="bg-white rounded-3xl border border-dashed border-slate-200 p-12 text-center">
+              <div className="bg-white rounded-xl border border-dashed border-slate-200 p-12 text-center">
                 <Bed className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                 <p className="font-bold text-slate-500">No rooms types configured.</p>
                 <p className="text-xs text-slate-400 mt-1">Please contact the admin desk or check back later.</p>
               </div>
             )}
           </div>
+
+          {/* Section: Amenities Offered */}
+          {(hotel.amenities || []).length > 0 && (
+            <div className="bg-white rounded-xl p-4 md:p-6 border border-slate-100 shadow-xs space-y-4">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Amenities Offered</p>
+              <AmenitiesDisplay amenities={hotel.amenities || []} />
+            </div>
+          )}
 
           {/* Section: Location (Proximity Points) */}
           <div id="location" className="bg-white rounded-xl p-2 md:p-6 border border-slate-100 shadow-xs space-y-6">
@@ -708,7 +709,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                       setActiveImageIndex(img.originalIdx);
                       setGalleryOpen(true);
                     }}
-                    className="relative group aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100/50 cursor-pointer shadow-xs"
+                    className="relative group aspect-square rounded-xl overflow-hidden bg-slate-50 border border-slate-100/50 cursor-pointer shadow-xs"
                   >
                     <img
                       src={img.url}
@@ -980,7 +981,11 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                   <span className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-sky-400" />
                     {roomsConfig.length} Room{roomsConfig.length > 1 ? "s" : ""} · {roomsConfig.reduce((acc, c) => acc + c.adults, 0)} Adult{roomsConfig.reduce((acc, c) => acc + c.adults, 0) > 1 ? "s" : ""}
-                    {roomsConfig.reduce((acc, c) => acc + c.children, 0) > 0 && ` · ${roomsConfig.reduce((acc, c) => acc + c.children, 0)} Child`}
+                    {roomsConfig.reduce((acc, c) => acc + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0) > 0 && (
+                      <span>
+                        {" "}· {roomsConfig.reduce((acc, c) => acc + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0)} Child{roomsConfig.reduce((acc, c) => acc + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0) > 1 ? "ren" : ""}
+                      </span>
+                    )}
                   </span>
                   <ChevronRight className="w-4 h-4 text-white/40" />
                 </button>
@@ -1007,52 +1012,33 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
                               </button>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100">
-                              <span className="text-[11px] font-semibold text-slate-500">Adults</span>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, adults: Math.max(1, c.adults - 1) } : c));
-                                  }}
-                                  className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-bold text-xs"
-                                >
-                                  -
-                                </button>
-                                <span className="text-xs font-bold w-4 text-center">{config.adults}</span>
-                                <button
-                                  onClick={() => {
-                                    setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, adults: Math.min(4, c.adults + 1) } : c));
-                                  }}
-                                  className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-bold text-xs"
-                                >
-                                  +
-                                </button>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { label: "Adults", key: "adults", min: 1, max: 4 },
+                              { label: "Child (With Bed)", key: "childrenWithBed", min: 0, max: 3 },
+                              { label: "Child (No Bed)", key: "childrenWithoutBed", min: 0, max: 3 },
+                            ].map(({ label, key, min, max }) => (
+                              <div key={key} className="flex flex-col items-center justify-between bg-white p-2 rounded-lg border border-slate-100 text-center">
+                                <span className="text-[10px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
+                                <div className="flex items-center gap-1.5 mt-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.max(min, (c as any)[key] - 1) } : c))}
+                                    className="w-5 h-5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-xs"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="text-xs font-bold w-4 text-center">{(config as any)[key] ?? 0}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.min(max, (c as any)[key] + 1) } : c))}
+                                    className="w-5 h-5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-xs"
+                                  >
+                                    +
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-
-                            <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded-lg border border-slate-100">
-                              <span className="text-[11px] font-semibold text-slate-500">Kids</span>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, children: Math.max(0, c.children - 1) } : c));
-                                  }}
-                                  className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-bold text-xs"
-                                >
-                                  -
-                                </button>
-                                <span className="text-xs font-bold w-4 text-center">{config.children}</span>
-                                <button
-                                  onClick={() => {
-                                    setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, children: Math.min(3, c.children + 1) } : c));
-                                  }}
-                                  className="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-bold text-xs"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
+                            ))}
                           </div>
                         </div>
                       ))}
@@ -1060,7 +1046,7 @@ export default function HotelDetailClient({ slug }: { slug: string }) {
 
                     {roomsConfig.length < 5 && (
                       <Button
-                        onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, children: 0 }])}
+                        onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])}
                         variant="outline"
                         className="w-full text-xs font-bold rounded-xl border-slate-200 text-[#1B3A6B] hover:bg-slate-50"
                       >

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, real, timestamp, jsonb, date, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, real, timestamp, jsonb, date, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -8,7 +8,19 @@ import { z } from "zod/v4";
 export const hotelsTable = pgTable("hotels", {
   id: serial("id").primaryKey(),
   ownerId: integer("owner_id").notNull(), // Links to usersTable (HOTEL_OWNER)
-  destinationId: integer("destination_id"), // Optional: standalone OTA properties don't need a package destination
+
+  // ── GEO HIERARCHY (for SEO-friendly URLs) ────────────────────────────────
+  destinationId: integer("destination_id"), // FK → destinationsTable (City/Place)
+  stateId: integer("state_id"),             // FK → statesTable
+  countryId: integer("country_id"),         // FK → countriesTable
+
+  // Cached slugs for fast URL generation without JOIN — updated on save
+  destinationSlug: text("destination_slug"), // e.g. "manali"
+  stateSlug: text("state_slug"),             // e.g. "himachal-pradesh"
+  countrySlug: text("country_slug"),         // e.g. "india"
+
+  // Custom city fallback (when vendor's city isn't in our CMS yet)
+  customCity: text("custom_city"),           // Stored until admin adds it to CMS
 
   // Identity
   name: text("name").notNull(),
@@ -66,6 +78,7 @@ export const hotelRoomsTable = pgTable("hotel_rooms", {
 
   // Identity
   name: text("name").notNull(), // e.g. 'Deluxe Room', 'Suite', 'Executive King'
+  slug: text("slug"),            // e.g. 'deluxe-room-with-mountain-view' (URL segment)
   description: text("description"),
 
   // Room Specs
@@ -77,19 +90,33 @@ export const hotelRoomsTable = pgTable("hotel_rooms", {
   sizeSqft: integer("size_sqft"),
   floorNumber: integer("floor_number"),
 
-  // Pricing
+  // Pricing — Occupancy Inclusions
+  baseAdults: integer("base_adults").default(2),        // Adults included in base price
+  baseChildren: integer("base_children").default(0),    // Children included in base price
+
+  // Pricing — Extra Person Charges
   basePrice: real("base_price").notNull(),
   extraAdultPrice: real("extra_adult_price").default(0),
-  extraChildPrice: real("extra_child_price").default(0),
+  extraChildPrice: real("extra_child_price").default(0), // Legacy — kept for backward compat
+  extraChildWithBedPrice: real("extra_child_with_bed_price").default(0),    // Child WITH dedicated bed
+  extraChildWithoutBedPrice: real("extra_child_without_bed_price").default(0), // Child WITHOUT bed
   taxIncluded: boolean("tax_included").default(false),
+
+  // Pricing — Weekend Rates
+  weekendPrice: real("weekend_price"),  // NULL = same price as weekday
+  weekendDays: text("weekend_days").array().default(["Friday", "Saturday"]),
+
+  // Pricing — Meal Plan Options
+  // Each option: { code: 'EP'|'CP'|'MAP'|'AP', label: string, adultPrice: number, childPrice: number }
+  mealPlanOptions: jsonb("meal_plan_options").default([]),
 
   // Discounting
   discountType: text("discount_type").default("PERCENT"), // 'PERCENT' | 'FLAT'
   discountPercent: integer("discount_percent").default(0),
   discountFlat: integer("discount_flat").default(0),
 
-  // Meal Plan
-  mealPlan: text("meal_plan").default("EP"), // 'EP'=Room Only, 'CP'=Breakfast, 'MAP'=Breakfast+Dinner, 'AP'=All Inclusive
+  // Meal Plan — Default plan code for this room type (can be overridden during booking)
+  mealPlan: text("meal_plan").default("EP"), // 'EP'=Room Only, 'CP'=Breakfast, 'MAP'=Half Board, 'AP'=All Inclusive
 
   // Inventory
   totalRooms: integer("total_rooms").notNull().default(1),
@@ -130,6 +157,7 @@ export const hotelRoomInventoryTable = pgTable("hotel_room_inventory", {
   discountType: text("discount_type").default("PERCENT"), // 'PERCENT' | 'FLAT'
   discountPercent: integer("discount_percent").default(0),
   discountFlat: integer("discount_flat").default(0),
+  customPricing: jsonb("custom_pricing"), // Overrides for extra occupancy pricing, weekend settings, and meal plans
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -237,6 +265,41 @@ export const hotelPhotosTable = pgTable("hotel_photos", {
 
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ZOD SCHEMAS & TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PENDING CITY REQUESTS — When vendor enters a city not in our CMS
+// Admin reviews and either adds to destinationsTable or rejects
+// ─────────────────────────────────────────────────────────────────────────────
+export const pendingCityRequestsTable = pgTable("pending_city_requests", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull(),  // FK → usersTable
+  hotelId: integer("hotel_id"),             // FK → hotelsTable (nullable during creation)
+
+  // The city data submitted by vendor
+  cityName: text("city_name").notNull(),     // Raw text from vendor input
+  stateName: text("state_name"),            // Optional hint from vendor
+  countryName: text("country_name"),        // Optional hint from vendor
+  stateId: integer("state_id"),             // If vendor selected state from dropdown
+  countryId: integer("country_id"),         // If vendor selected country from dropdown
+
+  // Resolution
+  status: text("status").notNull().default("PENDING"), // 'PENDING' | 'ADDED' | 'REJECTED'
+  resolvedById: integer("resolved_by_id"),  // Admin user who resolved it
+  resolvedDestinationId: integer("resolved_destination_id"), // Destination created/matched
+  resolvedAt: timestamp("resolved_at"),
+  adminNote: text("admin_note"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  pendingCityVendorIdx: index("pending_city_vendor_idx").on(table.vendorId),
+  pendingCityStatusIdx: index("pending_city_status_idx").on(table.status),
+}));
+
+export type PendingCityRequest = typeof pendingCityRequestsTable.$inferSelect;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ZOD SCHEMAS & TYPES

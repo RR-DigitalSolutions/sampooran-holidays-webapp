@@ -48,14 +48,60 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (hotelRes.status === 'fulfilled' && hotelRes.value.ok) {
       const hotelData = await hotelRes.value.json();
-      const hotels: Array<{ slug: string; updatedAt?: string; createdAt?: string }> =
-        hotelData.hotels || [];
-      hotelRoutes = hotels.map((hotel) => ({
-        url: `${BASE_URL}/hotels/${hotel.slug}`,
-        lastModified: hotel.updatedAt || hotel.createdAt || new Date().toISOString(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.85,
-      }));
+      const hotels: Array<{
+        slug: string;
+        countrySlug?: string;
+        stateSlug?: string;
+        destinationSlug?: string;
+        customCity?: string;
+        updatedAt?: string;
+        createdAt?: string;
+      }> = hotelData.hotels || [];
+
+      const stateUrls = new Set<string>();
+      const cityUrls = new Set<string>();
+
+      hotels.forEach((hotel) => {
+        const country = hotel.countrySlug || 'india';
+        const state = hotel.stateSlug;
+        const dest = hotel.destinationSlug || (hotel.customCity ? hotel.customCity.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null);
+
+        if (state) {
+          stateUrls.add(`${BASE_URL}/hotels/${country}/${state}`);
+          if (dest) {
+            cityUrls.add(`${BASE_URL}/hotels/${country}/${state}/hotels-in-${dest}`);
+          }
+        }
+
+        if (state && dest) {
+          hotelRoutes.push({
+            url: `${BASE_URL}/hotels/${country}/${state}/hotels-in-${dest}/${hotel.slug}`,
+            lastModified: hotel.updatedAt || hotel.createdAt || new Date().toISOString(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.85,
+          });
+        }
+      });
+
+      // Add unique state landing pages
+      stateUrls.forEach(url => {
+        hotelRoutes.push({
+          url,
+          lastModified: new Date().toISOString(),
+          changeFrequency: 'weekly' as const,
+          priority: 0.8,
+        });
+      });
+
+      // Add unique city landing pages
+      cityUrls.forEach(url => {
+        hotelRoutes.push({
+          url,
+          lastModified: new Date().toISOString(),
+          changeFrequency: 'weekly' as const,
+          priority: 0.82,
+        });
+      });
     }
   } catch {
     // If backend is unavailable during build, serve a minimal sitemap
