@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { 
-  Star, MapPin, Clock, CheckCircle, Sparkles, Zap, 
+import {
+  Star, MapPin, Clock, CheckCircle, Sparkles, Zap,
   ArrowRight, Plane, Hotel, Car, Utensils, Camera, Ticket, ShieldCheck,
   CheckCircle2, Users, FileText, Coffee
 } from "lucide-react";
@@ -122,7 +122,7 @@ function PackageCardComponent({
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            
+
             {/* Badges */}
             <div className="absolute top-3 left-3 flex flex-col gap-1.5">
               {pkg.isTrending && (
@@ -154,7 +154,7 @@ function PackageCardComponent({
               <h3 className="text-xl md:text-2xl font-semibold text-primary group-hover:text-accent transition-colors leading-tight mb-2">
                 {pkg.name}
               </h3>
-              
+
               {/* Route/Cities */}
               {citiesList.length > 0 && (
                 <div className="flex items-center flex-wrap gap-2 mb-4">
@@ -170,16 +170,16 @@ function PackageCardComponent({
               {/* Highlights */}
               <div className="flex flex-wrap gap-3 mb-4">
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                   <Hotel className="w-3 h-3 text-primary" /> Stay
+                  <Hotel className="w-3 h-3 text-primary" /> Stay
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                   <Car className="w-3 h-3 text-primary" /> Transfers
+                  <Car className="w-3 h-3 text-primary" /> Transfers
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                   <Plane className="w-3 h-3 text-primary" /> Sightseeing
+                  <Plane className="w-3 h-3 text-primary" /> Sightseeing
                 </div>
               </div>
-              
+
               <ul className="space-y-1.5">
                 {displayHighlights.map((h, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-slate-500 font-medium">
@@ -246,7 +246,7 @@ function PackageCardComponent({
     };
 
     return (
-      <Link href={`/packages/${pkg.slug}`} className="block h-[380px] w-full group relative rounded-2xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300">
+      <Link href={`/packages/${pkg.slug}`} className="block h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300">
         {/* Top Image Section (65%) */}
         <div className="absolute top-0 left-0 right-0 h-[65%] w-full">
           <MotionImage
@@ -260,7 +260,7 @@ function PackageCardComponent({
           {/* Enhanced gradient for text readability and theme matching */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-[#1B3A6B] to-transparent opacity-90" />
-          
+
           {/* Top Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
             {pkg.isTrending && (
@@ -272,14 +272,14 @@ function PackageCardComponent({
 
           {/* Discount Badge */}
           {discount > 0 && (
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }} 
-              animate={{ 
-                scale: 1, 
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: 1,
                 opacity: 1,
                 rotate: [0, -5, 5, -5, 5, 0]
-              }} 
-              transition={{ 
+              }}
+              transition={{
                 scale: { type: "spring", stiffness: 400, damping: 25 },
                 rotate: { duration: 0.6, repeat: Infinity, repeatDelay: 2.5, delay: 1 }
               }}
@@ -296,39 +296,39 @@ function PackageCardComponent({
 
         {/* Bottom Solid Block (35%) */}
         <div className="absolute bottom-0 left-0 right-0 h-[35%] w-full p-4 flex flex-col justify-between z-10 bg-primary">
-           <div className="flex items-center gap-2 mb-2">
-             <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded flex items-center justify-center shrink-0">
-               {pkg.duration}D & {pkg.nights}N
-             </div>
-             <div className="text-white/80 text-[11px] font-medium truncate">
-               {formatRoute(citiesList)}
-             </div>
-           </div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded flex items-center justify-center shrink-0">
+              {pkg.duration}D & {pkg.nights}N
+            </div>
+            <div className="text-white/80 text-[11px] font-medium truncate">
+              {formatRoute(citiesList)}
+            </div>
+          </div>
 
-           {/* Inclusions Icons */}
-           <div className="flex items-center gap-1.5 mb-1">
-             {inclusionList.slice(0, 4).map((inc, i) => (
-               <div key={i} className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors" title={inc.label}>
-                 <inc.Icon className="w-3 h-3" />
-               </div>
-             ))}
-           </div>
+          {/* Inclusions Icons */}
+          <div className="flex items-center gap-1.5 mb-1">
+            {inclusionList.slice(0, 4).map((inc, i) => (
+              <div key={i} className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors" title={inc.label}>
+                <inc.Icon className="w-3 h-3" />
+              </div>
+            ))}
+          </div>
 
-           <div className="flex items-end justify-between mt-auto">
-             <div className="flex flex-col">
-               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
-                 <span className="text-white/50 text-[10px] line-through font-semibold leading-none mb-0.5">
-                   ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
-                 </span>
-               ) : <span className="h-3" />}
-               <span className="text-white text-[20px] font-bold leading-none tracking-tight">
-                 ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
-               </span>
-             </div>
-             <button className="bg-white text-primary text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors shadow-sm active:scale-95 shrink-0">
-               View Details
-             </button>
-           </div>
+          <div className="flex items-end justify-between mt-auto">
+            <div className="flex flex-col">
+              {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
+                <span className="text-white/50 text-[10px] line-through font-semibold leading-none mb-0.5">
+                  ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
+                </span>
+              ) : <span className="h-3" />}
+              <span className="text-white text-[20px] font-bold leading-none tracking-tight">
+                ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
+              </span>
+            </div>
+            <button className="bg-white text-primary text-[11px] font-bold px-3 py-1.5 rounded-sm hover:bg-slate-100 transition-colors shadow-sm active:scale-95 shrink-0">
+              View Details
+            </button>
+          </div>
         </div>
       </Link>
     );
@@ -342,15 +342,15 @@ function PackageCardComponent({
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className={cn(
           "relative h-full flex flex-col bg-white rounded-[2rem] overflow-hidden border transition-all duration-500 transform-gpu",
-          hovered 
-            ? "shadow-[0_30px_60px_-15px_rgba(27,58,107,0.2)] border-primary/30" 
+          hovered
+            ? "shadow-[0_30px_60px_-15px_rgba(27,58,107,0.2)] border-primary/30"
             : "shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border-slate-100"
         )}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
         {/* Glow Effect */}
-        <div 
+        <div
           className={cn(
             "absolute inset-0 pointer-events-none z-20 transition-opacity duration-700 bg-gradient-to-tr from-white/0 via-white/20 to-white/0",
             hovered ? "opacity-100" : "opacity-0"
@@ -367,7 +367,7 @@ function PackageCardComponent({
             className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/10" />
-          
+
           {/* Top Badges */}
           <div className="absolute top-4 left-4 flex flex-col gap-2">
             {pkg.isTrending && (
@@ -392,34 +392,34 @@ function PackageCardComponent({
 
           {/* Destination & Cities Overlay */}
           <div className="absolute bottom-4 left-4 right-4">
-             <div className="flex items-center gap-1.5 text-white/90 text-[10px] font-bold mb-1">
-                <MapPin className="w-3 h-3 text-accent" />
-                {pkg.stateName || "Himachal"}
-             </div>
-             <div className="flex flex-wrap items-center gap-2">
-                {citiesList.slice(0, 3).map((city, i) => (
-                  <span key={i} className="text-white text-[11px] font-bold bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
-                    {city}
-                  </span>
-                ))}
-             </div>
+            <div className="flex items-center gap-1.5 text-white/90 text-[10px] font-bold mb-1">
+              <MapPin className="w-3 h-3 text-accent" />
+              {pkg.stateName || "Himachal"}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {citiesList.slice(0, 3).map((city, i) => (
+                <span key={i} className="text-white text-[11px] font-bold bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
+                  {city}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Content Section */}
         <div className="p-4 flex flex-col flex-1">
           <div className="flex items-center justify-between mb-2">
-             <div className="flex items-center gap-1">
-                <div className="flex gap-0.5">
-                   {[1,2,3,4,5].map(s => (
-                     <Star key={s} className={cn("w-2.5 h-2.5", s <= (pkg.rating || 5) ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
-                   ))}
-                </div>
-                <span className="text-[9px] font-bold text-slate-400 ml-1">{pkg.reviewCount || 150}+ Reviews</span>
-             </div>
-             <div className="flex items-center gap-1 text-[9px] font-bold text-primary px-2 py-0.5 bg-primary/5 rounded-lg border border-primary/10">
-                <Clock className="w-3 h-3 text-accent" /> {pkg.nights}N/{pkg.duration}D
-             </div>
+            <div className="flex items-center gap-1">
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Star key={s} className={cn("w-2.5 h-2.5", s <= (pkg.rating || 5) ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
+                ))}
+              </div>
+              <span className="text-[9px] font-bold text-slate-400 ml-1">{pkg.reviewCount || 150}+ Reviews</span>
+            </div>
+            <div className="flex items-center gap-1 text-[9px] font-bold text-primary px-2 py-0.5 bg-primary/5 rounded-lg border border-primary/10">
+              <Clock className="w-3 h-3 text-accent" /> {pkg.nights}N/{pkg.duration}D
+            </div>
           </div>
 
           <h3 className="text-[15px] font-bold text-primary leading-tight mb-3 group-hover:text-accent transition-colors line-clamp-1">
@@ -462,7 +462,7 @@ function PackageCardComponent({
                 <span className="text-[9px] text-slate-400 font-bold">/ PP</span>
               </div>
             </div>
-            
+
             <motion.div
               animate={{ x: hovered ? 4 : 0 }}
               className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 group-hover:bg-accent transition-colors"

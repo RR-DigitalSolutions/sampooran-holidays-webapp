@@ -65,8 +65,8 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
       <section className="bg-white rounded-lg overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
-        <div className="px-6 py-2 flex items-end justify-between mb-2">
-          <div className="flex flex-col gap-1">
+        <div className="px-2 flex items-end justify-between mb-2">
+          <div className="flex flex-col">
             <div className="flex items-center gap-2">
 
               <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">
@@ -81,7 +81,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                 return (
                   <>
                     {words.join(" ")}{words.length > 0 && " "}
-                    <span className="text-accent italic font-light">{lastWord}</span>
+                    <span className="text-accent font-light">{lastWord}</span>
                   </>
                 );
               })()}

@@ -45,18 +45,18 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
 
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="py-2 md:py-4 bg-white relative overflow-hidden rounded-[1rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+      <section className="bg-white relative overflow-hidden rounded-md border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
 
-        <div className="px-2 md:px-2 relative z-10">
+        <div className="relative z-10">
 
           {/* Section Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="max-w-3xl px-2 md:px-2">
+            <div className="max-w-3xl p-2 md:p-2">
               <div className="flex items-center gap-2">
                 <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">Trending Now</p>
               </div>
               <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary mb-1 leading-tight">
-                Trending Holiday <span className="text-accent italic font-light">Packages</span>
+                Trending Holiday <span className="text-accent font-light">Packages</span>
               </h2>
               <p className="text-slate-500 text-xs md:text-xs">
                 Explore our most sought-after destinations. Handpicked, premium itineraries designed for unforgettable experiences.
@@ -64,7 +64,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex flex-col items-end gap-6 pb-2">
+            <div className="hidden md:flex flex-col items-end gap-6 pr-2 pb-2">
               <Link href="/packages" className="text-primary font-bold text-sm hover:text-accent flex items-center gap-1.5 group transition-colors">
                 All Holiday Packages <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -101,11 +101,11 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
             <div className="relative z-10 p-4 md:p-4 flex flex-col lg:flex-row items-center justify-between gap-10">
               {/* Left: Text Content */}
               <div className="w-full lg:w-1/2 text-center lg:text-left">
-                <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full text-accent text-xs font-bold mb-4 backdrop-blur-sm border border-white/10">
+                <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-md text-accent text-xs font-bold mb-4 backdrop-blur-sm border border-white/10">
                   <Sparkles className="w-3.5 h-3.5" /> Customize Your Trip
                 </div>
                 <h3 className="text-3xl md:text-4xl font-bold text-white mb-2 font-['Raleway',sans-serif]">
-                  Can't find the <span className="text-accent italic font-light">Perfect Package?</span>
+                  Can't find the <span className="text-accent font-light">Perfect Package?</span>
                 </h3>
                 <p className="text-slate-300 text-sm md:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">
                   Let our travel experts craft a personalized itinerary just for you. Drop your details below and we'll get back to you within 24 hours with a custom quote!
@@ -113,7 +113,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
               </div>
 
               {/* Right: Quick Inquiry Form */}
-              <div className="w-full lg:w-[45%] bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl">
+              <div className="w-full lg:w-[45%] bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-md">
                 <form onSubmit={handleQuickInquiry} className="flex flex-col gap-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="relative">
@@ -125,7 +125,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                         required
                         value={inquiryName}
                         onChange={(e) => setInquiryName(e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all text-sm"
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-4 py-3.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all text-sm"
                       />
                     </div>
                     <div className="relative">
@@ -137,14 +137,14 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                         required
                         value={inquiryPhone}
                         onChange={(e) => setInquiryPhone(e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all text-sm"
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-4 py-3.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all text-sm"
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-accent text-primary font-bold py-2 rounded-xl hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
+                    className="w-full bg-accent text-primary font-bold py-2 rounded-md hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
                   >
                     {isSubmitting ? (
                       "Sending Request..."
@@ -178,7 +178,7 @@ export function PopularPackagesCarouselSkeleton() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="aspect-[4/5] bg-slate-100 animate-pulse rounded-2xl" />
+              <div key={i} className="aspect-[4/5] bg-slate-100 animate-pulse rounded-md" />
             ))}
           </div>
         </div>

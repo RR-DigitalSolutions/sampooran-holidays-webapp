@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -152,6 +152,222 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
   const [calendarData, setCalendarData] = useState<CalendarRecord[]>([]);
   const [loadingCalendar, setLoadingCalendar] = useState<boolean>(true);
 
+  const getDailyPrice = (dateStr: string) => {
+    const record = calendarData.find((x) => x.date === dateStr);
+
+    const dayName = new Date(dateStr).toLocaleDateString("en-US", { weekday: "long" });
+    const weekendDays = room?.weekendDays || ["Friday", "Saturday"];
+    const isWeekend = weekendDays.includes(dayName);
+
+    let base = record?.basePrice ?? room?.basePrice ?? 0;
+    if (isWeekend && !record && room?.weekendPrice !== null && room?.weekendPrice !== undefined && room?.weekendPrice > 0) {
+      base = room.weekendPrice;
+    }
+
+    const discountType = record?.discountType ?? room?.discountType ?? "PERCENT";
+    const discountPercent = record?.discountPercent ?? room?.discountPercent ?? 0;
+    const discountFlat = record?.discountFlat ?? room?.discountFlat ?? 0;
+
+    let final = base;
+    if (discountType === "PERCENT" && discountPercent > 0) {
+      final = Math.max(0, base - (base * discountPercent) / 100);
+    } else if (discountType === "FLAT" && discountFlat > 0) {
+      final = Math.max(0, base - discountFlat);
+    }
+    return final;
+  };
+
+  const getOriginalDailyPrice = (dateStr: string) => {
+    const record = calendarData.find((x) => x.date === dateStr);
+    const dayName = new Date(dateStr).toLocaleDateString("en-US", { weekday: "long" });
+    const weekendDays = room?.weekendDays || ["Friday", "Saturday"];
+    const isWeekend = weekendDays.includes(dayName);
+
+    let base = record?.basePrice ?? room?.basePrice ?? 0;
+    if (isWeekend && !record && room?.weekendPrice !== null && room?.weekendPrice !== undefined && room?.weekendPrice > 0) {
+      base = room.weekendPrice;
+    }
+    return base;
+  };
+
+  const pricingBreakdown = useMemo(() => {
+    if (!room || !checkIn) {
+      return {
+        nights: 0,
+        roomsCount: roomsConfig.length,
+        baseTotal: 0,
+        extraAdultTotal: 0,
+        extraChildWithBedTotal: 0,
+        extraChildWithoutBedTotal: 0,
+        mealPlanTotal: 0,
+        selectedPlanObj: { code: "EP", label: "Room Only", adultPrice: 0, childPrice: 0, isBase: true },
+        originalSubtotal: 0,
+        subtotal: 0,
+        gst: 0,
+        grandTotal: 0,
+      };
+    }
+
+    let baseTotal = 0;
+    let extraAdultTotal = 0;
+    let extraChildWithBedTotal = 0;
+    let extraChildWithoutBedTotal = 0;
+    let mealPlanTotal = 0;
+    let originalBaseTotal = 0;
+
+    const start = new Date(checkIn);
+    const end = checkOut ? new Date(checkOut) : new Date(start.getTime() + 86400000);
+    const dates: string[] = [];
+    const current = new Date(start);
+    while (current < end) {
+      dates.push(current.toISOString().split("T")[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    const basePlanCode = "EP";
+    const basePlanLabel = "Room Only";
+    const mealPlans: MealPlanOption[] = [
+      { code: basePlanCode, label: basePlanLabel, adultPrice: 0, childPrice: 0, isBase: true },
+      ...((room.mealPlanOptions || []) as MealPlanOption[]).filter((o) => o.code !== basePlanCode),
+    ];
+    const selectedPlanObj = mealPlans.find((m) => m.code === selectedMealPlan) || mealPlans[0];
+
+    const baseAdults = room.baseAdults ?? 2;
+    const baseChildren = room.baseChildren ?? 0;
+
+    for (const config of roomsConfig) {
+      for (const dStr of dates) {
+        const basePrice = getDailyPrice(dStr);
+        baseTotal += basePrice;
+        originalBaseTotal += getOriginalDailyPrice(dStr);
+
+        const record = calendarData.find((x) => x.date === dStr);
+        const cp = record?.customPricing as CustomPricing | undefined;
+
+        const dateExtraAdultPrice = cp && cp.extraAdultPrice !== undefined && cp.extraAdultPrice !== null
+          ? Number(cp.extraAdultPrice)
+          : (room.extraAdultPrice || 0);
+        const extraAdults = Math.max(0, config.adults - baseAdults);
+        extraAdultTotal += extraAdults * dateExtraAdultPrice;
+
+        const dateExtraChildWithBedPrice = cp && cp.extraChildWithBedPrice !== undefined && cp.extraChildWithBedPrice !== null
+          ? Number(cp.extraChildWithBedPrice)
+          : (room.extraChildWithBedPrice || room.extraChildPrice || 0);
+        const extraKidsWithBed = Math.max(0, (config.childrenWithBed || 0) - baseChildren);
+        extraChildWithBedTotal += extraKidsWithBed * dateExtraChildWithBedPrice;
+
+        const dateExtraChildWithoutBedPrice = cp && cp.extraChildWithoutBedPrice !== undefined && cp.extraChildWithoutBedPrice !== null
+          ? Number(cp.extraChildWithoutBedPrice)
+          : (room.extraChildWithoutBedPrice || 0);
+        const remainingBaseChildren = Math.max(0, baseChildren - (config.childrenWithBed || 0));
+        const extraKidsWithoutBed = Math.max(0, (config.childrenWithoutBed || 0) - remainingBaseChildren);
+        extraChildWithoutBedTotal += extraKidsWithoutBed * dateExtraChildWithoutBedPrice;
+
+        const rawDayOptions = cp && Array.isArray(cp.mealPlanOptions) && cp.mealPlanOptions.length > 0
+          ? cp.mealPlanOptions
+          : (room.mealPlanOptions && Array.isArray(room.mealPlanOptions) && room.mealPlanOptions.length > 0
+            ? room.mealPlanOptions
+            : []);
+
+        const dayMealPlans: MealPlanOption[] = [
+          { code: basePlanCode, label: basePlanLabel, adultPrice: 0, childPrice: 0, isBase: true },
+          ...(rawDayOptions as MealPlanOption[]).filter((o) => o.code !== basePlanCode),
+        ];
+        const daySelectedPlanObj = dayMealPlans.find((m) => m.code === selectedMealPlan) || dayMealPlans[0];
+
+        const kidsTotal = (config.childrenWithBed || 0) + (config.childrenWithoutBed || 0);
+        mealPlanTotal += (config.adults * (daySelectedPlanObj.adultPrice || 0)) + (kidsTotal * (daySelectedPlanObj.childPrice || 0));
+      }
+    }
+
+    const subtotal = baseTotal + extraAdultTotal + extraChildWithBedTotal + extraChildWithoutBedTotal + mealPlanTotal;
+    const originalSubtotal = Math.max(0, originalBaseTotal + extraAdultTotal + extraChildWithBedTotal + extraChildWithoutBedTotal + mealPlanTotal);
+    const gst = Math.round(subtotal * 0.12);
+    const grandTotal = subtotal + gst;
+
+    return {
+      nights: dates.length,
+      roomsCount: roomsConfig.length,
+      baseTotal,
+      extraAdultTotal,
+      extraChildWithBedTotal,
+      extraChildWithoutBedTotal,
+      mealPlanTotal,
+      selectedPlanObj,
+      originalSubtotal,
+      subtotal,
+      gst,
+      grandTotal,
+    };
+  }, [room, checkIn, checkOut, roomsConfig, calendarData, selectedMealPlan]);
+
+  // Mobile bottom-sheet state for booking engine & price breakout
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [sheetTranslate, setSheetTranslate] = useState<number>(0);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const startTranslate = useRef<number>(0);
+  const sheetHeightRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = Math.round(window.innerHeight * 0.78);
+    sheetHeightRef.current = h;
+    setSheetTranslate(h);
+    const onResize = () => {
+      const nh = Math.round(window.innerHeight * 0.78);
+      sheetHeightRef.current = nh;
+      if (!mobileSheetOpen) setSheetTranslate(nh);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    // animate to open/close
+    if (mobileSheetOpen) {
+      setSheetTranslate(0);
+    } else {
+      setSheetTranslate(sheetHeightRef.current || 0);
+    }
+  }, [mobileSheetOpen]);
+
+  useEffect(() => {
+    if (!sheetRef.current) return;
+    const el = sheetRef.current as HTMLDivElement;
+    el.style.height = sheetHeightRef.current ? `${sheetHeightRef.current}px` : '78vh';
+    el.style.transform = `translateY(${sheetTranslate}px)`;
+    el.style.transition = touchStartY.current == null ? 'transform 220ms ease' : 'none';
+  }, [sheetTranslate]);
+
+  const onSheetTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    startTranslate.current = sheetTranslate || sheetHeightRef.current || 0;
+  };
+
+  const onSheetTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current == null) return;
+    const delta = touchStartY.current - e.touches[0].clientY; // positive = swipe up
+    let newTranslate = startTranslate.current - delta;
+    newTranslate = Math.max(0, Math.min(sheetHeightRef.current || 0, newTranslate));
+    setSheetTranslate(newTranslate);
+  };
+
+  const onSheetTouchEnd = () => {
+    if (!sheetHeightRef.current) return;
+    if ((sheetTranslate || 0) < sheetHeightRef.current / 2) {
+      setMobileSheetOpen(true);
+      setSheetTranslate(0);
+    } else {
+      setMobileSheetOpen(false);
+      setSheetTranslate(sheetHeightRef.current);
+    }
+    touchStartY.current = null;
+  };
+
+  const openMobileSheet = () => setMobileSheetOpen(true);
+  const closeMobileSheet = () => setMobileSheetOpen(false);
+
   const handleDateClick = (dateStr: string, isSelectable: boolean) => {
     if (!isSelectable) return;
 
@@ -225,9 +441,28 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
 
   useEffect(() => {
     if (slug && roomId) {
+      // Limit calendar fetches to the next 6 months only
       fetchCalendar();
     }
   }, [fetchCalendar, slug, roomId]);
+
+  // When a user selects a date we want to auto-scroll the booking widget into view on mobile
+  useEffect(() => {
+    if (!checkIn) return;
+    // If checkOut is also selected, scroll to booking widget
+    if (checkOut) {
+      // Only auto-scroll on narrow viewports (mobile)
+      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+        // Use a small delay to allow mobile layout adjustments
+        setTimeout(() => {
+          const el = document.getElementById("booking-widget");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 200);
+      }
+    }
+  }, [checkIn, checkOut]);
 
   if (loading) {
     return (
@@ -250,150 +485,12 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
     );
   }
 
-  const getDailyPrice = (dateStr: string) => {
-    const record = calendarData.find((x) => x.date === dateStr);
+  // Today's date and latest selectable date (6 months window)
+  const _today = new Date();
+  const calendarMaxDateObj = new Date(_today.getFullYear(), _today.getMonth() + 6, 0);
+  const calendarMaxDateStr = calendarMaxDateObj.toISOString().split("T")[0];
 
-    const dayName = new Date(dateStr).toLocaleDateString("en-US", { weekday: "long" });
-    const weekendDays = room.weekendDays || ["Friday", "Saturday"];
-    const isWeekend = weekendDays.includes(dayName);
-
-    let base = record?.basePrice ?? room.basePrice ?? 0;
-    if (isWeekend && !record && room.weekendPrice !== null && room.weekendPrice !== undefined && room.weekendPrice > 0) {
-      base = room.weekendPrice;
-    }
-
-    const discountType = record?.discountType ?? room.discountType ?? "PERCENT";
-    const discountPercent = record?.discountPercent ?? room.discountPercent ?? 0;
-    const discountFlat = record?.discountFlat ?? room.discountFlat ?? 0;
-
-    let final = base;
-    if (discountType === "PERCENT" && discountPercent > 0) {
-      final = Math.max(0, base - (base * discountPercent) / 100);
-    } else if (discountType === "FLAT" && discountFlat > 0) {
-      final = Math.max(0, base - discountFlat);
-    }
-    return final;
-  };
-
-  const getOriginalDailyPrice = (dateStr: string) => {
-    const record = calendarData.find((x) => x.date === dateStr);
-    const dayName = new Date(dateStr).toLocaleDateString("en-US", { weekday: "long" });
-    const weekendDays = room.weekendDays || ["Friday", "Saturday"];
-    const isWeekend = weekendDays.includes(dayName);
-
-    let base = record?.basePrice ?? room.basePrice ?? 0;
-    if (isWeekend && !record && room.weekendPrice !== null && room.weekendPrice !== undefined && room.weekendPrice > 0) {
-      base = room.weekendPrice;
-    }
-    return base;
-  };
-
-  const getPricingBreakdown = () => {
-    let subtotal = 0;
-    let baseTotal = 0;
-    let extraAdultTotal = 0;
-    let extraChildWithBedTotal = 0;
-    let extraChildWithoutBedTotal = 0;
-    let mealPlanTotal = 0;
-    let originalBaseTotal = 0;
-
-    const start = new Date(checkIn);
-    const end = checkOut ? new Date(checkOut) : new Date(start.getTime() + 86400000);
-    
-    const dates: string[] = [];
-    const current = new Date(start);
-    while (current < end) {
-      dates.push(current.toISOString().split("T")[0]);
-      current.setDate(current.getDate() + 1);
-    }
-
-    const basePlanCode = "EP";
-    const basePlanLabel = "Room Only";
-
-    const mealPlans: MealPlanOption[] = [
-      { code: basePlanCode, label: basePlanLabel, adultPrice: 0, childPrice: 0, isBase: true },
-      ...((room.mealPlanOptions || []) as MealPlanOption[]).filter((o) => o.code !== basePlanCode)
-    ];
-    const selectedPlanObj = mealPlans.find((m) => m.code === selectedMealPlan) || mealPlans[0];
-
-    const baseAdults = room.baseAdults ?? 2;
-    const baseChildren = room.baseChildren ?? 0;
-
-    for (const config of roomsConfig) {
-      for (const dStr of dates) {
-        const basePrice = getDailyPrice(dStr);
-        baseTotal += basePrice;
-        originalBaseTotal += getOriginalDailyPrice(dStr);
-
-        const record = calendarData.find((x) => x.date === dStr);
-        const cp = record?.customPricing as CustomPricing | undefined;
-
-        const dateExtraAdultPrice = cp && cp.extraAdultPrice !== undefined && cp.extraAdultPrice !== null
-          ? Number(cp.extraAdultPrice)
-          : (room.extraAdultPrice || 0);
-        const extraAdults = Math.max(0, config.adults - baseAdults);
-        const extraAdultPrice = extraAdults * dateExtraAdultPrice;
-        extraAdultTotal += extraAdultPrice;
-
-        const dateExtraChildWithBedPrice = cp && cp.extraChildWithBedPrice !== undefined && cp.extraChildWithBedPrice !== null
-          ? Number(cp.extraChildWithBedPrice)
-          : (room.extraChildWithBedPrice || room.extraChildPrice || 0);
-        const extraKidsWithBed = Math.max(0, (config.childrenWithBed || 0) - baseChildren);
-        const extraKidWithBedPrice = extraKidsWithBed * dateExtraChildWithBedPrice;
-        extraChildWithBedTotal += extraKidWithBedPrice;
-
-        const dateExtraChildWithoutBedPrice = cp && cp.extraChildWithoutBedPrice !== undefined && cp.extraChildWithoutBedPrice !== null
-          ? Number(cp.extraChildWithoutBedPrice)
-          : (room.extraChildWithoutBedPrice || 0);
-        const remainingBaseChildren = Math.max(0, baseChildren - (config.childrenWithBed || 0));
-        const extraKidsWithoutBed = Math.max(0, (config.childrenWithoutBed || 0) - remainingBaseChildren);
-        const extraKidWithoutBedPrice = extraKidsWithoutBed * dateExtraChildWithoutBedPrice;
-        extraChildWithoutBedTotal += extraKidWithoutBedPrice;
-
-        const rawDayOptions = cp && Array.isArray(cp.mealPlanOptions) && cp.mealPlanOptions.length > 0
-          ? cp.mealPlanOptions
-          : (room.mealPlanOptions && Array.isArray(room.mealPlanOptions) && room.mealPlanOptions.length > 0
-            ? room.mealPlanOptions
-            : []);
-
-        const dayMealPlans: MealPlanOption[] = [
-          { code: basePlanCode, label: basePlanLabel, adultPrice: 0, childPrice: 0, isBase: true },
-          ...(rawDayOptions as MealPlanOption[]).filter((o) => o.code !== basePlanCode)
-        ];
-        const daySelectedPlanObj = dayMealPlans.find((m) => m.code === selectedMealPlan) || dayMealPlans[0];
-
-        const kidsTotal = (config.childrenWithBed || 0) + (config.childrenWithoutBed || 0);
-        const mealPrice = (config.adults * (daySelectedPlanObj.adultPrice || 0)) + (kidsTotal * (daySelectedPlanObj.childPrice || 0));
-        mealPlanTotal += mealPrice;
-      }
-    }
-
-    subtotal = baseTotal + extraAdultTotal + extraChildWithBedTotal + extraChildWithoutBedTotal + mealPlanTotal;
-    const originalSubtotal = Math.max(0, originalBaseTotal + extraAdultTotal + extraChildWithBedTotal + extraChildWithoutBedTotal + mealPlanTotal);
-    const gst = Math.round(subtotal * 0.12);
-    const grandTotal = subtotal + gst;
-
-    return {
-      nights: dates.length,
-      roomsCount: roomsConfig.length,
-      baseTotal,
-      extraAdultTotal,
-      extraChildWithBedTotal,
-      extraChildWithoutBedTotal,
-      mealPlanTotal,
-      selectedPlanObj,
-      originalSubtotal,
-      subtotal,
-      gst,
-      grandTotal
-    };
-  };
-
-  const calculatePrice = () => {
-    return getPricingBreakdown().subtotal;
-  };
-
-  const stayTotal = calculatePrice();
+  const stayTotal = pricingBreakdown.subtotal;
   const maxTotalPerRoom = (room.maxAdults || 2) + (room.maxChildren || 1);
   const isOccupancyExceeded = roomsConfig.some((c) => {
     const totalGuests = c.adults + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0);
@@ -496,10 +593,10 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
           key={d}
           onClick={() => handleDateClick(dateStr, isSelectable)}
           className={cn(
-            "relative rounded-xl border transition-all duration-150 select-none overflow-hidden flex flex-col",
-            "min-h-[80px] md:min-h-[90px]",
-            S.wrap, S.cursor
-          )}
+              "relative rounded-xl border transition-all duration-150 select-none overflow-hidden flex flex-col",
+              "min-h-[72px] md:min-h-[90px]",
+              S.wrap, S.cursor
+            )}
         >
           {/* TOP ROW: Day number + primary badge */}
           <div className="flex items-start justify-between px-2 pt-2 pb-0.5 gap-0.5">
@@ -610,6 +707,8 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
     router.push(`/hotels/${slug}/book?roomId=${room.id}&checkIn=${checkIn}&checkOut=${checkOut}&rooms=${roomsStr}&mealPlan=${selectedMealPlan}`);
   };
 
+
+
   const formatCancellation = (hours?: number) => {
     if (!hours) return "Free cancellation";
     if (hours % 168 === 0) return `Free cancellation up to ${hours / 168} week${hours / 168 > 1 ? "s" : ""} before check-in`;
@@ -639,7 +738,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
   ].filter(Boolean) as string[];
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
+    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans overflow-x-hidden">
       {/* ─── Breadcrumb Section (Navbar Offset Included) ─────────── */}
       <div className="container mx-auto px-4 pt-16 pb-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -654,7 +753,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
       {/* ─── Hero Image Gallery (Top OTA Layout) ────────────────────── */}
       <div className="container mx-auto px-4">
         {/* Mobile View: Swipeable Carousel */}
-        <div className="md:hidden relative aspect-[16/9] min-h-[300px] rounded-xl overflow-hidden shadow-md bg-slate-100">
+        <div className="md:hidden relative aspect-[16/9] min-h-[220px] rounded-xl overflow-hidden shadow-md bg-slate-100">
           <div className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">
             {images.map((img: string, idx: number) => (
               <div
@@ -873,13 +972,13 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                     type="button"
                     onClick={() => {
                       const today = new Date();
-                      const maxMonth = new Date(today.getFullYear(), today.getMonth() + 11, 1);
+                      const maxMonth = new Date(today.getFullYear(), today.getMonth() + 5, 1);
                       const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
                       if (next <= maxMonth) setCurrentMonth(next);
                     }}
                     disabled={
-                      currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() &&
-                      currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()
+                      currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getFullYear() &&
+                      currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getMonth()
                     }
                     className="p-2 hover:bg-white/15 rounded-lg disabled:opacity-30 transition-colors"
                     aria-label="Next Month"
@@ -1111,7 +1210,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
         <div className="w-full lg:w-[380px] space-y-4">
           <div className="lg:sticky lg:top-[80px] space-y-4">
             {/* Booking Widget */}
-            <div className="bg-[#0F1E3D] text-white rounded-xl p-4 space-y-5 shadow-xl">
+            <div id="booking-widget" className="bg-[#0F1E3D] text-white rounded-xl p-4 space-y-5 shadow-xl">
               <div>
                 <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mb-1">Starting from</p>
                 {(() => {
@@ -1160,6 +1259,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                           }
                         }}
                         min={new Date().toISOString().split("T")[0]}
+                        max={calendarMaxDateStr}
                         className="w-full h-12 rounded-sm bg-white/5 border border-white/10 text-white pl-10 pr-2 text-xs font-bold focus:outline-none focus:border-sky-400 cursor-pointer"
                       />
                     </div>
@@ -1171,6 +1271,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                       <input
                         type="date" aria-label="Check-out" value={checkOut}
                         onChange={(e) => setCheckOut(e.target.value)} min={checkIn}
+                        max={calendarMaxDateStr}
                         className="w-full h-12 rounded-sm bg-white/5 border border-white/10 text-white pl-10 pr-2 text-xs font-bold focus:outline-none focus:border-sky-400 cursor-pointer"
                       />
                     </div>
@@ -1289,59 +1390,54 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
             </div>
 
             {/* Price Summary */}
-              {(() => {
-                const breakdown = getPricingBreakdown();
-                return (
-                  <div className="pt-3 border-t border-white/10 space-y-2 text-xs text-white/70">
-                    <div className="flex justify-between">
-                      <span>Room base ({breakdown.nights} night{breakdown.nights > 1 ? "s" : ""} × {breakdown.roomsCount} room{breakdown.roomsCount > 1 ? "s" : ""})</span>
-                      <span className="text-white font-bold">₹{breakdown.baseTotal.toLocaleString()}</span>
-                    </div>
-                    {breakdown.extraAdultTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span>Extra adults charge</span>
-                        <span className="text-white font-bold">₹{breakdown.extraAdultTotal.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {breakdown.extraChildWithBedTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span>Extra child (with bed) charge</span>
-                        <span className="text-white font-bold">₹{breakdown.extraChildWithBedTotal.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {breakdown.extraChildWithoutBedTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span>Child sharing (no bed) charge</span>
-                        <span className="text-white font-bold">₹{breakdown.extraChildWithoutBedTotal.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {breakdown.mealPlanTotal > 0 && (
-                      <div className="flex justify-between">
-                        <span>Meal plan ({breakdown.selectedPlanObj.label})</span>
-                        <span className="text-white font-bold">₹{breakdown.mealPlanTotal.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {breakdown.originalSubtotal > breakdown.subtotal && (
-                      <div className="flex justify-between text-emerald-200/90 text-[11px] bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-400/20">
-                        <span>Discount applied</span>
-                        <span>-₹{(breakdown.originalSubtotal - breakdown.subtotal).toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between pt-1 border-t border-white/5 text-sm font-bold text-white">
-                      <span>Subtotal</span>
-                      <span>₹{breakdown.subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-white/50 text-[11px]">
-                      <span>GST (12%)</span>
-                      <span className="text-white font-medium">₹{breakdown.gst.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-white/10 text-base font-black text-white">
-                      <span>Grand Total</span>
-                      <span className="text-sky-300 font-extrabold text-sm">₹{breakdown.grandTotal.toLocaleString()}</span>
-                    </div>
+              <div className="pt-3 border-t border-white/10 space-y-2 text-xs text-white/70">
+                <div className="flex justify-between">
+                  <span>Room base ({pricingBreakdown.nights} night{pricingBreakdown.nights > 1 ? "s" : ""} × {pricingBreakdown.roomsCount} room{pricingBreakdown.roomsCount > 1 ? "s" : ""})</span>
+                  <span className="text-white font-bold">₹{pricingBreakdown.baseTotal.toLocaleString()}</span>
+                </div>
+                {pricingBreakdown.extraAdultTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span>Extra adults charge</span>
+                    <span className="text-white font-bold">₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span>
                   </div>
-                );
-              })()}
+                )}
+                {pricingBreakdown.extraChildWithBedTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span>Extra child (with bed) charge</span>
+                    <span className="text-white font-bold">₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span>
+                  </div>
+                )}
+                {pricingBreakdown.extraChildWithoutBedTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span>Child sharing (no bed) charge</span>
+                    <span className="text-white font-bold">₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span>
+                  </div>
+                )}
+                {pricingBreakdown.mealPlanTotal > 0 && (
+                  <div className="flex justify-between">
+                    <span>Meal plan ({pricingBreakdown.selectedPlanObj.label})</span>
+                    <span className="text-white font-bold">₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span>
+                  </div>
+                )}
+                {pricingBreakdown.originalSubtotal > pricingBreakdown.subtotal && (
+                  <div className="flex justify-between text-emerald-200/90 text-[11px] bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-400/20">
+                    <span>Discount applied</span>
+                    <span>-₹{(pricingBreakdown.originalSubtotal - pricingBreakdown.subtotal).toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-1 border-t border-white/5 text-sm font-bold text-white">
+                  <span>Subtotal</span>
+                  <span>₹{pricingBreakdown.subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-white/50 text-[11px]">
+                  <span>GST (12%)</span>
+                  <span className="text-white font-medium">₹{pricingBreakdown.gst.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-white/10 text-base font-black text-white">
+                  <span>Grand Total</span>
+                  <span className="text-sky-300 font-extrabold text-sm">₹{pricingBreakdown.grandTotal.toLocaleString()}</span>
+                </div>
+              </div>
  
               {/* CTA */}
               {isOccupancyExceeded ? (
@@ -1425,7 +1521,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
       )}
 
       {/* ─── Sticky Mobile Bottom Bar ─── */}
-      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-5 py-3.5 flex items-center justify-between">
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 py-2.5 flex items-center justify-between" onClick={openMobileSheet} onTouchStart={onSheetTouchStart} onTouchMove={onSheetTouchMove} onTouchEnd={onSheetTouchEnd}>
         <div>
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Starting at</p>
           <div className="flex items-baseline gap-1">
@@ -1443,6 +1539,113 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
           </Button>
         )}
       </div>
+
+      {/* Mobile Booking Bottom Sheet */}
+      <div
+        ref={sheetRef}
+        className="lg:hidden fixed left-0 right-0 bottom-0 z-50"
+        onTouchStart={onSheetTouchStart}
+        onTouchMove={onSheetTouchMove}
+        onTouchEnd={onSheetTouchEnd}
+      >
+        <div className="h-full bg-white rounded-t-xl shadow-2xl overflow-hidden flex flex-col">
+          <div className="p-3 border-b border-slate-200">
+            <div className="w-10 h-1.5 bg-slate-200 rounded mx-auto mb-2" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Booking & Price Breakup</p>
+                <p className="text-xs text-slate-500">Swipe down to close</p>
+              </div>
+              <button onClick={closeMobileSheet} className="text-slate-500">Close</button>
+            </div>
+          </div>
+
+          <div className="p-4 overflow-auto">
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase font-semibold">Subtotal</p>
+              <p className="text-lg font-black text-slate-900">₹{pricingBreakdown.subtotal.toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400">{pricingBreakdown.nights} night(s) · {pricingBreakdown.roomsCount} room(s)</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-sky-600">₹{pricingBreakdown.grandTotal.toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400">Grand Total</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+            <div className="flex justify-between text-sm text-slate-600"><span>Base</span><span>₹{pricingBreakdown.baseTotal.toLocaleString()}</span></div>
+            {pricingBreakdown.extraAdultTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Extra adults</span><span>₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span></div>}
+            {pricingBreakdown.extraChildWithBedTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Extra child (with bed)</span><span>₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span></div>}
+            {pricingBreakdown.extraChildWithoutBedTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Child (no bed)</span><span>₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span></div>}
+            {pricingBreakdown.mealPlanTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Meal plan</span><span>₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span></div>}
+            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-100"><span>GST (12%)</span><span>₹{pricingBreakdown.gst.toLocaleString()}</span></div>
+          </div>
+
+          {/* Dates & Guests (compact) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 ml-1">Check-in</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  aria-label="Check-in"
+                  value={checkIn}
+                  onChange={(e) => {
+                    setCheckIn(e.target.value);
+                    if (checkOut && new Date(e.target.value) >= new Date(checkOut)) {
+                      const d = new Date(e.target.value);
+                      d.setDate(d.getDate() + 1);
+                      setCheckOut(d.toISOString().split("T")[0]);
+                    }
+                  }}
+                  min={new Date().toISOString().split("T")[0]}
+                  max={calendarMaxDateStr}
+                  className="w-full h-11 rounded-md bg-white border border-slate-200 text-slate-800 pl-3 pr-2 text-xs font-medium"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 ml-1">Check-out</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  aria-label="Check-out"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  min={checkIn}
+                  max={calendarMaxDateStr}
+                  className="w-full h-11 rounded-md bg-white border border-slate-200 text-slate-800 pl-3 pr-2 text-xs font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="text-xs font-semibold">Guests & Rooms</div>
+            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+              <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                <div>{roomsConfig.length} Room(s)</div>
+                <div>{roomsConfig.reduce((a, c) => a + c.adults, 0)} Adult(s)</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            {isOccupancyExceeded ? (
+              <div className="bg-rose-50 text-rose-600 p-3 rounded-md text-center font-bold">Guest count exceeds room capacity</div>
+            ) : !checkOut ? (
+              <Button disabled className="w-full h-12 rounded-md bg-slate-200 text-slate-400 font-black uppercase tracking-wider text-sm">Select Check-out Date</Button>
+            ) : (
+              <Button onClick={handleBookNow} className="w-full h-12 rounded-md bg-[#1B3A6B] text-white font-black uppercase tracking-wider text-sm">Book Now — ₹{pricingBreakdown.grandTotal.toLocaleString()}</Button>
+            )}
+          </div>
+        </div>
+      </div>
+        </div>
+      </div>
+
     </div>
   );
 }

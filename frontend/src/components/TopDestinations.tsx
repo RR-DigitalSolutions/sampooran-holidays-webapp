@@ -91,9 +91,9 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
   const destinations = data && data[activeTab] ? data[activeTab] : [];
 
   return (
-    <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="py-4 md:py-4 bg-white overflow-hidden rounded-lg border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
-        <div className="px-2 md:px-4">
+    <div className="container px-1 md:px-2 my-6">
+      <section className="py-2 bg-white overflow-hidden rounded-lg border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <div className="px-1 md:px-2">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4 md:gap-0">
             <motion.div
@@ -104,17 +104,17 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                 <p className="text-accent font-bold text-xs uppercase tracking-[0.2em]">World Explorer</p>
               </div>
               <h2 className="text-2xl md:text-4xl font-serif font-bold text-primary">
-                Top Popular <span className="text-accent italic font-light">Destinations</span>
+                Top Popular <span className="text-accent font-light">Destinations</span>
               </h2>
             </motion.div>
 
             {/* Futuristic Tabs */}
-            <div className="flex w-full md:w-auto overflow-x-auto no-scrollbar p-1.5 bg-slate-100 rounded-2xl border border-slate-200 backdrop-blur-sm">
+            <div className="flex w-full md:w-auto overflow-x-auto no-scrollbar p-1 bg-slate-100 rounded-md border border-slate-200 backdrop-blur-sm">
               {(["all", "international", "domestic"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`relative shrink-0 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
+                  className={`relative shrink-0 px-6 py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
                     }`}
                 >
                   {activeTab === tab && (
@@ -131,10 +131,10 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
           </div>
 
           {/* Main Content Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start">
 
             {/* Left Column: Destination List */}
-            <div className="lg:col-span-4 max-h-[300px] overflow-y-auto lg:max-h-[650px] lg:p-2 custom-scrollbar grid grid-cols-2 lg:flex lg:flex-col gap-2 md:gap-3 pb-4 lg:pb-0">
+            <div className="lg:col-span-4 max-h-[300px] overflow-y-auto lg:max-h-[650px] custom-scrollbar grid grid-cols-2 lg:flex lg:flex-col gap-1 md:gap-2 pb-4 lg:pb-0">
               <AnimatePresence mode="popLayout">
                 {destinations.map((dest, idx) => (
                   <motion.div
@@ -153,7 +153,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                       }`}
                   >
                     <div className="flex items-center gap-1 md:gap-1">
-                      <div className="relative h-12 w-12 md:h-14 md:w-14 rounded-xl overflow-hidden shrink-0 border-2 border-white/20 shadow-sm">
+                      <div className="relative h-16 w-16 md:h-14 md:w-14 rounded-md overflow-hidden shrink-0 border-2 border-white/20 shadow-sm">
                         <Image src={validateImageUrl(dest.imageUrl)} alt={dest.name || "Destination"} fill sizes="60px" className="object-cover transition-transform duration-700 group-hover:scale-125" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -177,7 +177,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                     {selectedDest?.slug === dest.slug && (
                       <motion.div
                         layoutId="active-ring"
-                        className="absolute inset-0 rounded-2xl ring-2 ring-accent/50 ring-offset-2 ring-offset-white"
+                        className="absolute inset-0 rounded-md ring-2 ring-accent/50 ring-offset-2 ring-offset-white"
                         aria-hidden="true"
                       />
                     )}
@@ -187,7 +187,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
             </div>
 
             {/* Right Column: Dynamic Content Grid */}
-            <div className="lg:col-span-8 scroll-mt-24" ref={contentRef}>
+            <div className="lg:col-span-8 scroll-mt-18" ref={contentRef}>
               <AnimatePresence mode="wait">
                 {selectedDest ? (
                   <motion.div
@@ -198,7 +198,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                     transition={{ type: "spring", bounce: 0, duration: 0.5 }}
                   >
                     {/* Featured Card Header */}
-                    <div className="relative h-[180px] md:h-[240px] rounded-[1.5rem] overflow-hidden mb-2 shadow-2xl group/header">
+                    <div className="relative h-[180px] md:h-[240px] rounded-md overflow-hidden mb-2 shadow-2xl group/header">
                       <Image
                         src={validateImageUrl(selectedDest.imageUrl)}
                         alt={selectedDest.name || "Destination"}
@@ -210,10 +210,10 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-wrap gap-1.5 md:gap-2 pr-4">
-                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest shadow-lg">
+                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest shadow-lg">
                           Featured Destination
                         </span>
-                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1.5 rounded-full uppercase tracking-widest">
+                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest">
                           {selectedDest.packageCount} Packages Available
                         </span>
                       </div>
@@ -237,7 +237,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                             ? `/packages?country=${selectedDest.slug}`
                             : `/${selectedDest.slug}-tour-packages`
                         }>
-                          <button className="bg-white text-primary hover:bg-accent hover:text-accent-foreground px-6 py-3 rounded-2xl font-bold text-sm transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap">
+                          <button className="bg-white text-primary hover:bg-accent hover:text-accent-foreground px-6 py-3 rounded-md font-bold text-sm transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap">
                             Explore <ChevronRight className="h-4 w-4" />
                           </button>
                         </Link>
@@ -245,13 +245,13 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                     </div>
 
                     {/* Places/Attractions Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {selectedDest.gallery?.length > 0 ? (
                         selectedDest.gallery.slice(0, 6).map((place, pIdx) => (
                           <Link
                             key={place.slug || place.name}
                             href={`/${place.slug || place.name.toLowerCase().replace(/\s+/g, '-')}-tour-packages`}
-                            className="group/place relative h-40 md:h-48 rounded-2xl overflow-hidden block"
+                            className="group/place relative h-40 md:h-48 rounded-md overflow-hidden block"
                           >
                             <motion.div
                               initial={{ opacity: 0, y: 20 }}

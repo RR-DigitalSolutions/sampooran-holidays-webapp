@@ -401,7 +401,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                       </div>
                       <div className="hidden lg:grid grid-cols-2 gap-3 p-6 self-center">
                         {["https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400", "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400", "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=400", "https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=400"].map((src, i) => (
-                          <div key={i} className="relative h-36 w-full rounded-xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                          <div key={i} className="relative h-36 w-full rounded-md overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
                             <Image src={src} alt="" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 200px" />
                           </div>
                         ))}
@@ -466,15 +466,14 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                   <div className="px-4 md:px-8 relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                       <div className="text-white">
-                        <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 px-4 py-1.5 rounded-full mb-4">
-                          <Sparkles className="w-4 h-4 text-accent" />
+                        <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 px-4 py-1.5 rounded-md mb-4">
                           <span className="text-accent text-xs font-black uppercase tracking-widest">B2B Partnership</span>
                         </div>
                         <h2 className="text-3xl md:text-4xl font-bold mb-4 font-['Raleway',sans-serif]">Are You a <span className="text-accent">Travel Agent</span>?</h2>
                         <p className="text-white/70 mb-8 leading-relaxed">Join our B2B network and unlock exclusive net rates, dedicated booking support, and marketing tools to grow your travel business.</p>
                         <div className="flex flex-wrap gap-4">
-                          <Link href="/b2b"><button className="bg-accent text-primary rounded-xl px-8 py-3 font-bold hover:scale-105 transition-all shadow-xl shadow-accent/30">Register Now</button></Link>
-                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-xl px-8 py-3 font-bold hover:bg-white/10 transition-all">Call Us</button></a>
+                          <Link href="/b2b"><button className="bg-accent text-primary rounded-md px-8 py-3 font-bold hover:scale-105 transition-all shadow-xl shadow-accent/30">Register Now</button></Link>
+                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-md px-8 py-3 font-bold hover:bg-white/10 transition-all">Call Us</button></a>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">

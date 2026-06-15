@@ -92,7 +92,7 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                     return (
                       <>
                         {words.join(" ")}{words.length > 0 && " "}
-                        <span className="text-accent italic font-light">{lastWord}</span>
+                        <span className="text-accent font-light">{lastWord}</span>
                       </>
                     );
                   })()}

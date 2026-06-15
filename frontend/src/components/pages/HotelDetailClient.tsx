@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -72,6 +72,51 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Calculate nights
+  const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
+
+  const estimatedRoomBreakdown = useMemo(() => {
+    const basePrice = hotel?.minPrice ?? hotel?.startingPrice ?? hotel?.rooms?.[0]?.basePrice ?? 0;
+    const sampleRoom = hotel?.rooms?.[0] || {} as any;
+    const baseAdults = sampleRoom.baseAdults ?? 2;
+    const baseChildren = sampleRoom.baseChildren ?? 0;
+    const extraAdultPrice = sampleRoom.extraAdultPrice ?? 0;
+    const extraChildWithBedPrice = sampleRoom.extraChildWithBedPrice ?? sampleRoom.extraChildPrice ?? 0;
+    const extraChildWithoutBedPrice = sampleRoom.extraChildWithoutBedPrice ?? 0;
+
+    let baseTotal = basePrice * nights * roomsConfig.length;
+    let extraAdultTotal = 0;
+    let extraChildWithBedTotal = 0;
+    let extraChildWithoutBedTotal = 0;
+
+    for (const config of roomsConfig) {
+      const extraAdults = Math.max(0, config.adults - baseAdults);
+      const extraKidsWithBed = Math.max(0, (config.childrenWithBed || 0) - baseChildren);
+      const remainingBaseChildren = Math.max(0, baseChildren - (config.childrenWithBed || 0));
+      const extraKidsWithoutBed = Math.max(0, (config.childrenWithoutBed || 0) - remainingBaseChildren);
+
+      extraAdultTotal += extraAdults * extraAdultPrice * nights;
+      extraChildWithBedTotal += extraKidsWithBed * extraChildWithBedPrice * nights;
+      extraChildWithoutBedTotal += extraKidsWithoutBed * extraChildWithoutBedPrice * nights;
+    }
+
+    const subtotal = baseTotal + extraAdultTotal + extraChildWithBedTotal + extraChildWithoutBedTotal;
+    const gst = Math.round(subtotal * 0.12);
+    const grandTotal = subtotal + gst;
+
+    return {
+      nights,
+      roomsCount: roomsConfig.length,
+      baseTotal,
+      extraAdultTotal,
+      extraChildWithBedTotal,
+      extraChildWithoutBedTotal,
+      subtotal,
+      gst,
+      grandTotal,
+    };
+  }, [hotel, nights, roomsConfig]);
 
   const fetchHotel = async () => {
     try {
@@ -149,8 +194,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
     return `Free cancellation up to ${hours} hour${hours > 1 ? "s" : ""} before check-in`;
   };
 
-  // Calculate nights
-  const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
+
 
   // Dynamic Occupancy Surcharge Price Calculator for each Room Type
   const calculateRoomStayPrice = (room: any) => {
@@ -221,7 +265,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
+    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans overflow-x-hidden">
       {/* ─── Breadcrumb Section (Navbar Offset Included) ─────────── */}
       <div className="container mx-auto px-4 pt-16 pb-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
@@ -251,7 +295,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
       {/* ─── Hero Image Gallery (Top OTA Layout) ────────────────────── */}
       <div className="container mx-auto px-4">
         {/* Mobile View: Swipeable Carousel */}
-        <div className="md:hidden relative aspect-[16/9] min-h-[300px] rounded-xl overflow-hidden shadow-md bg-slate-100">
+        <div className="md:hidden relative aspect-[16/9] min-h-[220px] rounded-xl overflow-hidden shadow-md bg-slate-100">
           <div className="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">
             {images.map((img: string, idx: number) => (
               <div
@@ -432,9 +476,9 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                             }
                           }}
                           className={cn(
-                            "w-full md:w-72 h-48 md:h-auto relative bg-slate-100 shrink-0 select-none overflow-hidden",
-                            room.images?.length > 0 && "cursor-pointer group"
-                          )}
+                              "w-full md:w-72 h-40 md:h-auto relative bg-slate-100 shrink-0 select-none overflow-hidden",
+                              room.images?.length > 0 && "cursor-pointer group"
+                            )}
                         >
                           {room.images?.[0] ? (
                             <>
@@ -1085,6 +1129,26 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
               Select Rooms & Book
             </Button>
 
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs text-white/80 space-y-3">
+              <div className="flex items-center justify-between text-white/90 font-semibold text-[11px]">
+                <span>Estimated stay</span>
+                <span>{roomsConfig.length} room{roomsConfig.length > 1 ? "s" : ""}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-white/70">
+                <span>{nights} night{nights > 1 ? "s" : ""}</span>
+                <span>₹{estimatedRoomBreakdown.subtotal.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-white/70">
+                <span>GST (12%)</span>
+                <span>₹{estimatedRoomBreakdown.gst.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm font-black text-white pt-2 border-t border-white/10">
+                <span>Estimated total</span>
+                <span>₹{estimatedRoomBreakdown.grandTotal.toLocaleString()}</span>
+              </div>
+              <p className="text-[10px] text-white/50">Actual price may vary by room type, availability, and selected meal plan.</p>
+            </div>
+
             <div className="flex items-center gap-3 pt-3 border-t border-white/10">
               <a href="tel:+918595513009" className="flex-1 h-11 rounded-sm border border-white/10 font-bold text-xs text-white hover:bg-white/5 flex items-center justify-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-sky-400" /> Call Desk
@@ -1182,7 +1246,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
       )}
 
       {/* ─── Sticky Mobile Bottom Bar ─── */}
-      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-5 py-3.5 flex items-center justify-between">
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 py-2.5 flex items-center justify-between">
         <div>
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Starting at</p>
           <div className="flex items-baseline gap-1">

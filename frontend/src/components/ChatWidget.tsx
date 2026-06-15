@@ -44,7 +44,7 @@ if (typeof document !== "undefined") {
       globalAudio.play().then(() => {
         globalAudio!.pause();
         globalAudio!.currentTime = 0;
-      }).catch(() => {});
+      }).catch(() => { });
     }
     document.removeEventListener("click", unlock);
     document.removeEventListener("keydown", unlock);
@@ -58,9 +58,9 @@ function playPing() {
     initAudio();
     if (globalAudio) {
       globalAudio.currentTime = 0;
-      globalAudio.play().catch(() => {});
+      globalAudio.play().catch(() => { });
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 async function requestNotifPermission() {
@@ -113,7 +113,7 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionId = useRef<string>("");
-  const [latestToast, setLatestToast] = useState<{title: string, body: string} | null>(null);
+  const [latestToast, setLatestToast] = useState<{ title: string, body: string } | null>(null);
 
   // Restore guest info from localStorage on mount
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function ChatWidget() {
       fetch(`${API_URL}/chat/history?sessionId=${sessionId.current}`)
         .then(r => r.json())
         .then(data => { if (Array.isArray(data)) setMessages(data); })
-        .catch(() => {});
+        .catch(() => { });
     });
 
     socket.on("disconnect", () => setIsConnected(false));
@@ -242,7 +242,7 @@ export default function ChatWidget() {
   const msgText = (m: Message) => m.content || m.text || "";
 
   return (
-    <div className="fixed bottom-20 lg:bottom-6 right-4 z-[100] flex flex-col items-end select-none">
+    <div className="fixed bottom-20 lg:bottom-8 right-6 z-[100] flex flex-col items-end select-none">
       <AnimatePresence>
         {isOpen && (
           <motion.div
