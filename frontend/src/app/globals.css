@@ -185,7 +185,7 @@
 /* Ensures every section has consistent horizontal breathing room on desktops */
 .container {
   width: 100%;
-  max-width: 1400px;
+  max-width: 1350px;
   margin-left: auto;
   margin-right: auto;
   padding-left: 0.5rem;

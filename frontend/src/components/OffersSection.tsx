@@ -72,13 +72,13 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
           animation: badge-pulse 2s infinite;
         }
       `}</style>
-      <div className="container mx-auto px-4 max-w-8xl">
+      <div className="container mx-auto px-4 pt-2 md-pt-1 max-w-8xl">
 
-        <div className="bg-white rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 px-3 pt-2 pb-2 md:px-6 md:pt-4 md:pb-2 lg:px-8 lg:pt-4 lg:pb-2 relative">
+        <div className="bg-white rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 px-2 pt-2 pb-2 md:px-2 md:pt-2 md:pb-2 lg:px-2 lg:pt-2 lg:pb-2 pr-0 relative">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-50 pb-1">
             <div className="flex items-end gap-6">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">
                     {subtitle || "Exclusive Deals"}
@@ -118,7 +118,7 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
               </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center pb-2 gap-3">
               <button onClick={scrollPrev} className="w-8 h-8 rounded-full border border-slate-100 text-slate-400 hover:text-primary hover:border-primary flex items-center justify-center transition-all shadow-sm">
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -129,7 +129,7 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
           </div>
 
           {/* Mobile Tabs */}
-          <div className="md:hidden flex overflow-x-auto no-scrollbar pb-2 gap-2 border-b border-slate-50/50 mb-2">
+          <div className="md:hidden flex overflow-x-auto no-scrollbar gap-2 border-b border-slate-50/50 mb-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
@@ -148,20 +148,20 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
 
           {/* Carousel Viewport */}
           <div className="overflow-hidden md:overflow-visible" ref={emblaRef}>
-            <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4 lg:gap-6 pb-4 md:pb-2">
+            <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-2 pb-4 md:pb-2">
               {filteredOffers.length > 0 ? (
                 filteredOffers.slice(0, 6).map((offer) => (
                   <div key={offer.id} className="flex-[0_0_88%] min-w-0 md:flex-auto">
                     <Link key={offer.id} href={offer.ctaLink || "/"} className="block group group/card">
                       <div className={cn(
-                        "flex h-[130px] md:h-[150px] rounded-2xl overflow-hidden bg-white relative transition-all duration-500",
+                        "flex h-[130px] md:h-[150px] rounded-md overflow-hidden bg-white relative transition-all duration-500",
                         "border-0 md:border md:border-slate-100 hover:border-accent/40",
                         "shadow-[0_10px_35px_rgba(0,0,0,0.05)] md:shadow-none hover:shadow-2xl hover:shadow-accent/10"
                       )}>
 
                         {/* Left Image - Overlapping slightly to prevent seam lines */}
                         <div className="relative w-[41%] md:w-[44%] h-full overflow-hidden shrink-0 z-10">
-                          <div className="absolute right-[-2px] top-[-5%] bottom-[-5%] w-2 bg-white z-20  md:shadow-[-12px_0_20px_rgba(0,0,0,0.04)] transition-transform duration-500 group-hover/card:scale-x-125 origin-right" />
+                          <div className="absolute w-2 bg-white z-20  md:shadow-[-12px_0_20px_rgba(0,0,0,0.04)] transition-transform duration-500 group-hover/card:scale-x-125 origin-right" />
                           <Image
                             src={offer.imageUrl || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
                             alt={offer.title}
@@ -192,9 +192,9 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                           </div>
 
                           {/* CTA Button - Compact */}
-                          <div className="flex justify-start mt-1.5">
+                          <div className="flex justify-end mt-1.5">
                             <div className="relative group/btn cursor-pointer">
-                              <div className="relative bg-primary text-white text-[9px] md:text-[10px] font-bold px-5 py-2 md:px-6 md:py-2 rounded-full shadow-lg hover:bg-accent hover:text-primary transform transition-all duration-300 flex items-center gap-2 uppercase tracking-[0.15em]">
+                              <div className="relative bg-primary text-white text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2 md:py-1 rounded-full shadow-lg hover:bg-accent hover:text-primary transform transition-all duration-300 flex items-center gap-2 uppercase tracking-[0.15em]">
                                 {offer.ctaText || "GRAB DEAL"}
                                 <ArrowRight className="w-3 h-3 md:w-3.5 md:h-3.5 group-hover/btn:translate-x-1 transition-transform" />
                               </div>

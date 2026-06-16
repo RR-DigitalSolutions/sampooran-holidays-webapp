@@ -242,7 +242,7 @@ export default function ChatWidget() {
   const msgText = (m: Message) => m.content || m.text || "";
 
   return (
-    <div className="fixed bottom-20 lg:bottom-8 right-6 z-[100] flex flex-col items-end select-none">
+    <div className="fixed bottom-20 lg:bottom-26 right-6 z-[100] flex flex-col items-end select-none">
       <AnimatePresence>
         {isOpen && (
           <motion.div
