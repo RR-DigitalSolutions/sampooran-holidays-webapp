@@ -169,7 +169,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
 export function PopularPackagesCarouselSkeleton() {
   return (
     <div className="container mx-auto px-2 md:px-4 my-6">
-      <section className="py-8 bg-white relative overflow-hidden rounded-[2rem] border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+      <section className="py-8 bg-white relative overflow-hidden rounded-lg border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="px-6">
           <div className="max-w-3xl mb-8">
             <div className="h-4 w-32 bg-slate-100 animate-pulse rounded mb-2" />

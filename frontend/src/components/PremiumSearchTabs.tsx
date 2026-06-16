@@ -80,7 +80,7 @@ export default function PremiumSearchTabs() {
     <div className="w-full max-w-4xl mx-auto px-2 md:px-0">
       {/* Search Tabs Selector */}
       <div className="flex justify-center -mb-px relative z-10">
-        <div className="flex w-full md:w-auto md:inline-flex bg-primary backdrop-blur-3xl rounded-t-[1.2rem] md:rounded-t-[2rem] shadow-2xl border-x border-t border-white/10 overflow-x-auto no-scrollbar">
+        <div className="flex w-full md:w-auto md:inline-flex bg-primary backdrop-blur-3xl rounded-t-lg shadow-2xl border-x border-t border-white/10 overflow-x-auto no-scrollbar">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -96,7 +96,7 @@ export default function PremiumSearchTabs() {
                 )}
               >
                 <div className={cn(
-                  "w-6 h-6 md:w-8 md:h-8 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-500",
+                  "w-6 h-6 md:w-8 md:h-8 rounded-md flex items-center justify-center transition-all duration-500",
                   isActive ? "bg-white/30" : "bg-white/10 group-hover:bg-white/15"
                 )}>
                   <Icon className={cn("w-3.5 h-3.5 md:w-4 md:h-4", isActive ? "text-primary stroke-[2.5]" : "text-white/80")} />
@@ -122,9 +122,9 @@ export default function PremiumSearchTabs() {
       </div>
 
       {/* Main Search Panel */}
-      <div className="bg-white rounded-b-[1.5rem] rounded-t-none md:rounded-[2.5rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] p-0.5 md:p-1.5 relative group/panel border-x border-b border-white/20">
-        <div className="bg-slate-50/20 rounded-b-[1.3rem] rounded-t-none md:rounded-[2.3rem] p-0.5 md:p-1.5 border-x border-b border-slate-100">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-b-[1.2rem] rounded-t-none md:rounded-[2rem] shadow-sm">
+      <div className="bg-white rounded-b-lg shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] p-0.5 md:p-1.5 relative group/panel border-x border-b border-white/20">
+        <div className="bg-slate-50/20 rounded-b-lg p-0.5 md:p-1.5 border-x border-b border-slate-100">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-b-lg shadow-sm">
 
             {/* Destination Section */}
             <div
@@ -132,7 +132,7 @@ export default function PremiumSearchTabs() {
               onClick={() => document.getElementById('search-dest')?.focus()}
             >
               <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
-                <div className="w-4 h-4 md:w-6 md:h-6 rounded-md md:rounded-lg bg-orange-50 flex items-center justify-center">
+                <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-orange-50 flex items-center justify-center">
                   <MapPin className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-orange-500" />
                 </div>
                 <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -174,7 +174,7 @@ export default function PremiumSearchTabs() {
               <PopoverTrigger asChild>
                 <div className="flex-1 w-full p-2 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[180px]">
                   <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
-                    <div className="w-4 h-4 md:w-6 md:h-6 rounded-md md:rounded-lg bg-blue-50 flex items-center justify-center">
+                    <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-blue-50 flex items-center justify-center">
                       <Calendar className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-blue-500" />
                     </div>
                     <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -196,13 +196,13 @@ export default function PremiumSearchTabs() {
                   </div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-screen max-w-[350px] p-0 z-50 rounded-[1.5rem] shadow-2xl border-none" align="start">
+              <PopoverContent className="w-screen max-w-[350px] p-0 z-50 rounded-lg shadow-2xl border-none" align="start">
                 <CalendarUI
                   mode="single"
                   selected={date}
                   onSelect={setDate}
                   initialFocus
-                  className="p-3 md:p-4 bg-white rounded-[1.5rem]"
+                  className="p-3 md:p-4 bg-white rounded-lg"
                 />
               </PopoverContent>
             </Popover>
@@ -210,9 +210,9 @@ export default function PremiumSearchTabs() {
             {/* Guests Section */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex-1 w-full p-2 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[160px] md:rounded-r-[2.8rem]">
+                <div className="flex-1 w-full p-2 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[160px] md:rounded-r-lg">
                   <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
-                    <div className="w-4 h-4 md:w-6 md:h-6 rounded-md md:rounded-lg bg-indigo-50 flex items-center justify-center">
+                    <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-indigo-50 flex items-center justify-center">
                       <Users className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-indigo-500" />
                     </div>
                     <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">
@@ -228,7 +228,7 @@ export default function PremiumSearchTabs() {
                   </div>
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-screen max-w-[320px] p-4 md:p-6 z-50 rounded-[1.5rem] shadow-2xl border-none" align="end">
+              <PopoverContent className="w-screen max-w-[320px] p-4 md:p-6 z-50 rounded-lg shadow-2xl border-none" align="end">
                 <div className="space-y-4 md:space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -236,9 +236,9 @@ export default function PremiumSearchTabs() {
                       <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase">12+ years</p>
                     </div>
                     <div className="flex items-center gap-3 md:gap-4">
-                      <button type="button" onClick={() => setGuests(Math.max(1, guests - 1))} className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-primary transition-all font-bold">-</button>
+                      <button type="button" onClick={() => setGuests(Math.max(1, guests - 1))} className="w-8 h-8 md:w-10 md:h-10 rounded-md border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-primary transition-all font-bold">-</button>
                       <span className="w-4 text-center font-black text-primary text-base md:text-lg">{guests}</span>
-                      <button type="button" onClick={() => setGuests(guests + 1)} className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-primary transition-all font-bold">+</button>
+                      <button type="button" onClick={() => setGuests(guests + 1)} className="w-8 h-8 md:w-10 md:h-10 rounded-md border border-slate-100 flex items-center justify-center hover:bg-slate-50 text-primary transition-all font-bold">+</button>
                     </div>
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function PremiumSearchTabs() {
               type="button"
               onClick={() => handleSearch()}
               className={cn(
-                "group relative w-full md:px-6 py-2 md:py-2 rounded-full font-black text-[10px] md:text-lg tracking-[0.2em] uppercase transition-all overflow-hidden active:scale-95",
+                "group relative w-full md:px-6 py-2 md:py-2 rounded-md font-black text-[10px] md:text-lg tracking-[0.2em] uppercase transition-all overflow-hidden active:scale-95",
                 "bg-gradient-to-r from-accent via-[#FFD700] to-accent text-primary shadow-[0_10px_20px_-10px_rgba(255,215,0,0.5)] md:shadow-[0_15px_40px_-10px_rgba(255,215,0,0.5)] border border-white md:border-4"
               )}
             >

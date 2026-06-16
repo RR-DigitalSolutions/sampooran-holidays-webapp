@@ -114,6 +114,23 @@ export default function ChatWidget() {
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionId = useRef<string>("");
   const [latestToast, setLatestToast] = useState<{ title: string, body: string } | null>(null);
+  const [dragConstraints, setDragConstraints] = useState({ left: -400, right: 20, top: -600, bottom: 50 });
+
+  // Dynamic drag constraints for Framer Motion
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const updateConstraints = () => {
+      setDragConstraints({
+        left: -window.innerWidth + 80,
+        right: 20,
+        top: -window.innerHeight + 150,
+        bottom: 50
+      });
+    };
+    updateConstraints();
+    window.addEventListener("resize", updateConstraints);
+    return () => window.removeEventListener("resize", updateConstraints);
+  }, []);
 
   // Restore guest info from localStorage on mount
   useEffect(() => {
@@ -242,7 +259,13 @@ export default function ChatWidget() {
   const msgText = (m: Message) => m.content || m.text || "";
 
   return (
-    <div className="fixed bottom-20 lg:bottom-26 right-6 z-[100] flex flex-col items-end select-none">
+    <motion.div 
+      drag 
+      dragConstraints={dragConstraints} 
+      dragElastic={0.1} 
+      dragMomentum={false}
+      className="fixed bottom-20 lg:bottom-26 right-6 z-[100] flex flex-col items-end select-none"
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -255,7 +278,7 @@ export default function ChatWidget() {
             style={{ height: step === "form" ? "auto" : "520px" }}
           >
             {/* Header */}
-            <div className="bg-primary px-5 py-4 flex items-center justify-between text-white shrink-0">
+            <div className="bg-primary px-5 py-4 flex items-center justify-between text-white shrink-0 cursor-grab active:cursor-grabbing">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
                   <Headset className="w-5 h-5" />
@@ -270,187 +293,230 @@ export default function ChatWidget() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-xl hover:bg-white/10 transition-colors" aria-label="Close">
+              <button 
+                onClick={() => setIsOpen(false)} 
+                onPointerDown={(e) => e.stopPropagation()}
+                className="p-1.5 rounded-xl hover:bg-white/10 transition-colors" 
+                aria-label="Close"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* ── PRE-CHAT FORM ── */}
-            {step === "form" && (
-              <div className="p-5 flex flex-col gap-4">
-                <div className="text-center pb-1">
-                  <p className="text-sm font-bold text-slate-800">👋 Hi there! How can we help?</p>
-                  <p className="text-xs text-slate-500 mt-1">Please share your details to start chatting with our team.</p>
-                </div>
+            {/* Draggable-blocker container for contents */}
+            <div onPointerDown={(e) => e.stopPropagation()} className="flex-1 flex flex-col overflow-hidden bg-white">
+              {/* ── PRE-CHAT FORM ── */}
+              {step === "form" && (
+                <div className="p-5 flex flex-col gap-4">
+                  <div className="text-center pb-1">
+                    <p className="text-sm font-bold text-slate-800">👋 Hi there! How can we help?</p>
+                    <p className="text-xs text-slate-500 mt-1">Please share your details to start chatting with our team.</p>
+                  </div>
 
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="text"
-                    placeholder="Your Full Name *"
-                    value={guest.name}
-                    onChange={e => setGuest(g => ({ ...g, name: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone Number (10 digits) *"
-                    value={guest.phone}
-                    onChange={e => setGuest(g => ({ ...g, phone: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email Address *"
-                    value={guest.email}
-                    onChange={e => setGuest(g => ({ ...g, email: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
-                  />
-                </div>
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      placeholder="Your Full Name *"
+                      value={guest.name}
+                      onChange={e => setGuest(g => ({ ...g, name: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Phone Number (10 digits) *"
+                      value={guest.phone}
+                      onChange={e => setGuest(g => ({ ...g, phone: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email Address *"
+                      value={guest.email}
+                      onChange={e => setGuest(g => ({ ...g, email: e.target.value }))}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
+                    />
+                  </div>
 
-                {formErr && <p className="text-xs text-red-500 font-medium -mt-1">{formErr}</p>}
+                  {formErr && <p className="text-xs text-red-500 font-medium -mt-1">{formErr}</p>}
 
-                {/* Policy Checkbox */}
-                <label className="flex items-start gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    onChange={e => setAgreed(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded accent-primary cursor-pointer"
-                  />
-                  <span className="text-[11px] text-slate-500 leading-relaxed">
-                    I agree to the{" "}
-                    <a href="/privacy-policy" target="_blank" className="text-primary underline">Privacy Policy</a>
-                    {" "}and consent to being contacted by Sampooran Holidays team.
-                  </span>
-                </label>
+                  {/* Policy Checkbox */}
+                  <label className="flex items-start gap-2.5 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={agreed}
+                      onChange={e => setAgreed(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded accent-primary cursor-pointer"
+                    />
+                    <span className="text-[11px] text-slate-500 leading-relaxed">
+                      I agree to the{" "}
+                      <a href="/privacy-policy" target="_blank" className="text-primary underline">Privacy Policy</a>
+                      {" "}and consent to being contacted by Sampooran Holidays team.
+                    </span>
+                  </label>
 
-                <button
-                  onClick={handleFormSubmit}
-                  className="w-full bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all text-sm shadow-lg shadow-primary/20"
-                >
-                  Start Chat <ChevronRight className="w-4 h-4" />
-                </button>
-
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
-                  <Shield className="w-3 h-3" /> Your info is safe with us
-                </div>
-              </div>
-            )}
-
-            {/* ── CHAT INTERFACE ── */}
-            {step === "chat" && (
-              <>
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#f0f4f8]">
-                  {/* Welcome bubble */}
-                  {messages.length === 0 && (
-                    <div className="flex justify-start">
-                      <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[82%]">
-                        <p className="text-sm text-slate-700">Hello {guest.name.split(" ")[0]}! 👋</p>
-                        <p className="text-xs text-slate-500 mt-1">How can we help with your trip today?</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {messages.map((msg, i) => {
-                    const isMe = msg.senderRole === "USER";
-                    const text = msgText(msg);
-                    const prev = messages[i - 1];
-                    const showTime = !prev || prev.senderRole !== msg.senderRole ||
-                      (new Date(msg.createdAt!).getTime() - new Date(prev.createdAt!).getTime()) > 60000;
-
-                    return (
-                      <div key={i} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                        <motion.div
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={cn(
-                            "max-w-[82%] px-4 py-2.5 rounded-2xl text-sm shadow-sm relative",
-                            isMe
-                              ? "bg-[#1B3A6B] text-white rounded-tr-none"
-                              : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
-                          )}
-                        >
-                          {text}
-                          <div className={cn("flex items-center gap-1 mt-1 justify-end", isMe ? "text-white/60" : "text-slate-400")}>
-                            <span className="text-[9px]">{formatTime(msg.createdAt)}</span>
-                            {isMe && (
-                              msg.local
-                                ? <Check className="w-3 h-3 text-white/50" />
-                                : <CheckCheck className="w-3 h-3 text-white/70" />
-                            )}
-                          </div>
-                        </motion.div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Typing indicator */}
-                  {adminTyping && (
-                    <div className="flex items-start">
-                      <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5 border border-slate-100">
-                        {[0, 1, 2].map(i => (
-                          <motion.span
-                            key={i}
-                            className="w-1.5 h-1.5 rounded-full bg-slate-400"
-                            animate={{ y: [0, -4, 0] }}
-                            transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Input Bar */}
-                <div className="px-4 py-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
-                  <input
-                    type="text"
-                    placeholder="Type a message…"
-                    value={input}
-                    onChange={e => { setInput(e.target.value); emitTyping(); }}
-                    onKeyDown={e => e.key === "Enter" && handleSend()}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
-                  />
                   <button
-                    onClick={handleSend}
-                    disabled={!input.trim() || !isConnected}
-                    className="w-10 h-10 rounded-full bg-[#1B3A6B] text-white flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0"
-                    aria-label="Send"
+                    onClick={handleFormSubmit}
+                    className="w-full bg-primary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-primary/90 active:scale-[0.98] transition-all text-sm shadow-lg shadow-primary/20"
                   >
-                    <Send className="w-4 h-4" />
+                    Start Chat <ChevronRight className="w-4 h-4" />
                   </button>
+
+                  <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
+                    <Shield className="w-3 h-3" /> Your info is safe with us
+                  </div>
                 </div>
-              </>
-            )}
+              )}
+
+              {/* ── CHAT INTERFACE ── */}
+              {step === "chat" && (
+                <>
+                  {/* Messages */}
+                  <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#f0f4f8]">
+                    {/* Welcome bubble */}
+                    {messages.length === 0 && (
+                      <div className="flex justify-start">
+                        <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[82%]">
+                          <p className="text-sm text-slate-700">Hello {guest.name.split(" ")[0]}! 👋</p>
+                          <p className="text-xs text-slate-500 mt-1">How can we help with your trip today?</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {messages.map((msg, i) => {
+                      const isMe = msg.senderRole === "USER";
+                      const text = msgText(msg);
+                      const prev = messages[i - 1];
+                      const showTime = !prev || prev.senderRole !== msg.senderRole ||
+                        (new Date(msg.createdAt!).getTime() - new Date(prev.createdAt!).getTime()) > 60000;
+
+                      return (
+                        <div key={i} className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                          <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={cn(
+                              "max-w-[82%] px-4 py-2.5 rounded-2xl text-sm shadow-sm relative",
+                              isMe
+                                ? "bg-[#1B3A6B] text-white rounded-tr-none"
+                                : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
+                            )}
+                          >
+                            {text}
+                            <div className={cn("flex items-center gap-1 mt-1 justify-end", isMe ? "text-white/60" : "text-slate-400")}>
+                              <span className="text-[9px]">{formatTime(msg.createdAt)}</span>
+                              {isMe && (
+                                msg.local
+                                  ? <Check className="w-3 h-3 text-white/50" />
+                                  : <CheckCheck className="w-3 h-3 text-white/70" />
+                              )}
+                            </div>
+                          </motion.div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Typing indicator */}
+                    {adminTyping && (
+                      <div className="flex items-start">
+                        <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-1.5 border border-slate-100">
+                          {[0, 1, 2].map(i => (
+                            <motion.span
+                              key={i}
+                              className="w-1.5 h-1.5 rounded-full bg-slate-400"
+                              animate={{ y: [0, -4, 0] }}
+                              transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Input Bar */}
+                  <div className="px-4 py-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
+                    <input
+                      type="text"
+                      placeholder="Type a message…"
+                      value={input}
+                      onChange={e => { setInput(e.target.value); emitTyping(); }}
+                      onKeyDown={e => e.key === "Enter" && handleSend()}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition"
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() || !isConnected}
+                      className="w-10 h-10 rounded-full bg-[#1B3A6B] text-white flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0"
+                      aria-label="Send"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* FAB Button */}
-      <motion.button
-        whileHover={{ scale: 1.07 }}
-        whileTap={{ scale: 0.93 }}
-        onClick={() => setIsOpen(o => !o)}
-        className={cn(
-          "w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative",
-          isOpen ? "bg-slate-700 text-white" : "bg-[#1B3A6B] text-white"
-        )}
-        aria-label="Toggle chat"
-      >
-        <AnimatePresence mode="wait">
-          {isOpen
-            ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}><X className="w-6 h-6" /></motion.div>
-            : <motion.div key="msg" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><MessageCircle className="w-6 h-6" /></motion.div>
-          }
-        </AnimatePresence>
-        {unread > 0 && !isOpen && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
-      </motion.button>
+      {/* FAB Button Wrapper with Circular Tagline */}
+      <div className="relative flex items-center justify-center w-24 h-24 -mr-5 -mb-5">
+        {/* Rotating Tagline SVG */}
+        <motion.svg
+          animate={{ rotate: 360 }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox="0 0 100 100"
+        >
+          <path
+            id="curve"
+            d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0"
+            fill="none"
+          />
+          <text className="text-[7.5px] font-black uppercase tracking-[0.18em] fill-[#1B3A6B]">
+            <textPath href="#curve" startOffset="0%">
+              Chat with us • Sampooran Holidays • 
+            </textPath>
+          </text>
+        </motion.svg>
+
+        {/* FAB Button */}
+        <motion.button
+          whileHover={{ scale: 1.07 }}
+          whileTap={{ scale: 0.93 }}
+          onClick={() => setIsOpen(o => !o)}
+          className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-grab active:cursor-grabbing z-10 bg-[#1B3A6B] text-[#F5A623]"
+          aria-label="Toggle chat"
+        >
+          <AnimatePresence mode="wait">
+            {isOpen ? (
+              <motion.div 
+                key="x" 
+                initial={{ rotate: -90, opacity: 0 }} 
+                animate={{ rotate: 0, opacity: 1 }} 
+                exit={{ rotate: 90, opacity: 0 }}
+              >
+                <X className="w-6 h-6" />
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="msg" 
+                initial={{ rotate: 90, opacity: 0 }} 
+                animate={{ rotate: 0, opacity: 1 }} 
+                exit={{ rotate: -90, opacity: 0 }}
+                className="animate-pulse"
+              >
+                <MessageCircle className="w-6 h-6 fill-[#F5A623] text-[#F5A623]" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {unread > 0 && !isOpen && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg z-20">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </motion.button>
+      </div>
 
       {/* Guest Toast Notification */}
       <AnimatePresence>
@@ -459,6 +525,7 @@ export default function ChatWidget() {
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="absolute bottom-[70px] right-0 w-[300px] bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 cursor-pointer"
             onClick={() => { setIsOpen(true); setLatestToast(null); }}
           >
@@ -474,6 +541,6 @@ export default function ChatWidget() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

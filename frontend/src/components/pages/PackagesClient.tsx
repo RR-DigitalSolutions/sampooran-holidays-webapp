@@ -6,24 +6,24 @@ import { PackageCard } from "@/components/PackageCard";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useState, useMemo, useEffect } from "react";
-import { Search, SlidersHorizontal, Star, X, LayoutGrid, LayoutList, CheckCircle } from "lucide-react";
+import { Search, SlidersHorizontal, Star, X, LayoutGrid, LayoutList, CheckCircle, ChevronDown } from "lucide-react";
 import { getApiUrl } from "@/lib/api-url";
 
 const CATEGORIES = ["All", "Adventure", "Honeymoon", "Family", "Cultural", "Luxury", "Budget", "Wildlife", "Religious", "Group"];
 const DURATIONS = [
   { label: "Any Duration", min: 0, max: 999 },
-  { label: "1â€“3 Days", min: 1, max: 3 },
-  { label: "4â€“6 Days", min: 4, max: 6 },
-  { label: "7â€“10 Days", min: 7, max: 10 },
+  { label: "1–3 Days", min: 1, max: 3 },
+  { label: "4–6 Days", min: 4, max: 6 },
+  { label: "7–10 Days", min: 7, max: 10 },
   { label: "11+ Days", min: 11, max: 999 },
 ];
 const BUDGETS = [
   { label: "Any Budget", min: 0, max: 999999 },
-  { label: "Under â‚¹10,000", min: 0, max: 10000 },
-  { label: "â‚¹10,000â€“â‚¹20,000", min: 10000, max: 20000 },
-  { label: "â‚¹20,000â€“â‚¹35,000", min: 20000, max: 35000 },
-  { label: "â‚¹35,000â€“â‚¹50,000", min: 35000, max: 50000 },
-  { label: "Above â‚¹50,000", min: 50000, max: 999999 },
+  { label: "Under ₹10,000", min: 0, max: 10000 },
+  { label: "₹10,000–₹20,000", min: 10000, max: 20000 },
+  { label: "₹20,000–₹35,000", min: 20000, max: 35000 },
+  { label: "₹35,000–₹50,000", min: 35000, max: 50000 },
+  { label: "Above ₹50,000", min: 50000, max: 999999 },
 ];
 
 const DESTINATIONS = ["All Destinations", "Manali", "Leh Ladakh", "Kashmir", "Shimla", "Spiti Valley", "Rishikesh", "Jaipur", "Goa", "Thailand", "Bhutan", "Nepal", "Dubai"];
@@ -114,31 +114,41 @@ export default function Packages() {
             Discover curated itineraries, verified stays, and flexible pricing across India and beyond.
           </p>
 
-          <div className="bg-white p-2 rounded-full shadow-2xl shadow-primary/10 border border-white/20 backdrop-blur-md max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-2">
-            <div className="flex-1 flex items-center gap-3 px-4 py-2 w-full">
-              <Search className="h-5 w-5 text-slate-400 shrink-0" />
+          <div className="bg-white p-3 rounded-lg shadow-2xl border border-slate-200 max-w-3xl mx-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 flex items-center gap-2.5 px-3 py-2.5 border border-slate-200 rounded-md bg-slate-50">
+              <Search className="h-4 w-4 text-slate-400 shrink-0" />
               <input
                 type="text"
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 placeholder="Search packages, destinations..."
-                className="w-full bg-transparent text-slate-900 placeholder:text-slate-500 font-medium outline-none text-sm"
+                className="w-full bg-transparent text-slate-900 placeholder:text-slate-500 font-semibold outline-none text-xs md:text-sm"
               />
               {q && (
                 <button type="button" onClick={() => setQ("")} aria-label="Clear search" className="text-slate-400 hover:text-slate-800 transition-colors">
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            <div className="hidden sm:block w-px h-8 bg-slate-200" />
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="bg-transparent text-slate-700 font-bold text-sm outline-none px-4 py-2 w-full sm:w-auto cursor-pointer appearance-none"
+            
+            <div className="relative w-full sm:w-48 shrink-0">
+              <select 
+                value={category} 
+                onChange={(e) => setCategory(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs md:text-sm outline-none pl-3 pr-8 py-2.5 w-full cursor-pointer rounded-md appearance-none"
+              >
+                {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>)}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                <ChevronDown className="h-4 w-4" />
+              </div>
+            </div>
+
+            <button 
+              type="button" 
+              onClick={resetFilters} 
+              className="w-full sm:w-auto shrink-0 rounded-md bg-primary hover:bg-[#1B3A6B]/90 px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors shadow-md"
             >
-              {dynamicCategories.map(cat => <option key={cat} value={cat}>{cat === "All" ? "All Categories" : cat}</option>)}
-            </select>
-            <button type="button" onClick={resetFilters} className="w-full sm:w-auto shrink-0 rounded-full bg-primary px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-accent hover:text-primary transition-colors shadow-md">
               Reset
             </button>
           </div>
@@ -155,7 +165,7 @@ export default function Packages() {
         <div className="grid gap-10 lg:grid-cols-[280px_1fr]">
           <aside className="hidden lg:block">
             <div className="space-y-6">
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-5">
                   <div>
                     <p className="text-sm uppercase tracking-[0.25em] text-slate-500 mb-1">Filter Packages</p>
@@ -166,7 +176,7 @@ export default function Packages() {
                 <div className="space-y-5">
                   <div>
                     <p className="text-sm font-semibold text-slate-700 mb-2">Destination</p>
-                    <select aria-label="Destination" value={destination} onChange={e => setDestination(e.target.value)} className="w-full rounded-3xl border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    <select aria-label="Destination" value={destination} onChange={e => setDestination(e.target.value)} className="w-full rounded-md border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20">
                       {DESTINATIONS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
@@ -174,7 +184,7 @@ export default function Packages() {
                     <p className="text-sm font-semibold text-slate-700 mb-2">Duration</p>
                     <div className="grid gap-2">
                       {DURATIONS.map((d, i) => (
-                        <button key={d.label} type="button" onClick={() => setDurationIdx(i)} className={`text-left rounded-3xl px-4 py-3 text-sm transition ${durationIdx === i ? 'bg-primary text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
+                        <button key={d.label} type="button" onClick={() => setDurationIdx(i)} className={`text-left rounded-md px-4 py-3 text-sm transition ${durationIdx === i ? 'bg-primary text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
                           {d.label}
                         </button>
                       ))}
@@ -184,7 +194,7 @@ export default function Packages() {
                     <p className="text-sm font-semibold text-slate-700 mb-2">Budget</p>
                     <div className="grid gap-2">
                       {BUDGETS.map((b, i) => (
-                        <button key={b.label} type="button" onClick={() => setBudgetIdx(i)} className={`text-left rounded-3xl px-4 py-3 text-sm transition ${budgetIdx === i ? 'bg-primary text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
+                        <button key={b.label} type="button" onClick={() => setBudgetIdx(i)} className={`text-left rounded-md px-4 py-3 text-sm transition ${budgetIdx === i ? 'bg-primary text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
                           {b.label}
                         </button>
                       ))}
@@ -194,7 +204,7 @@ export default function Packages() {
                     <p className="text-sm font-semibold text-slate-700 mb-2">Minimum Rating</p>
                     <div className="grid gap-2">
                       {[[0, 'Any Rating'], [4, '4+ Stars'], [4.5, '4.5+ Stars'], [4.8, '4.8+ Stars']].map(([val, label]) => (
-                        <button key={String(val)} type="button" onClick={() => setMinRating(Number(val))} className={`text-left rounded-3xl px-4 py-3 text-sm transition ${minRating === val ? 'bg-primary text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
+                        <button key={String(val)} type="button" onClick={() => setMinRating(Number(val))} className={`text-left rounded-md px-4 py-3 text-sm transition ${minRating === val ? 'bg-primary text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}>
                           {label}
                         </button>
                       ))}
@@ -203,25 +213,25 @@ export default function Packages() {
                 </div>
               </div>
 
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm uppercase tracking-[0.25em] text-slate-500 mb-4">Why Sampooran?</p>
                 <div className="space-y-4 text-sm text-slate-600">
                   <div className="flex items-start gap-3">
-                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 text-primary font-bold">âœ“</span>
+                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-primary font-bold">✓</span>
                     <div>
                       <p className="font-semibold text-slate-900">Verified hotels & transfers</p>
                       <p>Handpicked stays and comfortable transport for every route.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 text-primary font-bold">âœ“</span>
+                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-primary font-bold">✓</span>
                     <div>
                       <p className="font-semibold text-slate-900">Flexible payment options</p>
                       <p>Pay using secure methods and book with confidence.</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-slate-100 text-primary font-bold">âœ“</span>
+                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-primary font-bold">✓</span>
                     <div>
                       <p className="font-semibold text-slate-900">24/7 travel support</p>
                       <p>Expert assistance before and during your holiday.</p>
@@ -240,14 +250,14 @@ export default function Packages() {
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="text-sm text-slate-500" htmlFor="package-sort">Sort by</label>
-                <select id="package-sort" aria-label="Sort packages" value={sortBy} onChange={e => setSortBy(e.target.value)} className="rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20">
+                <select id="package-sort" aria-label="Sort packages" value={sortBy} onChange={e => setSortBy(e.target.value)} className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20">
                   <option value="popular">Most Popular</option>
                   <option value="trending">Trending</option>
                   <option value="rating">Highest Rated</option>
                   <option value="price_asc">Price: Low to High</option>
                   <option value="price_desc">Price: High to Low</option>
                 </select>
-                <div className="inline-flex rounded-3xl border border-slate-200 overflow-hidden">
+                <div className="inline-flex rounded-md border border-slate-200 overflow-hidden">
                   <button onClick={() => setViewMode("grid")} aria-label="Grid view" className={`px-4 py-3 text-sm ${viewMode === "grid" ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}><LayoutGrid className="h-4 w-4" /></button>
                   <button onClick={() => setViewMode("list")} aria-label="List view" className={`px-4 py-3 text-sm ${viewMode === "list" ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}><LayoutList className="h-4 w-4" /></button>
                 </div>
@@ -256,15 +266,15 @@ export default function Packages() {
 
             {isLoading ? (
               <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 gap-5" : "space-y-4"}>
-                {[1,2,3,4].map(i => <div key={i} className="bg-slate-100 animate-pulse rounded-3xl h-80" />)}
+                {[1,2,3,4].map(i => <div key={i} className="bg-slate-100 animate-pulse rounded-lg h-80" />)}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="rounded-[2rem] border border-dashed border-slate-300 bg-slate-50 p-16 text-center">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-16 text-center">
                 <Search className="h-12 w-12 text-slate-400 mx-auto mb-4" />
                 <p className="text-sm uppercase tracking-[0.3em] text-slate-500 mb-3">No results</p>
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">No packages match your filters</h3>
                 <p className="text-slate-600 mb-5">Try changing the budget, duration, or category to widen your search.</p>
-                <button onClick={resetFilters} className="rounded-3xl bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary/90 transition-colors">Reset filters</button>
+                <button onClick={resetFilters} className="rounded-md bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary/90 transition-colors">Reset filters</button>
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -277,12 +287,12 @@ export default function Packages() {
             )}
 
             {filtered.length > 0 && (
-              <div className="rounded-[2rem] border border-primary/20 bg-primary/5 p-8 text-slate-900 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-8 text-slate-900 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
                   <p className="text-sm uppercase tracking-[0.2em] text-primary font-bold mb-2">Still unsure?</p>
                   <h3 className="text-2xl font-bold">Get a personalized itinerary from our experts.</h3>
                 </div>
-                <Link href="/customized-holidays" className="inline-flex items-center justify-center rounded-3xl bg-primary px-7 py-4 text-sm font-bold text-white hover:bg-accent transition-colors">
+                <Link href="/customized-holidays" className="inline-flex items-center justify-center rounded-lg bg-primary px-7 py-4 text-sm font-bold text-white hover:bg-accent transition-colors">
                   Request Custom Plan
                 </Link>
               </div>
@@ -314,9 +324,9 @@ export default function Packages() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                   {trendingPackages.map(pkg => (
-                    <div key={pkg.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg transition-shadow">
+                    <div key={pkg.id} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:shadow-lg transition-shadow">
                       <div className="mb-4 flex items-center justify-between gap-3">
-                        <span className="rounded-3xl bg-primary/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">{pkg.category}</span>
+                        <span className="rounded-md bg-primary/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">{pkg.category}</span>
                         <span className="text-xs text-slate-500">{pkg.rating} â˜…</span>
                       </div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-3">{pkg.name}</h4>

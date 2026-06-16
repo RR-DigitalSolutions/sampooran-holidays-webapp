@@ -311,56 +311,54 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const h = Math.round(window.innerHeight * 0.78);
-    sheetHeightRef.current = h;
-    setSheetTranslate(h);
-    const onResize = () => {
-      const nh = Math.round(window.innerHeight * 0.78);
-      sheetHeightRef.current = nh;
-      if (!mobileSheetOpen) setSheetTranslate(nh);
+    const updateHeight = () => {
+      const h = Math.round(window.innerHeight * 0.78);
+      sheetHeightRef.current = h;
     };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
   }, []);
-
-  useEffect(() => {
-    // animate to open/close
-    if (mobileSheetOpen) {
-      setSheetTranslate(0);
-    } else {
-      setSheetTranslate(sheetHeightRef.current || 0);
-    }
-  }, [mobileSheetOpen]);
 
   useEffect(() => {
     if (!sheetRef.current) return;
     const el = sheetRef.current as HTMLDivElement;
-    el.style.height = sheetHeightRef.current ? `${sheetHeightRef.current}px` : '78vh';
-    el.style.transform = `translateY(${sheetTranslate}px)`;
-    el.style.transition = touchStartY.current == null ? 'transform 220ms ease' : 'none';
-  }, [sheetTranslate]);
+    el.style.height = '78vh';
+    if (touchStartY.current !== null) {
+      el.style.transform = `translateY(${sheetTranslate}px)`;
+      el.style.transition = 'none';
+    } else {
+      el.style.transform = mobileSheetOpen ? 'translateY(0)' : 'translateY(100%)';
+      el.style.transition = 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)';
+    }
+  }, [sheetTranslate, mobileSheetOpen]);
 
   const onSheetTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest(".sheet-header")) return;
+
+    if (typeof window !== "undefined") {
+      sheetHeightRef.current = Math.round(window.innerHeight * 0.78);
+    }
     touchStartY.current = e.touches[0].clientY;
-    startTranslate.current = sheetTranslate || sheetHeightRef.current || 0;
+    startTranslate.current = mobileSheetOpen ? 0 : (sheetHeightRef.current || 600);
   };
 
   const onSheetTouchMove = (e: React.TouchEvent) => {
     if (touchStartY.current == null) return;
     const delta = touchStartY.current - e.touches[0].clientY; // positive = swipe up
     let newTranslate = startTranslate.current - delta;
-    newTranslate = Math.max(0, Math.min(sheetHeightRef.current || 0, newTranslate));
+    newTranslate = Math.max(0, Math.min(sheetHeightRef.current || 600, newTranslate));
     setSheetTranslate(newTranslate);
   };
 
   const onSheetTouchEnd = () => {
-    if (!sheetHeightRef.current) return;
-    if ((sheetTranslate || 0) < sheetHeightRef.current / 2) {
-      setMobileSheetOpen(true);
-      setSheetTranslate(0);
-    } else {
+    if (touchStartY.current == null) return;
+    const threshold = (sheetHeightRef.current || 600) / 3;
+    if (sheetTranslate > threshold) {
       setMobileSheetOpen(false);
-      setSheetTranslate(sheetHeightRef.current);
+    } else {
+      setMobileSheetOpen(true);
     }
     touchStartY.current = null;
   };
@@ -698,7 +696,10 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
     return [...padding, ...dayCells];
   };
 
-  const handleBookNow = () => {
+  const handleBookNow = (e?: React.MouseEvent) => {
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
     if (isOccupancyExceeded) {
       toast.error(`Your guest config exceeds the limits of this room.`);
       return;
@@ -1207,7 +1208,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
         </div>
 
         {/* RIGHT: Booking Engine (sticky) */}
-        <div className="w-full lg:w-[380px] space-y-4">
+        <div className="hidden lg:block lg:w-[380px] space-y-4">
           <div className="lg:sticky lg:top-[80px] space-y-4">
             {/* Booking Widget */}
             <div id="booking-widget" className="bg-[#0F1E3D] text-white rounded-xl p-4 space-y-5 shadow-xl">
@@ -1521,12 +1522,19 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
       )}
 
       {/* ─── Sticky Mobile Bottom Bar ─── */}
-      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 py-2.5 flex items-center justify-between" onClick={openMobileSheet} onTouchStart={onSheetTouchStart} onTouchMove={onSheetTouchMove} onTouchEnd={onSheetTouchEnd}>
-        <div>
-          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Starting at</p>
-          <div className="flex items-baseline gap-1">
-            <span className="text-xl font-black text-[#1B3A6B]">₹{(room.basePrice || 0).toLocaleString()}</span>
-            <span className="text-[10px] text-slate-400 font-semibold">/night</span>
+      <div 
+        className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t-2 border-[#1B3A6B] shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 py-2.5 flex items-center justify-between cursor-pointer" 
+        onClick={openMobileSheet}
+      >
+        <div className="flex items-center gap-2">
+          <div>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+              Starting at <ChevronDown className="w-3.5 h-3.5 rotate-180 text-sky-600 animate-bounce" />
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-black text-[#1B3A6B]">₹{(room.basePrice || 0).toLocaleString()}</span>
+              <span className="text-[10px] text-slate-400 font-semibold">/night</span>
+            </div>
           </div>
         </div>
         {isOccupancyExceeded ? (
@@ -1534,11 +1542,22 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
             Limit Exceeded
           </Button>
         ) : (
-          <Button onClick={handleBookNow} className="bg-[#1B3A6B] hover:bg-[#0f2548] text-white font-bold rounded-xl h-11 px-7 text-xs shadow-md transition-all">
+          <Button 
+            onClick={(e) => handleBookNow(e)} 
+            className="bg-[#1B3A6B] hover:bg-[#0f2548] text-white font-bold rounded-xl h-11 px-7 text-xs shadow-md transition-all"
+          >
             Book Now
           </Button>
         )}
       </div>
+
+      {/* Backdrop */}
+      {mobileSheetOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-45 transition-opacity duration-300"
+          onClick={closeMobileSheet}
+        />
+      )}
 
       {/* Mobile Booking Bottom Sheet */}
       <div
@@ -1548,101 +1567,111 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
         onTouchMove={onSheetTouchMove}
         onTouchEnd={onSheetTouchEnd}
       >
-        <div className="h-full bg-white rounded-t-xl shadow-2xl overflow-hidden flex flex-col">
-          <div className="p-3 border-b border-slate-200">
+        <div className="h-full bg-white rounded-t-2xl border-t-4 border-[#1B3A6B] shadow-2xl overflow-hidden flex flex-col">
+          <div className="p-3 border-b border-slate-200 sheet-header cursor-row-resize select-none">
             <div className="w-10 h-1.5 bg-slate-200 rounded mx-auto mb-2" />
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-slate-800">Booking & Price Breakup</p>
                 <p className="text-xs text-slate-500">Swipe down to close</p>
               </div>
-              <button onClick={closeMobileSheet} className="text-slate-500">Close</button>
+              <button 
+                onClick={closeMobileSheet} 
+                className="text-slate-500 font-semibold text-xs py-1 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
 
           <div className="p-4 overflow-auto">
-        <div className="space-y-3">
-          <div className="flex items-baseline justify-between">
-            <div>
-              <p className="text-[10px] text-slate-500 uppercase font-semibold">Subtotal</p>
-              <p className="text-lg font-black text-slate-900">₹{pricingBreakdown.subtotal.toLocaleString()}</p>
-              <p className="text-[11px] text-slate-400">{pricingBreakdown.nights} night(s) · {pricingBreakdown.roomsCount} room(s)</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-sky-600">₹{pricingBreakdown.grandTotal.toLocaleString()}</p>
-              <p className="text-[11px] text-slate-400">Grand Total</p>
-            </div>
-          </div>
+            <div className="space-y-3">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-semibold">Subtotal</p>
+                  <p className="text-lg font-black text-slate-900">₹{pricingBreakdown.subtotal.toLocaleString()}</p>
+                  <p className="text-[11px] text-slate-400">{pricingBreakdown.nights} night(s) · {pricingBreakdown.roomsCount} room(s)</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-bold text-sky-600">₹{pricingBreakdown.grandTotal.toLocaleString()}</p>
+                  <p className="text-[11px] text-slate-400">Grand Total</p>
+                </div>
+              </div>
 
-          <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-            <div className="flex justify-between text-sm text-slate-600"><span>Base</span><span>₹{pricingBreakdown.baseTotal.toLocaleString()}</span></div>
-            {pricingBreakdown.extraAdultTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Extra adults</span><span>₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span></div>}
-            {pricingBreakdown.extraChildWithBedTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Extra child (with bed)</span><span>₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span></div>}
-            {pricingBreakdown.extraChildWithoutBedTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Child (no bed)</span><span>₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span></div>}
-            {pricingBreakdown.mealPlanTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Meal plan</span><span>₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span></div>}
-            <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-100"><span>GST (12%)</span><span>₹{pricingBreakdown.gst.toLocaleString()}</span></div>
-          </div>
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <div className="flex justify-between text-sm text-slate-600"><span>Base</span><span>₹{pricingBreakdown.baseTotal.toLocaleString()}</span></div>
+                {pricingBreakdown.extraAdultTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Extra adults</span><span>₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span></div>}
+                {pricingBreakdown.extraChildWithBedTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Extra child (with bed)</span><span>₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span></div>}
+                {pricingBreakdown.extraChildWithoutBedTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Child (no bed)</span><span>₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span></div>}
+                {pricingBreakdown.mealPlanTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Meal plan</span><span>₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span></div>}
+                <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-100"><span>GST (12%)</span><span>₹{pricingBreakdown.gst.toLocaleString()}</span></div>
+              </div>
 
-          {/* Dates & Guests (compact) */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 ml-1">Check-in</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  aria-label="Check-in"
-                  value={checkIn}
-                  onChange={(e) => {
-                    setCheckIn(e.target.value);
-                    if (checkOut && new Date(e.target.value) >= new Date(checkOut)) {
-                      const d = new Date(e.target.value);
-                      d.setDate(d.getDate() + 1);
-                      setCheckOut(d.toISOString().split("T")[0]);
-                    }
-                  }}
-                  min={new Date().toISOString().split("T")[0]}
-                  max={calendarMaxDateStr}
-                  className="w-full h-11 rounded-md bg-white border border-slate-200 text-slate-800 pl-3 pr-2 text-xs font-medium"
-                />
+              {/* Dates & Guests (compact) */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 ml-1">Check-in</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      aria-label="Check-in"
+                      value={checkIn}
+                      onChange={(e) => {
+                        setCheckIn(e.target.value);
+                        if (checkOut && new Date(e.target.value) >= new Date(checkOut)) {
+                          const d = new Date(e.target.value);
+                          d.setDate(d.getDate() + 1);
+                          setCheckOut(d.toISOString().split("T")[0]);
+                        }
+                      }}
+                      min={new Date().toISOString().split("T")[0]}
+                      max={calendarMaxDateStr}
+                      className="w-full h-11 rounded-md bg-white border border-slate-200 text-slate-800 pl-3 pr-2 text-xs font-medium"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 ml-1">Check-out</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      aria-label="Check-out"
+                      value={checkOut}
+                      onChange={(e) => setCheckOut(e.target.value)}
+                      min={checkIn}
+                      max={calendarMaxDateStr}
+                      className="w-full h-11 rounded-md bg-white border border-slate-200 text-slate-800 pl-3 pr-2 text-xs font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="text-xs font-semibold">Guests & Rooms</div>
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                    <div>{roomsConfig.length} Room(s)</div>
+                    <div>{roomsConfig.reduce((a, c) => a + c.adults, 0)} Adult(s)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                {isOccupancyExceeded ? (
+                  <div className="bg-rose-50 text-rose-600 p-3 rounded-md text-center font-bold">Guest count exceeds room capacity</div>
+                ) : !checkOut ? (
+                  <Button disabled className="w-full h-12 rounded-md bg-slate-200 text-slate-400 font-black uppercase tracking-wider text-sm">Select Check-out Date</Button>
+                ) : (
+                  <Button 
+                    onClick={(e) => handleBookNow(e)} 
+                    className="w-full h-12 rounded-md bg-[#1B3A6B] text-white font-black uppercase tracking-wider text-sm"
+                  >
+                    Book Now — ₹{pricingBreakdown.grandTotal.toLocaleString()}
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-500 ml-1">Check-out</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  aria-label="Check-out"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  min={checkIn}
-                  max={calendarMaxDateStr}
-                  className="w-full h-11 rounded-md bg-white border border-slate-200 text-slate-800 pl-3 pr-2 text-xs font-medium"
-                />
-              </div>
-            </div>
           </div>
-
-          <div className="space-y-3">
-            <div className="text-xs font-semibold">Guests & Rooms</div>
-            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-              <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-                <div>{roomsConfig.length} Room(s)</div>
-                <div>{roomsConfig.reduce((a, c) => a + c.adults, 0)} Adult(s)</div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            {isOccupancyExceeded ? (
-              <div className="bg-rose-50 text-rose-600 p-3 rounded-md text-center font-bold">Guest count exceeds room capacity</div>
-            ) : !checkOut ? (
-              <Button disabled className="w-full h-12 rounded-md bg-slate-200 text-slate-400 font-black uppercase tracking-wider text-sm">Select Check-out Date</Button>
-            ) : (
-              <Button onClick={handleBookNow} className="w-full h-12 rounded-md bg-[#1B3A6B] text-white font-black uppercase tracking-wider text-sm">Book Now — ₹{pricingBreakdown.grandTotal.toLocaleString()}</Button>
-            )}
-          </div>
-        </div>
-      </div>
         </div>
       </div>
 

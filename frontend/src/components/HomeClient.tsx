@@ -430,9 +430,9 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {testimonials.slice(0, 3).map((t: any, i: number) => (
-                      <div key={t.id} className="relative bg-white p-7 rounded-3xl border border-slate-100 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all text-left group">
+                      <div key={t.id} className="relative bg-white p-7 rounded-lg border border-slate-100 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all text-left group">
                         <div className="absolute -top-4 left-7">
-                          <div className="w-10 h-10 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                          <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
                             <span className="text-accent font-black text-xl leading-none">"</span>
                           </div>
                         </div>
@@ -478,7 +478,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         {[["500+", "B2B Partners", "globe"], ["₹0", "Registration Fee", "check"], ["24/7", "Dedicated Support", "headphone"], ["Best", "Net Rates", "tag"]].map(([val, label]) => (
-                          <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center hover:bg-white/10 transition-all">
+                          <div key={label} className="bg-white/5 border border-white/10 rounded-md p-5 text-center hover:bg-white/10 transition-all">
                             <div className="text-2xl font-black text-accent mb-1">{val}</div>
                             <div className="text-white/70 text-xs font-bold uppercase tracking-wider">{label}</div>
                           </div>

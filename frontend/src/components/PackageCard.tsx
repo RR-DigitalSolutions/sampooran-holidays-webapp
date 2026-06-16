@@ -107,7 +107,7 @@ function PackageCardComponent({
     return (
       <Link href={`/packages/${pkg.slug}`}>
         <div
-          className="group relative rounded-2xl overflow-hidden bg-white border border-slate-200 hover:border-primary/30 hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col md:flex-row h-full min-h-[220px]"
+          className="group relative rounded-lg overflow-hidden bg-white border border-slate-200 hover:border-primary/30 hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col md:flex-row h-full min-h-[220px]"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
@@ -341,7 +341,7 @@ function PackageCardComponent({
         whileHover={{ y: -10, scale: 1.015 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className={cn(
-          "relative h-full flex flex-col bg-white rounded-[2rem] overflow-hidden border transition-all duration-500 transform-gpu",
+          "relative h-full flex flex-col bg-white rounded-lg overflow-hidden border transition-all duration-500 transform-gpu",
           hovered
             ? "shadow-[0_30px_60px_-15px_rgba(27,58,107,0.2)] border-primary/30"
             : "shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] border-slate-100"
@@ -465,7 +465,7 @@ function PackageCardComponent({
 
             <motion.div
               animate={{ x: hovered ? 4 : 0 }}
-              className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 group-hover:bg-accent transition-colors"
+              className="w-10 h-10 rounded-md bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 group-hover:bg-accent transition-colors"
             >
               <ArrowRight className="w-4 h-4" />
             </motion.div>

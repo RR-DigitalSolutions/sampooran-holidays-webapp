@@ -964,7 +964,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
           </Card>
 
           {/* Booking Widget — sticky container covers it */}
-          <Card className="shadow-xl border-none rounded-xl overflow-hidden bg-[#0F1E3D] text-white p-6 space-y-5">
+          <Card className="hidden lg:block shadow-xl border-none rounded-xl overflow-hidden bg-[#0F1E3D] text-white p-6 space-y-5">
 
             <div>
               <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em] mb-1.5">Starting at</p>
@@ -1246,7 +1246,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
       )}
 
       {/* ─── Sticky Mobile Bottom Bar ─── */}
-      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-4 py-2.5 flex items-center justify-between">
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t-2 border-[#1B3A6B] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] px-4 py-2.5 flex items-center justify-between">
         <div>
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Starting at</p>
           <div className="flex items-baseline gap-1">
