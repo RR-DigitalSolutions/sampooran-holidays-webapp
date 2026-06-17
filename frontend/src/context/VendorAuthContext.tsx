@@ -13,8 +13,10 @@ interface VendorUser {
   role: string;
   phoneNumber?: string;
   vendorBusinessName?: string;
+  vendorBusinessAddress?: string;
   vendorVerified: boolean;
   companyName?: string;
+  gstNumber?: string;
   profilePicUrl?: string;
 }
 
@@ -26,6 +28,7 @@ interface VendorAuthCtx {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (data: RegisterPayload) => Promise<void>;
+  refreshVendor: () => Promise<void>;
 }
 
 interface RegisterPayload {
@@ -72,6 +75,20 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => { loadFromStorage(); }, [loadFromStorage]);
 
+  const refreshVendor = useCallback(async () => {
+    const activeToken = token || (typeof window !== "undefined" ? JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")?.token : null);
+    if (!activeToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/vendor/me`, {
+        headers: { Authorization: `Bearer ${activeToken}` },
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setVendor(user);
+      }
+    } catch {}
+  }, [token]);
+
   const login = async (email: string, password: string) => {
     const res = await fetch(`${API_BASE}/auth/vendor/login`, {
       method: "POST",
@@ -113,6 +130,7 @@ export function VendorAuthProvider({ children }: { children: React.ReactNode }) 
       login,
       logout,
       register,
+      refreshVendor,
     }}>
       {children}
     </VendorAuthContext.Provider>

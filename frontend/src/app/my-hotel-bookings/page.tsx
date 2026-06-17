@@ -15,9 +15,9 @@ const API_BASE = getApiUrl();
 
 const STATUS_STYLES: Record<string, { label: string; className: string; icon: any }> = {
   CONFIRMED: { label: "Confirmed", className: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle },
-  PENDING:   { label: "Pending",   className: "bg-amber-100 text-amber-700 border-amber-200",   icon: Clock },
-  CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-700 border-red-200",         icon: XCircle },
-  COMPLETED: { label: "Completed", className: "bg-blue-100 text-blue-700 border-blue-200",       icon: CheckCircle },
+  PENDING: { label: "Pending", className: "bg-amber-100 text-amber-700 border-amber-200", icon: Clock },
+  CANCELLED: { label: "Cancelled", className: "bg-red-100 text-red-700 border-red-200", icon: XCircle },
+  COMPLETED: { label: "Completed", className: "bg-blue-100 text-blue-700 border-blue-200", icon: CheckCircle },
 };
 
 export default function MyHotelBookingsPage() {
@@ -53,7 +53,7 @@ export default function MyHotelBookingsPage() {
         <div className="container mx-auto px-4 max-w-3xl space-y-4">
           <div className="h-8 w-48 bg-slate-200 rounded animate-pulse mb-8" />
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-3xl h-40 animate-pulse border border-slate-100" />
+            <div key={i} className="bg-white rounded-lg h-40 animate-pulse border border-slate-100" />
           ))}
         </div>
       </div>
@@ -72,13 +72,13 @@ export default function MyHotelBookingsPage() {
             <p className="text-slate-400 text-sm mt-1">All your hotel stays in one place</p>
           </div>
           <Link href="/hotels"
-            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors">
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-md text-sm font-bold hover:bg-primary/90 transition-colors">
             Book a Stay <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-3 mb-6 text-red-700 text-sm">
+          <div className="bg-red-50 border border-red-100 rounded-lg p-4 flex items-center gap-3 mb-6 text-red-700 text-sm">
             <AlertCircle className="w-5 h-5 shrink-0" /> {error}
             <button onClick={() => window.location.reload()} className="ml-auto flex items-center gap-1 text-xs font-bold">
               <RefreshCw className="w-3.5 h-3.5" /> Retry
@@ -87,12 +87,12 @@ export default function MyHotelBookingsPage() {
         )}
 
         {bookings.length === 0 && !loading && !error && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-12 text-center shadow-sm">
+          <div className="bg-white rounded-lg border border-slate-100 p-12 text-center shadow-sm">
             <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-200" />
             <h2 className="text-lg font-bold text-slate-700 mb-2">No Hotel Bookings Yet</h2>
             <p className="text-slate-400 text-sm mb-6">Start exploring hotels and make your first booking.</p>
             <Link href="/hotels"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+              className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-md font-bold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
               Explore Hotels <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -107,7 +107,7 @@ export default function MyHotelBookingsPage() {
 
             return (
               <div key={booking.id}
-                className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 {/* Top colored bar based on status */}
                 <div className={cn("h-1", {
                   "bg-emerald-500": booking.status === "CONFIRMED",
@@ -119,7 +119,7 @@ export default function MyHotelBookingsPage() {
                 <div className="p-5">
                   <div className="flex gap-4 items-start">
                     {/* Hotel image */}
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+                    <div className="w-20 h-20 rounded-md overflow-hidden bg-slate-100 shrink-0">
                       {booking.hotelImages?.[0]
                         ? <img src={booking.hotelImages[0]} alt={booking.hotelName} className="w-full h-full object-cover" />
                         : <Building2 className="w-8 h-8 text-slate-300 m-auto mt-5" />}

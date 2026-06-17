@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,13 +25,22 @@ function RegisterContent() {
     companyName: "",
     gstNumber: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { user, login, isLoading: authLoading } = useAuth();
+
+  const rawRedirect = searchParams.get("redirect") || "/";
+  const redirectPath = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(redirectPath);
+    }
+  }, [user, authLoading, router, redirectPath]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitLoading(true);
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -48,13 +57,21 @@ function RegisterContent() {
 
       login(data.user, data.token);
       toast.success("Account created! Enjoy your ₹1,000 welcome bonus.");
-      router.push("/");
+      router.push(redirectPath);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
-      setIsLoading(false);
+      setIsSubmitLoading(false);
     }
   };
+
+  if (authLoading || user) {
+    return (
+      <div className="min-h-[90vh] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center px-4 py-12 bg-linear-to-br from-background via-background to-secondary/30">
@@ -68,7 +85,7 @@ function RegisterContent() {
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mb-6 p-4 rounded-2xl bg-accent/20 border border-accent/30 backdrop-blur-md flex items-center justify-between"
+          className="mb-6 p-4 rounded-lg bg-accent/20 border border-accent/30 backdrop-blur-md flex items-center justify-between"
         >
           <div className="flex items-center gap-3">
             <div className="bg-accent p-2 rounded-full">
@@ -91,20 +108,20 @@ function RegisterContent() {
             
             <div className="pt-4">
               <Tabs defaultValue="USER" onValueChange={setRole} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 rounded-xl bg-muted/50 p-1 h-auto">
-                  <TabsTrigger value="USER" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 rounded-md bg-muted/50 p-1 h-auto">
+                  <TabsTrigger value="USER" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
                     <User className="w-4 h-4 mr-2 hidden md:block" />
                     Traveler
                   </TabsTrigger>
-                  <TabsTrigger value="AGENT" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
+                  <TabsTrigger value="AGENT" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
                     <Briefcase className="w-4 h-4 mr-2 hidden md:block" />
                     Agent
                   </TabsTrigger>
-                  <TabsTrigger value="HOTEL_OWNER" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
+                  <TabsTrigger value="HOTEL_OWNER" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
                     <Building2 className="w-4 h-4 mr-2 hidden md:block" />
                     Hotel
                   </TabsTrigger>
-                  <TabsTrigger value="TRANSPORTER" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
+                  <TabsTrigger value="TRANSPORTER" className="rounded-md data-[state=active]:bg-background data-[state=active]:shadow-md py-2 text-[10px] md:text-sm">
                     <Car className="w-4 h-4 mr-2 hidden md:block" />
                     Transport
                   </TabsTrigger>
@@ -226,10 +243,10 @@ function RegisterContent() {
             <CardFooter className="flex flex-col space-y-4 pt-6">
               <Button
                 type="submit"
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-2xl transition-all hover:scale-[1.01] active:scale-[0.99] group shadow-lg shadow-primary/20"
-                disabled={isLoading}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all hover:scale-[1.01] active:scale-[0.99] group shadow-lg shadow-primary/20"
+                disabled={isSubmitLoading}
               >
-                {isLoading ? (
+                {isSubmitLoading ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 ) : (
                   <>

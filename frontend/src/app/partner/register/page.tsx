@@ -1,15 +1,18 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Building2, Eye, EyeOff, Plane, ArrowRight, CheckCircle } from "lucide-react";
 import { useVendorAuth } from "@/context/VendorAuthContext";
 
 const PROPERTY_TYPES = ["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp", "Hostel", "Apartment"];
 
-export default function VendorRegisterPage() {
-  const { register } = useVendorAuth();
+function VendorRegisterContent() {
+  const { vendor, isLoading, register } = useVendorAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get("redirect") || "/partner/dashboard";
+  const redirectPath = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/partner/dashboard";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +29,12 @@ export default function VendorRegisterPage() {
     propertyType: "Hotel",
     agreeTerms: false,
   });
+
+  useEffect(() => {
+    if (!isLoading && vendor) {
+      router.replace(redirectPath);
+    }
+  }, [vendor, isLoading, router, redirectPath]);
 
   const update = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
@@ -44,13 +53,21 @@ export default function VendorRegisterPage() {
         companyName: form.companyName,
         gstNumber: form.gstNumber,
       });
-      router.push("/partner/dashboard");
+      router.push(redirectPath);
     } catch (err: any) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (isLoading || vendor) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -61,7 +78,7 @@ export default function VendorRegisterPage() {
           <div className="absolute bottom-1/4 right-0 w-80 h-80 bg-[#F5A623]/10 rounded-full blur-3xl" />
         </div>
         <div className="relative z-10 flex items-center gap-3 mb-auto">
-          <div className="w-10 h-10 bg-[#F5A623] rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-[#F5A623] rounded-md flex items-center justify-center">
             <Plane className="w-5 h-5 text-white" />
           </div>
           <span className="font-black text-lg">SAMPOORAN HOLIDAYS</span>
@@ -92,7 +109,7 @@ export default function VendorRegisterPage() {
         <div className="w-full max-w-lg">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-[#1B3A6B] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#1B3A6B] rounded-md flex items-center justify-center">
               <Plane className="w-4 h-4 text-white" />
             </div>
             <span className="font-black text-[#1B3A6B]">SAMPOORAN HOLIDAYS</span>
@@ -122,7 +139,7 @@ export default function VendorRegisterPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl">{error}</div>
+            <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-700 text-sm rounded-md">{error}</div>
           )}
 
           {/* Step 1: Account Details */}
@@ -131,20 +148,20 @@ export default function VendorRegisterPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">Full Name *</label>
                 <input value={form.name} onChange={e => update("name", e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                  className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                   placeholder="Your full name" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">Email Address *</label>
                 <input type="email" value={form.email} onChange={e => update("email", e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                  className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                   placeholder="you@yourbusiness.com" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">Password *</label>
                 <div className="relative">
                   <input type={showPass ? "text" : "password"} value={form.password} onChange={e => update("password", e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                    className="w-full border border-gray-200 rounded-md px-4 py-3 pr-11 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                     placeholder="Min. 8 characters" />
                   <button onClick={() => setShowPass(!showPass)} type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -154,13 +171,13 @@ export default function VendorRegisterPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">Mobile Number</label>
                 <input type="tel" value={form.phoneNumber} onChange={e => update("phoneNumber", e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                  className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                   placeholder="+91 98765 43210" />
               </div>
               <button onClick={() => {
                 if (!form.name || !form.email || !form.password) { setError("Please fill in all required fields."); return; }
                 setError(""); setStep(2);
-              }} className="w-full bg-[#1B3A6B] text-white font-bold py-3.5 rounded-xl hover:bg-[#0f2548] transition-colors flex items-center justify-center gap-2">
+              }} className="w-full bg-[#1B3A6B] text-white font-bold py-3 text-sm rounded-md hover:bg-[#0f2548] transition-colors flex items-center justify-center gap-2">
                 Continue <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -172,34 +189,34 @@ export default function VendorRegisterPage() {
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">Business / Property Name *</label>
                 <input value={form.vendorBusinessName} onChange={e => update("vendorBusinessName", e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                  className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                   placeholder="The Grand Himalayan Resort" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">Business Address</label>
                 <textarea value={form.vendorBusinessAddress} onChange={e => update("vendorBusinessAddress", e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                  className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                   rows={2} placeholder="Village, Town, District, State" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1.5">Company Name</label>
                   <input value={form.companyName} onChange={e => update("companyName", e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                    className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                     placeholder="Pvt Ltd / LLP etc." />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1.5">GST Number</label>
                   <input value={form.gstNumber} onChange={e => update("gstNumber", e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                    className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                     placeholder="22AAAAA0000A1Z5" />
                 </div>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="flex-1 border border-gray-200 py-3.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                <button onClick={() => setStep(1)} className="flex-1 border border-gray-200 py-3 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                   ← Back
                 </button>
-                <button onClick={() => { setError(""); setStep(3); }} className="flex-1 bg-[#1B3A6B] text-white font-bold py-3.5 rounded-xl hover:bg-[#0f2548] transition-colors flex items-center justify-center gap-2">
+                <button onClick={() => { setError(""); setStep(3); }} className="flex-1 bg-[#1B3A6B] text-white font-bold py-3 text-sm rounded-md hover:bg-[#0f2548] transition-colors flex items-center justify-center gap-2">
                   Continue <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -215,14 +232,14 @@ export default function VendorRegisterPage() {
                   {PROPERTY_TYPES.map(type => (
                     <button key={type} type="button"
                       onClick={() => update("propertyType", type)}
-                      className={`p-3 rounded-xl border-2 text-xs font-bold text-center transition-all ${form.propertyType === type ? "border-[#1B3A6B] bg-[#1B3A6B]/5 text-[#1B3A6B]" : "border-gray-100 text-gray-500 hover:border-gray-200"}`}>
+                      className={`p-3 rounded-md border-2 text-xs font-bold text-center transition-all ${form.propertyType === type ? "border-[#1B3A6B] bg-[#1B3A6B]/5 text-[#1B3A6B]" : "border-gray-100 text-gray-500 hover:border-gray-200"}`}>
                       <Building2 className="w-4 h-4 mx-auto mb-1" />
                       {type}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 leading-relaxed">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-800 leading-relaxed">
                 <strong>What happens next?</strong> After registration, you will have immediate access to your dashboard. You can add your properties and submit them for verification. They will go live on the platform once our team reviews and approves the property details.
               </div>
               <label className="flex items-start gap-3 cursor-pointer">
@@ -236,11 +253,11 @@ export default function VendorRegisterPage() {
                 </span>
               </label>
               <div className="flex gap-3">
-                <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 py-3.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+                <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 py-3 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                   ← Back
                 </button>
                 <button onClick={handleSubmit} disabled={loading}
-                  className="flex-1 bg-emerald-600 text-white font-bold py-3.5 rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                  className="flex-1 bg-emerald-600 text-white font-bold py-3 rounded-md hover:bg-emerald-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
                   {loading ? (
                     <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Creating Account...</>
                   ) : (
@@ -258,5 +275,13 @@ export default function VendorRegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VendorRegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" /></div>}>
+      <VendorRegisterContent />
+    </Suspense>
   );
 }

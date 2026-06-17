@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -12,16 +12,25 @@ import { LogIn, Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get("redirect") || "/";
+  const redirectPath = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/";
+  const { user, login, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(redirectPath);
+    }
+  }, [user, authLoading, router, redirectPath]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitLoading(true);
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -37,11 +46,11 @@ export default function LoginPage() {
       }
 
       login(data.user, data.token);
-      router.push("/");
+      router.push(redirectPath);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
-      setIsLoading(false);
+      setIsSubmitLoading(false);
     }
   };
 
@@ -56,7 +65,7 @@ export default function LoginPage() {
         <Card className="border-none shadow-2xl bg-card/50 backdrop-blur-xl">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
-              <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+              <div className="p-3 rounded-lg bg-primary/10 text-primary">
                 <LogIn className="w-8 h-8" />
               </div>
             </div>
@@ -109,10 +118,10 @@ export default function LoginPage() {
             <CardFooter className="flex flex-col space-y-4">
               <Button
                 type="submit"
-                className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                disabled={isLoading}
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                disabled={isSubmitLoading}
               >
-                {isLoading ? (
+                {isSubmitLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Authenticating...
@@ -135,5 +144,13 @@ export default function LoginPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

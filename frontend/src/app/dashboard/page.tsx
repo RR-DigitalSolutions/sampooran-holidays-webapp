@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { 
@@ -14,14 +16,21 @@ import { toast } from "sonner";
 import VendorDashboard from "@/components/VendorDashboard";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
   
   const isVendor = user?.role === 'HOTEL_OWNER' || user?.role === 'TRANSPORTER';
 
-  if (!user) {
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login?redirect=/dashboard");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) {
     return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <h2 className="text-2xl font-serif">Please log in to view your dashboard</h2>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -47,7 +56,7 @@ export default function DashboardPage() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div className="flex items-center gap-5">
-            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center border-2 shadow-inner ${isVendor ? 'bg-primary text-white border-primary/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
+            <div className={`w-20 h-20 rounded-lg flex items-center justify-center border-2 shadow-inner ${isVendor ? 'bg-primary text-white border-primary/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
               {isVendor ? (user.role === 'HOTEL_OWNER' ? <Building2 className="w-10 h-10" /> : <Car className="w-10 h-10" />) : <User className="w-10 h-10" />}
             </div>
             <div className="space-y-1">
@@ -63,7 +72,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="rounded-xl font-bold">
+            <Button variant="outline" className="rounded-lg font-bold">
               <Settings className="w-4 h-4 mr-2" />
               {isVendor ? 'Business Settings' : 'Edit Profile'}
             </Button>
@@ -134,7 +143,7 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground max-w-xs mx-auto">
                     Your amazing Himalayan adventure is just one click away. Explore our featured packages!
                   </p>
-                  <Button className="rounded-xl px-8 font-bold mt-4 shadow-lg shadow-primary/20">
+                  <Button className="rounded-lg px-8 font-bold mt-4 shadow-lg shadow-primary/20">
                     Explore Packages
                   </Button>
                 </CardContent>
@@ -157,7 +166,7 @@ export default function DashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
-                  <div className="bg-white/10 p-4 rounded-2xl border border-white/20 backdrop-blur-sm">
+                  <div className="bg-white/10 p-4 rounded-lg border border-white/20 backdrop-blur-sm">
                     <p className="text-[10px] uppercase font-bold tracking-widest text-white/60 mb-2">Your Referral Code</p>
                     <div className="flex items-center justify-between gap-4">
                       <code className="text-2xl font-black tracking-tighter">{user.referralCode}</code>
@@ -170,7 +179,7 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-medium bg-green-500/20 text-white p-3 rounded-xl border border-green-500/30">
+                  <div className="flex items-center gap-2 text-xs font-medium bg-green-500/20 text-white p-3 rounded-lg border border-green-500/30">
                     <CheckCircle2 className="w-4 h-4" />
                     Earn up to 5% commission on friend's bookings
                   </div>
@@ -191,13 +200,13 @@ export default function DashboardPage() {
                      <CardDescription className="text-indigo-200">Exclusive tools for your agency</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button variant="secondary" className="w-full justify-between rounded-xl font-bold h-11 bg-white/10 hover:bg-white/20 border-white/10 text-white">
+                    <Button variant="secondary" className="w-full justify-between rounded-lg font-bold h-11 bg-white/10 hover:bg-white/20 border-white/10 text-white">
                       Markup Settings <ChevronRight className="w-4 h-4 opacity-50" />
                     </Button>
-                    <Button variant="secondary" className="w-full justify-between rounded-xl font-bold h-11 bg-white/10 hover:bg-white/20 border-white/10 text-white">
+                    <Button variant="secondary" className="w-full justify-between rounded-lg font-bold h-11 bg-white/10 hover:bg-white/20 border-white/10 text-white">
                       Agent Net Rates <ChevronRight className="w-4 h-4 opacity-50" />
                     </Button>
-                    <Button variant="secondary" className="w-full justify-between rounded-xl font-bold h-11 bg-white/10 hover:bg-white/20 border-white/10 text-white">
+                    <Button variant="secondary" className="w-full justify-between rounded-lg font-bold h-11 bg-white/10 hover:bg-white/20 border-white/10 text-white">
                       Invoices & Ledger <ChevronRight className="w-4 h-4 opacity-50" />
                     </Button>
                   </CardContent>

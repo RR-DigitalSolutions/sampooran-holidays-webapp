@@ -30,7 +30,7 @@ interface RoomConfig {
 export default function BookHotelPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
   const slug = params.countrySlug as string;
 
   const [hotel, setHotel] = useState<any>(null);
@@ -101,6 +101,13 @@ export default function BookHotelPage() {
   const roomId = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("roomId")
     : null;
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      const redirectUrl = `/hotels/${slug}/book?roomId=${roomId || ""}&checkIn=${checkIn}&checkOut=${checkOut}&rooms=${encodeURIComponent(JSON.stringify(roomsConfig))}${selectedMealPlan ? `&mealPlan=${selectedMealPlan}` : ""}`;
+      router.replace(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
+    }
+  }, [user, authLoading, router, slug, roomId, checkIn, checkOut, roomsConfig, selectedMealPlan]);
 
   useEffect(() => {
     if (!slug) return;
@@ -366,7 +373,7 @@ export default function BookHotelPage() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-50 pt-24 pb-16 flex items-center justify-center flex-col gap-4">
         <div className="w-10 h-10 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" />
@@ -394,7 +401,7 @@ export default function BookHotelPage() {
       <div className="min-h-screen bg-slate-50 pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-xl">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl border border-slate-100 p-8 text-center shadow-lg">
+            className="bg-white rounded-lg border border-slate-100 p-8 text-center shadow-lg">
             <div className={cn(
               "w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5",
               isInstant ? "bg-emerald-50" : "bg-amber-50"
@@ -413,7 +420,7 @@ export default function BookHotelPage() {
                 : "The property desk will review and confirm this within 24 hours."
               }
             </p>
-            <div className="bg-slate-50 rounded-2xl p-4 text-left mb-5 space-y-2">
+            <div className="bg-slate-50 rounded-lg p-4 text-left mb-5 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Booking Ref</span>
                 <span className="font-black font-mono text-primary">#{String(success.id).padStart(6, "0")}</span>
@@ -441,11 +448,11 @@ export default function BookHotelPage() {
             </div>
             <div className="flex flex-col gap-3">
               <Link href="/my-bookings"
-                className="w-full py-3 bg-[#1B3A6B] text-white rounded-2xl font-bold text-sm hover:bg-[#0f2548] transition-colors">
+                className="w-full py-3 bg-[#1B3A6B] text-white rounded-md font-bold text-sm hover:bg-[#0f2548] transition-colors">
                 View My Bookings
               </Link>
               <Link href="/hotels"
-                className="w-full py-3 border border-slate-200 text-slate-600 rounded-2xl font-semibold text-sm hover:bg-slate-50 transition-colors">
+                className="w-full py-3 border border-slate-200 text-slate-600 rounded-md font-semibold text-sm hover:bg-slate-50 transition-colors">
                 Browse More Hotels
               </Link>
             </div>
@@ -471,8 +478,8 @@ export default function BookHotelPage() {
           {/* ── Left: Booking Details ── */}
           <div className="lg:col-span-2 space-y-4">
             {/* Hotel Summary Card */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 flex gap-4 items-start shadow-xs">
-              <div className="w-20 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+            <div className="bg-white rounded-lg border border-slate-100 p-5 flex gap-4 items-start shadow-xs">
+              <div className="w-20 h-16 rounded-md overflow-hidden bg-slate-100 shrink-0">
                 {hotel.images?.[0]
                   ? <img src={hotel.images[0]} alt={hotel.name} className="w-full h-full object-cover" />
                   : <Building2 className="w-8 h-8 text-slate-300 m-auto mt-3" />}
@@ -492,7 +499,7 @@ export default function BookHotelPage() {
             </div>
 
             {/* Occupied configuration summary */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-xs space-y-3">
+            <div className="bg-white rounded-lg border border-slate-100 p-5 shadow-xs space-y-3">
               <h2 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#1B3A6B]" /> Selected Guest Occupancy Config
               </h2>
@@ -526,10 +533,10 @@ export default function BookHotelPage() {
             </div>
 
             {/* Meal Plan Choice Card */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-xs space-y-3">
+            <div className="bg-white rounded-lg border border-slate-100 p-5 shadow-xs space-y-3">
               <h2 className="font-bold text-slate-900 text-sm">Meal Plan Choice</h2>
               
-              <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-emerald-700 uppercase tracking-wider">Base Tariff Includes</p>
                   <p className="text-sm font-semibold text-emerald-950 mt-0.5">Room Only (EP)</p>
@@ -549,7 +556,7 @@ export default function BookHotelPage() {
                           key={plan.code}
                           onClick={() => setSelectedMealPlan(selectedMealPlan === plan.code ? "" : plan.code)}
                           className={cn(
-                            "w-full text-left p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2 relative",
+                            "w-full text-left p-3.5 rounded-md border-2 transition-all flex flex-col justify-between gap-2 relative",
                             isSelected
                               ? "border-[#1B3A6B] bg-sky-50/10"
                               : "border-slate-100 hover:border-slate-200"
@@ -579,17 +586,17 @@ export default function BookHotelPage() {
             </div>
 
             {/* Stay Date range summary */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-xs">
+            <div className="bg-white rounded-lg border border-slate-100 p-5 shadow-xs">
               <h2 className="font-bold text-slate-900 text-sm mb-4">Stay Dates</h2>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
+                <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg">
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Check-in Date</p>
                   <p className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-[#1B3A6B]" />
                     {new Date(checkIn).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 </div>
-                <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
+                <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-lg">
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Check-out Date</p>
                   <p className="text-sm font-bold text-slate-700 mt-1 flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-[#1B3A6B]" />
@@ -597,50 +604,50 @@ export default function BookHotelPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-3 p-3 bg-sky-50/50 border border-sky-100 rounded-xl flex items-center gap-2">
+              <div className="mt-3 p-3 bg-sky-50/50 border border-sky-100 rounded-lg flex items-center gap-2">
                 <Info className="w-4 h-4 text-[#1B3A6B] shrink-0" />
                 <span className="text-xs font-semibold text-slate-600">Total Length of Stay: <span className="font-black text-[#1B3A6B]">{nights} Night{nights > 1 ? "s" : ""}</span></span>
               </div>
             </div>
 
             {/* Guest details form */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-xs">
+            <div className="bg-white rounded-lg border border-slate-100 p-5 shadow-xs">
               <h2 className="font-bold text-slate-900 text-sm mb-4">Guest Contact Information</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Full Name *</label>
                   <input value={form.guestName} onChange={e => updateField("guestName", e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                    className="w-full border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
                     placeholder="As shown on ID proof" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Email Address *</label>
                   <input type="email" value={form.guestEmail} onChange={e => updateField("guestEmail", e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                    className="w-full border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
                     placeholder="Voucher details will be sent here" />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Phone Number *</label>
                   <input type="tel" value={form.guestPhone} onChange={e => updateField("guestPhone", e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                    className="w-full border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
                     placeholder="+91 XXXXX XXXXX" />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Special Requests (Optional)</label>
                   <textarea value={form.specialRequests} onChange={e => updateField("specialRequests", e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors resize-none"
+                    className="w-full border border-slate-200 rounded-md px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors resize-none"
                     rows={2} placeholder="e.g., Early check-in, ground floor room, specific dietary needs..." />
                 </div>
               </div>
             </div>
 
             {/* Payment options */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-xs">
+            <div className="bg-white rounded-lg border border-slate-100 p-5 shadow-xs">
               <h2 className="font-bold text-slate-900 text-sm mb-4">Payment Method</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {PAYMENT_METHODS.map(method => (
                   <button key={method.id} onClick={() => updateField("paymentMethod", method.id)}
-                    className={cn("relative text-left p-4 rounded-2xl border-2 transition-all",
+                    className={cn("relative text-left p-4 rounded-md border-2 transition-all",
                       form.paymentMethod === method.id ? "border-[#1B3A6B] bg-sky-50/10" : "border-slate-100 hover:border-slate-200")}>
                     {method.badge && (
                       <span className="absolute top-2.5 right-2.5 text-[8px] bg-emerald-500 text-white font-bold px-2 py-0.5 rounded-full">
@@ -656,7 +663,7 @@ export default function BookHotelPage() {
             </div>
 
             {error && (
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-2.5 text-xs text-rose-700 font-bold">
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-2.5 text-xs text-rose-700 font-bold">
                 <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
               </div>
             )}
@@ -664,11 +671,11 @@ export default function BookHotelPage() {
 
           {/* ── Right: Checkout Summary ── */}
           <div className="space-y-4">
-            <div className="bg-white rounded-3xl border border-slate-100 p-6 sticky top-24 space-y-4 shadow-xs">
+            <div className="bg-white rounded-lg border border-slate-100 p-6 sticky top-24 space-y-4 shadow-xs">
               <h2 className="font-bold text-slate-900 text-sm">Billing Breakdown</h2>
 
               {room && (
-                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-100">
                   <p className="font-black text-xs text-slate-800">{room.name}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">{room.type} · Max adults {room.maxAdults || room.maxOccupancy} · {room.bedType} Bed</p>
                 </div>
@@ -705,7 +712,7 @@ export default function BookHotelPage() {
                 )}
                 
                 {breakdown.discountTotal > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100/50">
+                  <div className="flex justify-between text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100/50">
                     <span>Discount Applied</span>
                     <span>-₹{breakdown.discountTotal.toLocaleString()}</span>
                   </div>
@@ -727,13 +734,13 @@ export default function BookHotelPage() {
               </div>
 
               {hotel.bookingType === "INSTANT" && (
-                <div className="flex items-center gap-2 text-[10px] text-emerald-700 bg-emerald-50/50 border border-emerald-100 p-2.5 rounded-xl">
+                <div className="flex items-center gap-2 text-[10px] text-emerald-700 bg-emerald-50/50 border border-emerald-100 p-2.5 rounded-lg">
                   <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" /> Instant Booking — room reserved immediately.
                 </div>
               )}
 
               <button onClick={handleSubmit} disabled={submitting}
-                className="w-full py-3.5 bg-[#1B3A6B] text-white rounded-2xl font-black text-xs hover:bg-[#0f2548] active:scale-98 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60">
+                className="w-full py-3.5 bg-[#1B3A6B] text-white rounded-md font-black text-xs hover:bg-[#0f2548] active:scale-98 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60">
                 {submitting ? (
                   <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying availability...</>
                 ) : (

@@ -1,18 +1,27 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plane, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useVendorAuth } from "@/context/VendorAuthContext";
 
-export default function VendorLoginPage() {
-  const { login } = useVendorAuth();
+function VendorLoginContent() {
+  const { vendor, isLoading, login } = useVendorAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get("redirect") || "/partner/dashboard";
+  const redirectPath = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/partner/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isLoading && vendor) {
+      router.replace(redirectPath);
+    }
+  }, [vendor, isLoading, router, redirectPath]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +29,7 @@ export default function VendorLoginPage() {
     setError("");
     try {
       await login(email, password);
-      router.push("/partner/dashboard");
+      router.push(redirectPath);
     } catch (err: any) {
       setError(err.message || "Invalid credentials. Please try again.");
     } finally {
@@ -37,7 +46,7 @@ export default function VendorLoginPage() {
           <div className="absolute bottom-1/3 left-0 w-60 h-60 bg-[#F5A623]/10 rounded-full blur-3xl" />
         </div>
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#F5A623] rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-[#F5A623] rounded-md flex items-center justify-center">
             <Plane className="w-5 h-5 text-white" />
           </div>
           <span className="font-black text-lg">SAMPOORAN HOLIDAYS</span>
@@ -67,7 +76,7 @@ export default function VendorLoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-[#1B3A6B] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#1B3A6B] rounded-md flex items-center justify-center">
               <Plane className="w-4 h-4 text-white" />
             </div>
             <span className="font-black text-[#1B3A6B]">SAMPOORAN HOLIDAYS</span>
@@ -80,7 +89,7 @@ export default function VendorLoginPage() {
           </p>
 
           {error && (
-            <div className="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-700 text-sm rounded-xl">{error}</div>
+            <div className="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-700 text-sm rounded-md">{error}</div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -92,7 +101,7 @@ export default function VendorLoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                 placeholder="you@yourbusiness.com"
               />
             </div>
@@ -108,7 +117,7 @@ export default function VendorLoginPage() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3.5 pr-11 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                  className="w-full border border-gray-200 rounded-md px-4 py-3 pr-11 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                   placeholder="Your password"
                 />
                 <button
@@ -124,7 +133,7 @@ export default function VendorLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#1B3A6B] to-[#0f2548] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-900/20 hover:from-[#0f2548] hover:to-[#061226] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-[#1B3A6B] to-[#0f2548] text-white font-bold py-3.5 rounded-md shadow-lg shadow-blue-900/20 hover:from-[#0f2548] hover:to-[#061226] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Signing in...</>
@@ -134,7 +143,7 @@ export default function VendorLoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800">
+          <div className="mt-8 p-4 bg-amber-50 border border-amber-100 rounded-md text-xs text-amber-800">
             <strong>Note:</strong> This portal is for hotel owners and property vendors only. If you are a traveller, please{" "}
             <Link href="/login" className="text-[#1B3A6B] font-bold hover:underline">login here</Link>.
           </div>
@@ -145,5 +154,13 @@ export default function VendorLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VendorLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" /></div>}>
+      <VendorLoginContent />
+    </Suspense>
   );
 }

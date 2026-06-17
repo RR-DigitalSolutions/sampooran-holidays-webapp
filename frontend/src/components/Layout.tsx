@@ -118,7 +118,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <motion.div
                   animate={{ rotate: scrolled ? 360 : 0 }}
                   transition={{ duration: 1, type: "spring" }}
-                  className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20"
+                  className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20"
                 >
                   <img src="/logo.png" alt="S" className="w-7 h-7 object-contain brightness-0 invert" />
                 </motion.div>
@@ -138,11 +138,11 @@ export function Layout({ children }: { children: ReactNode }) {
                 onMouseLeave={() => setLoginOpen(false)}
               >
                 {isLoading ? (
-                  <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-xl" />
+                  <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-lg" />
                 ) : user ? (
                   <div className="flex items-center gap-2">
                     <div className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-all",
+                      "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all",
                       !scrolled
                         ? "border-white/30 bg-white/10 text-white hover:bg-white/20"
                         : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-primary/5"
@@ -156,7 +156,7 @@ export function Layout({ children }: { children: ReactNode }) {
                       </div>
                     </div>
                     <button onClick={() => logout()} className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
+                      "w-9 h-9 rounded-lg flex items-center justify-center transition-all",
                       !scrolled ? "bg-white/10 text-white hover:bg-red-500" : "bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600"
                     )} aria-label="Logout">
                       <LogOut className="w-4 h-4" />
@@ -165,7 +165,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 ) : (
                   <>
                     <button className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-xl border transition-all hover:scale-105 active:scale-95 group",
+                      "flex items-center justify-center w-10 h-10 rounded-lg border transition-all hover:scale-105 active:scale-95 group",
                       !scrolled
                         ? "border-white/30 bg-white/10 text-white hover:bg-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]"
                         : "border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/30 shadow-[0_4px_10px_rgba(0,0,0,0.05)]"
@@ -180,15 +180,15 @@ export function Layout({ children }: { children: ReactNode }) {
                           initial={{ opacity: 0, y: 8, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                          className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50"
+                          className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-2xl border border-slate-100 overflow-hidden z-50"
                         >
                           <div className="bg-primary p-4">
                             <p className="text-white font-bold text-sm">Welcome to Sampooran Holidays</p>
                             <p className="text-white/70 text-xs mt-0.5">Choose how you'd like to login</p>
                           </div>
                           <div className="p-3 space-y-1">
-                            <Link href="/login" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
-                              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                            <Link href="/login" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group">
+                              <div className="w-10 h-10 rounded-md bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                                 <User className="w-5 h-5 text-blue-600" />
                               </div>
                               <div>
@@ -196,8 +196,8 @@ export function Layout({ children }: { children: ReactNode }) {
                                 <p className="text-xs text-slate-500">Manage bookings & itineraries</p>
                               </div>
                             </Link>
-                            <Link href="/my-hotel-bookings" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
-                              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+                            <Link href="/my-hotel-bookings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group">
+                              <div className="w-10 h-10 rounded-md bg-purple-50 flex items-center justify-center group-hover:bg-purple-100 transition-colors">
                                 <Hotel className="w-5 h-5 text-purple-600" />
                               </div>
                               <div>
@@ -205,22 +205,13 @@ export function Layout({ children }: { children: ReactNode }) {
                                 <p className="text-xs text-slate-500">View & manage stay history</p>
                               </div>
                             </Link>
-                            <Link href="/b2b" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
-                              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                            <Link href="/b2b" className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group">
+                              <div className="w-10 h-10 rounded-md bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
                                 <Ticket className="w-5 h-5 text-emerald-600" />
                               </div>
                               <div>
                                 <p className="text-sm font-bold text-slate-800">Travel Agent / B2B</p>
                                 <p className="text-xs text-slate-500">Access rates, packages & bookings</p>
-                              </div>
-                            </Link>
-                            <Link href="/login?role=vendor" className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors group">
-                              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
-                                <MapPin className="w-5 h-5 text-orange-600" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-800">Property / Vendor</p>
-                                <p className="text-xs text-slate-500">List hotels, cabs & manage assets</p>
                               </div>
                             </Link>
                           </div>
@@ -238,7 +229,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
               <Link href="/customized-holidays" className="hidden xl:block">
                 <button className={cn(
-                  "px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg hover:scale-105 active:scale-95 transition-all",
+                  "px-5 py-2.5 rounded-lg font-bold text-sm shadow-lg hover:scale-105 active:scale-95 transition-all",
                   "bg-accent text-accent-foreground shadow-accent/25"
                 )}>
                   Plan My Trip
@@ -248,7 +239,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className={cn(
-                  "lg:hidden w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                  "lg:hidden w-10 h-10 rounded-lg flex items-center justify-center transition-all",
                   !scrolled ? "text-white hover:bg-white/10" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 )}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -279,7 +270,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {/* Offices */}
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center shrink-0">
                   <Building2 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
@@ -291,7 +282,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {/* Call Us */}
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center shrink-0">
                   <Phone className="w-5 h-5 text-primary" />
                 </div>
                 <div>
@@ -303,7 +294,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {/* Write to us */}
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center shrink-0">
                   <Mail className="w-5 h-5 text-primary" />
                 </div>
                 <div>
@@ -318,7 +309,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {/* Social */}
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-slate-50 rounded-lg flex items-center justify-center shrink-0">
                   <Share2 className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex flex-col">
@@ -348,7 +339,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {/* Brand & Newsletter */}
               <div className="lg:col-span-5 space-y-10">
                 <Link href="/" className="flex items-center gap-3 group">
-                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md group-hover:bg-white/20 transition-all">
+                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-md group-hover:bg-white/20 transition-all">
                     <img src="/logo.png" className="w-7 h-7 brightness-0 invert" alt="" />
                   </div>
                   <div className="flex flex-col">
