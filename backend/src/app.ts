@@ -14,7 +14,8 @@ const DEFAULT_ORIGINS = [
   "http://localhost:5175",
   "https://sampooran-admin.pages.dev",
   "https://sampooranholidays.com",
-  "https://www.sampooranholidays.com"
+  "https://www.sampooranholidays.com",
+  "https://sampooran-holidays-webapp-frontend.vercel.app"
 ];
 
 const userOrigins = process.env.ALLOWED_ORIGINS

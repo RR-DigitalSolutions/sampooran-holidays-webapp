@@ -52,7 +52,7 @@ export default function Packages() {
         const res = await fetch(`${getApiUrl()}/ota/home/config`);
         if (res.ok) {
           const data = await res.json();
-          const cats = data.categories?.filter((c:any) => c.isActive).map((c: any) => c.label) || [];
+          const cats = data.categories?.filter((c: any) => c.isActive).map((c: any) => c.label) || [];
           const themes = data.themes?.map((t: any) => t.name) || [];
           const unique = Array.from(new Set([...cats, ...themes]));
           if (unique.length > 0) {
@@ -104,7 +104,7 @@ export default function Packages() {
       <div className="relative overflow-hidden bg-[#0A0B1A] text-white pt-24 md:pt-32 pb-12 md:pb-16">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(56,189,248,0.15),_transparent_60%)]" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay" />
-        
+
         <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
           <p className="text-xs font-black uppercase tracking-[0.3em] text-accent mb-3">Explore & Discover</p>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-black leading-[1.1] mb-6">
@@ -130,10 +130,10 @@ export default function Packages() {
                 </button>
               )}
             </div>
-            
+
             <div className="relative w-full sm:w-48 shrink-0">
-              <select 
-                value={category} 
+              <select
+                value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs md:text-sm outline-none pl-3 pr-8 py-2.5 w-full cursor-pointer rounded-md appearance-none"
               >
@@ -144,9 +144,9 @@ export default function Packages() {
               </div>
             </div>
 
-            <button 
-              type="button" 
-              onClick={resetFilters} 
+            <button
+              type="button"
+              onClick={resetFilters}
               className="w-full sm:w-auto shrink-0 rounded-md bg-primary hover:bg-[#1B3A6B]/90 px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-colors shadow-md"
             >
               Reset
@@ -154,14 +154,14 @@ export default function Packages() {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm font-bold text-slate-300">
-             <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-accent" /> Verified Stays</div>
-             <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-accent" /> 24/7 Support</div>
-             <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-accent" /> Custom Itineraries</div>
+            <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-accent" /> Verified Stays</div>
+            <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-accent" /> 24/7 Support</div>
+            <div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-accent" /> Custom Itineraries</div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-10 lg:py-16">
+      <div className="container mx-auto px-4 py-4 lg:py-6">
         <div className="grid gap-10 lg:grid-cols-[280px_1fr]">
           <aside className="hidden lg:block">
             <div className="space-y-6">
@@ -266,7 +266,7 @@ export default function Packages() {
 
             {isLoading ? (
               <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 gap-5" : "space-y-4"}>
-                {[1,2,3,4].map(i => <div key={i} className="bg-slate-100 animate-pulse rounded-lg h-80" />)}
+                {[1, 2, 3, 4].map(i => <div key={i} className="bg-slate-100 animate-pulse rounded-lg h-80" />)}
               </div>
             ) : filtered.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-16 text-center">
