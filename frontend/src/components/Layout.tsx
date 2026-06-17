@@ -427,7 +427,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     <span className="text-[10px] font-semibold text-accent tracking-[0.2em] mt-1 uppercase">Holidays</span>
                   </div>
                 </Link>
-
+                    
                 <div className="space-y-5">
                   <div>
                     <h3 className="text-lg font-semibold mb-1">Keep travelling all year round!</h3>
