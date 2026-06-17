@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Building2, BookOpen, Wallet, TrendingUp, Plus, ArrowRight,
   CheckCircle, Clock, AlertTriangle, Star, MapPin, Bed, LogOut,
-  Settings, User, Plane, Bell, ChevronRight, BarChart3
+  Settings, User, Plane, Bell, ChevronRight, BarChart3, Info
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 import VendorSidebar from "@/components/VendorSidebar";
@@ -113,11 +113,6 @@ export default function VendorDashboardPage() {
             <p className="text-xs text-gray-400">Welcome back, {vendor.name?.split(" ")[0]}</p>
           </div>
           <div className="flex items-center gap-3">
-            {!vendor.vendorVerified && (
-              <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-1.5 text-xs text-amber-700 font-medium">
-                <Clock className="w-3.5 h-3.5" /> Awaiting admin approval
-              </div>
-            )}
             <Link href="/partner/properties/new"
               className="flex items-center gap-1.5 bg-[#1B3A6B] text-white text-sm font-bold px-4 py-2 rounded-md hover:bg-[#0f2548] transition-colors">
               <Plus className="w-4 h-4" /> Add Property
@@ -128,11 +123,11 @@ export default function VendorDashboardPage() {
         <main className="flex-1 p-6 space-y-6">
           {/* Verification Notice */}
           {!vendor.vendorVerified && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold text-amber-800 text-sm">Account Under Review</p>
-                <p className="text-amber-700 text-xs mt-0.5">Your vendor account is being reviewed by our team. You can list properties now — they will go live once your account and each property are approved. This usually takes 24 hours.</p>
+                <p className="font-bold text-blue-800 text-sm">Getting Started with Sampooran Holidays</p>
+                <p className="text-blue-700 text-xs mt-0.5">List your properties, configure rooms/rates, and submit them. Our backend team reviews and approves each property listing individually before it goes live. Want the premium Verified Partner badge? Contact partner support with your business documentation.</p>
               </div>
             </div>
           )}

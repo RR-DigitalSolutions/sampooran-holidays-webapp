@@ -3,7 +3,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MapPin, Phone, Mail, Menu, X, ChevronDown, Facebook, Instagram, Twitter, Youtube, User, LogOut, Ticket, MessageCircle, Sparkles, Zap, ShieldCheck, Globe, Star, Building2, Share2, Linkedin, Shield, Hotel, Utensils, Car, UserCheck, ClipboardList, Headphones } from "lucide-react";
+import { MapPin, Phone, Mail, Menu, X, ChevronDown, Facebook, Instagram, Twitter, Youtube, User, LogOut, Ticket, MessageCircle, Sparkles, Zap, ShieldCheck, Globe, Star, Building2, Share2, Linkedin, Shield, Hotel, Utensils, Car, UserCheck, ClipboardList, Headphones, Navigation, Compass } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -70,6 +70,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, isLoading } = useAuth();
@@ -114,15 +115,48 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between">
             {/* Mega Logo */}
             <Link href="/" className="flex items-center gap-3">
-              <div className="relative">
-                <motion.div
-                  animate={{ rotate: scrolled ? 360 : 0 }}
-                  transition={{ duration: 1, type: "spring" }}
-                  className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20"
+              <div className="relative flex items-center justify-center w-14 h-14 select-none">
+                {/* Rotating Tagline SVG around logo */}
+                <motion.svg
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox="0 0 100 100"
                 >
-                  <img src="/logo.png" alt="S" className="w-7 h-7 object-contain brightness-0 invert" />
+                  <path
+                    id="logo-curve"
+                    d="M 50, 50 m -38.5, 0 a 38.5,38.5 0 1,1 77,0 a 38.5,38.5 0 1,1 -77,0"
+                    fill="none"
+                  />
+                  <text className={cn("text-[8px] font-extrabold uppercase tracking-[0.16em]", !scrolled ? "fill-white" : "fill-[#1B3A6B]")}>
+                    <textPath href="#logo-curve" startOffset="0%">
+                      Sampooran Holidays • Sampooran Holidays •
+                    </textPath>
+                  </text>
+                </motion.svg>
+
+                {/* FAB-style Premium Compass Icon Core with Scroll Rotation */}
+                <motion.div
+                  animate={{
+                    rotate: scrolled ? 360 : 0,
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{
+                    rotate: { duration: 1, type: "spring" },
+                    scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+                  }}
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 z-10",
+                    !scrolled
+                      ? "bg-white/10 text-white border border-white/20 backdrop-blur-sm shadow-white/5"
+                      : "bg-[#1B3A6B] text-[#F5A623] border border-[#1B3A6B]/20"
+                  )}
+                >
+                  <Compass className={cn("w-5.5 h-5.5 transition-colors duration-300", !scrolled ? "text-white" : "text-[#F5A623]")} />
                 </motion.div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full border-2 border-white" />
+
+                {/* Accent status dot */}
+                <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#F5A623] rounded-full border border-white z-20 animate-pulse" />
               </div>
             </Link>
 
@@ -134,34 +168,80 @@ export function Layout({ children }: { children: ReactNode }) {
 
               {/* My Account / Login */}
               <div className="relative hidden sm:block"
-                onMouseEnter={() => setLoginOpen(true)}
-                onMouseLeave={() => setLoginOpen(false)}
+                onMouseEnter={() => {
+                  if (user) {
+                    setProfileOpen(true);
+                  } else {
+                    setLoginOpen(true);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setProfileOpen(false);
+                  setLoginOpen(false);
+                }}
               >
                 {isLoading ? (
                   <div className="w-24 h-9 bg-slate-100 animate-pulse rounded-lg" />
                 ) : user ? (
-                  <div className="flex items-center gap-2">
+                  <>
                     <div className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all",
+                      "flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all hover:scale-105 active:scale-95",
                       !scrolled
                         ? "border-white/30 bg-white/10 text-white hover:bg-white/20"
                         : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-primary/5"
                     )}>
-                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-white font-bold">
-                        {user.name.slice(0, 1)}
+                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-white font-bold shrink-0">
+                        {user.name.slice(0, 1).toUpperCase()}
                       </div>
-                      <div className="flex flex-col leading-none">
-                        <span className={cn("text-[10px] font-semibold", !scrolled ? "text-white/60" : "text-slate-400")}>Hi,</span>
-                        <span className="text-xs font-bold">{user.name.split(' ')[0]}</span>
+                      <div className="flex flex-col leading-none text-left">
+                        <span className="text-[10px] font-bold tracking-tight">{user.name.split(' ')[0]}</span>
                       </div>
+                      <ChevronDown className="w-3 h-3 opacity-60" />
                     </div>
-                    <button onClick={() => logout()} className={cn(
-                      "w-9 h-9 rounded-lg flex items-center justify-center transition-all",
-                      !scrolled ? "bg-white/10 text-white hover:bg-red-500" : "bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600"
-                    )} aria-label="Logout">
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </div>
+
+                    {/* Profile Dropdown */}
+                    <AnimatePresence>
+                      {profileOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                          className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-200"
+                        >
+                          <div className="bg-primary/5 p-4 border-b border-slate-100">
+                            <p className="text-slate-800 font-extrabold text-sm truncate">{user.name}</p>
+                            <p className="text-slate-400 text-[10px] truncate mt-0.5">{user.email}</p>
+                            {user.role && (
+                              <span className="inline-block mt-2 text-[8px] font-black uppercase tracking-wider bg-accent/20 text-primary px-2 py-0.5 rounded-full">
+                                {user.role.replace('_', ' ')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="p-2 space-y-0.5">
+                            <Link href="/dashboard" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-slate-700 hover:bg-slate-50 transition-colors group">
+                              <User className="w-4 h-4 text-slate-400 group-hover:text-primary" />
+                              <span className="text-xs font-bold">My Dashboard</span>
+                            </Link>
+
+                            {user.role === 'HOTEL_OWNER' && (
+                              <Link href="/partner/bookings" className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-slate-700 hover:bg-slate-50 transition-colors group">
+                                <Building2 className="w-4 h-4 text-slate-400 group-hover:text-primary" />
+                                <span className="text-xs font-bold">Manage Bookings</span>
+                              </Link>
+                            )}
+
+                            <button
+                              onClick={() => logout()}
+                              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-red-600 hover:bg-red-50 transition-colors group text-left"
+                            >
+                              <LogOut className="w-4 h-4 text-red-500 group-hover:text-red-600" />
+                              <span className="text-xs font-bold">Logout</span>
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </>
                 ) : (
                   <>
                     <button className={cn(
@@ -217,7 +297,7 @@ export function Layout({ children }: { children: ReactNode }) {
                           </div>
                           <div className="px-4 py-3 border-t border-slate-100 bg-slate-50">
                             <Link href="/register" className="text-xs text-primary font-semibold hover:underline">
-                              New here? Create a free account â†’
+                              New here? Create a free account →
                             </Link>
                           </div>
                         </motion.div>
@@ -232,7 +312,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   "px-5 py-2.5 rounded-lg font-bold text-sm shadow-lg hover:scale-105 active:scale-95 transition-all",
                   "bg-accent text-accent-foreground shadow-accent/25"
                 )}>
-                  Plan My Trip
+                  Plan Trip
                 </button>
               </Link>
 

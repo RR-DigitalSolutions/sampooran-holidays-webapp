@@ -427,55 +427,55 @@ export function MegaNav() {
   };
 
   return (
-    <nav className="hidden lg:flex items-center gap-1 xl:gap-2 h-full relative font-sans">
+    <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 h-full relative font-sans">
 
       {/* INDIA */}
       <div
-        className="h-full flex items-center px-1"
+        className="h-full flex items-center px-0.5"
         onMouseEnter={() => handleMouseEnter('india')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'india'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
             : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
         )}>
-          <MapPin className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'india' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          <MapPin className={cn("w-3.5 h-3.5 transition-colors shrink-0", activeMenu === 'india' ? "text-accent" : "text-primary group-hover:text-accent")} />
           India Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'india' && "rotate-180")} />
         </button>
       </div>
 
       {/* WORLD */}
       <div
-        className="h-full flex items-center px-1"
+        className="h-full flex items-center px-0.5"
         onMouseEnter={() => handleMouseEnter('world')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'world'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
             : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
         )}>
-          <Globe className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'world' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          <Globe className={cn("w-3.5 h-3.5 transition-colors shrink-0", activeMenu === 'world' ? "text-accent" : "text-primary group-hover:text-accent")} />
           World Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'world' && "rotate-180")} />
         </button>
       </div>
 
       {/* SERVICES DROPDOWN */}
       <div
-        className="h-full flex items-center px-1 relative"
+        className="h-full flex items-center px-0.5 relative"
         onMouseEnter={() => handleMouseEnter('services')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'services'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
             : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
         )}>
-          <Briefcase className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'services' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          <Briefcase className={cn("w-3.5 h-3.5 transition-colors shrink-0", activeMenu === 'services' ? "text-accent" : "text-primary group-hover:text-accent")} />
           Group Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'services' && "rotate-180")} />
         </button>
 
@@ -507,50 +507,50 @@ export function MegaNav() {
       </div>
 
       {/* INBOUND */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/inbound" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
-          <Plane className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
+      <div className="h-full flex items-center px-0.5">
+        <Link href="/inbound" className="group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-2 xl:px-2.5 rounded-sm">
+          <Plane className="w-3.5 h-3.5 text-primary group-hover:text-accent transition-colors shrink-0" />
           Inbound
         </Link>
       </div>
 
       {/* TRAVEL GUIDE */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/travel-guide" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
-          <BookOpen className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
+      <div className="h-full flex items-center px-0.5">
+        <Link href="/travel-guide" className="group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-2 xl:px-2.5 rounded-sm">
+          <BookOpen className="w-3.5 h-3.5 text-primary group-hover:text-accent transition-colors shrink-0" />
           Travel Guide
         </Link>
       </div>
 
       {/* HOTELS */}
       <div
-        className="h-full flex items-center px-1"
+        className="h-full flex items-center px-0.5"
         onMouseEnter={() => handleMouseEnter('hotels')}
         onMouseLeave={handleMouseLeave}
       >
         <button className={cn(
-          "group flex items-center gap-1.5 font-bold md text-[12px] transition-all py-2 px-3 rounded-sm",
+          "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'hotels'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
             : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
         )}>
-          <Building2 className={cn("w-4 h-4 transition-colors shrink-0", activeMenu === 'hotels' ? "text-accent" : "text-primary group-hover:text-accent")} />
+          <Building2 className={cn("w-3.5 h-3.5 transition-colors shrink-0", activeMenu === 'hotels' ? "text-accent" : "text-primary group-hover:text-accent")} />
           Hotels <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'hotels' && "rotate-180")} />
         </button>
       </div>
 
       {/* B2B */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/b2b" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
-          <Handshake className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
+      <div className="h-full flex items-center px-0.5">
+        <Link href="/b2b" className="group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-2 xl:px-2.5 rounded-sm">
+          <Handshake className="w-3.5 h-3.5 text-primary group-hover:text-accent transition-colors shrink-0" />
           B2B
         </Link>
       </div>
 
       {/* CONTACT US */}
-      <div className="h-full flex items-center px-1">
-        <Link href="/contact" className="group flex items-center gap-1.5 font-bold text-[12px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-3 rounded-lg">
-          <Phone className="w-4 h-4 text-primary group-hover:text-accent transition-colors shrink-0" />
+      <div className="h-full flex items-center px-0.5">
+        <Link href="/contact" className="group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] transition-all py-2 px-2 xl:px-2.5 rounded-sm">
+          <Phone className="w-3.5 h-3.5 text-primary group-hover:text-accent transition-colors shrink-0" />
           Contact
         </Link>
       </div>

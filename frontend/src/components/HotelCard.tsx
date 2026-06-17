@@ -18,6 +18,7 @@ interface Hotel {
   address: string;
   amenities?: string[];
   startingPrice?: number;
+  isVerified?: boolean;
 }
 
 export function HotelCard({ hotel }: { hotel: Hotel }) {
@@ -82,9 +83,11 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
                <h3 className="font-serif font-black text-xl text-primary group-hover:text-primary/80 transition-colors line-clamp-1 leading-tight">{hotel.name}</h3>
             </div>
             
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mb-6">
-               <ShieldCheck className="h-3 w-3 text-emerald-500" /> Sampooran Verified Property
-            </p>
+            {hotel.isVerified && (
+              <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1.5 mb-6">
+                 <ShieldCheck className="h-3 w-3 text-emerald-500" /> Sampooran Verified Property
+              </p>
+            )}
 
             <div className="flex gap-5 mb-8">
               {[

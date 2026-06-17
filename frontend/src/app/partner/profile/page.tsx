@@ -136,18 +136,18 @@ export default function VendorProfilePage() {
                       <ShieldCheck className="w-6 h-6" />
                     </div>
                   ) : (
-                    <div className="p-3 bg-amber-50 text-amber-600 rounded-md border border-amber-100">
-                      <ShieldAlert className="w-6 h-6" />
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-md border border-blue-100">
+                      <ShieldCheck className="w-6 h-6" />
                     </div>
                   )}
                   <div>
                     <p className="font-bold text-gray-900 text-sm">
-                      {vendor.vendorVerified ? "Verified Partner Account" : "Verification Pending"}
+                      {vendor.vendorVerified ? "Verified Partner Account" : "Registered Partner Account"}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {vendor.vendorVerified 
-                        ? "Your properties are live and eligible to accept bookings immediately." 
-                        : "Our team is reviewing your vendor registry. Properties will remain in review until approved."}
+                        ? "You have a verified partner badge. Your properties stand out in traveler searches." 
+                        : "Your account is active. List your properties, add rooms, and submit them to go live after verification."}
                     </p>
                   </div>
                 </div>
@@ -155,9 +155,9 @@ export default function VendorProfilePage() {
                   <span className={`inline-block text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-md ${
                     vendor.vendorVerified 
                       ? "bg-emerald-100 text-emerald-800" 
-                      : "bg-amber-100 text-amber-800"
+                      : "bg-blue-100 text-blue-800"
                   }`}>
-                    {vendor.vendorVerified ? "Active" : "Under Review"}
+                    {vendor.vendorVerified ? "Verified" : "Active"}
                   </span>
                 </div>
               </div>

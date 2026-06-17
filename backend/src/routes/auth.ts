@@ -141,7 +141,7 @@ router.post("/vendor/register", async (req, res) => {
       companyName,
       gstNumber,
       referralCode,
-      vendorVerified: true, // Auto-approved for dashboard access, property requires verification
+      vendorVerified: false, // Needs manual verification/badge from Admin, property requires individual approval
       isFirstLogin: false,
     }).returning();
 

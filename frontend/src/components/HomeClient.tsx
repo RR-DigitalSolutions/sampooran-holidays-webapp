@@ -12,16 +12,14 @@ import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import Fade from "embla-carousel-fade";
 import PremiumSearchTabs from "@/components/PremiumSearchTabs";
-import dynamic from "next/dynamic";
-
-const TopDestinations = dynamic(() => import("@/components/TopDestinations"), { ssr: true });
-const ThemeMarquee = dynamic(() => import("@/components/ThemeMarquee").then(mod => mod.ThemeMarquee), { ssr: true });
-const OffersSection = dynamic(() => import("@/components/OffersSection").then(mod => mod.OffersSection), { ssr: true });
-const PopularPackagesCarousel = dynamic(() => import("@/components/PopularPackagesCarousel").then(mod => mod.PopularPackagesCarousel), { ssr: true });
-const InclusionsSection = dynamic(() => import("@/components/InclusionsSection").then(mod => mod.InclusionsSection), { ssr: true });
-const SponsoredAdsSection = dynamic(() => import("@/components/SponsoredAdsSection").then(mod => mod.SponsoredAdsSection), { ssr: true });
-const TrendingHotelsSection = dynamic(() => import("@/components/TrendingHotelsSection"), { ssr: true });
-const VendorCTA = dynamic(() => import("@/components/VendorCTA"), { ssr: true });
+import TopDestinations from "@/components/TopDestinations";
+import { ThemeMarquee } from "@/components/ThemeMarquee";
+import { OffersSection } from "@/components/OffersSection";
+import { PopularPackagesCarousel } from "@/components/PopularPackagesCarousel";
+import { InclusionsSection } from "@/components/InclusionsSection";
+import { SponsoredAdsSection } from "@/components/SponsoredAdsSection";
+import TrendingHotelsSection from "@/components/TrendingHotelsSection";
+import VendorCTA from "@/components/VendorCTA";
 
 
 

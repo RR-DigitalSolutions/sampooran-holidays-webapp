@@ -41,8 +41,8 @@ export default function VendorSidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-white text-xs font-bold truncate">{vendor?.name || "Vendor"}</p>
-            <p className={`text-[10px] font-bold ${vendor?.vendorVerified ? "text-emerald-400" : "text-amber-400"}`}>
-              {vendor?.vendorVerified ? "✓ Verified Partner" : "⏳ Pending Approval"}
+            <p className={`text-[10px] font-bold ${vendor?.vendorVerified ? "text-emerald-400" : "text-slate-400"}`}>
+              {vendor?.vendorVerified ? "✓ Verified Partner" : "Registered Partner"}
             </p>
           </div>
         </div>

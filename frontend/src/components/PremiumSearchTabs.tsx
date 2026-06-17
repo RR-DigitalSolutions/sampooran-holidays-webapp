@@ -122,9 +122,9 @@ export default function PremiumSearchTabs() {
       </div>
 
       {/* Main Search Panel */}
-      <div className="bg-white rounded-b-lg shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] p-0.5 md:p-1.5 relative group/panel border-x border-b border-white/20">
-        <div className="bg-slate-50/20 rounded-b-lg p-0.5 md:p-1.5 border-x border-b border-slate-100">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-b-lg shadow-sm">
+      <div className="bg-white rounded-lg shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] p-0.5 md:p-1.5 relative group/panel border border-white/20">
+        <div className="bg-slate-50/20 rounded-lg p-0.5 md:p-1.5 border border-slate-100">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-lg shadow-sm">
 
             {/* Destination Section */}
             <div

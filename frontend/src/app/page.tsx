@@ -17,10 +17,10 @@ export const metadata: Metadata = {
 async function getHomeConfig() {
   const API_URL = getApiUrl();
   
-  const safeFetch = async (url: string, options?: RequestInit, retries = 1) => {
+  const safeFetch = async (url: string, options?: RequestInit, retries = 0) => {
     for (let i = 0; i <= retries; i++) {
       try {
-        const res = await fetch(url, { ...options, signal: AbortSignal.timeout(5000) });
+        const res = await fetch(url, { ...options, signal: AbortSignal.timeout(2000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.json();
       } catch (e: any) {
@@ -32,7 +32,7 @@ async function getHomeConfig() {
           }
           return null;
         }
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
   };
