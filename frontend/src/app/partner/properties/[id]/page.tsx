@@ -1584,6 +1584,9 @@ export default function VendorPropertyManagerPage() {
                     </>
                   )}
                   <EditableField label="Location Address" value={hotel.address || ""} onChange={v => saveHotelField("address", v)} />
+                  <EditableField label="PIN Code" value={hotel.pincode || ""} onChange={v => saveHotelField("pincode", v)} />
+                  <EditableField label="Hotel Email" value={hotel.email || ""} type="email" onChange={v => saveHotelField("email", v)} />
+                  <EditableField label="Hotel Phone" value={hotel.phone || ""} type="tel" onChange={v => saveHotelField("phone", v)} />
                   <EditableField label="Latitude" value={hotel.latitude ?? ""} type="number" onChange={v => saveHotelField("latitude", v ? parseFloat(v) : null)} />
                   <EditableField label="Longitude" value={hotel.longitude ?? ""} type="number" onChange={v => saveHotelField("longitude", v ? parseFloat(v) : null)} />
                   <EditableField label="Check-in Time" value={hotel.checkInTime || ""} type="time" onChange={v => saveHotelField("checkInTime", v)} />
@@ -2358,12 +2361,12 @@ export default function VendorPropertyManagerPage() {
                       ⚠️ Limit Reached: You have uploaded the maximum allowed 15 photos for this property. Delete existing photos to upload new ones.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="mb-4">
                       {/* Drag & Drop File Upload */}
-                      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative cursor-pointer group">
-                        <ImageIcon className="w-8 h-8 text-gray-400 mb-2 group-hover:scale-110 transition-transform" />
-                        <p className="text-xs font-bold text-gray-700">Upload Image (Max 250KB)</p>
-                        <p className="text-[10px] text-gray-400 mt-1">Accepts any format. Non-WebP will auto-compress to WebP.</p>
+                      <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors relative cursor-pointer group text-center">
+                        <ImageIcon className="w-10 h-10 text-gray-400 mb-2 group-hover:scale-110 transition-transform" />
+                        <p className="text-sm font-bold text-gray-700">Upload Image</p>
+                        <p className="text-xs text-gray-400 mt-1">Accepts any format. Non-WebP/Non-AVIF will auto-compress to optimized WebP.</p>
                         <input
                           type="file"
                           accept="image/*"
@@ -2371,28 +2374,6 @@ export default function VendorPropertyManagerPage() {
                           disabled={addingPhoto || photos.length >= 15}
                           className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                         />
-                      </div>
-
-                      {/* Add via URL */}
-                      <div className="flex flex-col justify-center border border-gray-100 rounded-2xl p-4 bg-white">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Add via Image URL</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="url"
-                            value={newPhotoUrl}
-                            onChange={e => setNewPhotoUrl(e.target.value)}
-                            onKeyDown={e => { if (e.key === "Enter" && newPhotoUrl.trim()) addPhoto(); }}
-                            placeholder="https://example.com/photo.jpg"
-                            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
-                          />
-                          <button
-                            onClick={addPhoto}
-                            disabled={addingPhoto || !newPhotoUrl.trim() || photos.length >= 15}
-                            className="px-4 py-2.5 bg-[#1B3A6B] text-white rounded-xl text-xs font-bold hover:bg-[#0f2548] transition-colors disabled:opacity-50"
-                          >
-                            Add URL
-                          </button>
-                        </div>
                       </div>
                     </div>
                   )}

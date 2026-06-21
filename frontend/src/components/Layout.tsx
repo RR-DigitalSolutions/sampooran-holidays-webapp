@@ -92,7 +92,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const headerClass = cn(
     "fixed top-0 z-50 w-full transition-all duration-500",
     scrolled
-      ? "bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)] py-1 md:py-2"
+      ? "bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
       : "bg-gradient-to-b from-black/40 via-black/20 to-transparent border-transparent py-3 md:py-6"
   );
 
@@ -427,7 +427,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     <span className="text-[10px] font-semibold text-accent tracking-[0.2em] mt-1 uppercase">Holidays</span>
                   </div>
                 </Link>
-                    
+
                 <div className="space-y-5">
                   <div>
                     <h3 className="text-lg font-semibold mb-1">Keep travelling all year round!</h3>

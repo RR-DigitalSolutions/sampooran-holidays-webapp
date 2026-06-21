@@ -25,7 +25,7 @@ interface HeroImageSliderProps {
  *  • Zoom direction: push-IN (scale 1.0 → 1.12), slow (matches slide interval).
  */
 export function HeroImageSlider({ images, alt }: HeroImageSliderProps) {
-  const validImages = images.filter(validateImageUrl);
+  const validImages = images.filter(img => !!img).map(img => validateImageUrl(img));
   const total = validImages.length;
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -113,7 +113,7 @@ export function HeroImageSlider({ images, alt }: HeroImageSliderProps) {
               }}
             >
               <Image
-                src={validateImageUrl(image)}
+                src={validateImageUrl(image, 1920, 1080, "16:9")}
                 alt={`${alt} ${idx + 1}`}
                 fill
                 sizes="100vw"

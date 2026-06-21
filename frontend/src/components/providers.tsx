@@ -22,6 +22,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             retry: 1,
             refetchOnWindowFocus: false,
+            staleTime: 30_000,      // ⚡ 30s: serve cached data instantly on re-visits
+            gcTime: 5 * 60_000,    // ⚡ 5min: keep data in memory between navigations
           },
         },
       })

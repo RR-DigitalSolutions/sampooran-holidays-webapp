@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,8 +9,9 @@ import {
   ShieldCheck, X, Filter, Wifi, Coffee, Car, UtensilsCrossed, Waves,
   Dumbbell, ArrowUpDown, Grid3X3, LayoutList, Sparkles, ChevronDown, Check, AlertCircle
 } from "lucide-react";
-import { cn, validateImageUrl } from "@/lib/utils";
+import { cn, validateImageUrl, getHotelImageUrl } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
+import SmartSearchBar from "@/components/SmartSearchBar";
 
 const API_BASE = getApiUrl();
 
@@ -37,6 +38,7 @@ interface Hotel {
   address: string;
   city?: string;
   images?: string[];
+  primaryImageUrl?: string;   // ⚡ From hotel_photos table (vendor Cloudinary uploads)
   amenities?: string[];
   minPrice: number;
   isFeatured: boolean;
@@ -70,9 +72,12 @@ function buildHotelUrl(hotel: Hotel): string {
   return `/hotels/${hotel.slug}`;
 }
 
-function HotelCard({ hotel }: { hotel: Hotel }) {
+function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boolean }) {
   const [imgErr, setImgErr] = useState(false);
-  const img = !imgErr && hotel.images?.[0] ? validateImageUrl(hotel.images[0]) : null;
+  // ⚡ Priority: vendor-uploaded photo from hotel_photos table (Cloudinary)
+  // Fallback: legacy images[] array (may contain external URLs)
+  const rawImg = !imgErr ? (hotel.primaryImageUrl || hotel.images?.[0]) : undefined;
+  const img = getHotelImageUrl(rawImg, 400, 300, "4:3");
   const hotelUrl = buildHotelUrl(hotel);
 
   return (
@@ -87,7 +92,8 @@ function HotelCard({ hotel }: { hotel: Hotel }) {
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover group-hover:scale-105 transition-transform duration-500"
             onError={() => setImgErr(true)}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            priority={priority}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
@@ -268,7 +274,7 @@ interface GeoFilter { country?: string; state?: string; city?: string; }
 interface Breadcrumb { label: string; href: string; }
 
 export default function HotelsClient({
-  geoFilter,
+  geoFilter: geoFilterProp,
   pageTitle,
   pageSubtitle,
   breadcrumbs,
@@ -298,6 +304,14 @@ export default function HotelsClient({
   const [page, setPage] = useState(0);
   const LIMIT = 12;
 
+  // ⚡ Memoize geoFilter so its reference stays stable across re-renders
+  // (prevents infinite fetch loops since objects are always new refs in JSX)
+  const geoFilter = useMemo(() => geoFilterProp, [
+    geoFilterProp?.country,
+    geoFilterProp?.state,
+    geoFilterProp?.city,
+  ]);
+
   // ⚡ Debounce search input — only fires API after 350ms of no typing
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
@@ -324,7 +338,7 @@ export default function HotelsClient({
     params.set("limit", String(LIMIT));
     params.set("offset", String(page * LIMIT));
     return params.toString();
-  }, [debouncedSearch, filters, sort, page, geoFilter]);
+  }, [debouncedSearch, filters, sort, page, geoFilter?.country, geoFilter?.state, geoFilter?.city]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -334,13 +348,21 @@ export default function HotelsClient({
     const endpoint = geoFilter
       ? `${API_BASE}/hotels/by-location?${buildQuery()}`
       : `${API_BASE}/hotels?${buildQuery()}`;
-    fetch(endpoint, { signal: controller.signal })
-      .then(r => r.json())
+    fetch(endpoint, {
+      signal: controller.signal,
+      // ⚡ Bypass browser cache — prevents stale 304 responses returning empty hotel lists
+      cache: "no-store",
+    })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { setHotels(d.hotels || []); setTotal(d.total || 0); })
       .catch(e => { if (e.name !== "AbortError") setError("Failed to load hotels. Please try again."); })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [buildQuery, geoFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildQuery]);
 
 
   const destinations = Array.from(new Set(hotels.map(h => h.destinationName || h.city || "Himalayas").filter(Boolean)));
@@ -396,21 +418,18 @@ export default function HotelsClient({
                 : "Hotels, Resorts, Cottages, Homestays & more — verified and curated across the Himalayas."}
             </p>
 
-            {/* Search Bar */}
-            <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-3 shadow-2xl flex flex-col md:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-white/40" />
-                <input placeholder="Search hotel, resort, location..."
-                  className="w-full bg-white/5 border-none h-14 pl-14 pr-6 rounded-3xl text-white font-semibold placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all"
-                  value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} />
-              </div>
-              <button className="h-14 px-10 rounded-3xl bg-accent text-white font-black uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-accent/20">
-                Search
-              </button>
+            {/* ⚡ Smart Search Bar — Full-Text Search + Fuzzy Matching */}
+            <div className="max-w-2xl mx-auto">
+              <SmartSearchBar
+                placeholder="Search hotel, destination, resort…"
+                geoFilter={geoFilter}
+                variant="hero"
+                className="w-full"
+              />
+            </div>
             </div>
           </div>
         </div>
-      </div>
 
       {/* ── Filters Toolbar ── */}
       <div className="container mx-auto px-4 -mt-10 relative z-20">
@@ -534,27 +553,21 @@ export default function HotelsClient({
                     ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
                     : "flex flex-col gap-4"
                 )}>
-                  {hotels.map(hotel => (
+                  {hotels.map((hotel, idx) =>
                     viewMode === "grid" ? (
-                      <HotelCard key={hotel.id} hotel={hotel} />
+                      <HotelCard key={hotel.id} hotel={hotel} priority={idx < 3} />
                     ) : (
                       <Link key={hotel.id} href={buildHotelUrl(hotel)}
                         className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all flex gap-0">
                         <div className="w-48 h-36 relative shrink-0 overflow-hidden">
-                          {hotel.images?.[0] ? (
-                            <Image
-                              src={validateImageUrl(hotel.images[0])}
-                              alt={hotel.name}
-                              fill
-                              sizes="192px"
-                              className="object-cover group-hover:scale-105 transition-transform"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                              <Building2 className="w-8 h-8 text-slate-300" />
-                            </div>
-                          )}
+                          <Image
+                            src={getHotelImageUrl(hotel.primaryImageUrl || hotel.images?.[0], 400, 300, "4:3")}
+                            alt={hotel.name}
+                            fill
+                            sizes="192px"
+                            className="object-cover group-hover:scale-105 transition-transform"
+                            loading="lazy"
+                          />
                         </div>
                         <div className="flex-1 p-4 flex justify-between items-start">
                           <div>
@@ -594,7 +607,7 @@ export default function HotelsClient({
                         </div>
                       </Link>
                     )
-                  ))}
+                  )}
                 </div>
 
                 {/* Pagination */}

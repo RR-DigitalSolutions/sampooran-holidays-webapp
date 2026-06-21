@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
@@ -609,7 +609,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                             className="relative w-full h-full overflow-hidden bg-slate-100 group cursor-pointer"
                           >
                             <Image
-                              src={validateImageUrl(image)}
+                              src={validateImageUrl(image, 400, 300, "4:3")}
                               alt={`${packageData.name} photo ${idx + 1}`}
                               fill
                               sizes="(max-width: 768px) 50vw, 25vw"
@@ -1167,7 +1167,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             {/* Main Image */}
             <div className="relative w-full max-w-4xl h-[60vh] md:h-[70vh] flex items-center justify-center">
               <Image
-                src={validateImageUrl(galleryImages[activeLightboxIndex])}
+                src={validateImageUrl(galleryImages[activeLightboxIndex], 1200, 800, "3:2")}
                 alt={`${packageData.name} photo`}
                 fill
                 className="object-contain"
@@ -1200,7 +1200,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 )}
               >
                 <Image
-                  src={validateImageUrl(img)}
+                  src={validateImageUrl(img, 150, 150, "1:1")}
                   alt={`Thumbnail ${idx + 1}`}
                   fill
                   className="object-cover"

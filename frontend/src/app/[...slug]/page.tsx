@@ -12,7 +12,7 @@ async function resolveSlug(slug: string, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`${API_URL}/destinations/resolve-slug/${slug}`, {
-        cache: 'no-store',
+        next: { revalidate: 120 }, // ⚡ ISR: serve from CDN cache, revalidate every 2min
         signal: AbortSignal.timeout(15000), // 15s timeout for Render cold starts
       });
       

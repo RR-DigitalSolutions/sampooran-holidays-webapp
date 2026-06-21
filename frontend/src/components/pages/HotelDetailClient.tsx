@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { API_BASE } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, getHotelImageUrl } from "@/lib/utils";
 import { FeaturedAmenities, AmenitiesDisplay } from "@/components/AmenitiesDisplay";
 
 interface RoomConfig {
@@ -152,8 +152,10 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
     );
   }
 
-  // Combine hotel photos & room images for the unified gallery
-  const hotelPhotos = hotel.photos || [];
+  const hotelPhotos = (hotel.photos && hotel.photos.length > 0)
+    ? hotel.photos
+    : (hotel.images || []).map((img: string) => ({ url: img, category: "EXTERIOR", caption: "Hotel Photo" }));
+
   const roomPhotos = (hotel.rooms || []).flatMap((r: any) =>
     (r.images || []).map((img: string) => ({
       url: img,
@@ -173,9 +175,9 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
   const allGalleryImages = [...hotelPhotos, ...roomPhotos].length > 0
     ? [...hotelPhotos, ...roomPhotos]
     : [
-      { url: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200", category: "EXTERIOR", caption: "Hotel Exterior" },
-      { url: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800", category: "INTERIOR", caption: "Lobby" },
-      { url: "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=800", category: "ROOM", caption: "Bedroom" }
+      { url: null, category: "EXTERIOR", caption: "Hotel Exterior" },
+      { url: null, category: "INTERIOR", caption: "Lobby" },
+      { url: null, category: "ROOM", caption: "Bedroom" }
     ];
 
   const images = allGalleryImages.map(x => x.url);
@@ -303,7 +305,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                 onClick={() => { setActiveImageIndex(idx); setGalleryOpen(true); }}
                 className="w-full h-full shrink-0 snap-center relative cursor-pointer"
               >
-                <img loading="lazy" src={img} alt={`Cover ${idx}`} className="w-full h-full object-cover" />
+                <img loading="lazy" src={getHotelImageUrl(img, 800, 450, "16:9")} alt={`Cover ${idx}`} className="w-full h-full object-cover" />
                 {idx === 0 && (
                   <>
                     {/* Shadow overlay for readability */}
@@ -346,7 +348,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
             onClick={() => { setActiveImageIndex(0); setGalleryOpen(true); }}
             className="col-span-2 relative overflow-hidden group cursor-pointer h-full"
           >
-            <img loading="lazy" src={images[0]} alt="Main cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <img loading="lazy" src={getHotelImageUrl(images[0], 1200, 675, "16:9")} alt="Main cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-end p-8" />
 
             {/* Overlay Details */}
@@ -373,14 +375,14 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
 
           <div className="grid grid-rows-2 gap-3 h-full">
             <div onClick={() => { setActiveImageIndex(1); setGalleryOpen(true); }} className="relative overflow-hidden group cursor-pointer h-full">
-              <img loading="lazy" src={images[1] || images[0]} alt="Detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img loading="lazy" src={getHotelImageUrl(images[1] || images[0], 800, 600, "4:3")} alt="Detail 1" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
             <div onClick={() => { setActiveImageIndex(2); setGalleryOpen(true); }} className="relative overflow-hidden group cursor-pointer h-full">
-              <img loading="lazy" src={images[2] || images[0]} alt="Detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+              <img loading="lazy" src={getHotelImageUrl(images[2] || images[0], 800, 600, "4:3")} alt="Detail 2" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
           </div>
           <div onClick={() => setGalleryOpen(true)} className="relative overflow-hidden group cursor-pointer h-full">
-            <img loading="lazy" src={images[3] || images[0]} alt="Detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 brightness-90" />
+            <img loading="lazy" src={getHotelImageUrl(images[3] || images[0], 800, 600, "4:3")} alt="Detail 3" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 brightness-90" />
             <div className="absolute inset-0 flex items-center justify-center bg-black/20">
               <Button variant="outline" className="text-white border-white/40 hover:bg-white/20 font-bold rounded-xl backdrop-blur-md text-xs shadow-md">
                 + View All Photos ({images.length})
@@ -482,7 +484,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                         >
                           {room.images?.[0] ? (
                             <>
-                              <img src={room.images[0]} alt={room.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                              <img src={getHotelImageUrl(room.images[0], 600, 450, "4:3")} alt={room.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                               {room.images.length > 1 && (
                                 <div className="absolute bottom-2.5 right-2.5 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg text-white text-[9px] font-bold">
                                   + {room.images.length} Photos
@@ -756,7 +758,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                     className="relative group aspect-square rounded-xl overflow-hidden bg-slate-50 border border-slate-100/50 cursor-pointer shadow-xs"
                   >
                     <img
-                      src={img.url}
+                      src={getHotelImageUrl(img.url, 400, 400, "1:1")}
                       alt={img.caption || "Property Photo"}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -1179,7 +1181,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
               <ChevronLeft className="w-6 h-6" />
             </button>
 
-            <img src={images[activeImageIndex]} alt="Gallery slide" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-in" />
+            <img src={getHotelImageUrl(images[activeImageIndex], 1200, 800, "3:2")} alt="Gallery slide" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-in" />
 
             <button
               onClick={() => setActiveImageIndex(prev => (prev + 1) % images.length)}
@@ -1197,7 +1199,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                 onClick={() => setActiveImageIndex(idx)}
                 className={cn("w-14 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all opacity-60 hover:opacity-100", activeImageIndex === idx ? "border-sky-400 scale-105 opacity-100" : "border-transparent")}
               >
-                <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+                <img src={getHotelImageUrl(img, 150, 150, "1:1")} alt="Thumb" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -1220,7 +1222,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
               <ChevronLeft className="w-6 h-6" />
             </button>
 
-            <img src={selectedRoomImages[roomActiveImageIndex]} alt="Room gallery slide" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-in" />
+            <img src={getHotelImageUrl(selectedRoomImages[roomActiveImageIndex], 1200, 800, "3:2")} alt="Room gallery slide" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-fade-in" />
 
             <button
               onClick={() => setRoomActiveImageIndex(prev => (prev + 1) % selectedRoomImages.length)}
@@ -1238,7 +1240,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                 onClick={() => setRoomActiveImageIndex(idx)}
                 className={cn("w-14 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all opacity-60 hover:opacity-100", roomActiveImageIndex === idx ? "border-sky-400 scale-105 opacity-100" : "border-transparent")}
               >
-                <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+                <img src={getHotelImageUrl(img, 150, 150, "1:1")} alt="Thumb" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>

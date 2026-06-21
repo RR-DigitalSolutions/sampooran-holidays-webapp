@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { API_BASE } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, getHotelImageUrl } from "@/lib/utils";
 
 interface RoomConfig {
   adults: number;
@@ -719,12 +719,13 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
 
   const roomImages = room.images ?? [];
   const hotelImages = hotel.images ?? [];
-  const images: string[] =
+  const rawImages =
     roomImages.length > 0
       ? roomImages
       : hotelImages.length > 0
         ? hotelImages
-        : ["https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200"];
+        : [];
+  const images: string[] = rawImages.length > 0 ? rawImages : [null as any];
 
   const amenities = Array.isArray(room.amenities) ? room.amenities : [];
   const facilities = Array.isArray(room.facilities) ? room.facilities : [];
@@ -762,7 +763,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                 onClick={() => { setActiveImageIndex(idx); setGalleryOpen(true); }}
                 className="w-full h-full shrink-0 snap-center relative cursor-pointer"
               >
-                <Image src={img} alt={`Cover ${idx}`} fill sizes="100vw" className="object-cover" />
+                <Image src={getHotelImageUrl(img, 800, 450, "16:9")} alt={`Cover ${idx}`} fill sizes="100vw" className="object-cover" />
                 {idx === 0 && (
                   <>
                     {/* Shadow overlay for readability */}
@@ -812,7 +813,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
             onClick={() => { setActiveImageIndex(0); setGalleryOpen(true); }}
             className="col-span-3 relative overflow-hidden group cursor-pointer h-full"
           >
-            <Image src={images[0]} alt={room.name ?? "Room image"} fill sizes="100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+            <Image src={getHotelImageUrl(images[0], 1200, 675, "16:9")} alt={room.name ?? "Room image"} fill sizes="100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-end p-8" />
 
             {/* Overlay Details */}
@@ -850,13 +851,13 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
               className="relative overflow-hidden group cursor-pointer h-full"
               onClick={() => { setActiveImageIndex(1); setGalleryOpen(true); }}
             >
-              <Image src={images[1] || images[0]} alt="Room view 2" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
+              <Image src={getHotelImageUrl(images[1] || images[0], 800, 600, "4:3")} alt="Room view 2" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
             </div>
             <div
               className="relative overflow-hidden group cursor-pointer h-full"
               onClick={() => setGalleryOpen(true)}
             >
-              <Image src={images[2] || images[0]} alt="Room view 3" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-105 brightness-90" />
+              <Image src={getHotelImageUrl(images[2] || images[0], 800, 600, "4:3")} alt="Room view 3" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover transition-transform duration-700 group-hover:scale-105 brightness-90" />
               <div className="absolute inset-0 flex items-center justify-center bg-black/10">
                 <Button variant="outline" className="text-white border-white/40 hover:bg-white/20 font-bold rounded-xl backdrop-blur-md text-xs shadow-md">
                   + View All Photos ({images.length})
@@ -916,7 +917,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                   >
                     <div className="relative w-full h-full">
                       <Image
-                        src={img}
+                        src={getHotelImageUrl(img, 400, 400, "1:1")}
                         alt={`Room image ${idx + 1}`}
                         fill
                         sizes="(max-width: 640px) 100vw, 20vw"
@@ -1141,7 +1142,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                         {r.images?.[0] ? (
                           <div className="relative w-full h-full">
                             <Image
-                              src={r.images?.[0] ?? "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200"}
+                              src={getHotelImageUrl(r.images?.[0])}
                               alt={r.name ?? "Room image"}
                               fill
                               sizes="(max-width: 768px) 100vw, 33vw"
@@ -1493,7 +1494,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
               <ChevronLeft className="w-6 h-6" />
             </button>
             <Image
-              src={images[activeImageIndex]}
+              src={getHotelImageUrl(images[activeImageIndex], 1200, 800, "3:2")}
               alt="Room gallery"
               fill
               sizes="100vw"
@@ -1513,7 +1514,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                 className={cn("w-14 h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all opacity-60 hover:opacity-100", activeImageIndex === idx ? "border-sky-400 scale-105 opacity-100" : "border-transparent")}
               >
                 <div className="relative w-full h-full">
-                  <Image src={img} alt={`Gallery thumbnail ${idx + 1}`} fill sizes="56px" className="object-cover" />
+                  <Image src={getHotelImageUrl(img, 150, 150, "1:1")} alt={`Gallery thumbnail ${idx + 1}`} fill sizes="56px" className="object-cover" />
                 </div>
               </button>
             ))}

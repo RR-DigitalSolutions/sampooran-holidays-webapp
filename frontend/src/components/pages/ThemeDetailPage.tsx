@@ -43,7 +43,7 @@ export function ThemeDetailPage({ entityData, searchParams }: { entityData: any,
           className="absolute inset-0"
         >
           <img 
-            src={validateImageUrl(entityData.imageUrl || 'https://images.unsplash.com/photo-1502086223501-7ea244b05fe6?w=1920&q=80')} 
+            src={validateImageUrl(entityData.imageUrl, 1920, 800, "24:10")} 
             alt={entityData.name} 
             className="w-full h-full object-cover"
           />

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Star, MapPin, Building2, Utensils, Wifi, Coffee, Heart, Info, Sparkles, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { getHotelImageUrl } from "@/lib/utils";
 
 interface Hotel {
   id: number;
@@ -23,7 +24,7 @@ interface Hotel {
 
 export function HotelCard({ hotel }: { hotel: Hotel }) {
   const [wishlisted, setWishlisted] = useState(false);
-  const imageUrl = hotel.images?.[0] || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+";
+  const imageUrl = getHotelImageUrl(hotel.images?.[0], 400, 300, "4:3");
 
   return (
     <motion.div

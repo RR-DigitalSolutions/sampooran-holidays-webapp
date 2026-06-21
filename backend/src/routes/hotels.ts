@@ -72,58 +72,100 @@ router.get("/my-bookings", authenticate, async (req: AuthenticatedRequest, res: 
 // PUBLIC: Hotels by Location (State or City landing pages)
 // GET /api/hotels/by-location?country=india&state=himachal-pradesh&city=manali
 // ─────────────────────────────────────────────────────────────
-router.get("/by-location", cacheMiddleware(120), async (req: Request, res: Response) => {
+router.get("/by-location", cacheMiddleware(60), async (req: Request, res: Response) => {
   try {
-    const { country, state, city, limit = "20", offset = "0" } = req.query;
+    const {
+      country, state, city,
+      q, type, starRating, minPrice, maxPrice,
+      sort = "recommended",
+      limit = "20", offset = "0",
+    } = req.query;
 
-    const conditions: string[] = [`hotels.status = 'APPROVED'`];
-    const params: any[] = [];
-    let paramIdx = 1;
-
-    if (country) {
-      conditions.push(`hotels.country_slug = $${paramIdx++}`);
-      params.push(country);
-    }
+    // Build WHERE conditions dynamically
+    const conditions: any[] = [sql`hotels.status = 'APPROVED'`];
+    if (country) conditions.push(sql`hotels.country_slug = ${country}`);
     if (state && state !== "all" && state !== "undefined") {
-      conditions.push(`hotels.state_slug = $${paramIdx++}`);
-      params.push(state);
+      conditions.push(sql`hotels.state_slug = ${state}`);
     }
-    if (city) {
-      conditions.push(`hotels.destination_slug = $${paramIdx++}`);
-      params.push(city);
+    if (city) conditions.push(sql`hotels.destination_slug = ${city}`);
+    if (type) conditions.push(sql`LOWER(hotels.type) = LOWER(${type})`);
+    if (starRating) conditions.push(sql`hotels.star_rating = ${Number(starRating)}`);
+    if (minPrice) conditions.push(sql`hotels.min_price >= ${Number(minPrice)}`);
+    if (maxPrice) conditions.push(sql`hotels.min_price <= ${Number(maxPrice)}`);
+    if (q) {
+      const searchTerm = `%${(q as string).toLowerCase()}%`;
+      conditions.push(sql`(LOWER(hotels.name) LIKE ${searchTerm} OR LOWER(hotels.city) LIKE ${searchTerm} OR LOWER(hotels.address) LIKE ${searchTerm})`);
     }
+    let whereClause = conditions[0];
+    for (let i = 1; i < conditions.length; i++) {
+      whereClause = sql`${whereClause} AND ${conditions[i]}`;
+    }
+
+    // Sort order
+    const orderClause = sort === "price_asc"
+      ? sql`hotels.min_price ASC NULLS LAST`
+      : sort === "price_desc"
+        ? sql`hotels.min_price DESC NULLS LAST`
+        : sort === "rating"
+          ? sql`AVG(r.rating) DESC NULLS LAST, hotels.is_featured DESC`
+          : sort === "newest"
+            ? sql`hotels.created_at DESC`
+            : sql`hotels.is_featured DESC, hotels.display_order ASC NULLS LAST, hotels.min_price ASC NULLS LAST`;
 
     const lim = Math.min(Number(limit), 50);
     const off = Number(offset);
 
     const { rows: hotels } = await db.execute(sql`
       SELECT
-        hotels.id, hotels.name, hotels.slug, hotels.type,
-        hotels.star_rating as "starRating",
-        hotels.city, hotels.images, hotels.amenities,
-        hotels.min_price as "minPrice",
-        hotels.is_featured as "isFeatured",
-        hotels.country_slug as "countrySlug",
-        hotels.state_slug as "stateSlug",
-        hotels.destination_slug as "destinationSlug",
-        hotels.custom_city as "customCity",
-        destinations.name as "destinationName",
-        ROUND(AVG(r.rating)::numeric, 1) as "avgRating",
-        COUNT(DISTINCT r.id)::int as "reviewCount"
+        hotels.id,
+        hotels.name,
+        hotels.slug,
+        hotels.type,
+        hotels.star_rating        AS "starRating",
+        hotels.address,
+        hotels.city,
+        hotels.images,
+        hotels.amenities,
+        hotels.min_price          AS "minPrice",
+        hotels.is_featured        AS "isFeatured",
+        hotels.booking_type       AS "bookingType",
+        hotels.breakfast_included AS "breakfastIncluded",
+        hotels.check_in_time      AS "checkInTime",
+        hotels.check_out_time     AS "checkOutTime",
+        hotels.country_slug       AS "countrySlug",
+        hotels.state_slug         AS "stateSlug",
+        hotels.destination_slug   AS "destinationSlug",
+        hotels.custom_city        AS "customCity",
+        destinations.name         AS "destinationName",
+        -- ⚡ Vendor-uploaded primary photo (from hotel_photos table, uploaded via Cloudinary)
+        -- Falls back to first element of legacy images[] array if no dedicated photo uploaded
+        COALESCE(hp.url, hotels.images[1])  AS "primaryImageUrl",
+        ROUND(AVG(r.rating)::numeric, 1)    AS "avgRating",
+        COUNT(DISTINCT r.id)::int           AS "reviewCount"
       FROM hotels
       LEFT JOIN destinations ON hotels.destination_id = destinations.id
       LEFT JOIN hotel_reviews r ON r.hotel_id = hotels.id AND r.is_published = true
-      WHERE ${sql.raw(conditions.join(' AND '))}
-      GROUP BY hotels.id, destinations.name
-      ORDER BY hotels.is_featured DESC, hotels.display_order ASC, hotels.min_price ASC
+      -- Join primary photo: vendor uploads go here first, ordered by display_order
+      LEFT JOIN LATERAL (
+        SELECT url FROM hotel_photos
+        WHERE hotel_id = hotels.id
+        ORDER BY is_primary DESC, display_order ASC
+        LIMIT 1
+      ) hp ON true
+      WHERE ${whereClause}
+      GROUP BY hotels.id, destinations.name, hp.url
+      ORDER BY ${orderClause}
       LIMIT ${lim} OFFSET ${off}
     `) as any;
 
     const { rows: totalRows } = await db.execute(sql`
-      SELECT COUNT(DISTINCT hotels.id)::int as total
+      SELECT COUNT(DISTINCT hotels.id)::int AS total
       FROM hotels
-      WHERE ${sql.raw(conditions.join(' AND '))}
+      WHERE ${whereClause}
     `) as any;
+
+    // Prevent browser 304/ETag stale cache — always return fresh hotel data
+    res.setHeader("Cache-Control", "no-store");
 
     res.json({
       hotels: hotels || [],
@@ -513,7 +555,7 @@ router.get("/:slug/rooms/by-slug/:roomSlug", async (req: Request, res: Response)
 
     const [hotel] = await db.select({ id: hotelsTable.id })
       .from(hotelsTable)
-      .where(and(eq(hotelsTable.slug, slug), eq(hotelsTable.status, "APPROVED")))
+      .where(and(eq(hotelsTable.slug, slug as string), eq(hotelsTable.status, "APPROVED")))
       .limit(1);
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
 
@@ -977,8 +1019,8 @@ router.get("/:slug/rooms/:roomId/calendar", async (req: Request, res: Response) 
     const inventoryMap = new Map<string, typeof inventory[0]>();
     for (const inv of inventory) {
       const rawDate = inv.date;
-      const dateStr = rawDate instanceof Date 
-        ? rawDate.toISOString().split("T")[0] 
+      const dateStr = (rawDate as any) instanceof Date
+        ? (rawDate as any).toISOString().split("T")[0]
         : String(rawDate).split("T")[0];
       inventoryMap.set(dateStr, inv);
     }

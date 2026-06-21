@@ -81,7 +81,7 @@ export function AttractionActivityModal({
                 {allImages.length === 1 ? (
                   <div className="rounded-xl overflow-hidden bg-slate-100 aspect-video">
                     <img
-                      src={validateImageUrl(allImages[0])}
+                      src={validateImageUrl(allImages[0], 800, 450, "16:9")}
                       alt={data.name}
                       className="w-full h-full object-cover"
                     />
@@ -94,7 +94,7 @@ export function AttractionActivityModal({
                         className="rounded-lg overflow-hidden bg-slate-100 aspect-square"
                       >
                         <img
-                          src={validateImageUrl(img)}
+                          src={validateImageUrl(img, 400, 400, "1:1")}
                           alt={`${data.name} ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />

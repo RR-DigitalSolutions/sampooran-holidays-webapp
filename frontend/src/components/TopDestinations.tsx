@@ -154,7 +154,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                   >
                     <div className="flex items-center gap-1 md:gap-1">
                       <div className="relative h-16 w-16 md:h-14 md:w-14 rounded-md overflow-hidden shrink-0 border-2 border-white/20 shadow-sm">
-                        <Image src={validateImageUrl(dest.imageUrl)} alt={dest.name || "Destination"} fill sizes="60px" className="object-cover transition-transform duration-700 group-hover:scale-125" />
+                        <Image src={validateImageUrl(dest.imageUrl, 150, 150, "1:1")} alt={dest.name || "Destination"} fill sizes="60px" className="object-cover transition-transform duration-700 group-hover:scale-125" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
@@ -200,7 +200,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                     {/* Featured Card Header */}
                     <div className="relative h-[180px] md:h-[240px] rounded-md overflow-hidden mb-2 shadow-2xl group/header">
                       <Image
-                        src={validateImageUrl(selectedDest.imageUrl)}
+                        src={validateImageUrl(selectedDest.imageUrl, 1200, 675, "16:9")}
                         alt={selectedDest.name || "Destination"}
                         fill
                         sizes="(max-width: 1024px) 100vw, 66vw"
@@ -262,7 +262,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                               className="relative w-full h-full"
                             >
                               <Image
-                                src={validateImageUrl(place.image)}
+                                src={validateImageUrl(place.image, 400, 300, "4:3")}
                                 alt={place.name}
                                 fill
                                 sizes="(max-width: 768px) 50vw, 33vw"

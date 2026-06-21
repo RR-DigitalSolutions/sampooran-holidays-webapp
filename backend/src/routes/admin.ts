@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
@@ -1451,16 +1451,16 @@ router.get("/pending-cities", requirePermission("PACKAGES"), async (req, res) =>
 });
 
 // PATCH or POST /admin/pending-cities/:id — resolve (accept/approve or reject)
-const resolvePendingCity = async (req: AuthenticatedRequest, res: Response) => {
+const resolvePendingCity = async (req: AuthenticatedRequest, res: import("express").Response) => {
   try {
     const { id } = req.params;
     const { action, adminNote, destinationData, existingDestinationId } = req.body;
     // action: 'ACCEPT' | 'APPROVE' or 'REJECT'
 
-    const [pcr] = await db.execute(sql`
+    const pcrResult = await db.execute(sql`
       SELECT * FROM pending_city_requests WHERE id = ${Number(id)}
     `) as any;
-    const request = (pcr as any).rows?.[0];
+    const request = pcrResult.rows?.[0];
     if (!request) return res.status(404).json({ error: "Request not found" });
 
     const isApprove = action === "ACCEPT" || action === "APPROVE";

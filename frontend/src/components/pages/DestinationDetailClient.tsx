@@ -102,7 +102,7 @@ export default function DestinationDetailClient({ slug: propSlug }: { slug?: str
           />
         ) : (
           <Image
-            src={validateImageUrl(d.imageUrl)}
+            src={validateImageUrl(d.imageUrl, 1920, 800, "24:10")}
             alt={d.name || "Destination"}
             fill
             className="absolute inset-0 w-full h-full object-cover"
@@ -265,7 +265,7 @@ export default function DestinationDetailClient({ slug: propSlug }: { slug?: str
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {d.galleryImages.slice(0, 4).map((img: string, idx: number) => (
                       <div key={idx} className={`relative rounded-2xl overflow-hidden group ${idx === 0 ? "col-span-2 row-span-2 h-64 md:h-80" : "h-32 md:h-36"}`}>
-                         <img src={img} alt={`${d.name} gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                         <img src={validateImageUrl(img, idx === 0 ? 800 : 400, idx === 0 ? 600 : 300, "4:3")} alt={`${d.name} gallery ${idx}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
                       </div>
                     ))}

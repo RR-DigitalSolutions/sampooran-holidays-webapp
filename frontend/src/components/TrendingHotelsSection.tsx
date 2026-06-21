@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Star, MapPin, Building2, ArrowRight } from "lucide-react";
-import { cn, validateImageUrl } from "@/lib/utils";
+import { cn, validateImageUrl, getHotelImageUrl } from "@/lib/utils";
 
 interface TrendingHotel {
   id: number;
@@ -59,7 +59,7 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
             <Link key={hotel.id} href={`/hotels/${hotel.slug}`} className="block group">
               <div className="relative h-[220px] rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
                 <Image
-                  src={validateImageUrl(hotel.imageUrl)}
+                  src={getHotelImageUrl(hotel.imageUrl, 400, 300, "4:3")}
                   alt={hotel.name}
                   fill
                   className="object-cover transition-transform duration-700 group-hover:scale-110"

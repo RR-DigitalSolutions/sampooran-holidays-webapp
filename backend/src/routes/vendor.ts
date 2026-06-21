@@ -184,6 +184,23 @@ router.post("/hotels", async (req: AuthenticatedRequest, res: Response) => {
     // Create default policies record
     await db.insert(hotelPoliciesTable).values({ hotelId: newHotel.id } as any).onConflictDoNothing();
 
+    // Sync property creation images array to hotelPhotosTable
+    if (Array.isArray(images) && images.length > 0) {
+      const photoRecords = images
+        .filter((url: any) => typeof url === "string" && url.trim().length > 0)
+        .map((url: string, index: number) => ({
+          hotelId: newHotel.id,
+          url: url.trim(),
+          caption: index === 0 ? "Main Photo" : `Photo ${index + 1}`,
+          category: "EXTERIOR",
+          isPrimary: index === 0,
+          displayOrder: index,
+        }));
+      if (photoRecords.length > 0) {
+        await db.insert(hotelPhotosTable).values(photoRecords);
+      }
+    }
+
     // If vendor entered a custom city not in our CMS, create a pendingCityRequest
     if (customCity) {
       await db.insert(pendingCityRequestsTable as any).values({

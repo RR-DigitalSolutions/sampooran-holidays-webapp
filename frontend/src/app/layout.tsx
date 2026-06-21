@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Layout } from "@/components/Layout";
 import { Toaster } from "@/components/ui/toaster";
+import { PageTransitionProvider } from "@/components/PageTransitionProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -45,9 +46,11 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth" className={`${poppins.variable} ${raleway.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col pt-0 font-sans">
         <Providers>
-          <Layout>
-            {children}
-          </Layout>
+          <PageTransitionProvider>
+            <Layout>
+              {children}
+            </Layout>
+          </PageTransitionProvider>
           <Toaster />
         </Providers>
       </body>

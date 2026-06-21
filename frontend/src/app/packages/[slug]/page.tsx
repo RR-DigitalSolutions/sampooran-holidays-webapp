@@ -9,7 +9,7 @@ const API_URL = getApiUrl();
 async function getPackageBySlug(slug: string) {
   try {
     const res = await fetch(`${API_URL}/destinations/resolve-slug/${slug}`, {
-      cache: "no-store",
+      next: { revalidate: 60 }, // ⚡ ISR: serve from cache, revalidate every 60s
     });
     if (!res.ok) return null;
     const data = await res.json();

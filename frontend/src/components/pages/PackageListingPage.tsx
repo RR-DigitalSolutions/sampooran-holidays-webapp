@@ -87,7 +87,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         {entityData.imageUrl && (
           <>
             <Image
-              src={validateImageUrl(entityData.imageUrl)}
+              src={validateImageUrl(entityData.imageUrl, 1920, 800, "24:10")}
               alt=""
               fill
               className="object-cover absolute inset-0 z-0 pointer-events-none opacity-85"
@@ -187,7 +187,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                       className="inline-flex items-center gap-2 md:gap-3 bg-white/10 active:bg-white/20 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-white/10 transition-colors group"
                     >
                       <div className="relative w-7 h-7 md:w-10 md:h-10 rounded-md md:rounded-lg overflow-hidden shrink-0 border border-white/20">
-                        <Image src={validateImageUrl(place.thumbnailUrl || place.imageUrl)} alt="" fill className="object-cover" sizes="40px" />
+                        <Image src={validateImageUrl(place.thumbnailUrl || place.imageUrl, 150, 150, "1:1")} alt="" fill className="object-cover" sizes="40px" />
                       </div>
                       <div className="flex flex-col">
                         <span className="text-[10px] md:text-xs font-bold text-white group-hover:text-accent transition-colors">{place.name}</span>
@@ -744,7 +744,7 @@ function MasonryCard({ place, tall }: { place: any; tall: boolean }) {
         tall ? "h-[220px] md:h-[300px] lg:h-[340px]" : "h-[120px] md:h-[140px] lg:h-[160px]"
       )}>
         <Image
-          src={validateImageUrl(place.imageUrl || place.thumbnailUrl)}
+          src={validateImageUrl(place.imageUrl || place.thumbnailUrl, 400, tall ? 600 : 300, tall ? "2:3" : "4:3")}
           alt={`${place.name} Tour Packages`}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"

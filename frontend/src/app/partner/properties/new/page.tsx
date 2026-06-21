@@ -64,7 +64,107 @@ export default function AddPropertyPage() {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [imageUrls, setImageUrls] = useState<string[]>([""]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    setError("");
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (const file of files) {
+        let fileToUpload = file;
+        const lowercaseType = file.type.toLowerCase();
+        const isAvifOrWebp = lowercaseType === "image/avif" || lowercaseType === "image/webp";
+
+        if (!isAvifOrWebp) {
+          fileToUpload = await new Promise<File>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+              const img = new window.Image();
+              img.src = event.target?.result as string;
+              img.onload = () => {
+                const canvas = document.createElement("canvas");
+                let width = img.width;
+                let height = img.height;
+                const MAX_WIDTH = 1920;
+                const MAX_HEIGHT = 1080;
+                if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+                  if (width > height) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                  } else {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                  }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) return reject(new Error("Canvas context is null"));
+                ctx.drawImage(img, 0, 0, width, height);
+
+                let quality = 0.8;
+                const getBlob = (q: number): Promise<Blob | null> => {
+                  return new Promise((res) => canvas.toBlob(res, "image/webp", q));
+                };
+
+                const compress = async () => {
+                  let blob = await getBlob(quality);
+                  while (blob && blob.size > 250 * 1024 && quality > 0.1) {
+                    quality -= 0.1;
+                    blob = await getBlob(quality);
+                  }
+                  if (blob) {
+                    resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: "image/webp" }));
+                  } else {
+                    reject(new Error("Image optimization failed"));
+                  }
+                };
+                compress();
+              };
+              img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+          });
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileToUpload);
+
+        const res = await fetch(`${API_BASE}/media/upload?folder=packages`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Upload failed for ${file.name}`);
+        }
+
+        const data = await res.json();
+        uploadedUrls.push(data.url);
+      }
+
+      setImageUrls((prev) => {
+        const cleanPrev = prev.filter((url) => url.trim());
+        return [...cleanPrev, ...uploadedUrls];
+      });
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setError(err.message || "Failed to upload images. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !vendor) {
@@ -90,6 +190,8 @@ export default function AddPropertyPage() {
     breakfastIncluded: false,
     totalRooms: "",
     minPrice: "",
+    email: "",
+    phone: "",
   });
 
   // ── GEO HIERARCHY STATE ───────────────────────────────────
@@ -133,7 +235,10 @@ export default function AddPropertyPage() {
   const update = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const validateStep = () => {
-    if (step === 1 && (!form.name || !form.type)) { setError("Please fill in Property Name and Type."); return false; }
+    if (step === 1) {
+      if (!form.name || !form.type) { setError("Please fill in Property Name and Type."); return false; }
+      if (!form.email || !form.phone) { setError("Please fill in Hotel Contact Email and Phone Number."); return false; }
+    }
     if (step === 2) {
       if (!selectedCountry) { setError("Please select a Country."); return false; }
       if (!selectedState) { setError("Please select a State / Region."); return false; }
@@ -148,10 +253,14 @@ export default function AddPropertyPage() {
   const handleNext = () => { if (validateStep()) setStep(s => Math.min(4, s + 1)); };
 
   const handleSubmit = async () => {
+    const images = imageUrls.filter(u => u.trim());
+    if (images.length === 0) {
+      setError("Please upload at least one photo of your property.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
-      const images = imageUrls.filter(u => u.trim());
       const payload: any = {
         ...form,
         starRating: Number(form.starRating),
@@ -230,6 +339,21 @@ export default function AddPropertyPage() {
                     <input value={form.name} onChange={e => update("name", e.target.value)}
                       className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
                       placeholder="e.g. The Grand Himalayan Resort" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1.5">Hotel Contact Email *</label>
+                      <input type="email" value={form.email} onChange={e => update("email", e.target.value)}
+                        className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                        placeholder="e.g. info@hotel.com" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 mb-1.5">Hotel Contact Phone *</label>
+                      <input type="tel" value={form.phone} onChange={e => update("phone", e.target.value)}
+                        className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                        placeholder="e.g. +91 98765 43210" />
+                    </div>
                   </div>
 
                   <div>
@@ -504,49 +628,67 @@ export default function AddPropertyPage() {
 
               {/* ─── Step 4: Photos ─── */}
               {step === 4 && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-black text-gray-900 mb-1">Property Photos</h2>
-                    <p className="text-sm text-gray-400">Add photo URLs to showcase your property. High-quality images lead to more bookings.</p>
+                    <p className="text-sm text-gray-400">Upload high-quality photos of your property. Highly optimized images attract more guests.</p>
                   </div>
 
-                  <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg text-xs text-amber-700">
-                    <strong>Note:</strong> Enter public image URLs (Unsplash, your website CDN, etc). You can add more photos after registration through the property management panel.
-                  </div>
-
-                  <div className="space-y-3">
-                    {imageUrls.map((url, i) => (
-                      <div key={i} className="flex gap-2">
-                        <div className="flex-1">
-                          <input value={url} onChange={e => {
-                            const updated = [...imageUrls];
-                            updated[i] = e.target.value;
-                            setImageUrls(updated);
-                          }}
-                            className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors"
-                            placeholder={i === 0 ? "Main photo URL (required for listing)" : `Photo ${i + 1} URL`} />
+                  {/* Drag-and-drop upload zone */}
+                  <div className="relative border-2 border-dashed border-gray-200 rounded-2xl p-8 hover:border-[#1B3A6B] hover:bg-slate-50/50 transition-all flex flex-col items-center justify-center text-center group">
+                    <input 
+                      type="file" 
+                      multiple 
+                      accept="image/*" 
+                      disabled={uploading} 
+                      onChange={handleImageUpload} 
+                      className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                    />
+                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                    {uploading ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-bold text-[#1B3A6B]">
+                          <span className="w-4 h-4 border-2 border-[#1B3A6B] border-t-transparent rounded-full animate-spin" />
+                          Optimizing & uploading files...
                         </div>
-                        {url && (
-                          <div className="w-16 h-12 rounded-md border border-gray-200 overflow-hidden shrink-0">
-                            <img src={url} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
-                          </div>
-                        )}
-                        {imageUrls.length > 1 && (
-                          <button type="button" onClick={() => setImageUrls(u => u.filter((_, j) => j !== i))}
-                            className="w-10 h-11 flex items-center justify-center border border-gray-200 rounded-md text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                        <p className="text-xs text-gray-400">Please wait while we prepare your high-resolution images.</p>
                       </div>
-                    ))}
-                    <button type="button" onClick={() => setImageUrls(u => [...u, ""])}
-                      disabled={imageUrls.length >= 20}
-                      className="flex items-center gap-2 text-sm font-bold text-[#1B3A6B] hover:underline disabled:opacity-50">
-                      <Plus className="w-4 h-4" /> Add Another Photo URL
-                    </button>
+                    ) : (
+                      <>
+                        <p className="text-sm font-bold text-gray-700">Drag your photos here or click to browse</p>
+                        <p className="text-xs text-gray-400 mt-1">Recommended: 1200 x 675 (16:9). AVIF, WebP, JPEG, PNG supported.</p>
+                      </>
+                    )}
                   </div>
 
-                  {/* Summary */}
+                  {/* Uploaded Photos Grid */}
+                  {imageUrls.filter(u => u.trim()).length > 0 && (
+                    <div className="space-y-4">
+                      <p className="text-xs font-black uppercase tracking-wider text-gray-400">Uploaded Photos ({imageUrls.filter(u => u.trim()).length})</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {imageUrls.filter(u => u.trim()).map((url, i) => (
+                          <div key={i} className="relative aspect-video rounded-xl overflow-hidden border border-gray-100 group shadow-xs">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            {i === 0 && (
+                              <span className="absolute top-2 left-2 bg-[#1B3A6B] text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shadow-md">
+                                Cover
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setImageUrls(u => u.filter(urlStr => urlStr !== url))}
+                              className="absolute top-2 right-2 w-7 h-7 bg-white/95 hover:bg-red-500 hover:text-white rounded-full flex items-center justify-center text-gray-500 transition-all opacity-0 group-hover:opacity-100 shadow-sm border border-gray-100"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="p-4 bg-slate-50 border border-slate-100 rounded-lg space-y-2">
                     <h3 className="text-sm font-bold text-gray-700 mb-3">Property Summary</h3>
                     {[
