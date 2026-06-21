@@ -101,9 +101,9 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
               animate={{ opacity: 1, x: 0 }}
             >
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-accent font-bold text-xs uppercase tracking-[0.2em]">World Explorer</p>
+                <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">World Explorer</p>
               </div>
-              <h2 className="text-2xl md:text-4xl font-serif font-bold text-primary">
+              <h2 className="text-xl md:text-3xl font-serif font-bold text-primary">
                 Top Popular <span className="text-accent font-light">Destinations</span>
               </h2>
             </motion.div>
@@ -114,7 +114,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`relative shrink-0 px-6 py-2.5 rounded-md text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
+                  className={`relative shrink-0 px-4 py-2 rounded-md text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
                     }`}
                 >
                   {activeTab === tab && (
@@ -158,7 +158,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
-                          <h3 className={`font-bold truncate text-sm md:text-base ${selectedDest?.slug === dest.slug ? "text-white" : "text-primary group-hover:text-accent"}`}>
+                          <h3 className={`font-bold truncate text-[12px] md:text-[14px] ${selectedDest?.slug === dest.slug ? "text-white" : "text-primary group-hover:text-accent"}`}>
                             {dest.name}
                           </h3>
                           {selectedDest?.slug === dest.slug && (
@@ -167,7 +167,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                             </motion.div>
                           )}
                         </div>
-                        <p className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider ${selectedDest?.slug === dest.slug ? "text-white/80" : "text-slate-400"}`}>
+                        <p className={`text-[9px] md:text-[10px] capitalize ${selectedDest?.slug === dest.slug ? "text-white/80" : "text-slate-400"}`}>
                           {dest.type} • {dest.packageCount} Packages • Starts ₹{dest.startingPrice?.toLocaleString('en-IN') || "9,999"}
                         </p>
                       </div>
@@ -210,10 +210,10 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-wrap gap-1.5 md:gap-2 pr-4">
-                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest shadow-lg">
+                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] rounded-md font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest shadow-lg">
                           Featured Destination
                         </span>
-                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest">
+                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] rounded-md font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest">
                           {selectedDest.packageCount} Packages Available
                         </span>
                       </div>
@@ -225,10 +225,10 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                               Starts at ₹{selectedDest.startingPrice.toLocaleString('en-IN')}
                             </span>
                           )}
-                          <h2 className="text-3xl md:text-5xl font-serif font-bold text-white leading-tight md:leading-none drop-shadow-md break-words">
+                          <h2 className="text-2xl md:text-3xl font-serif font-bold text-white leading-tight md:leading-none drop-shadow-md break-words">
                             {selectedDest.name}
                           </h2>
-                          <p className="text-white/80 text-xs md:text-sm max-w-md hidden md:block mt-1">
+                          <p className="text-white/80 text-[9px] md:text-[12px] max-w-md hidden md:block mt-1">
                             Explore the most enchanting corners of {selectedDest.name}. A journey curated for the modern traveler.
                           </p>
                         </div>
@@ -271,7 +271,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                               <div className={`absolute inset-0 transition-opacity duration-300 ${hoveredPlace === place.name ? "bg-black/50" : "bg-black/25"}`} />
 
                               <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4">
-                                <h4 className="text-white font-bold text-sm md:text-base mb-0.5 drop-shadow-md">{place.name}</h4>
+                                <h4 className="text-white font-bold text-[12px] md:text-[14px] mb-0.5 drop-shadow-md">{place.name}</h4>
                                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                                   {(place.packageCount ?? 0) > 0 && (
                                     <span className="text-white/90 text-[9px] md:text-[10px] font-semibold tracking-wide drop-shadow-sm">{place.packageCount} Packages</span>

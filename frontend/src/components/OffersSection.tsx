@@ -80,11 +80,11 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
             <div className="flex items-end gap-6">
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">
+                  <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">
                     {subtitle || "Exclusive Deals"}
                   </p>
                 </div>
-                <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
+                <h2 className="text-xl md:text-3xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
                   {(() => {
                     const t = title || "Special Offers";
                     const words = t.split(" ");
@@ -135,10 +135,10 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={cn(
-                  "whitespace-nowrap px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all border-none",
+                  "whitespace-nowrap px-4 py-1.5 rounded-full text-[10px] md-text-[12px] font-bold uppercase tracking-wider transition-all border-none",
                   activeCategory === cat.id
                     ? "bg-accent text-accent-foreground shadow-md"
-                    : "text-slate-400 bg-slate-50/50 hover:bg-slate-100"
+                    : "text-slate-500 bg-slate-50/50 hover:bg-slate-100"
                 )}
               >
                 {cat.label}
@@ -183,10 +183,10 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                               <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                               <span className="text-[9px] font-bold text-primary tracking-widest uppercase">{offer.category}</span>
                             </div>
-                            <h3 className="font-bold text-slate-800 text-[14px] md:text-[17px] leading-tight mb-1 line-clamp-2 font-['Raleway',sans-serif] tracking-tight group-hover/card:text-primary transition-colors">
+                            <h3 className="font-bold text-slate-800 text-[11px] md:text-[12px] leading-tight mb-1 line-clamp-2 font-['Raleway',sans-serif] tracking-tight group-hover/card:text-primary transition-colors">
                               {offer.title}
                             </h3>
-                            <p className="text-slate-400 text-[10px] md:text-[11px] font-medium leading-relaxed line-clamp-2">
+                            <p className="text-slate-500 text-[9px] md:text-[10px] font-medium leading-relaxed line-clamp-2">
                               {offer.description}
                             </p>
                           </div>

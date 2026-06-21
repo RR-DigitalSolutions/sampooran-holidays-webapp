@@ -93,7 +93,7 @@ export function Layout({ children }: { children: ReactNode }) {
     "fixed top-0 z-50 w-full transition-all duration-500",
     scrolled
       ? "bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
-      : "bg-gradient-to-b from-black/40 via-black/20 to-transparent border-transparent py-3 md:py-6"
+      : "bg-gradient-to-b from-black/40 via-black/20 to-transparent border-transparent py-1 md:py-1"
   );
 
   const isDashboardRoute = pathname?.startsWith("/partner") || pathname?.startsWith("/admin");

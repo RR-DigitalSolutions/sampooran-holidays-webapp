@@ -69,11 +69,11 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
 
-              <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">
+              <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">
                 {subtitle || "Handpicked Collections"}
               </p>
             </div>
-            <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
+            <h2 className="text-xl md:text-3xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
               {(() => {
                 const t = title || "Explore by Themes";
                 const words = t.split(" ");
@@ -111,7 +111,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
         <div>
           <div className="cursor-grab active:cursor-grabbing overflow-hidden" ref={emblaRef}>
-            <div className="flex gap-2 md:gap-2">
+            <div className="flex gap-1.5 md:gap-1">
               {themes.map((theme, idx) => {
                 const themeLabel = theme.label || theme.name || "";
                 const finalImageUrl = theme.imageUrl || theme.image_url || DEFAULT_IMAGES[themeLabel];
@@ -119,7 +119,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
                 return (
                   <div key={theme.id || idx} className="flex-none w-[110px] md:w-[125px]">
-                    <Link href={linkHref} className="flex flex-col items-center gap-3 group">
+                    <Link href={linkHref} className="flex flex-col items-center gap-2 group">
 
                       <div className="relative p-[2px] rounded-full flex items-center justify-center">
                         {/* Theme Colors & Pink Glow (Behind) - Adjusted scale to prevent cutting */}
@@ -151,16 +151,16 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                       {/* Theme Title & Dynamic Data */}
                       <div className="flex flex-col items-center ">
                         <span
-                          className="text-[12px] md:text-[13px] font-black text-primary tracking-[0.12em] uppercase group-hover:text-accent transition-colors text-center leading-tight"
+                          className="text-[10px] md:text-[11px] font-black text-primary uppercase group-hover:text-accent transition-colors text-center"
                           style={{ fontFamily: "'Poppins', sans-serif" }}
                         >
                           {theme.label}
                         </span>
                         <div className="flex flex-col items-center">
-                          <span className="text-[10px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                            {theme.packageCount || 0} Tours
+                          <span className="text-[9px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-md">
+                            {theme.packageCount || 0} + Tours
                           </span>
-                          <span className="text-[9px] font-bold text-slate-400">
+                          <span className="text-[9px] font-bold text-slate-600">
                             From ₹{theme.startingPrice?.toLocaleString('en-IN') || "9,999"}
                           </span>
                         </div>
