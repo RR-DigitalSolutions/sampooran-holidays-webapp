@@ -389,12 +389,12 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                   <div className="rounded-lg bg-gradient-to-r from-primary to-[#163175] overflow-hidden">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
                       <div className="p-10 md:p-14 flex flex-col justify-center text-white">
-                        <p className="text-accent font-bold text-sm mb-3">{section.subtitle || "Reliable Fleet"}</p>
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4 font-['Raleway',sans-serif]">{section.title || "Transport Services"}</h2>
-                        <p className="text-white/70 mb-6 italic">"Expert mountain drivers, AC Taxis, and luxury coaches for Himalayan road trips."</p>
+                        <p className="text-accent font-bold text-sm mb-2">{section.subtitle || "Reliable Fleet"}</p>
+                        <h2 className="text-2xl md:text-3xl font-bold mb-2 font-['Raleway',sans-serif]">{section.title || "Transport Services"}</h2>
+                        <p className="text-white/70 mb-2 text-sm">"Expert mountain drivers, AC Taxis, and luxury coaches for Himalayan road trips."</p>
                         <div className="flex gap-4">
-                          <Link href="/transport"><button className="bg-accent text-accent-foreground rounded-xl px-8 py-4 font-bold hover:scale-105 transition-all shadow-lg shadow-accent/20">Book Transport</button></Link>
-                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-xl px-8 py-4 font-bold hover:bg-white/10 transition-all">Call Expert</button></a>
+                          <Link href="/transport"><button className="bg-accent text-accent-foreground rounded-md px-2 py-2 font-bold hover:scale-105 transition-all shadow-lg shadow-accent/20">Book Transport</button></Link>
+                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-md px-2 py-2 font-bold hover:bg-white/10 transition-all">Call Expert</button></a>
                         </div>
                       </div>
                       <div className="hidden lg:grid grid-cols-2 gap-3 p-6 self-center">
@@ -467,16 +467,16 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                         <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 px-4 py-1.5 rounded-md mb-4">
                           <span className="text-accent text-xs font-black uppercase tracking-widest">B2B Partnership</span>
                         </div>
-                        <h2 className="text-3xl md:text-4xl font-bold mb-4 font-['Raleway',sans-serif]">Are You a <span className="text-accent">Travel Agent</span>?</h2>
-                        <p className="text-white/70 mb-8 leading-relaxed">Join our B2B network and unlock exclusive net rates, dedicated booking support, and marketing tools to grow your travel business.</p>
+                        <h2 className="text-2xl md:text-3xl font-bold mb-2 font-['Raleway',sans-serif]">Are You a <span className="text-accent">Travel Agent</span>?</h2>
+                        <p className="text-white/70 mb-2 text-[12px] md:text-[16px] leading-relaxed">Join our B2B network and unlock exclusive net rates, dedicated booking support, and marketing tools to grow your travel business.</p>
                         <div className="flex flex-wrap gap-4">
-                          <Link href="/b2b"><button className="bg-accent text-primary rounded-md px-8 py-3 font-bold hover:scale-105 transition-all shadow-xl shadow-accent/30">Register Now</button></Link>
-                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-md px-8 py-3 font-bold hover:bg-white/10 transition-all">Call Us</button></a>
+                          <Link href="/b2b"><button className="bg-accent text-primary rounded-md px-2 py-2 font-bold hover:scale-105 transition-all shadow-xl shadow-accent/30">Register Now</button></Link>
+                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-md px-2 py-2 font-bold hover:bg-white/10 transition-all">Call Us</button></a>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         {[["500+", "B2B Partners", "globe"], ["₹0", "Registration Fee", "check"], ["24/7", "Dedicated Support", "headphone"], ["Best", "Net Rates", "tag"]].map(([val, label]) => (
-                          <div key={label} className="bg-white/5 border border-white/10 rounded-md p-5 text-center hover:bg-white/10 transition-all">
+                          <div key={label} className="bg-white/5 border border-white/10 rounded-md p-2 text-center hover:bg-white/10 transition-all">
                             <div className="text-2xl font-black text-accent mb-1">{val}</div>
                             <div className="text-white/70 text-xs font-bold uppercase tracking-wider">{label}</div>
                           </div>

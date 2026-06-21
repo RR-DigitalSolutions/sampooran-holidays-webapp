@@ -289,7 +289,7 @@ function PackageCardComponent({
             </motion.div>
           )}
 
-          <h3 className="absolute bottom-3 left-4 right-4 text-white text-[17px] md:text-lg font-bold leading-tight z-10 shadow-black/50 drop-shadow-lg line-clamp-2">
+          <h3 className="absolute bottom-2 left-4 right-4 text-white text-[16px] md:text-[18px] font-bold leading-tight z-10 shadow-black/50 drop-shadow-lg line-clamp-2">
             {pkg.name}
           </h3>
         </div>
@@ -321,7 +321,7 @@ function PackageCardComponent({
                   ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
                 </span>
               ) : <span className="h-3" />}
-              <span className="text-white text-[20px] font-bold leading-none tracking-tight">
+              <span className="text-white text-[18px] font-bold leading-none tracking-tight">
                 ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
               </span>
             </div>

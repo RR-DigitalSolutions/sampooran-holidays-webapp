@@ -53,9 +53,9 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="max-w-3xl p-2 md:p-2">
               <div className="flex items-center gap-2">
-                <p className="text-accent font-bold text-xs uppercase tracking-[0.2em] font-['Poppins',sans-serif]">Trending Now</p>
+                <p className="text-accent font-bold text-[9px] md:text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">Trending Now</p>
               </div>
-              <h2 className="text-2xl md:text-4xl font-['Raleway',sans-serif] font-bold text-primary mb-1 leading-tight">
+              <h2 className="text-xl md:text-3xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
                 Trending Holiday <span className="text-accent font-light">Packages</span>
               </h2>
               <p className="text-slate-500 text-xs md:text-xs">
@@ -101,10 +101,10 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
             <div className="relative z-10 p-4 md:p-4 flex flex-col lg:flex-row items-center justify-between gap-10">
               {/* Left: Text Content */}
               <div className="w-full lg:w-1/2 text-center lg:text-left">
-                <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-md text-accent text-xs font-bold mb-4 backdrop-blur-sm border border-white/10">
-                  <Sparkles className="w-3.5 h-3.5" /> Customize Your Trip
+                <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-md text-accent text-xs font-bold mb-2 backdrop-blur-sm border border-white/10">
+                  Customize Your Trip
                 </div>
-                <h3 className="text-3xl md:text-4xl font-bold text-white mb-2 font-['Raleway',sans-serif]">
+                <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 font-['Raleway',sans-serif]">
                   Can't find the <span className="text-accent font-light">Perfect Package?</span>
                 </h3>
                 <p className="text-slate-300 text-sm md:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">

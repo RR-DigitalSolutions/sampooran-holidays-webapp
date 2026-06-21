@@ -114,7 +114,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`relative shrink-0 px-4 py-2 rounded-md text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
+                  className={`relative shrink-0 px-4 py-2 rounded-md text-[12px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab ? "text-white" : "text-slate-500 hover:text-primary"
                     }`}
                 >
                   {activeTab === tab && (
@@ -167,7 +167,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                             </motion.div>
                           )}
                         </div>
-                        <p className={`text-[9px] md:text-[10px] capitalize ${selectedDest?.slug === dest.slug ? "text-white/80" : "text-slate-400"}`}>
+                        <p className={`text-[9px] md:text-[10px] capitalize font-semi-bold ${selectedDest?.slug === dest.slug ? "text-white/80" : "text-slate-600"}`}>
                           {dest.type} • {dest.packageCount} Packages • Starts ₹{dest.startingPrice?.toLocaleString('en-IN') || "9,999"}
                         </p>
                       </div>
@@ -210,10 +210,10 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-wrap gap-1.5 md:gap-2 pr-4">
-                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] rounded-md font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest shadow-lg">
+                        <span className="bg-accent/90 backdrop-blur-md text-accent-foreground text-[8px] md:text-[10px] rounded-sm font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest shadow-lg">
                           Featured Destination
                         </span>
-                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] rounded-md font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest">
+                        <span className="bg-white/10 backdrop-blur-md text-white border border-white/20 text-[8px] md:text-[10px] rounded-sm font-black px-2 md:px-3 py-1 md:py-1 uppercase tracking-widest">
                           {selectedDest.packageCount} Packages Available
                         </span>
                       </div>
@@ -225,7 +225,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                               Starts at ₹{selectedDest.startingPrice.toLocaleString('en-IN')}
                             </span>
                           )}
-                          <h2 className="text-2xl md:text-3xl font-serif font-bold text-white leading-tight md:leading-none drop-shadow-md break-words">
+                          <h2 className="text-xl md:text-2xl font-serif font-bold text-white leading-tight md:leading-none drop-shadow-md break-words">
                             {selectedDest.name}
                           </h2>
                           <p className="text-white/80 text-[9px] md:text-[12px] max-w-md hidden md:block mt-1">
@@ -237,7 +237,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                             ? `/packages?country=${selectedDest.slug}`
                             : `/${selectedDest.slug}-tour-packages`
                         }>
-                          <button className="bg-white text-primary hover:bg-accent hover:text-accent-foreground px-6 py-3 rounded-md font-bold text-sm transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap">
+                          <button className="bg-white text-primary hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded-sm font-bold text-sm transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap">
                             Explore <ChevronRight className="h-4 w-4" />
                           </button>
                         </Link>
