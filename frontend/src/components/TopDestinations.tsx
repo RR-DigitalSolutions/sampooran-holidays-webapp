@@ -144,9 +144,6 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: idx * 0.05 }}
                     onClick={() => handleSelectDest(dest)}
-                    onMouseEnter={() => {
-                      if (window.innerWidth > 1024) setSelectedDest(dest);
-                    }}
                     className={`group relative p-1 rounded-lg border transition-all cursor-pointer w-full ${selectedDest?.slug === dest.slug
                       ? "bg-primary border-primary shadow-xl shadow-primary/10"
                       : "bg-white border-slate-100 hover:border-accent/30 hover:bg-slate-50/50"

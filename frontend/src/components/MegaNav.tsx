@@ -34,94 +34,105 @@ const WORLD_DATA = {
 };
 
 export function MegaNav() {
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState<'india' | 'world' | 'services' | 'hotels' | null>(null);
   const [activeRegion, setActiveRegion] = useState<string>("north-india");
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
+  const timeoutRef = useRef<number | null>(null);
   const [dynamicData, setDynamicData] = useState<any>(null);
   const [hotelsData, setHotelsData] = useState<any>(null);
 
-  useEffect(() => {
-    fetch('/api/destinations/mega-menu')
-      .then(async res => {
-        if (!res.ok) {
-          console.warn(`Mega menu fetch failed with status: ${res.status}`);
-          return null;
-        }
-        const text = await res.text();
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          console.warn("Invalid JSON response from mega menu");
-          return null;
-        }
-      })
-      .then(data => {
-        if (data && data.indiaZones) {
-          setDynamicData(data);
-          if (data.indiaZones.length > 0) {
-            setActiveRegion(data.indiaZones[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-          }
-        }
-      })
-      .catch(err => console.warn("Failed to load mega menu data:", err));
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/hotels/mega-menu')
-      .then(async res => {
-        if (!res.ok) {
-          console.warn(`Hotels mega menu fetch failed with status: ${res.status}`);
-          return null;
-        }
-        const text = await res.text();
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          console.warn("Invalid JSON response from hotels mega menu");
-          return null;
-        }
-      })
-      .then(data => {
-        if (data && (data.indiaZones || data.worldRegions)) {
-          setHotelsData(data);
-        }
-      })
-      .catch(err => console.warn("Failed to load hotels mega menu data:", err));
-  }, []);
-
-  const handleMouseEnter = (menu: string) => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setActiveMenu(menu);
-    // Default region based on menu
-    if (menu === 'india') {
-      if (dynamicData?.indiaZones?.length > 0) {
-        setActiveRegion(dynamicData.indiaZones[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-      } else {
-        setActiveRegion('north-india');
+  const fetchMegaMenuData = async () => {
+    if (dynamicData) return;
+    try {
+      const res = await fetch('/api/destinations/mega-menu');
+      if (!res.ok) {
+        console.warn(`Mega menu fetch failed with status: ${res.status}`);
+        return;
       }
-    }
-    if (menu === 'world') {
-      if (dynamicData?.worldRegions?.length > 0) {
-        setActiveRegion(dynamicData.worldRegions[0].slug || dynamicData.worldRegions[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-      } else {
-        setActiveRegion('europe');
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if (data && data.indiaZones) {
+        setDynamicData(data);
+        if (data.indiaZones.length > 0) {
+          setActiveRegion(data.indiaZones[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+        }
       }
-    }
-    if (menu === 'hotels') {
-      if (hotelsData?.indiaZones?.length > 0) {
-        setActiveRegion(hotelsData.indiaZones[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-      } else if (hotelsData?.worldRegions?.length > 0) {
-        setActiveRegion(hotelsData.worldRegions[0].slug || hotelsData.worldRegions[0].name.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-      } else {
-        setActiveRegion('north-india');
-      }
+    } catch (err) {
+      console.warn("Failed to load mega menu data:", err);
     }
   };
 
-  const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => {
+  const fetchHotelsMenuData = async () => {
+    if (hotelsData) return;
+    try {
+      const res = await fetch('/api/hotels/mega-menu');
+      if (!res.ok) {
+        console.warn(`Hotels mega menu fetch failed with status: ${res.status}`);
+        return;
+      }
+      const text = await res.text();
+      const data = JSON.parse(text);
+      if (data && (data.indiaZones || data.worldRegions)) {
+        setHotelsData(data);
+      }
+    } catch (err) {
+      console.warn("Failed to load hotels mega menu data:", err);
+    }
+  };
+
+  const toggleMenu = async (menu: 'india' | 'world' | 'services' | 'hotels') => {
+    if (activeMenu === menu) {
       setActiveMenu(null);
-    }, 200);
+      return;
+    }
+
+    if (menu === 'india' || menu === 'world') {
+      await fetchMegaMenuData();
+    }
+
+    if (menu === 'hotels') {
+      await fetchHotelsMenuData();
+    }
+
+    setActiveMenu(menu);
+  };
+
+  useEffect(() => {
+    if (!activeMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setActiveMenu(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, [activeMenu]);
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
+      setActiveMenu(null);
+    }, 250);
   };
 
   const renderMegaMenu = (type: 'india' | 'world') => {
@@ -170,15 +181,15 @@ export function MegaNav() {
       >
         <div className="container mx-auto">
           {/* Top Bar Navigation */}
-          <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 overflow-x-auto no-scrollbar bg-slate-50/50">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+          <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 overflow-x-auto no-scrollbar bg-slate-50">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
               Top Recommended:
             </span>
             {data.topRecommended.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-[11px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
+                className="text-[11px] font-medium text-slate-700 hover:text-slate-900 transition-colors whitespace-nowrap"
               >
                 {item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}
               </Link>
@@ -187,21 +198,21 @@ export function MegaNav() {
 
           <div className="flex">
             {/* Left Sidebar */}
-            <div className="w-[280px] bg-slate-50/30 border-r border-slate-100 py-6">
+            <div className="w-[280px] bg-slate-50 border-r border-slate-100 py-6">
               {data.regions.map((region) => {
                 if (!region) return null;
                 return (
                   <div
                     key={region.id}
-                    onMouseEnter={() => setActiveRegion(region.id)}
+                    onClick={() => setActiveRegion(region.id)}
                     className={cn(
                       "px-8 py-3.5 cursor-pointer flex items-center justify-between transition-all group",
                       activeRegion === region.id
-                        ? "bg-white text-primary border-r-4 border-accent shadow-sm"
-                        : "text-slate-500 hover:bg-slate-100/50 hover:text-primary"
+                        ? "bg-white text-slate-900 border-r-4 border-primary shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     )}
                   >
-                    <span className="text-[14px] font-bold">{region.name}</span>
+                    <span className="text-[13px] font-semibold">{region.name}</span>
                     <ChevronRight className={cn(
                       "w-4 h-4 transition-transform",
                       activeRegion === region.id ? "translate-x-1 text-accent opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -218,7 +229,7 @@ export function MegaNav() {
                   const groupSlug = group.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
                   return (
                     <div key={group.title} className="space-y-3">
-                      <h4 className="text-[14px] font-black text-primary border-b border-slate-100 pb-2 mb-4 tracking-tight group-hover:text-accent transition-colors">
+                      <h4 className="text-[13px] font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4 tracking-tight transition-colors">
                         <Link href={`/${groupSlug}-tour-packages`}>
                           {group.title.toLowerCase().endsWith('tours') ? group.title : `${group.title} Tours`}
                         </Link>
@@ -232,7 +243,7 @@ export function MegaNav() {
                             <li key={itemSlug || index}>
                               <Link
                                 href={`/${itemSlug}-tour-packages`}
-                                className="group flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-primary hover:font-bold transition-all py-0.5"
+                                className="group flex items-center gap-1.5 text-[13px] text-slate-600 hover:text-primary transition-colors py-0.5"
                               >
                                 <MapPin className="w-3 h-3 text-slate-300 group-hover:text-accent transition-colors shrink-0" />
                                 <span className="truncate">{itemName.toLowerCase().endsWith('tours') ? itemName : `${itemName} Tours`}</span>
@@ -255,7 +266,7 @@ export function MegaNav() {
                   <div className="col-span-full pt-6 mt-6 border-t border-slate-100 flex justify-start">
                     <Link
                       href={type === 'india' ? "/india-tour-packages" : "/world-tour-packages"}
-                      className="flex items-center gap-2 text-accent font-bold text-[13px] hover:underline group"
+                      className="flex items-center gap-2 text-accent font-semibold text-[13px] hover:underline group"
                     >
                       View All {currentRegionData.name} Packages
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -321,40 +332,40 @@ export function MegaNav() {
         onMouseLeave={handleMouseLeave}
       >
         <div className="container mx-auto">
-          <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 overflow-x-auto no-scrollbar bg-slate-50/50">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+          <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 overflow-x-auto no-scrollbar bg-slate-50">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest whitespace-nowrap">
               Hotels Directory:
             </span>
             <Link
               href="/hotels"
-              className="text-[11px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
+              className="text-[11px] font-medium text-slate-700 hover:text-slate-900 transition-colors whitespace-nowrap"
             >
               All Hotels
             </Link>
             <Link
               href="/hotels/india"
-              className="text-[11px] font-bold text-slate-700 hover:text-primary transition-colors whitespace-nowrap"
+              className="text-[11px] font-medium text-slate-700 hover:text-slate-900 transition-colors whitespace-nowrap"
             >
               Hotels in India
             </Link>
           </div>
 
           <div className="flex">
-            <div className="w-[280px] bg-slate-50/30 border-r border-slate-100 py-6 max-h-[450px] overflow-y-auto">
+            <div className="w-[280px] bg-slate-50 border-r border-slate-100 py-6 max-h-[450px] overflow-y-auto">
               {regions.map((region) => {
                 if (!region) return null;
                 return (
                   <div
                     key={region.id}
-                    onMouseEnter={() => setActiveRegion(region.id)}
+                    onClick={() => setActiveRegion(region.id)}
                     className={cn(
                       "px-8 py-3.5 cursor-pointer flex items-center justify-between transition-all group",
                       activeRegion === region.id
-                        ? "bg-white text-primary border-r-4 border-accent shadow-sm"
-                        : "text-slate-500 hover:bg-slate-100/50 hover:text-primary"
+                        ? "bg-white text-slate-900 border-r-4 border-primary shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     )}
                   >
-                    <span className="text-[14px] font-bold">{region.name} Hotels</span>
+                    <span className="text-[13px] font-semibold">{region.name} Hotels</span>
                     <ChevronRight className={cn(
                       "w-4 h-4 transition-transform",
                       activeRegion === region.id ? "translate-x-1 text-accent opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -373,7 +384,7 @@ export function MegaNav() {
 
                   return (
                     <div key={group.title} className="space-y-3">
-                      <h4 className="text-[14px] font-black text-primary border-b border-slate-100 pb-2 mb-4 tracking-tight hover:text-accent transition-colors">
+                      <h4 className="text-[13px] font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4 tracking-tight hover:text-accent transition-colors">
                         <Link href={stateOrCountryHref}>
                           {group.title.toLowerCase().endsWith('hotels') ? group.title : `${group.title} Hotels`}
                         </Link>
@@ -401,7 +412,7 @@ export function MegaNav() {
                             <li key={itemSlug || index}>
                               <Link
                                 href={itemHref}
-                                className="group flex items-center gap-1.5 text-[13px] text-slate-500 hover:text-primary hover:font-bold transition-all py-0.5"
+                                className="group flex items-center gap-1.5 text-[13px] text-slate-600 hover:text-primary transition-colors py-0.5"
                               >
                                 <MapPin className="w-3.5 h-3.5 text-slate-300 group-hover:text-accent transition-colors shrink-0" />
                                 <span className="truncate">{itemName.toLowerCase().endsWith('hotels') ? itemName : `${itemName} Hotels`}</span>
@@ -427,32 +438,28 @@ export function MegaNav() {
   };
 
   return (
-    <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 h-full relative font-sans">
-
+      <nav ref={navRef} className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 h-full relative font-sans">
       {/* INDIA */}
-      <div
-        className="h-full flex items-center px-0.5"
-        onMouseEnter={() => handleMouseEnter('india')}
-        onMouseLeave={handleMouseLeave}
-      >
-        <button className={cn(
-          "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
-          activeMenu === 'india'
-            ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
-            : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
-        )}>
+      <div className="h-full flex items-center px-0.5">
+        <button
+          onClick={() => toggleMenu('india')}
+          className={cn(
+            "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
+            activeMenu === 'india'
+              ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
+              : 'text-slate-700 hover:text-white hover:bg-gradient-to-br hover:from-primary hover:to-[#1e3a8a] hover:shadow-md'
+          )}
+        >
           <MapPin className={cn("w-3.5 h-3.5 transition-colors shrink-0", activeMenu === 'india' ? "text-accent" : "text-primary group-hover:text-accent")} />
           India Tours <ChevronDown className={cn("w-3 h-3 transition-transform opacity-70", activeMenu === 'india' && "rotate-180")} />
         </button>
       </div>
 
       {/* WORLD */}
-      <div
-        className="h-full flex items-center px-0.5"
-        onMouseEnter={() => handleMouseEnter('world')}
-        onMouseLeave={handleMouseLeave}
-      >
-        <button className={cn(
+      <div className="h-full flex items-center px-0.5">
+        <button
+          onClick={() => toggleMenu('world')}
+          className={cn(
           "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'world'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
@@ -464,12 +471,10 @@ export function MegaNav() {
       </div>
 
       {/* SERVICES DROPDOWN */}
-      <div
-        className="h-full flex items-center px-0.5 relative"
-        onMouseEnter={() => handleMouseEnter('services')}
-        onMouseLeave={handleMouseLeave}
-      >
-        <button className={cn(
+      <div className="h-full flex items-center px-0.5 relative">
+        <button
+          onClick={() => toggleMenu('services')}
+          className={cn(
           "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'services'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
@@ -523,12 +528,10 @@ export function MegaNav() {
       </div>
 
       {/* HOTELS */}
-      <div
-        className="h-full flex items-center px-0.5"
-        onMouseEnter={() => handleMouseEnter('hotels')}
-        onMouseLeave={handleMouseLeave}
-      >
-        <button className={cn(
+      <div className="h-full flex items-center px-0.5">
+        <button
+          onClick={() => toggleMenu('hotels')}
+          className={cn(
           "group flex items-center gap-1 xl:gap-1.5 font-bold text-[11px] xl:text-[12.5px] transition-all py-2 px-2 xl:px-2.5 rounded-sm",
           activeMenu === 'hotels'
             ? 'text-white bg-gradient-to-br from-primary to-[#1e3a8a] shadow-md'
