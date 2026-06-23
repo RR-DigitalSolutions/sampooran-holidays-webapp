@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import AdminLayout from "../components/AdminLayout";
 import {
   Plus, Search, Edit, Trash2, MapPin, Globe, ChevronRight,
@@ -779,9 +779,12 @@ function FieldTextarea({ label, value, onChange, className = "" }: { label: stri
 
 function MediaUploadField({ label, value, onChange, className = "", folder = "misc" }: { label: string; value: string; onChange: (v: string) => void; className?: string; folder?: string }) {
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     setUploading(true);
     try {
       const formData = new FormData();
@@ -799,14 +802,27 @@ function MediaUploadField({ label, value, onChange, className = "", folder = "mi
         body: formData,
       });
       
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || errorData.error || "Upload failed");
+      }
+      
       const data = await res.json();
+      if (!data.url) {
+        throw new Error("No URL returned from upload");
+      }
+      
       onChange(data.url);
       toast.success(`Uploaded to ${data.folder?.split('/').slice(1).join('/')} ✓`);
     } catch (err: any) {
+      console.error("Upload error:", err);
       toast.error(err.message || "Failed to upload to Cloudinary");
     } finally {
       setUploading(false);
+      // Reset the file input so the same file can be uploaded again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -817,7 +833,14 @@ function MediaUploadField({ label, value, onChange, className = "", folder = "mi
         <input value={value || ""} onChange={e => onChange(e.target.value)} placeholder="URL or Upload..." className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1B3A6B]" />
         <label className="flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl cursor-pointer transition-colors text-sm font-bold min-w-[100px]">
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Upload"}
-          <input type="file" className="hidden" accept="image/*,video/mp4" onChange={handleUpload} disabled={uploading} />
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            className="hidden" 
+            accept="image/*,video/mp4" 
+            onChange={handleUpload} 
+            disabled={uploading} 
+          />
         </label>
       </div>
     </div>

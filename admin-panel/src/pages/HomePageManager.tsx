@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AdminLayout from "../components/AdminLayout";
 import { 
   Plus, Trash2, Edit3, Save, Layers, Image as ImageIcon, 
@@ -88,6 +88,7 @@ export default function HomePageManager() {
   const [imageSource, setImageSource] = useState<"link" | "upload">("link");
   const [activeModalTab, setActiveModalTab] = useState<"General" | "Content" | "SEO">("General");
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addToast = (type: Toast['type'], message: string) => {
     const id = Date.now();
@@ -141,7 +142,11 @@ export default function HomePageManager() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const token = JSON.parse(localStorage.getItem("sh_admin_token") || "{}")?.token;
+      const stored = localStorage.getItem("sh_admin_token");
+      let token = "";
+      if (stored) {
+        try { token = JSON.parse(stored).token; } catch { }
+      }
 
       // Determine the correct Cloudinary subfolder based on the active modal context
       let folder = "misc";
@@ -156,30 +161,37 @@ export default function HomePageManager() {
 
       const res = await fetch(`${API_URL}/media/upload?folder=${folder}`, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
         body: formData
       });
 
-      const data = await res.json();
-      if (res.ok && data.url) {
-        if (editingTheme) {
-          setEditingTheme({ ...editingTheme, imageUrl: data.url });
-        } else if (editingSlide) {
-          setEditingSlide({ ...editingSlide, imageUrl: data.url });
-        } else if (editingOffer) {
-          setEditingOffer({ ...editingOffer, imageUrl: data.url });
-        }
-        addToast('success', `Image uploaded to ${data.folder?.split('/').slice(1).join('/')} ✓`);
-      } else {
-        addToast('error', "Upload failed: " + (data.message || "Unknown error"));
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || errorData.error || "Upload failed");
       }
-    } catch (err) {
+
+      const data = await res.json();
+      if (!data.url) {
+        throw new Error("No URL returned from upload");
+      }
+
+      if (editingTheme) {
+        setEditingTheme({ ...editingTheme, imageUrl: data.url });
+      } else if (editingSlide) {
+        setEditingSlide({ ...editingSlide, imageUrl: data.url });
+      } else if (editingOffer) {
+        setEditingOffer({ ...editingOffer, imageUrl: data.url });
+      }
+      addToast('success', `Image uploaded to ${data.folder?.split('/').slice(1).join('/')} ✓`);
+    } catch (err: any) {
       console.error("Upload error", err);
-      addToast('error', "A network error occurred during upload");
+      addToast('error', err.message || "Upload failed");
     } finally {
       setUploading(false);
+      // Reset the file input so the same file can be uploaded again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
