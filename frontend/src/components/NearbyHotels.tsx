@@ -152,13 +152,21 @@ export function NearbyHotels({ lat, lng, title, subtitle }: NearbyHotelsProps) {
             {hotels.map((hotel) => (
               <div key={hotel.id} className="min-w-[320px] w-[320px] bg-white rounded-[3rem] border border-slate-100 overflow-hidden shrink-0 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 group relative p-3">
                 <div className="relative h-60 overflow-hidden rounded-[2.5rem]">
-                  <Image 
-                    src={hotel.images?.[0] || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"} 
-                    alt={hotel.name}
-                    fill
-                    className="object-cover transition-transform duration-[2s] group-hover:scale-110" 
-                    sizes="(max-width: 768px) 100vw, 400px"
-                  />
+                  {hotel.images?.[0] && hotel.images[0].trim() ? (
+                    <Image 
+                      src={hotel.images[0]} 
+                      alt={hotel.name || "Hotel image"}
+                      fill
+                      className="object-cover transition-transform duration-[2s] group-hover:scale-110" 
+                      sizes="(max-width: 768px) 100vw, 400px"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-100 flex items-center justify-center">
+                      <svg className="w-12 h-12 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
+                      </svg>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
                   
                   <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-[9px] font-black flex items-center gap-1 shadow-2xl">

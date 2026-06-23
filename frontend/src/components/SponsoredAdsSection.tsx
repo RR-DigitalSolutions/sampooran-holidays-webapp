@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, ArrowRight, Info } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import { validateImageUrl } from "@/lib/utils";
 
 interface SponsoredAd {
   id: number;
@@ -94,13 +95,15 @@ export function SponsoredAdsSection({
           {/* Embla viewport */}
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex">
-              {ads.map((ad) => (
+              {ads.map((ad) => {
+                const validImageUrl = validateImageUrl(ad.imageUrl?.trim() ? ad.imageUrl : PLACEHOLDER, 1200, 450, "8:3");
+                return (
                 <div key={ad.id} className="flex-[0_0_100%] min-w-0">
                   <Link href={ad.link || "/"}>
                     <div className="relative aspect-[3/1] md:aspect-[8/1] w-full bg-slate-900 cursor-pointer">
                       <Image
-                        src={ad.imageUrl}
-                        alt={ad.title}
+                        src={validImageUrl}
+                        alt={ad.title || "Sponsored ad"}
                         fill
                         className="object-cover opacity-90 group-hover/banner:scale-105 transition-transform duration-[2000ms]"
                         sizes="100vw"
@@ -144,7 +147,8 @@ export function SponsoredAdsSection({
                     </div>
                   </Link>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
 

@@ -58,13 +58,21 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
           {hotels.map((hotel) => (
             <Link key={hotel.id} href={`/hotels/${hotel.slug}`} className="block group">
               <div className="relative h-[220px] rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
-                <Image
-                  src={getHotelImageUrl(hotel.imageUrl, 400, 300, "4:3")}
-                  alt={hotel.name}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                />
+                {hotel.imageUrl && hotel.imageUrl.trim() ? (
+                  <Image
+                    src={getHotelImageUrl(hotel.imageUrl, 400, 300, "4:3")}
+                    alt={hotel.name || "Hotel image"}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-100 flex items-center justify-center">
+                    <svg className="w-12 h-12 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
+                    </svg>
+                  </div>
+                )}
                 
                 {/* Gradient overlays */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A0B1A]/90 via-[#0A0B1A]/40 to-transparent" />

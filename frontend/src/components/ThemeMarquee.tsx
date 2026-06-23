@@ -3,7 +3,7 @@
 import React, { useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
+import { cn, validateImageUrl } from "@/lib/utils";
 import {
   Mountain, Heart, Users, TreePine, Waves,
   Coffee, Zap, Camera, TrendingUp, Globe,
@@ -113,8 +113,9 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
           <div className="cursor-grab active:cursor-grabbing overflow-hidden" ref={emblaRef}>
             <div className="flex gap-1.5 md:gap-1">
               {themes.map((theme, idx) => {
-                const themeLabel = theme.label || theme.name || "";
-                const finalImageUrl = theme.imageUrl || theme.image_url || DEFAULT_IMAGES[themeLabel];
+                const themeLabel = theme.label || theme.name || "Theme";
+                const rawThemeImage = theme.imageUrl?.trim() || theme.image_url?.trim();
+                const finalImageUrl = rawThemeImage ? validateImageUrl(rawThemeImage, 200, 200, "1:1") : "";
                 const linkHref = theme.href || `/packages?theme=${theme.slug || themeLabel}`;
 
                 return (
@@ -134,7 +135,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                             {finalImageUrl ? (
                               <Image
                                 src={finalImageUrl}
-                                alt={theme.label}
+                                alt={theme.label || theme.name || "Theme image"}
                                 fill
                                 sizes="(max-width: 768px) 100px, 120px"
                                 className="object-cover transition-transform duration-700 group-hover:scale-110"

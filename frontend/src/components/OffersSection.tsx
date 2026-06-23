@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, validateImageUrl } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 
@@ -162,13 +162,21 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                         {/* Left Image - Overlapping slightly to prevent seam lines */}
                         <div className="relative w-[41%] md:w-[44%] h-full overflow-hidden shrink-0 z-10">
                           <div className="absolute w-2 bg-white z-20  md:shadow-[-12px_0_20px_rgba(0,0,0,0.04)] transition-transform duration-500 group-hover/card:scale-x-125 origin-right" />
-                          <Image
-                            src={offer.imageUrl || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
-                            alt={offer.title}
-                            fill
-                            sizes="(max-width: 768px) 45vw, 400px"
-                            className="object-cover group-hover/card:scale-110 transition-transform duration-[1.5s] ease-out"
-                          />
+                          {offer.imageUrl && offer.imageUrl.trim() ? (
+                            <Image
+                              src={validateImageUrl(offer.imageUrl, 400, 300, "4:3")}
+                              alt={offer.title || "Offer image"}
+                              fill
+                              sizes="(max-width: 768px) 45vw, 400px"
+                              className="object-cover group-hover/card:scale-110 transition-transform duration-[1.5s] ease-out"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-100 flex items-center justify-center">
+                              <svg className="w-8 h-8 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
+                              </svg>
+                            </div>
+                          )}
                           {offer.termsAndConditions && (
                             <div className="absolute top-2 left-2 z-30 bg-accent text-primary text-[6px] md:text-[8px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest shadow-lg animate-badge-pulse">
                               {offer.termsAndConditions}

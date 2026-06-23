@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useListTestimonials } from "@workspace/api-client-react";
 import { PackageCard } from "@/components/PackageCard";
 import { getApiUrl } from "@/lib/api-url";
-import { Star, Phone, Shield, Headphones, Award, Users, CheckCircle, ChevronRight, ChevronLeft, Search, Calendar, MapPin, Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, Clock, ArrowRight, TrendingUp, Percent, Navigation, Sparkles } from "lucide-react";
+import { validateImageUrl } from "@/lib/utils";
+import { Star, Phone, Shield, Headphones, Award, Users, CheckCircle, ChevronRight, ChevronLeft, Search, Calendar, MapPin, Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, Clock, ArrowRight, TrendingUp, Percent, Navigation, Sparkles, Building2, Truck, ShieldCheck, Handshake } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
@@ -19,7 +20,7 @@ import { PopularPackagesCarousel } from "@/components/PopularPackagesCarousel";
 import { InclusionsSection } from "@/components/InclusionsSection";
 import { SponsoredAdsSection } from "@/components/SponsoredAdsSection";
 import TrendingHotelsSection from "@/components/TrendingHotelsSection";
-import VendorCTA from "@/components/VendorCTA";
+import ServiceVendorSection from "@/components/ServiceVendorSection";
 
 
 
@@ -132,19 +133,9 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
 
       const el = zoomDivsRef.current[idx];
       if (el) {
-        el.style.animation = 'none';
-        el.style.transform = 'scale(1)';
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            el.style.animation = '';
-            el.style.transform = '';
-            el.style.animationName = 'heroKenBurns';
-            el.style.animationDuration = '10000ms';
-            el.style.animationTimingFunction = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            el.style.animationFillMode = 'both';
-            el.style.animationIterationCount = '1';
-          });
-        });
+        el.classList.remove("hero-slide");
+        void el.offsetWidth;
+        el.classList.add("hero-slide");
       }
     };
     emblaApi.on('select', onSelect);
@@ -190,7 +181,9 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   }, [config]);
 
   const sections = useMemo(() => {
-    let list = config?.sections?.filter((s: any) => s.isActive) || [];
+    const rawSections = Array.isArray(config?.sections)
+      ? config.sections.filter((s: any) => s.isActive)
+      : [];
 
     const defaultSections = [
       { sectionType: "HERO" },
@@ -204,24 +197,38 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
       { sectionType: "INTERNATIONAL" },
       { sectionType: "TRANSPORT" },
       { sectionType: "TESTIMONIALS" },
-      { sectionType: "VENDOR_CTA" },
       { sectionType: "B2B" }
     ];
 
-    if (list.length === 0) return defaultSections;
+    const list = rawSections.length > 0 ? rawSections : defaultSections;
+
+    const uniqueSections = new Map<string, any>();
+    for (const section of list) {
+      if (!uniqueSections.has(section.sectionType)) {
+        uniqueSections.set(section.sectionType, section);
+      }
+    }
+    const dedupedSections = Array.from(uniqueSections.values());
 
     // Ensure SPONSORED_ADS is present if it's not in the CMS list
-    if (!list.some((s: any) => s.sectionType === "SPONSORED_ADS")) {
-      const offersIdx = list.findIndex((s: any) => s.sectionType === "OFFERS");
+    if (!dedupedSections.some((s: any) => s.sectionType === "SPONSORED_ADS")) {
+      const offersIdx = dedupedSections.findIndex((s: any) => s.sectionType === "OFFERS");
       const insertIdx = offersIdx !== -1 ? offersIdx + 1 : 2;
-      list.splice(insertIdx, 0, {
+      dedupedSections.splice(insertIdx, 0, {
         sectionType: "SPONSORED_ADS",
         title: "Exclusive Sponsored Deals",
         subtitle: "Handpicked Collections"
       });
     }
 
-    return list;
+    // Ensure the vendor CTA section is always available on the homepage.
+    if (!dedupedSections.some((s: any) => s.sectionType === "VENDOR_CTA")) {
+      const insertIdx = dedupedSections.findIndex((s: any) => s.sectionType === "B2B");
+      const position = insertIdx !== -1 ? insertIdx : dedupedSections.length;
+      dedupedSections.splice(position, 0, { sectionType: "VENDOR_CTA" });
+    }
+
+    return dedupedSections;
   }, [config]);
 
   const offers = config?.offers || [];
@@ -229,6 +236,44 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   const trending = trendingData?.packages || initialData?.trendingData?.packages || [];
   const trendingHotels = initialData?.trendingHotelsData || [];
   const testimonials = testimonialData?.testimonials?.length ? testimonialData.testimonials : (initialData?.testimonialData?.testimonials || []);
+
+  const serviceVendorCards = [
+    {
+      title: "Verified Property Listings",
+      subtitle: "Hotel & Resort Partners",
+      detail: "List your hotel, resort, or homestay with trusted visibility, faster approvals, and secure payouts in our marketplace.",
+      tag: "Property Vendor",
+      Icon: Building2,
+      ctaLabel: "Register Property",
+      ctaHref: "/partner/register",
+      secondaryCtaLabel: "Partner Login",
+      secondaryCtaHref: "/partner/login"
+    },
+    {
+      title: "Taxi, Tempo & Coach Fleet",
+      subtitle: "Transport Operators",
+      detail: "Add your vehicles to a verified premium fleet for airport transfers, sightseeing routes, and group travel across the mountains.",
+      tag: "Transport Vendor",
+      Icon: Truck,
+      ctaLabel: "Join Fleet",
+      ctaHref: "/transport",
+      secondaryCtaLabel: "Call Fleet Desk",
+      secondaryCtaHref: "tel:+918595513009"
+    },
+    {
+      title: "B2B Agent Partnerships",
+      subtitle: "Travel Trade Network",
+      detail: "Grow your agency business with exclusive net rates, marketing support, and a dedicated partner desk for travel agents.",
+      tag: "B2B Agents",
+      Icon: Handshake,
+      ctaLabel: "Become an Agent",
+      ctaHref: "/b2b",
+      secondaryCtaLabel: "Agent Login",
+      secondaryCtaHref: "/partner/login"
+    }
+  ];
+
+  let serviceSectionRendered = false;
 
   return (
     <>
@@ -246,19 +291,11 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                         ) : (
                           <div
                             ref={el => { zoomDivsRef.current[i] = el; }}
-                            className="absolute inset-0"
-                            style={{
-                              animationName: 'heroKenBurns',
-                              animationDuration: '10000ms',
-                              animationTimingFunction: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                              animationFillMode: 'both',
-                              animationIterationCount: '1',
-                              willChange: 'transform',
-                            }}
+                            className="absolute inset-0 hero-slide"
                           >
                             <Image
-                              src={slide.imageUrl || slide.image_url}
-                              alt={slide.title}
+                              src={validateImageUrl(slide.imageUrl || slide.image_url, 1600, 900, "16:9")}
+                              alt={slide.title || "Slide image"}
                               fill
                               className="object-cover select-none pointer-events-none"
                               priority={i === 0}
@@ -318,7 +355,19 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
           case "TRENDING_HOTELS":
             return <TrendingHotelsSection key={idx} hotels={trendingHotels} />;
           case "VENDOR_CTA":
-            return <VendorCTA key={idx} />;
+          case "TRANSPORT":
+          case "B2B":
+            if (serviceSectionRendered) return null;
+            serviceSectionRendered = true;
+            return (
+              <ServiceVendorSection
+                key={idx}
+                badge="Partner Network"
+                title={section.title || "Partner With Sampooran Holidays"}
+                description="Explore hotel, transport, and B2B partner services in one compact slider. Swipe each card to see tailored register and login actions for every service."
+                cards={serviceVendorCards}
+              />
+            );
           case "STATS":
             return (
               <div key={idx} className="bg-gradient-to-r from-primary via-[#0A1931] to-primary text-white">
@@ -382,34 +431,6 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
 
           case "INTERNATIONAL":
             return null;
-          case "TRANSPORT":
-            return (
-              <section key={idx} className="pt-4 pb-4 bg-white">
-                <div className="container mx-auto px-4">
-                  <div className="rounded-lg bg-gradient-to-r from-primary to-[#163175] overflow-hidden">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                      <div className="p-10 md:p-14 flex flex-col justify-center text-white">
-                        <p className="text-accent font-bold text-sm mb-2">{section.subtitle || "Reliable Fleet"}</p>
-                        <h2 className="text-2xl md:text-3xl font-bold mb-2 font-['Raleway',sans-serif]">{section.title || "Transport Services"}</h2>
-                        <p className="text-white/70 mb-2 text-sm">"Expert mountain drivers, AC Taxis, and luxury coaches for Himalayan road trips."</p>
-                        <div className="flex gap-4">
-                          <Link href="/transport"><button className="bg-accent text-accent-foreground rounded-md px-2 py-2 font-bold hover:scale-105 transition-all shadow-lg shadow-accent/20">Book Transport</button></Link>
-                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-md px-2 py-2 font-bold hover:bg-white/10 transition-all">Call Expert</button></a>
-                        </div>
-                      </div>
-                      <div className="hidden lg:grid grid-cols-2 gap-3 p-6 self-center">
-                        {["https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400", "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400", "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=400", "https://images.unsplash.com/photo-1557223562-6c77ef16210f?w=400"].map((src, i) => (
-                          <div key={i} className="relative h-36 w-full rounded-md overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-                            <Image src={src} alt="" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 200px" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            );
-
           case "WHY_CHOOSE_US":
             return null; // Handled in Layout.tsx
 
@@ -458,35 +479,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
             return null; // Handled in Layout.tsx
 
           case "B2B":
-            return (
-              <div key={idx} className="container mx-auto px-2 md:px-4 mt-6 mb-2 md:my-6">
-                <section className="py-10 md:py-12 bg-primary relative overflow-hidden rounded-[1rem] shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
-                  <div className="px-4 md:px-8 relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                      <div className="text-white">
-                        <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/30 px-4 py-1.5 rounded-md mb-4">
-                          <span className="text-accent text-xs font-black uppercase tracking-widest">B2B Partnership</span>
-                        </div>
-                        <h2 className="text-2xl md:text-3xl font-bold mb-2 font-['Raleway',sans-serif]">Are You a <span className="text-accent">Travel Agent</span>?</h2>
-                        <p className="text-white/70 mb-2 text-[12px] md:text-[16px] leading-relaxed">Join our B2B network and unlock exclusive net rates, dedicated booking support, and marketing tools to grow your travel business.</p>
-                        <div className="flex flex-wrap gap-4">
-                          <Link href="/b2b"><button className="bg-accent text-primary rounded-md px-2 py-2 font-bold hover:scale-105 transition-all shadow-xl shadow-accent/30">Register Now</button></Link>
-                          <a href="tel:+918595513009"><button className="border border-white/30 text-white rounded-md px-2 py-2 font-bold hover:bg-white/10 transition-all">Call Us</button></a>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        {[["500+", "B2B Partners", "globe"], ["₹0", "Registration Fee", "check"], ["24/7", "Dedicated Support", "headphone"], ["Best", "Net Rates", "tag"]].map(([val, label]) => (
-                          <div key={label} className="bg-white/5 border border-white/10 rounded-md p-2 text-center hover:bg-white/10 transition-all">
-                            <div className="text-2xl font-black text-accent mb-1">{val}</div>
-                            <div className="text-white/70 text-xs font-bold uppercase tracking-wider">{label}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              </div>
-            );
+            return null;
 
           default:
             return null;

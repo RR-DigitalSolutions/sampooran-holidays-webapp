@@ -105,6 +105,7 @@ export default function DestinationDetailClient({ slug: propSlug }: { slug?: str
             src={validateImageUrl(d.imageUrl, 1920, 800, "24:10")}
             alt={d.name || "Destination"}
             fill
+            sizes="100vw"
             className="absolute inset-0 w-full h-full object-cover"
             priority
           />
