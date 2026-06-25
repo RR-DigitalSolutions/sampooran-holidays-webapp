@@ -87,3 +87,59 @@ export function generateBreadcrumbSchema(items: { name: string; item: string }[]
     }))
   };
 }
+
+export async function getPageMetadata(
+  pageKey: string,
+  fallback: { title: string; description: string; keywords?: string }
+) {
+  try {
+    const { getApiUrl } = await import("./api-url");
+    const res = await fetch(`${getApiUrl()}/ota/settings`, { next: { revalidate: 60 } });
+    if (!res.ok) {
+      return {
+        title: fallback.title,
+        description: fallback.description,
+        keywords: fallback.keywords,
+      };
+    }
+    const settings = await res.json();
+
+    // Check if there is page metadata key, e.g. meta_home, meta_about
+    const metaStr = settings[`meta_${pageKey}`];
+    let title = fallback.title;
+    let description = fallback.description;
+    let keywords = fallback.keywords;
+
+    if (metaStr) {
+      try {
+        const meta = typeof metaStr === "string" ? JSON.parse(metaStr) : metaStr;
+        if (meta.title) title = meta.title;
+        if (meta.description) description = meta.description;
+        if (meta.keywords) keywords = meta.keywords;
+      } catch (e) {
+        console.error(`Error parsing JSON metadata for key meta_${pageKey}`, e);
+      }
+    }
+
+    const ogBanner = settings.og_banner || "/logo.png";
+
+    return {
+      title,
+      description,
+      keywords,
+      openGraph: {
+        title,
+        description,
+        images: [{ url: ogBanner, alt: title }],
+        type: "website",
+      },
+    };
+  } catch (error) {
+    console.error(`Error fetching page metadata for ${pageKey}`, error);
+    return {
+      title: fallback.title,
+      description: fallback.description,
+      keywords: fallback.keywords,
+    };
+  }
+}

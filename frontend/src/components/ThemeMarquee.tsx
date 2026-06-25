@@ -111,7 +111,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
         <div>
           <div className="cursor-grab active:cursor-grabbing overflow-hidden" ref={emblaRef}>
-            <div className="flex gap-1.5 md:gap-1">
+            <div className="flex gap-2 md:gap-1">
               {themes.map((theme, idx) => {
                 const themeLabel = theme.label || theme.name || "Theme";
                 const rawThemeImage = theme.imageUrl?.trim() || theme.image_url?.trim();
@@ -119,10 +119,10 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                 const linkHref = theme.href || `/packages?theme=${theme.slug || themeLabel}`;
 
                 return (
-                  <div key={theme.id || idx} className="flex-none w-[110px] md:w-[125px]">
-                    <Link href={linkHref} className="flex flex-col items-center gap-2 group">
+                  <div key={theme.id || idx} className="flex-none w-[82px] md:w-[125px]">
+                    <Link href={linkHref} className="flex flex-col items-center gap-1.5 md:gap-2 group">
 
-                      <div className="relative p-[2px] rounded-full flex items-center justify-center">
+                      <div className="relative p-[1.5px] md:p-[2px] rounded-full flex items-center justify-center">
                         {/* Theme Colors & Pink Glow (Behind) - Adjusted scale to prevent cutting */}
                         <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-60 blur-lg transition-all duration-500 scale-125 -z-10" />
 
@@ -130,19 +130,19 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                         <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
 
                         {/* Main Circle Container */}
-                        <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full bg-white p-[3px] z-10 shadow-sm group-hover:shadow-xl transition-all duration-300">
+                        <div className="relative w-16 h-16 md:w-28 md:h-28 rounded-full bg-white p-[2px] md:p-[3px] z-10 shadow-sm group-hover:shadow-xl transition-all duration-300">
                           <div className="w-full h-full rounded-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
                             {finalImageUrl ? (
                               <Image
                                 src={finalImageUrl}
                                 alt={theme.label || theme.name || "Theme image"}
                                 fill
-                                sizes="(max-width: 768px) 100px, 120px"
+                                sizes="(max-width: 768px) 64px, 120px"
                                 className="object-cover transition-transform duration-700 group-hover:scale-110"
                               />
                             ) : (
                               <div className="text-slate-300">
-                                {ICON_MAP[theme.iconName] ? React.createElement(ICON_MAP[theme.iconName], { className: "w-8 h-8" }) : <Mountain className="w-8 h-8" />}
+                                {ICON_MAP[theme.iconName] ? React.createElement(ICON_MAP[theme.iconName], { className: "w-6 h-6 md:w-8 md:h-8" }) : <Mountain className="w-6 h-6 md:w-8 md:h-8" />}
                               </div>
                             )}
                           </div>
@@ -150,18 +150,18 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                       </div>
 
                       {/* Theme Title & Dynamic Data */}
-                      <div className="flex flex-col items-center ">
+                      <div className="flex flex-col items-center min-w-0 w-full">
                         <span
-                          className="text-[10px] md:text-[11px] font-black text-primary uppercase group-hover:text-accent transition-colors text-center"
+                          className="text-[9px] md:text-[11px] font-black text-primary uppercase group-hover:text-accent transition-colors text-center truncate w-full px-1"
                           style={{ fontFamily: "'Poppins', sans-serif" }}
                         >
                           {theme.label}
                         </span>
                         <div className="flex flex-col items-center">
-                          <span className="text-[9px] font-black text-accent bg-accent/10 px-2 py-0.5 rounded-md">
+                          <span className="text-[7.5px] md:text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded">
                             {theme.packageCount || 0} + Tours
                           </span>
-                          <span className="text-[9px] font-bold text-slate-600">
+                          <span className="text-[7.5px] md:text-[9px] font-bold text-slate-600">
                             From ₹{theme.startingPrice?.toLocaleString('en-IN') || "9,999"}
                           </span>
                         </div>
@@ -192,12 +192,12 @@ export function ThemeMarqueeSkeleton() {
             <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse" />
           </div>
         </div>
-        <div className="flex gap-4 overflow-hidden px-6 pb-4">
+        <div className="flex gap-3 overflow-hidden px-6 pb-4">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="flex-none w-[120px] md:w-[150px] flex flex-col items-center gap-3">
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-slate-100 animate-pulse" />
-              <div className="h-4 w-20 bg-slate-100 animate-pulse rounded" />
-              <div className="h-3 w-16 bg-slate-100 animate-pulse rounded" />
+            <div key={i} className="flex-none w-[82px] md:w-[150px] flex flex-col items-center gap-2">
+              <div className="w-16 h-16 md:w-28 md:h-28 rounded-full bg-slate-100 animate-pulse" />
+              <div className="h-3 w-14 bg-slate-100 animate-pulse rounded" />
+              <div className="h-2 w-10 bg-slate-100 animate-pulse rounded" />
             </div>
           ))}
         </div>

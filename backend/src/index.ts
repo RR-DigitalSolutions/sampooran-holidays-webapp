@@ -5,6 +5,9 @@ import { logger } from "./lib/logger";
 import { db, messagesTable, conversationsTable } from "@workspace/db";
 import { eq, sql, and } from "drizzle-orm";
 import { seedAdmin } from "./lib/seedAdmin";
+import { warmCache } from "./lib/cache";
+import { getMongoDB, ensureMongoIndexes, closeMongoDB } from "./lib/mongodb";
+import { runInitialSync } from "./lib/mongoSync";
 
 /**
  * Safe startup migration: creates travel_guides table if it doesn't exist yet.
@@ -412,4 +415,35 @@ server.listen(port, () => {
   runStartupMigrations();
   // OTA Hotel system — create new tables and extend existing ones (idempotent).
   runHotelMigrations();
+  // ⚡ Pre-warm Redis cache for the top public routes after startup
+  // Runs async in background — never blocks server from accepting requests
+  const baseUrl = `http://127.0.0.1:${port}`;
+  setTimeout(() => warmCache(baseUrl), 3000); // 3s delay to let DB warm up first
+
+  // ⚡ MongoDB: connect, ensure indexes, run initial sync
+  // All async — never blocks server startup
+  setTimeout(async () => {
+    try {
+      await getMongoDB(); // Establish connection pool
+      await ensureMongoIndexes(); // Create indexes (idempotent)
+      await runInitialSync(); // Bulk sync PG → Mongo if collections are empty
+    } catch (err) {
+      logger.error({ err }, "MongoDB startup sequence failed — server continues without MongoDB");
+    }
+  }, 5000); // 5s delay: let PG warm up before reading from it
 });
+
+// ── Graceful Shutdown ──────────────────────────────────────────────────────────────────────────────
+async function gracefulShutdown(signal: string) {
+  logger.info({ signal }, "Received shutdown signal, closing connections...");
+  server.close(async () => {
+    await closeMongoDB();
+    logger.info("All connections closed. Process exiting.");
+    process.exit(0);
+  });
+  // Force exit after 10s if graceful shutdown hangs
+  setTimeout(() => process.exit(1), 10_000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

@@ -4,6 +4,9 @@ import { eq, sql, and, gte, lte, or, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db, packagesTable, destinationsTable, statesTable, countriesTable, attractionsTable, diningPointsTable, packageThemesTable, themesTable } from "@workspace/db";
 import { inArray } from "drizzle-orm";
+import { getCollection, COLLECTIONS } from "../lib/mongodb";
+import type { MongoPackage } from "../lib/mongoSync";
+import { logger } from "../lib/logger";
 import {
   ListPackagesQueryParams,
   GetPackageParams,
@@ -14,7 +17,11 @@ const router: IRouter = Router();
 const packageStates = alias(statesTable, "package_states");
 const packageCountries = alias(countriesTable, "package_countries");
 
-async function getPackageWithJoins(filters: any[] = []) {
+/**
+ * Core package query with all joins.
+ * Accepts optional limit/offset for DB-level pagination (avoids loading all rows into JS).
+ */
+async function getPackageWithJoins(filters: any[] = [], limit?: number, offset?: number) {
   const query = db
     .select({
       id: packagesTable.id,
@@ -52,10 +59,33 @@ async function getPackageWithJoins(filters: any[] = []) {
     .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
     .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id));
 
-  if (filters.length > 0) {
-    return query.where(and(...filters));
+  const withFilters = filters.length > 0 ? query.where(and(...filters)) : query;
+
+  if (limit !== undefined && offset !== undefined) {
+    return withFilters.limit(limit).offset(offset);
   }
-  return query;
+  if (limit !== undefined) {
+    return withFilters.limit(limit);
+  }
+  return withFilters;
+}
+
+/** Count packages matching filters — used for pagination total. */
+async function countPackages(filters: any[] = []): Promise<number> {
+  const baseQuery = db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(packagesTable)
+    .leftJoin(packageStates, eq(packagesTable.stateId, packageStates.id))
+    .leftJoin(packageCountries, eq(packagesTable.countryId, packageCountries.id))
+    .leftJoin(destinationsTable, eq(packagesTable.destinationId, destinationsTable.id))
+    .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
+    .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id));
+
+  const [result] = filters.length > 0
+    ? await baseQuery.where(and(...filters))
+    : await baseQuery;
+
+  return Number(result?.count ?? 0);
 }
 
 async function hydratePackageItinerary(itinerary: any): Promise<any[]> {
@@ -207,21 +237,76 @@ router.get("/packages", cacheMiddleware(300), async (req, res): Promise<void> =>
     if (dest) filters.push(eq(packagesTable.destinationId, dest.id));
   }
 
-  const queryResult = await getPackageWithJoins(filters);
-  const total = queryResult.length;
-  const paged = queryResult.slice(Number(offset), Number(offset) + Number(limit));
+  // ⚡ FIX: DB-level pagination — count + paginate in the database, not in JS
+  const lim = Math.min(Number(limit), 100);
+  const off = Number(offset);
+
+  const [total, paged] = await Promise.all([
+    countPackages(filters),
+    getPackageWithJoins(filters, lim, off),
+  ]);
 
   res.json({ packages: paged, total });
 });
 
+/**
+ * GET /packages/featured
+ * ⚡ Reads from MongoDB Atlas (no JOINs, indexed on isFeatured).
+ * Falls back to PostgreSQL if MongoDB is unavailable.
+ */
 router.get("/packages/featured", cacheMiddleware(300), async (_req, res): Promise<void> => {
-  const packages = await getPackageWithJoins([eq(packagesTable.isFeatured, true)]);
-  res.json({ packages: packages.slice(0, 8) });
+  try {
+    const col = await getCollection<MongoPackage>(COLLECTIONS.PACKAGES);
+    if (col) {
+      const packages = await col
+        .find({ isFeatured: true })
+        .sort({ reviewCount: -1, rating: -1 })
+        .limit(8)
+        .project({ _id: 0, syncedAt: 0 })
+        .toArray();
+
+      if (packages.length > 0) {
+        res.setHeader("X-Data-Source", "mongodb");
+        return void res.json({ packages });
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "MongoDB read failed for /packages/featured — falling back to PG");
+  }
+
+  // PostgreSQL fallback
+  res.setHeader("X-Data-Source", "postgresql");
+  const packages = await getPackageWithJoins([eq(packagesTable.isFeatured, true)], 8);
+  res.json({ packages });
 });
 
+/**
+ * GET /packages/trending
+ * ⚡ Reads from MongoDB Atlas first, fallback to PostgreSQL.
+ */
 router.get("/packages/trending", cacheMiddleware(300), async (_req, res): Promise<void> => {
-  const packages = await getPackageWithJoins([eq(packagesTable.isTrending, true)]);
-  res.json({ packages: packages.slice(0, 6) });
+  try {
+    const col = await getCollection<MongoPackage>(COLLECTIONS.PACKAGES);
+    if (col) {
+      const packages = await col
+        .find({ isTrending: true })
+        .sort({ reviewCount: -1 })
+        .limit(12)
+        .project({ _id: 0, syncedAt: 0 })
+        .toArray();
+
+      if (packages.length > 0) {
+        res.setHeader("X-Data-Source", "mongodb");
+        return void res.json({ packages });
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "MongoDB read failed for /packages/trending — falling back to PG");
+  }
+
+  res.setHeader("X-Data-Source", "postgresql");
+  const packages = await getPackageWithJoins([eq(packagesTable.isTrending, true)], 12);
+  res.json({ packages });
 });
 
 router.get("/packages/stats", cacheMiddleware(300), async (_req, res): Promise<void> => {

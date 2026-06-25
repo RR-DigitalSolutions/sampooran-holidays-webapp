@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -8,6 +8,7 @@ import { notifyVendorOfApproval, notifyVendorOfVerification } from "../lib/notif
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { clearCachePattern } from "../lib/cache";
+import { syncPackage, deleteMongoPackage, syncDestination, deleteMongoDestination, syncHomeConfig } from "../lib/mongoSync";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -261,6 +262,49 @@ router.post("/settings", requirePermission("SETTINGS"), async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// INQUIRIES MANAGEMENT
+// ─────────────────────────────────────────────────────────────
+router.get("/inquiries", requirePermission("USERS"), async (req, res) => {
+  try {
+    const list = await db
+      .select()
+      .from(inquiriesTable)
+      .orderBy(desc(inquiriesTable.createdAt));
+    res.json(list);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch inquiries" });
+  }
+});
+
+router.patch("/inquiries/:id", requirePermission("USERS"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, message } = req.body;
+    const [updated] = await db
+      .update(inquiriesTable)
+      .set({
+        status,
+        ...(message !== undefined ? { message } : {}),
+      })
+      .where(eq(inquiriesTable.id, Number(id)))
+      .returning();
+    res.json(updated);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update inquiry" });
+  }
+});
+
+router.delete("/inquiries/:id", requirePermission("USERS"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.delete(inquiriesTable).where(eq(inquiriesTable.id, Number(id)));
+    res.json({ message: "Inquiry deleted successfully" });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete inquiry" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // FINANCIAL OVERSIGHT  (FINANCE permission)
 // ─────────────────────────────────────────────────────────────
 router.get("/ledger", requirePermission("FINANCE"), async (req, res) => {
@@ -296,13 +340,8 @@ router.patch("/approvals/hotels/:id", requirePermission("PACKAGES"), async (req,
     const { status } = req.body; // 'APPROVED' or 'REJECTED'
     const [updated] = await db.update(hotelsTable).set({ status }).where(eq(hotelsTable.id, Number(id))).returning();
     
-    // Invalidate hotels cache so new properties show up immediately
-    try {
-      const { clearCachePattern } = require("../lib/cache");
-      await clearCachePattern("cache:/api/hotels*");
-    } catch (err) {
-      console.error("Cache invalidation failed", err);
-    }
+  // Invalidate hotels cache so new properties show up immediately
+    await clearCachePattern("cache:/api/hotels*");
     
     res.json(updated);
   } catch (e) {
@@ -357,6 +396,8 @@ router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
     const [inserted] = await db.insert(packagesTable).values(data).returning();
     clearCachePattern("cache:/api/packages*");
     clearCachePattern("cache:/api/ota/home/config*");
+    // ⚡ Fire-and-forget: sync to MongoDB in background (non-blocking)
+    syncPackage(inserted.id);
     res.status(201).json(inserted);
   } catch (e: any) {
     logger.error({ error: e.message }, "Package creation error");
@@ -386,6 +427,8 @@ router.patch("/packages/:id", requirePermission("PACKAGES"), async (req, res) =>
       .returning();
     clearCachePattern("cache:/api/packages*");
     clearCachePattern("cache:/api/ota/home/config*");
+    // ⚡ Fire-and-forget: sync updated package to MongoDB
+    syncPackage(Number(id));
     res.json(updated);
   } catch (e: any) {
     logger.error({ error: e.message }, "Package update error");
@@ -399,6 +442,8 @@ router.delete("/packages/:id", requirePermission("PACKAGES"), async (req, res) =
     await db.delete(packagesTable).where(eq(packagesTable.id, Number(req.params.id)));
     clearCachePattern("cache:/api/packages*");
     clearCachePattern("cache:/api/ota/home/config*");
+    // ⚡ Fire-and-forget: remove from MongoDB
+    deleteMongoPackage(Number(req.params.id));
     res.json({ message: "Package deleted successfully" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete package" });
@@ -601,6 +646,9 @@ router.post("/destinations", requirePermission("DESTINATIONS"), async (req, res)
     }
     const [inserted] = await db.insert(destinationsTable).values(data).returning();
     clearCachePattern("cache:/api/ota/home/top-destinations*");
+    clearCachePattern("cache:/api/destinations*");
+    // ⚡ Fire-and-forget: sync to MongoDB
+    syncDestination(inserted.id);
     res.status(201).json(inserted);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to create destination: " + e.message });
@@ -614,6 +662,9 @@ router.patch("/destinations/:id", requirePermission("DESTINATIONS"), async (req,
     const [updated] = await db.update(destinationsTable).set({ ...data, updatedAt: new Date() })
       .where(eq(destinationsTable.id, Number(req.params.id))).returning();
     clearCachePattern("cache:/api/ota/home/top-destinations*");
+    clearCachePattern("cache:/api/destinations*");
+    // ⚡ Fire-and-forget: sync to MongoDB
+    syncDestination(Number(req.params.id));
     res.json(updated);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to update destination" });
@@ -624,6 +675,9 @@ router.delete("/destinations/:id", requirePermission("DESTINATIONS"), async (req
   try {
     await db.delete(destinationsTable).where(eq(destinationsTable.id, Number(req.params.id)));
     clearCachePattern("cache:/api/ota/home/top-destinations*");
+    clearCachePattern("cache:/api/destinations*");
+    // ⚡ Fire-and-forget: remove from MongoDB
+    deleteMongoDestination(Number(req.params.id));
     res.json({ message: "Destination deleted" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete destination" });
@@ -658,6 +712,8 @@ router.post("/home/slides", requirePermission("SETTINGS"), async (req, res) => {
   try {
     const [inserted] = await db.insert(homePageSlidesTable).values(req.body).returning();
     clearCachePattern("cache:/api/ota/home/config*");
+    // ⚡ Re-sync home config to MongoDB after slide change
+    syncHomeConfig();
     res.status(201).json(inserted);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to create slide" });
@@ -668,6 +724,7 @@ router.patch("/home/slides/:id", requirePermission("SETTINGS"), async (req, res)
   try {
     const [updated] = await db.update(homePageSlidesTable).set(req.body).where(eq(homePageSlidesTable.id, Number(req.params.id))).returning();
     clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json(updated);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to update slide" });
@@ -678,6 +735,7 @@ router.delete("/home/slides/:id", requirePermission("SETTINGS"), async (req, res
   try {
     await db.delete(homePageSlidesTable).where(eq(homePageSlidesTable.id, Number(req.params.id)));
     clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json({ message: "Slide deleted" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete slide" });
@@ -716,6 +774,7 @@ router.post("/home/categories", requirePermission("SETTINGS"), async (req, res) 
     }
     const [inserted] = await db.insert(homePageCategoriesTable).values(data).returning();
     clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.status(201).json(inserted);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to create category" });
@@ -754,6 +813,7 @@ router.patch("/home/categories/:id", requirePermission("SETTINGS"), async (req, 
       return res.status(404).json({ error: "Theme not found" });
     }
     clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json(updated);
   } catch (e: any) {
     logger.error({ error: e.message, id: req.params.id }, "Failed to update category");
@@ -765,6 +825,7 @@ router.delete("/home/categories/:id", requirePermission("SETTINGS"), async (req,
   try {
     await db.delete(homePageCategoriesTable).where(eq(homePageCategoriesTable.id, Number(req.params.id)));
     clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json({ message: "Category deleted" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete category" });

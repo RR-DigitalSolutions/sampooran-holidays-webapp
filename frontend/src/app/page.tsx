@@ -2,17 +2,22 @@ import HomeClient from "@/components/HomeClient";
 import type { Metadata } from "next";
 import { getApiUrl } from "@/lib/api-url";
 
-export const metadata: Metadata = {
-  title: "Sampooran Holidays — #1 Himalayan Travel Agency | Manali, Ladakh, Kashmir & Shimla",
-  description: "Book premium, all-inclusive holiday packages for Manali, Leh Ladakh, Kashmir, Shimla, & Spiti Valley. Trusted by 5000+ travelers. Best B2B & B2C tour operators with 24/7 support.",
-  keywords: "Manali holiday packages, Leh Ladakh tour, Kashmir honeymoon package, Shimla tour, Spiti Valley expedition, Himachal Pradesh travel, B2B travel agent India, best travel agency Himachal",
-  openGraph: {
-    title: "Sampooran Holidays — Your Himalayan Travel Experts",
-    description: "Discover the magic of the Himalayas with curated tour packages. Manali, Ladakh, Kashmir, and more.",
-    images: [{ url: "/logo.png", width: 800, height: 600, alt: "Sampooran Holidays" }],
-    type: "website",
-  },
-};
+import { getPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const fallback = {
+    title: "Sampooran Holidays — #1 Himalayan Travel Agency | Manali, Ladakh, Kashmir & Shimla",
+    description: "Book premium, all-inclusive holiday packages for Manali, Leh Ladakh, Kashmir, Shimla, & Spiti Valley. Trusted by 5000+ travelers. Best B2B & B2C tour operators with 24/7 support.",
+    keywords: "Manali holiday packages, Leh Ladakh tour, Kashmir honeymoon package, Shimla tour, Spiti Valley expedition, Himachal Pradesh travel, B2B travel agent India, best travel agency Himachal",
+    openGraph: {
+      title: "Sampooran Holidays — Your Himalayan Travel Experts",
+      description: "Discover the magic of the Himalayas with curated tour packages. Manali, Ladakh, Kashmir, and more.",
+      images: [{ url: "/logo.png", width: 800, height: 600, alt: "Sampooran Holidays" }],
+      type: "website" as const,
+    },
+  };
+  return getPageMetadata("home", fallback);
+}
 
 async function getHomeConfig() {
   const API_URL = getApiUrl();

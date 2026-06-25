@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { cacheMiddleware } from "../lib/cache";
-import { db, hotelsTable, transportServicesTable } from "@workspace/db";
+import { db, hotelsTable, transportServicesTable, settingsTable } from "@workspace/db";
 import { eq, and, sql, asc, desc } from "drizzle-orm";
 
 const router = Router();
@@ -114,6 +114,20 @@ router.get("/transport", cacheMiddleware(300), async (req, res) => {
     res.json(list);
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch transport" });
+  }
+});
+
+// GET /api/ota/settings
+router.get("/settings", cacheMiddleware(120), async (req, res) => {
+  try {
+    const list = await db.select().from(settingsTable);
+    const settingsObj = list.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+    res.json(settingsObj);
+  } catch (e) {
+    res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
 

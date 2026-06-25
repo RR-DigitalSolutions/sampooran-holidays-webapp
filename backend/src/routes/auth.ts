@@ -16,8 +16,8 @@ if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
 // Utility to generate a 6-character referral code
 const generateReferralCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
-// Registration Logic
-router.post("/register", async (req, res) => {
+// Registration — rate limited to prevent account creation spam / credential stuffing
+router.post("/register", authLimiter, async (req, res) => {
   try {
     const { name, email, password, phoneNumber, role, referredByCode, companyName, gstNumber } = req.body;
 
@@ -112,7 +112,7 @@ router.post("/login", authLimiter, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // VENDOR / HOTEL OWNER Registration
 // ─────────────────────────────────────────────────────────────
-router.post("/vendor/register", async (req, res) => {
+router.post("/vendor/register", authLimiter, async (req, res) => {
   try {
     const {
       name, email, password, phoneNumber,

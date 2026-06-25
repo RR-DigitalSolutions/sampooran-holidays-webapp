@@ -4,11 +4,21 @@ import { eq } from "drizzle-orm";
 import { authenticate, AuthenticatedRequest } from "../middleware/auth";
 import { processReferralEarnings } from "../lib/rewards";
 import { logger } from "../lib/logger";
+import rateLimit from "express-rate-limit";
 
 const router = Router();
 
+// 10 bookings per 15 min per IP — even authenticated users shouldn't flood bookings
+const bookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many booking requests. Please wait before trying again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Create a new booking with automatic referral logic
-router.post("/", authenticate, async (req: AuthenticatedRequest, res) => {
+router.post("/", bookingLimiter, authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
     const { packageId, travelDate, travelersCount, specialRequests } = req.body;

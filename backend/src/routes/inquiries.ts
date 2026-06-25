@@ -4,10 +4,20 @@ import { SubmitInquiryBody } from "@workspace/api-zod";
 import { eq } from "drizzle-orm";
 import { notifyVendorOfInquiry } from "../lib/notifications";
 import { usersTable } from "@workspace/db";
+import rateLimit from "express-rate-limit";
 
 const router: IRouter = Router();
 
-router.post("/inquiries", async (req, res): Promise<void> => {
+// 5 inquiries per 15 min per IP — prevents spam bots flooding CRM/email
+const inquiryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many inquiries submitted. Please wait before sending another." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post("/inquiries", inquiryLimiter, async (req, res): Promise<void> => {
   const parsed = SubmitInquiryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

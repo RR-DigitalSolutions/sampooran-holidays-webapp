@@ -2,14 +2,33 @@ import { Router } from "express";
 import { cacheMiddleware } from "../lib/cache";
 import { db, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, themesTable, packagesTable, packageThemesTable, offersTable, hotelsTable } from "@workspace/db";
 import { eq, and, asc, desc, ne, sql, inArray, or, ilike } from "drizzle-orm";
+import { logger } from "../lib/logger";
+import { getCollection, COLLECTIONS } from "../lib/mongodb";
+import type { MongoHomeConfig } from "../lib/mongoSync";
 
 const router = Router();
 
 /**
  * GET /api/ota/home/config
- * Returns dynamic configuration for the home page sections, slides, and categories.
+ * ⚡ Reads from MongoDB Atlas first (single document, no JOINs).
+ * Falls back to PostgreSQL if MongoDB is unavailable or empty.
  */
 router.get("/config", cacheMiddleware(600), async (req, res) => {
+  // ── MongoDB fast path ───────────────────────────────────────────────
+  try {
+    const col = await getCollection<MongoHomeConfig>(COLLECTIONS.HOME_CONFIG);
+    if (col) {
+      const doc = await col.findOne({ _type: "homeConfig" }, { projection: { _id: 0, _type: 0 } });
+      if (doc && doc.slides?.length > 0) {
+        res.setHeader("X-Data-Source", "mongodb");
+        return void res.json(doc);
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "MongoDB read failed for /config — falling back to PG");
+  }
+
+  // ── PostgreSQL fallback ────────────────────────────────────────────────
   try {
     const [slides, categories, sections, themes, offers] = await Promise.all([
       db.select({
@@ -17,7 +36,7 @@ router.get("/config", cacheMiddleware(600), async (req, res) => {
         title: homePageSlidesTable.title,
         subtitle: homePageSlidesTable.subtitle,
         imageUrl: homePageSlidesTable.imageUrl,
-        image_url: homePageSlidesTable.imageUrl, // Support both formats
+        image_url: homePageSlidesTable.imageUrl,
         videoUrl: homePageSlidesTable.videoUrl,
         tag: homePageSlidesTable.tag,
         ctaText: homePageSlidesTable.ctaText,
@@ -34,7 +53,7 @@ router.get("/config", cacheMiddleware(600), async (req, res) => {
         content: homePageCategoriesTable.content,
         iconName: homePageCategoriesTable.iconName,
         imageUrl: homePageCategoriesTable.imageUrl,
-        image_url: homePageCategoriesTable.imageUrl, // Support both formats
+        image_url: homePageCategoriesTable.imageUrl,
         href: homePageCategoriesTable.href,
         color: homePageCategoriesTable.color,
         displayOrder: homePageCategoriesTable.displayOrder,
@@ -52,20 +71,12 @@ router.get("/config", cacheMiddleware(600), async (req, res) => {
       ))
       .where(eq(homePageCategoriesTable.isActive, true))
       .groupBy(
-        homePageCategoriesTable.id, 
-        homePageCategoriesTable.label, 
-        homePageCategoriesTable.slug, 
-        homePageCategoriesTable.description, 
-        homePageCategoriesTable.content, 
-        homePageCategoriesTable.iconName, 
-        homePageCategoriesTable.imageUrl, 
-        homePageCategoriesTable.href, 
-        homePageCategoriesTable.color, 
-        homePageCategoriesTable.displayOrder, 
-        homePageCategoriesTable.isActive, 
-        homePageCategoriesTable.metaTitle, 
-        homePageCategoriesTable.metaDescription, 
-        homePageCategoriesTable.metaKeywords
+        homePageCategoriesTable.id, homePageCategoriesTable.label, homePageCategoriesTable.slug,
+        homePageCategoriesTable.description, homePageCategoriesTable.content,
+        homePageCategoriesTable.iconName, homePageCategoriesTable.imageUrl,
+        homePageCategoriesTable.href, homePageCategoriesTable.color,
+        homePageCategoriesTable.displayOrder, homePageCategoriesTable.isActive,
+        homePageCategoriesTable.metaTitle, homePageCategoriesTable.metaDescription, homePageCategoriesTable.metaKeywords
       )
       .orderBy(asc(homePageCategoriesTable.displayOrder)),
       
@@ -98,27 +109,18 @@ router.get("/config", cacheMiddleware(600), async (req, res) => {
       ))
       .where(eq(themesTable.isActive, true))
       .groupBy(
-        themesTable.id,
-        themesTable.name,
-        themesTable.slug,
-        themesTable.imageUrl,
-        themesTable.description,
-        themesTable.isActive,
-        themesTable.displayOrder
+        themesTable.id, themesTable.name, themesTable.slug, themesTable.imageUrl,
+        themesTable.description, themesTable.isActive, themesTable.displayOrder
       )
       .orderBy(asc(themesTable.displayOrder)),
 
       db.select().from(offersTable).where(eq(offersTable.isActive, true)).orderBy(asc(offersTable.displayOrder)),
     ]);
 
-    // Prevent any caching — ensure CMS changes are instantly visible on the frontend
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    res.setHeader("X-Data-Source", "postgresql");
     res.json({ slides, categories, sections, themes, offers });
   } catch (error: any) {
-
-    console.error("Error fetching home config:", error);
+    logger.error({ error: error.message }, "Error fetching home config");
     res.status(500).json({ error: "Failed to fetch home configuration", details: error.message });
   }
 });
@@ -283,7 +285,7 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
       all: [...processedInternational, ...processedDomestic].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
     });
   } catch (error: any) {
-    console.error("Error fetching top destinations:", error);
+    logger.error({ error: error.message }, "Error fetching top destinations");
     res.status(500).json({ error: "Failed to fetch top destinations: " + error.message });
   }
 });
@@ -320,7 +322,7 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
 
     res.json(formattedHotels);
   } catch (error: any) {
-    console.error("Error fetching trending hotels:", error);
+    logger.error({ error: error.message }, "Error fetching trending hotels");
     res.status(500).json({ error: "Failed to fetch trending hotels" });
   }
 });

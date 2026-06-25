@@ -3,10 +3,15 @@ import Link from "next/link";
 import { Compass, Map, Globe, ChevronRight } from "lucide-react";
 import { getApiUrl } from "@/lib/api-url";
 
-export const metadata: Metadata = {
-  title: 'Travel Guides | Sampooran Holidays',
-  description: 'Explore comprehensive travel guides for destinations across India and the World. Find the best time to visit, how to reach, and top attractions.',
-};
+import { getPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const fallback = {
+    title: 'Travel Guides | Sampooran Holidays',
+    description: 'Explore comprehensive travel guides for destinations across India and the World. Find the best time to visit, how to reach, and top attractions.',
+  };
+  return getPageMetadata("travel-guide", fallback);
+}
 
 async function getTopDestinations() {
   try {

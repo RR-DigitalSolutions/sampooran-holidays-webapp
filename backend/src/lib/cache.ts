@@ -6,81 +6,67 @@ import { logger } from "./logger";
  * Cache middleware generator for Express.
  * @param durationInSeconds How long to keep the response in Redis (TTL)
  *
- * Security & correctness notes:
- * - Honoured: Cache-Control: no-cache / no-store / Pragma: no-cache from client
- *   (e.g. when the browser fetch uses cache:'no-store')
- * - All responses carry Cache-Control: no-store so browsers never build stale
- *   304 caches from hotel / destination listings.
+ * Architecture notes (Senior OTA pattern):
+ * - The SERVER owns caching policy. Client headers like Cache-Control: no-store
+ *   are IGNORED — they are browser hints, not server directives. Honouring them
+ *   is what broke Redis: every Next.js ISR fetch sent no-store and bypassed cache.
+ * - Only admin-forced purge via clearCachePattern() invalidates the cache.
+ * - All responses carry Cache-Control: no-store so browsers never build stale 304
+ *   caches from hotel / destination listings (correct for dynamic price data).
+ * - Redis fail-open: if Redis is down, the request falls through to the DB.
  */
 export const cacheMiddleware = (durationInSeconds: number) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // We only cache GET requests
+    // Only cache GET requests
     if (req.method !== "GET") {
       return next();
     }
 
-    // Always set Cache-Control: no-store so browsers / proxies don't cache
-    // listing pages (prevents "no hotels found" caused by stale 304 responses)
-    res.setHeader("Cache-Control", "no-store");
-
-    // If the client explicitly asks to bypass cache (fetch cache:'no-store'),
-    // skip Redis lookup and go straight to the DB.
-    const clientCC = req.headers["cache-control"] || "";
-    const pragma   = req.headers["pragma"] || "";
-    const bypassCache =
-      clientCC.includes("no-store") ||
-      clientCC.includes("no-cache") ||
-      pragma === "no-cache";
+    // Tell browsers not to cache (prices/availability change) — but Redis still caches server-side
+    res.setHeader("Cache-Control", "no-store, must-revalidate");
 
     // Use the full URL (including query strings) as the cache key
     const key = `cache:${req.originalUrl || req.url}`;
 
     try {
-      if (!bypassCache) {
-        const cachedData = await redisClient.get(key);
+      const cachedData = await redisClient.get(key);
 
-        if (cachedData) {
-          // Cache Hit
-          logger.debug({ key }, "🚀 Redis Cache HIT");
-          res.setHeader("X-Cache", "HIT");
-          res.setHeader("Content-Type", "application/json");
-          return res.send(cachedData);
-        }
+      if (cachedData) {
+        logger.debug({ key }, "🚀 Redis Cache HIT");
+        res.setHeader("X-Cache", "HIT");
+        res.setHeader("Content-Type", "application/json");
+        return res.send(cachedData);
       }
 
-      // Cache Miss (or bypass)
-      logger.debug({ key, bypassed: bypassCache }, "🐢 Redis Cache MISS");
-      res.setHeader("X-Cache", bypassCache ? "BYPASS" : "MISS");
+      logger.debug({ key }, "🐢 Redis Cache MISS");
+      res.setHeader("X-Cache", "MISS");
 
       // Intercept res.json / res.send to save the payload to Redis
-      // (only if we're not bypassing)
-      if (!bypassCache) {
-        const originalSend = res.send.bind(res);
-        const originalJson = res.json.bind(res);
+      const originalSend = res.send.bind(res);
+      const originalJson = res.json.bind(res);
 
-        res.send = (body: any): Response => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            redisClient.setex(key, durationInSeconds, body).catch((err) => {
-              logger.error({ err, key }, "Failed to save response to Redis cache");
-            });
-          }
-          return originalSend(body);
-        };
+      res.send = (body: any): Response => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          redisClient.setex(key, durationInSeconds, typeof body === "string" ? body : JSON.stringify(body)).catch((err) => {
+            logger.error({ err, key }, "Failed to save response to Redis cache");
+          });
+        }
+        return originalSend(body);
+      };
 
-        res.json = (body: any): Response => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            redisClient.setex(key, durationInSeconds, JSON.stringify(body)).catch((err) => {
-              logger.error({ err, key }, "Failed to save json to Redis cache");
-            });
-          }
-          return originalJson(body);
-        };
-      }
+      res.json = (body: any): Response => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          redisClient.setex(key, durationInSeconds, JSON.stringify(body)).catch((err) => {
+            logger.error({ err, key }, "Failed to save json to Redis cache");
+          });
+        }
+        return originalJson(body);
+      };
 
       next();
     } catch (error) {
-      // If Redis fails, log it and proceed without caching (fail-open)
-      logger.error({ error, key }, "Redis Cache Error - falling back to DB");
+      // Redis down → fail-open: serve from DB without caching
+      logger.warn({ error, key }, "Redis unavailable — falling through to DB (fail-open)");
       next();
     }
   };
@@ -89,12 +75,13 @@ export const cacheMiddleware = (durationInSeconds: number) => {
 /**
  * Utility to invalidate caches based on a prefix pattern.
  * e.g., clearCachePattern("cache:/api/packages*")
+ * Called by admin routes after CMS updates.
  */
 export const clearCachePattern = async (pattern: string) => {
   try {
     let cursor = "0";
     let count = 0;
-    
+
     do {
       const result = await redisClient.scan(cursor, "MATCH", pattern, "COUNT", 100);
       cursor = result[0];
@@ -110,4 +97,39 @@ export const clearCachePattern = async (pattern: string) => {
   } catch (error) {
     logger.error({ error, pattern }, "Failed to clear Redis cache");
   }
+};
+
+/**
+ * Warm the most-critical cache keys on server startup.
+ * Prevents first-visitor cache misses after a cold deploy.
+ *
+ * Call this AFTER server.listen() — it runs async and never blocks startup.
+ */
+export const warmCache = async (baseUrl: string) => {
+  const routes = [
+    "/api/ota/home/config",
+    "/api/ota/home/top-destinations",
+    "/api/ota/home/trending-hotels",
+    "/api/packages?featured=true&limit=6",
+    "/api/packages?trending=true&limit=12",
+    "/api/destinations/mega-menu",
+    "/api/hotels/mega-menu",
+  ];
+
+  logger.info("🔥 Starting cache warm-up for top routes...");
+
+  for (const route of routes) {
+    try {
+      const key = `cache:${route}`;
+      const existing = await redisClient.get(key);
+      if (!existing) {
+        // Fire-and-forget internal fetch to trigger Redis population
+        fetch(`${baseUrl}${route}`).catch(() => {});
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  logger.info(`🔥 Cache warm-up triggered for ${routes.length} routes`);
 };
