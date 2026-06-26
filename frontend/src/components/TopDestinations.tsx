@@ -101,7 +101,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
               animate={{ opacity: 1, x: 0 }}
             >
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">World Explorer</p>
+                <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-sans">World Explorer</p>
               </div>
               <h2 className="text-xl md:text-3xl font-serif font-bold text-primary">
                 Top Popular <span className="text-accent font-light">Destinations</span>

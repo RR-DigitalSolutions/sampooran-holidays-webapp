@@ -21,6 +21,7 @@ import { InclusionsSection } from "@/components/InclusionsSection";
 import { SponsoredAdsSection } from "@/components/SponsoredAdsSection";
 import TrendingHotelsSection from "@/components/TrendingHotelsSection";
 import ServiceVendorSection from "@/components/ServiceVendorSection";
+import TransportFleetSection from "@/components/TransportFleetSection";
 
 
 
@@ -210,31 +211,69 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
     }
     const dedupedSections = Array.from(uniqueSections.values());
 
-    // Ensure SPONSORED_ADS is present if it's not in the CMS list
-    if (!dedupedSections.some((s: any) => s.sectionType === "SPONSORED_ADS")) {
-      const offersIdx = dedupedSections.findIndex((s: any) => s.sectionType === "OFFERS");
-      const insertIdx = offersIdx !== -1 ? offersIdx + 1 : 2;
-      dedupedSections.splice(insertIdx, 0, {
+    // Ensure OFFERS and SPONSORED_ADS are placed just above CATEGORIES
+    let offersObj = dedupedSections.find((s: any) => s.sectionType === "OFFERS");
+    let sponsoredObj = dedupedSections.find((s: any) => s.sectionType === "SPONSORED_ADS");
+
+    if (!offersObj) {
+      offersObj = { sectionType: "OFFERS", title: "Special Offers", subtitle: "Exclusive Deals" };
+    }
+    if (!sponsoredObj) {
+      sponsoredObj = {
         sectionType: "SPONSORED_ADS",
         title: "Exclusive Sponsored Deals",
         subtitle: "Handpicked Collections"
-      });
+      };
+    }
+
+    // Filter out OFFERS and SPONSORED_ADS from their current locations
+    let reordered = dedupedSections.filter(
+      (s: any) => s.sectionType !== "OFFERS" && s.sectionType !== "SPONSORED_ADS"
+    );
+
+    // Find the index of CATEGORIES
+    const categoriesIdx = reordered.findIndex((s: any) => s.sectionType === "CATEGORIES");
+    if (categoriesIdx !== -1) {
+      // Insert OFFERS and SPONSORED_ADS just above CATEGORIES
+      reordered.splice(categoriesIdx, 0, offersObj, sponsoredObj);
+    } else {
+      // Fallback: put them at index 2 (just after stats)
+      reordered.splice(2, 0, offersObj, sponsoredObj);
+    }
+
+    // Ensure TRENDING_HOTELS is placed below FEATURED_PACKAGES
+    let trendingHotelsObj = reordered.find((s: any) => s.sectionType === "TRENDING_HOTELS");
+
+    if (!trendingHotelsObj) {
+      trendingHotelsObj = { sectionType: "TRENDING_HOTELS" };
+    }
+
+    reordered = reordered.filter(
+      (s: any) => s.sectionType !== "TRENDING_HOTELS" && s.sectionType !== "NEARBY_HOTELS"
+    );
+
+    const featuredIdx = reordered.findIndex((s: any) => s.sectionType === "FEATURED_PACKAGES");
+    if (featuredIdx !== -1) {
+      reordered.splice(featuredIdx + 1, 0, trendingHotelsObj);
+    } else {
+      reordered.splice(6, 0, trendingHotelsObj);
     }
 
     // Ensure the vendor CTA section is always available on the homepage.
-    if (!dedupedSections.some((s: any) => s.sectionType === "VENDOR_CTA")) {
-      const insertIdx = dedupedSections.findIndex((s: any) => s.sectionType === "B2B");
-      const position = insertIdx !== -1 ? insertIdx : dedupedSections.length;
-      dedupedSections.splice(position, 0, { sectionType: "VENDOR_CTA" });
+    if (!reordered.some((s: any) => s.sectionType === "VENDOR_CTA")) {
+      const insertIdx = reordered.findIndex((s: any) => s.sectionType === "B2B");
+      const position = insertIdx !== -1 ? insertIdx : reordered.length;
+      reordered.splice(position, 0, { sectionType: "VENDOR_CTA" });
     }
 
-    return dedupedSections;
+    return reordered;
   }, [config]);
 
   const offers = config?.offers || [];
   const packages = pkgData?.packages || initialData?.pkgData?.packages || [];
   const trending = trendingData?.packages || initialData?.trendingData?.packages || [];
   const trendingHotels = initialData?.trendingHotelsData || [];
+  const transport = initialData?.transportData || [];
   const testimonials = testimonialData?.testimonials?.length ? testimonialData.testimonials : (initialData?.testimonialData?.testimonials || []);
 
   const serviceVendorCards = [
@@ -283,7 +322,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
 
   return (
     <>
-      {sections.filter((s: any) => s.sectionType !== "NEARBY_HOTELS").map((section: any, idx: number) => {
+      {sections.map((section: any, idx: number) => {
         switch (section.sectionType) {
           case "HERO":
             return (
@@ -360,8 +399,9 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
 
           case "TRENDING_HOTELS":
             return <TrendingHotelsSection key={idx} hotels={trendingHotels} />;
-          case "VENDOR_CTA":
           case "TRANSPORT":
+            return <TransportFleetSection key={idx} vehicles={transport} />;
+          case "VENDOR_CTA":
           case "B2B":
             if (serviceSectionRendered) return null;
             serviceSectionRendered = true;
@@ -411,8 +451,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
               />
             );
 
-          case "NEARBY_HOTELS":
-            return null; // Removed section
+
 
           case "TOP_DESTINATIONS":
             return <TopDestinations key={idx} initialData={initialData?.topDestinations} />;
@@ -450,7 +489,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                       <p className="text-accent font-bold text-xs uppercase tracking-[0.2em]">Real Experiences</p>
                       <span className="h-[2px] w-8 bg-accent" />
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-bold text-primary font-['Raleway',sans-serif]">What Our <span className="text-accent italic">Travelers</span> Say</h2>
+                    <h2 className="text-3xl md:text-4xl font-bold text-primary font-serif">What Our <span className="text-accent italic">Travelers</span> Say</h2>
                     <p className="text-slate-400 mt-3 text-sm max-w-xl mx-auto">Join thousands of happy travelers who've experienced the Sampooran difference.</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

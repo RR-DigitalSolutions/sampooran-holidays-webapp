@@ -21,36 +21,59 @@ export async function generateMetadata(): Promise<Metadata> {
 
 async function getHomeConfig() {
   const API_URL = getApiUrl();
+  console.log(`[SSR] getHomeConfig starting with API_URL: ${API_URL}`);
   
   const safeFetch = async (url: string, options?: RequestInit, retries = 0) => {
+    const startTime = Date.now();
+    console.log(`[SSR] Fetching: ${url}`);
     for (let i = 0; i <= retries; i++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.warn(`[SSR] Fetch timeout (2s) reached for: ${url}`);
+        controller.abort();
+      }, 2000);
+
       try {
-        const res = await fetch(url, { ...options, signal: AbortSignal.timeout(2000) });
+        const res = await fetch(url, { 
+          ...options, 
+          signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+        
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
+        const data = await res.json();
+        console.log(`[SSR] Fetch success [${Date.now() - startTime}ms]: ${url}`);
+        return data;
       } catch (e: any) {
+        clearTimeout(timeoutId);
         const isConnRefused = e?.cause?.code === 'ECONNREFUSED' || e?.message?.includes('ECONNREFUSED');
         if (i === retries) {
-          // Only log real errors, not expected startup connection failures
           if (!isConnRefused) {
             console.error(`[SSR] Fetch failed for ${url}:`, e instanceof Error ? e.message : e);
+          } else {
+            console.warn(`[SSR] Connection refused for: ${url}`);
           }
           return null;
         }
+        console.log(`[SSR] Retrying fetch [${i+1}/${retries}] for: ${url}`);
         await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
   };
 
   try {
-    const [config, pkgData, trendingData, testimonialData, topDestinations, trendingHotelsData] = await Promise.all([
+    const promises = [
       safeFetch(`${API_URL}/ota/home/config`, { next: { revalidate: 120 } }),
       safeFetch(`${API_URL}/packages?limit=6&featured=true`, { next: { revalidate: 120 } }),
       safeFetch(`${API_URL}/packages?limit=12&trending=true`, { next: { revalidate: 120 } }),
       safeFetch(`${API_URL}/testimonials`, { next: { revalidate: 120 } }),
       safeFetch(`${API_URL}/ota/home/top-destinations`, { next: { revalidate: 120 } }),
-      safeFetch(`${API_URL}/ota/home/trending-hotels`, { next: { revalidate: 120 } })
-    ]);
+      safeFetch(`${API_URL}/ota/home/trending-hotels`, { next: { revalidate: 120 } }),
+      safeFetch(`${API_URL}/ota/transport`, { next: { revalidate: 120 } })
+    ];
+
+    const [config, pkgData, trendingData, testimonialData, topDestinations, trendingHotelsData, transportData] = await Promise.all(promises);
+    console.log(`[SSR] All fetches resolved!`);
 
     return { 
       config: config || {}, 
@@ -58,10 +81,12 @@ async function getHomeConfig() {
       trendingData: trendingData || { packages: [] }, 
       testimonialData: testimonialData || { testimonials: [] },
       topDestinations: topDestinations || { international: [], domestic: [], all: [] },
-      trendingHotelsData: trendingHotelsData || []
+      trendingHotelsData: trendingHotelsData || [],
+      transportData: transportData || []
     };
   } catch (error) {
-    return { config: {}, pkgData: { packages: [] }, trendingData: { packages: [] }, testimonialData: { testimonials: [] }, topDestinations: { international: [], domestic: [], all: [] }, trendingHotelsData: [] };
+    console.error("[SSR] Error during Promise.all:", error);
+    return { config: {}, pkgData: { packages: [] }, trendingData: { packages: [] }, testimonialData: { testimonials: [] }, topDestinations: { international: [], domestic: [], all: [] }, trendingHotelsData: [], transportData: [] };
   }
 }
 

@@ -53,9 +53,9 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="max-w-3xl p-2 md:p-2">
               <div className="flex items-center gap-2">
-                <p className="text-accent font-bold text-[9px] md:text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">Trending Now</p>
+                <p className="text-accent font-bold text-[9px] md:text-[12px] uppercase tracking-[0.1em] font-sans">Trending Now</p>
               </div>
-              <h2 className="text-xl md:text-3xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
+              <h2 className="text-xl md:text-3xl font-serif font-bold text-primary leading-tight">
                 Trending Holiday <span className="text-accent font-light">Packages</span>
               </h2>
               <p className="text-slate-500 text-xs md:text-xs">
@@ -98,24 +98,24 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
             <div className="absolute inset-0 bg-primary/20 bg-cover bg-center opacity-10 mix-blend-overlay" />
             <div className="absolute inset-0 bg-primary/95" />
 
-            <div className="relative z-10 p-4 md:p-4 flex flex-col lg:flex-row items-center justify-between gap-10">
+            <div className="relative z-10 p-3.5 sm:p-6 md:p-8 flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-10">
               {/* Left: Text Content */}
               <div className="w-full lg:w-1/2 text-center lg:text-left">
-                <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-md text-accent text-xs font-bold mb-2 backdrop-blur-sm border border-white/10">
+                <div className="inline-flex items-center gap-1.5 bg-white/10 px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-accent text-[10px] sm:text-xs font-bold mb-1.5 sm:mb-2 backdrop-blur-sm border border-white/10">
                   Customize Your Trip
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 font-['Raleway',sans-serif]">
+                <h3 className="text-lg sm:text-xl md:text-3xl font-bold text-white mb-1 md:mb-2 font-serif">
                   Can't find the <span className="text-accent font-light">Perfect Package?</span>
                 </h3>
-                <p className="text-slate-300 text-sm md:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">
+                <p className="text-slate-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-lg mx-auto lg:mx-0">
                   Let our travel experts craft a personalized itinerary just for you. Drop your details below and we'll get back to you within 24 hours with a custom quote!
                 </p>
               </div>
 
               {/* Right: Quick Inquiry Form */}
-              <div className="w-full lg:w-[45%] bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-md">
+              <div className="w-full lg:w-[45%] bg-white/10 backdrop-blur-md border border-white/20 p-3 sm:p-5 rounded-md">
                 <form onSubmit={handleQuickInquiry} className="flex flex-col gap-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                     <div className="relative">
                       <input
                         aria-label="Your Name"
@@ -125,7 +125,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                         required
                         value={inquiryName}
                         onChange={(e) => setInquiryName(e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-4 py-3.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all text-sm"
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all text-xs sm:text-sm"
                       />
                     </div>
                     <div className="relative">
@@ -137,14 +137,14 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                         required
                         value={inquiryPhone}
                         onChange={(e) => setInquiryPhone(e.target.value)}
-                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-4 py-3.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all text-sm"
+                        className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 px-3 py-2.5 rounded-md focus:outline-none focus:ring-2 focus:ring-accent transition-all text-xs sm:text-sm"
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-accent text-primary font-bold py-2 rounded-md hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
+                    className="w-full bg-accent text-primary font-bold py-2 md:py-2.5 rounded-md hover:bg-yellow-400 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm active:scale-[0.98] disabled:opacity-70"
                   >
                     {isSubmitting ? (
                       "Sending Request..."
@@ -152,7 +152,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
                       <>Get Custom Quote <Send className="w-4 h-4 ml-1" /></>
                     )}
                   </button>
-                  <div className="text-center mt-2 flex items-center justify-center gap-2 text-white/60 text-[11px] font-medium">
+                  <div className="text-center mt-1 flex items-center justify-center gap-2 text-white/60 text-[10px] sm:text-[11px] font-medium">
                     <PhoneCall className="w-3 h-3" /> Prefer to call? <a href="tel:+919876543210" className="text-accent hover:underline">+91 98765 43210</a>
                   </div>
                 </form>

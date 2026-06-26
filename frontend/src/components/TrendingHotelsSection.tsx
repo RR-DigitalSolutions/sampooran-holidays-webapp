@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Star, MapPin, Building2, ArrowRight } from "lucide-react";
-import { cn, validateImageUrl, getHotelImageUrl } from "@/lib/utils";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
+import { HotelCard } from "@/components/HotelCard";
 
 interface TrendingHotel {
   id: number;
@@ -24,90 +25,95 @@ interface TrendingHotelsSectionProps {
 export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionProps) {
   const [currentMonth, setCurrentMonth] = useState("");
 
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    containScroll: "trimSnaps",
+    loop: true,
+  }, [
+    Autoplay({
+      delay: 5000,
+      stopOnInteraction: false,
+      stopOnMouseEnter: true
+    })
+  ]);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
   useEffect(() => {
-    // Client-side only to avoid hydration mismatch
     setCurrentMonth(format(new Date(), "MMMM yyyy"));
   }, []);
 
   if (!hotels || hotels.length === 0) return null;
 
   return (
-    <section className="py-20 bg-slate-50">
-      <div className="container mx-auto px-4 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
-          <div>
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase text-[#ff8f00] mb-3 block">
-              PREMIUM STAYS
-            </span>
-            <h2 className="text-3xl md:text-5xl font-black text-[#1B3A6B] tracking-tight">
-              Trending Hotels in <span className="text-[#ff8f00] italic font-serif font-light">{currentMonth}</span>
-            </h2>
-            <p className="text-slate-500 mt-4 max-w-2xl text-sm font-medium">
-              Discover top-rated luxury resorts, premium boutique stays, and exclusive budget hotel deals for your perfect holiday getaway.
-            </p>
-          </div>
-          <Link href="/hotels">
-            <button className="flex items-center gap-2 bg-white border border-slate-200 px-6 py-3 rounded-2xl text-sm font-bold text-[#1B3A6B] hover:bg-slate-50 hover:shadow-lg transition-all group shrink-0">
-              All Hotels
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {hotels.map((hotel) => (
-            <Link key={hotel.id} href={`/hotels/${hotel.slug}`} className="block group">
-              <div className="relative h-[220px] rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500">
-                {hotel.imageUrl && hotel.imageUrl.trim() ? (
-                  <Image
-                    src={getHotelImageUrl(hotel.imageUrl, 400, 300, "4:3")}
-                    alt={hotel.name || "Hotel image"}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-100 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
-                    </svg>
-                  </div>
-                )}
-                
-                {/* Gradient overlays */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0B1A]/90 via-[#0A0B1A]/40 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0B1A] via-transparent to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-                
-                {/* Content */}
-                <div className="absolute inset-x-0 bottom-0 p-5 flex flex-col justify-end h-full">
-                  <div className="flex justify-between items-end mb-3 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                    <h3 className="text-white font-black text-xl tracking-tight leading-none drop-shadow-md">
-                      {hotel.name}
-                    </h3>
-                    <div className="bg-[#ff8f00] text-white px-2 py-1 rounded-lg text-xs font-black shadow-lg">
-                      ₹{hotel.startingPrice.toLocaleString('en-IN')}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between border-t border-white/20 pt-3 opacity-90 group-hover:opacity-100 transition-opacity">
-                    <div className="flex items-center gap-1.5 text-white/90">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-black uppercase tracking-wider">
-                        {hotel.city}
-                      </span>
-                    </div>
-                    <div className="flex gap-0.5">
-                      {Array.from({ length: hotel.starRating || 3 }).map((_, i) => (
-                        <Star key={i} className="w-3 h-3 fill-[#ff8f00] text-[#ff8f00]" />
-                      ))}
-                    </div>
-                  </div>
-                </div>
+    <div className="container mx-auto px-2 md:px-4 my-6">
+      <section className="bg-white relative overflow-hidden rounded-md border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="max-w-3xl p-2 md:p-2">
+              <div className="flex items-center gap-2">
+                <p className="text-accent font-bold text-[9px] md:text-[12px] uppercase tracking-[0.1em] font-sans">
+                  Premium Stays
+                </p>
               </div>
-            </Link>
-          ))}
+              <h2 className="text-xl md:text-3xl font-serif font-bold text-primary leading-tight">
+                Trending Hotels in <span className="text-accent font-light">{currentMonth}</span>
+              </h2>
+              <p className="text-slate-500 text-xs md:text-xs">
+                Discover top-rated luxury resorts, premium boutique stays, and exclusive budget hotel deals for your perfect holiday getaway.
+              </p>
+            </div>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex flex-col items-end gap-6 pr-2 pb-2">
+              <Link href="/hotels" className="text-primary font-bold text-sm hover:text-accent flex items-center gap-1.5 group transition-colors">
+                All Hotels <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <div className="flex items-center gap-2">
+                <button aria-label="Previous Hotel" title="Previous Hotel" onClick={scrollPrev} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button aria-label="Next Hotel" title="Next Hotel" onClick={scrollNext} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Embla Carousel Container */}
+          <div className="overflow-hidden -mx-4 px-4 sm:mx-0 sm:px-0" ref={emblaRef}>
+            <div className="flex -ml-4 md:-ml-6 pb-2 pt-4">
+            {hotels.map((hotel) => {
+              // Map TrendingHotel shape to HotelCard shape
+              const mappedHotel = {
+                id: hotel.id,
+                name: hotel.name,
+                slug: hotel.slug,
+                type: "Hotel",
+                starRating: hotel.starRating,
+                destinationName: hotel.city,
+                images: [hotel.imageUrl],
+                address: hotel.city,
+                startingPrice: hotel.startingPrice,
+                isVerified: true
+              };
+
+              return (
+                <div key={hotel.id} className="flex-[0_0_85%] sm:flex-[0_0_45%] lg:flex-[0_0_24%] min-w-0 pl-4 md:pl-6">
+                  <HotelCard hotel={mappedHotel} />
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </div>
   );
 }

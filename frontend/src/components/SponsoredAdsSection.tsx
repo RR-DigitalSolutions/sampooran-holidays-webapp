@@ -120,10 +120,10 @@ export function SponsoredAdsSection({
                               {ad.tag}
                             </span>
                           )}
-                          <h3 className="text-lg md:text-3xl lg:text-4xl font-black mb-1 md:mb-2 leading-tight tracking-tight drop-shadow-lg">
+                          <h3 className="text-xs sm:text-sm md:text-3xl lg:text-4xl font-black mb-1 md:mb-2 leading-tight tracking-tight drop-shadow-lg">
                             {ad.title}
                           </h3>
-                          <p className="text-white/80 text-[10px] md:text-[12px] font-medium max-w-[85%] md:max-w-md line-clamp-2 md:line-clamp-3 italic">
+                          <p className="text-white/80 text-[9px] md:text-[12px] font-medium max-w-[85%] md:max-w-md line-clamp-2 md:line-clamp-3">
                             {ad.description}
                           </p>
                         </div>

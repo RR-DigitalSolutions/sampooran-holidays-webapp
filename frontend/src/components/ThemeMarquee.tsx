@@ -69,11 +69,11 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
 
-              <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-['Poppins',sans-serif]">
+              <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-sans">
                 {subtitle || "Handpicked Collections"}
               </p>
             </div>
-            <h2 className="text-xl md:text-3xl font-['Raleway',sans-serif] font-bold text-primary leading-tight">
+            <h2 className="text-xl md:text-3xl font-serif font-bold text-primary leading-tight">
               {(() => {
                 const t = title || "Explore by Themes";
                 const words = t.split(" ");
@@ -111,7 +111,7 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
         <div>
           <div className="cursor-grab active:cursor-grabbing overflow-hidden" ref={emblaRef}>
-            <div className="flex gap-2 md:gap-1">
+            <div className="flex gap-1 md:gap-4">
               {themes.map((theme, idx) => {
                 const themeLabel = theme.label || theme.name || "Theme";
                 const rawThemeImage = theme.imageUrl?.trim() || theme.image_url?.trim();
@@ -192,9 +192,9 @@ export function ThemeMarqueeSkeleton() {
             <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse" />
           </div>
         </div>
-        <div className="flex gap-3 overflow-hidden px-6 pb-4">
+        <div className="flex gap-1 md:gap-4 overflow-hidden px-2 md:px-6 pb-4">
           {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="flex-none w-[82px] md:w-[150px] flex flex-col items-center gap-2">
+            <div key={i} className="flex-none w-[82px] md:w-[125px] flex flex-col items-center gap-2">
               <div className="w-16 h-16 md:w-28 md:h-28 rounded-full bg-slate-100 animate-pulse" />
               <div className="h-3 w-14 bg-slate-100 animate-pulse rounded" />
               <div className="h-2 w-10 bg-slate-100 animate-pulse rounded" />

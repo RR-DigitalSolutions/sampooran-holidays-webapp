@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { MapPin, Star, Building2, Navigation, ArrowRight, ChevronRight } from "lucide-react";
-import Image from "next/image";
+import { Navigation, ArrowRight, ChevronLeft, ChevronRight, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
+import { HotelCard } from "@/components/HotelCard";
 
 interface NearbyHotel {
   id: number;
@@ -31,6 +33,26 @@ export function NearbyHotels({ lat, lng, title, subtitle }: NearbyHotelsProps) {
   const [radius, setRadius] = useState(50);
   const [sort, setSort] = useState("smart");
   const [isFallback, setIsFallback] = useState(false);
+
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    containScroll: "trimSnaps",
+    loop: true,
+  }, [
+    Autoplay({
+      delay: 5000,
+      stopOnInteraction: false,
+      stopOnMouseEnter: true
+    })
+  ]);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
 
   useEffect(() => {
     async function fetchNearby() {
@@ -92,137 +114,133 @@ export function NearbyHotels({ lat, lng, title, subtitle }: NearbyHotelsProps) {
     : (subtitle || "Experience luxury and comfort in your immediate vicinity, curated by Sampooran Holidays.");
 
   return (
-    <section className="py-20 bg-slate-50 overflow-hidden">
-      <div className="container mx-auto px-4">
+    <div className="container mx-auto px-2 md:px-4 my-6">
+      <section className="bg-white relative overflow-hidden rounded-lg border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-4">
+        <div className="px-4 lg:px-8">
         
         {/* Header with Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-12 gap-8">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-4 md:mb-8 gap-6">
           <div className="max-w-xl">
-            <p className="text-accent font-black text-[10px] uppercase tracking-[0.4em] mb-4 flex items-center gap-2 font-['Poppins',sans-serif]">
+            <p className="text-accent font-black text-[10px] uppercase tracking-[0.4em] mb-2 flex items-center gap-2 font-sans">
               <Navigation className="w-3.5 h-3.5" /> {isFallback ? "Editor's Pick" : "Discovery Engine"}
             </p>
-            <h2 className="text-4xl md:text-5xl font-black text-primary italic leading-none font-['Raleway',sans-serif]">{sectionTitle}</h2>
-            <p className="text-slate-400 mt-4 text-sm font-medium font-['Poppins',sans-serif]">{sectionSubtitle}</p>
+            <h2 className="text-2xl md:text-5xl font-black text-primary leading-none font-serif">{sectionTitle}</h2>
+            <p className="text-slate-500 mt-2 text-xs md:text-sm font-medium font-sans">{sectionSubtitle}</p>
           </div>
 
-          {/* Only show radius/sort controls when NOT showing fallback CMS hotels */}
-          {!isFallback && (
-          <div className="flex flex-wrap items-center gap-4">
-             {/* Radius Filter */}
-             <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-                {[10, 25, 50].map((r) => (
-                  <button 
-                    key={r}
-                    onClick={() => setRadius(r)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                      radius === r ? "bg-primary text-white shadow-lg" : "text-slate-400 hover:text-primary"
-                    )}
-                  >
-                    {r}km
-                  </button>
-                ))}
-             </div>
+          {/* Controls & Nav area */}
+          <div className="flex flex-wrap items-center gap-3 self-start lg:self-end">
+            {/* Only show radius/sort controls when NOT showing fallback CMS hotels */}
+            {!isFallback && (
+              <div className="flex flex-wrap gap-2">
+                {/* Radius Filter */}
+                <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-xs">
+                  {[10, 25, 50].map((r) => (
+                    <button 
+                      key={r}
+                      onClick={() => setRadius(r)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                        radius === r ? "bg-primary text-white shadow-xs" : "text-slate-400 hover:text-primary"
+                      )}
+                    >
+                      {r}km
+                    </button>
+                  ))}
+                </div>
 
-             {/* Sort Filter */}
-             <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-                {[
-                  { id: "smart", label: "Recommended" },
-                  { id: "distance", label: "Proximity" },
-                  { id: "rating", label: "Top Rated" }
-                ].map((s) => (
-                  <button 
-                    key={s.id}
-                    onClick={() => setSort(s.id)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                      sort === s.id ? "bg-accent text-accent-foreground shadow-lg" : "text-slate-400 hover:text-primary"
-                    )}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-             </div>
+                {/* Sort Filter */}
+                <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-xs">
+                  {[
+                    { id: "smart", label: "Recommended" },
+                    { id: "distance", label: "Proximity" },
+                    { id: "rating", label: "Top Rated" }
+                  ].map((s) => (
+                    <button 
+                      key={s.id}
+                      onClick={() => setSort(s.id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                        sort === s.id ? "bg-accent text-accent-foreground shadow-xs" : "text-slate-400 hover:text-primary"
+                      )}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Carousel navigation buttons */}
+            <div className="flex gap-1.5 md:gap-2">
+              <button
+                onClick={scrollPrev}
+                className="w-8 h-8 md:w-11 md:h-11 rounded-xl md:rounded-2xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all bg-white shadow-xs"
+                aria-label="Previous hotel"
+                title="Previous"
+              >
+                <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+              <button
+                onClick={scrollNext}
+                className="w-8 h-8 md:w-11 md:h-11 rounded-xl md:rounded-2xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all bg-white shadow-xs"
+                aria-label="Next hotel"
+                title="Next"
+              >
+                <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
           </div>
-          )}
         </div>
 
         {hotels.length > 0 ? (
-          <div className="flex gap-8 overflow-x-auto pb-12 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
-            {hotels.map((hotel) => (
-              <div key={hotel.id} className="min-w-[320px] w-[320px] bg-white rounded-[3rem] border border-slate-100 overflow-hidden shrink-0 hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 group relative p-3">
-                <div className="relative h-60 overflow-hidden rounded-[2.5rem]">
-                  {hotel.images?.[0] && hotel.images[0].trim() ? (
-                    <Image 
-                      src={hotel.images[0]} 
-                      alt={hotel.name || "Hotel image"}
-                      fill
-                      className="object-cover transition-transform duration-[2s] group-hover:scale-110" 
-                      sizes="(max-width: 768px) 100vw, 400px"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-100 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                  
-                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-[9px] font-black flex items-center gap-1 shadow-2xl">
-                     <Star className="w-3 h-3 text-accent fill-accent" /> {hotel.starRating || 3} STAR
-                  </div>
-                  
-                  <div className="absolute bottom-5 left-6 text-white">
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mb-1">Located in</p>
-                     <p className="text-sm font-bold truncate max-w-[200px]">{hotel.address?.split(',').pop()?.trim() || "India"}</p>
-                  </div>
-                </div>
+          /* Embla Carousel Container */
+          <div className="overflow-hidden -mx-4 px-4 sm:mx-0 sm:px-0" ref={emblaRef}>
+            <div className="flex -ml-4 md:-ml-6 pb-2 pt-2">
+              {hotels.map((hotel) => {
+                const mappedHotel = {
+                  id: hotel.id,
+                  name: hotel.name,
+                  slug: hotel.slug,
+                  type: hotel.type || "Hotel",
+                  starRating: hotel.starRating || 3,
+                  destinationName: hotel.address?.split(',').pop()?.trim() || "Himalayas",
+                  images: hotel.images,
+                  address: hotel.address,
+                  startingPrice: 2499, // default nearby starting rate
+                  isVerified: hotel.isFeatured
+                };
 
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-black text-primary text-xl group-hover:text-accent transition-colors truncate pr-4 italic font-['Raleway',sans-serif]">{hotel.name}</h3>
+                return (
+                  <div key={hotel.id} className="flex-[0_0_85%] sm:flex-[0_0_45%] lg:flex-[0_0_24%] min-w-0 pl-4 md:pl-6">
+                    <HotelCard hotel={mappedHotel} />
                   </div>
-                  
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-6 flex items-center gap-2 font-['Poppins',sans-serif]">
-                    <MapPin className="w-3.5 h-3.5 text-accent" />
-                    {hotel.distance !== undefined
-                      ? `${hotel.distance.toFixed(1)} km from your location`
-                      : (hotel.address?.split(',')[0]?.trim() || "Top Rated Property")}
-                  </p>
-
-                  <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-                     <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none mb-1 font-['Poppins',sans-serif]">Best Rate From</span>
-                        <span className="text-primary font-black text-2xl tracking-tighter font-['Poppins',sans-serif]">₹2,499<span className="text-[10px] text-slate-400 font-bold ml-1 uppercase">/ Night</span></span>
-                     </div>
-                     <Link href={`/hotels/${hotel.slug}`}>
-                       <button className="bg-[#0A0B1A] text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-accent hover:scale-110 transition-all shadow-xl shadow-slate-200 active:scale-95" aria-label={`View details for ${hotel.name}`}>
-                          <ArrowRight className="w-6 h-6" />
-                       </button>
-                     </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
         ) : (
-          <div className="text-center py-32 bg-white rounded-[4rem] border border-dashed border-slate-200">
-             <Building2 className="w-16 h-16 text-slate-100 mx-auto mb-6" />
-             <h3 className="text-2xl font-serif font-black text-primary italic mb-2">No hotels available right now.</h3>
-             <p className="text-slate-400 font-medium mb-10 max-w-sm mx-auto">Check back soon for amazing stays curated by Sampooran Holidays.</p>
-             <Link href="/hotels"><button className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-transform shadow-2xl shadow-primary/20">Browse All Hotels</button></Link>
+          <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
+             <Building2 className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+             <h3 className="text-xl font-serif font-black text-primary mb-1">No hotels available right now.</h3>
+             <p className="text-slate-400 text-xs font-medium mb-6 max-w-xs mx-auto">Check back soon for amazing stays curated by Sampooran Holidays.</p>
+             <Link href="/hotels">
+               <button className="bg-primary text-white px-8 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 transition-transform shadow-md shadow-primary/20">
+                 Browse All Hotels
+               </button>
+             </Link>
           </div>
         )}
 
-        <div className="mt-12 flex justify-center">
-           <Link href="/hotels">
-             <button className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-slate-300 hover:text-primary transition-all group">
-                Browse Global Collection <ChevronRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-             </button>
-           </Link>
+        <div className="mt-8 flex justify-center">
+          <Link href="/hotels">
+            <button className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.25em] text-slate-400 hover:text-primary transition-all group font-sans">
+              Browse Global Collection <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </Link>
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </div>
   );
 }
