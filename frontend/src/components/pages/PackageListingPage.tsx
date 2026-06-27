@@ -409,7 +409,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] md:text-xs font-medium text-white group-hover:text-accent transition-colors">{place.name} Trip</span>
-                        <span className="text-[8px] md:text-[9px] font-medium text-primary bg-accent px-1">Starts Only ₹{place.lowestPrice || "9,999"}/-</span>
+                        <span className="text-[8px] md:text-[9px] font-medium text-primary bg-accent rounded-[2px] px-1">Starts Only ₹{place.lowestPrice || "9,999"}/-</span>
                       </div>
                     </Link>
                   ))}
