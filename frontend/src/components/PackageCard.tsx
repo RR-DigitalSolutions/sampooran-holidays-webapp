@@ -97,8 +97,11 @@ function PackageCardComponent({
   };
 
   const inclusionList = (pkg.inclusionIcons && pkg.inclusionIcons.length > 0)
-    ? pkg.inclusionIcons.slice(0, 5).map(id => ({ id, label: id, Icon: getInclusionIconById(id) }))
-    : displayInclusions.map(text => ({ id: text, label: text.split(' ')[0], Icon: getInclusionIcon(text) }));
+    ? pkg.inclusionIcons.slice(0, 5).map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1).toLowerCase(), Icon: getInclusionIconById(id) }))
+    : displayInclusions.map(text => {
+        const word = text.split(' ')[0];
+        return { id: text, label: word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(), Icon: getInclusionIcon(text) };
+      });
 
   const citiesList = pkg.cities || (pkg.destinationName ? [pkg.destinationName] : []);
 
@@ -169,20 +172,20 @@ function PackageCardComponent({
 
               {/* Highlights */}
               <div className="flex flex-wrap gap-3 mb-4">
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                  <Hotel className="w-3 h-3 text-primary" /> Stay
+                <div className="flex items-center gap-1 text-[11px] text-slate-700 bg-[#ebf3fc] px-2.5 py-1 rounded-md border border-[#dbe7f6] font-semibold">
+                  <Hotel className="w-3 h-3 text-accent" /> Stay
                 </div>
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                  <Car className="w-3 h-3 text-primary" /> Transfers
+                <div className="flex items-center gap-1 text-[11px] text-slate-700 bg-[#ebf3fc] px-2.5 py-1 rounded-md border border-[#dbe7f6] font-semibold">
+                  <Car className="w-3 h-3 text-accent" /> Transfers
                 </div>
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                  <Plane className="w-3 h-3 text-primary" /> Sightseeing
+                <div className="flex items-center gap-1 text-[11px] text-slate-700 bg-[#ebf3fc] px-2.5 py-1 rounded-md border border-[#dbe7f6] font-semibold">
+                  <Plane className="w-3 h-3 text-accent" /> Sightseeing
                 </div>
               </div>
 
               <ul className="space-y-1.5">
                 {displayHighlights.map((h, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-slate-500 font-medium">
+                  <li key={i} className="flex items-start gap-2 text-xs text-slate-600 font-medium">
                     <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
                     <span className="line-clamp-1">{h}</span>
                   </li>
@@ -200,14 +203,14 @@ function PackageCardComponent({
                 <span className="text-[10px] text-slate-400">({pkg.reviewCount || 120} reviews)</span>
               </div>
               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson && (
-                <p className="text-sm text-slate-400 line-through mb-0.5">₹{pkg.originalPrice.toLocaleString("en-IN")}</p>
+                <p className="text-sm text-slate-500 line-through mb-0.5">₹{pkg.originalPrice.toLocaleString("en-IN")}</p>
               )}
               <div className="flex flex-col items-end">
                 <span className="text-3xl font-bold text-primary leading-none">₹{pkg.pricePerPerson.toLocaleString("en-IN")}</span>
-                <span className="text-[10px] text-slate-500 font-bold mt-1">Per Person</span>
+                <span className="text-[10px] text-slate-600 font-bold mt-1">Per Person</span>
               </div>
             </div>
-            <button className="w-full bg-primary text-white font-bold py-3 px-6 rounded-xl hover:bg-accent hover:text-slate-900 transition-all duration-300 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm">
+            <button className="w-full bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-accent hover:text-slate-900 transition-all duration-300 shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm">
               View Details <ArrowRight className="w-4 h-4" />
             </button>
             <p className="text-[10px] text-green-600 font-bold mt-2">✓ Best Price Guaranteed</p>
@@ -222,14 +225,14 @@ function PackageCardComponent({
               <span className="text-[10px] font-bold text-slate-600">{pkg.rating || 4.8} · {pkg.reviewCount || 120} reviews</span>
             </div>
             {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson && (
-              <span className="text-[10px] text-slate-400 line-through leading-none">₹{pkg.originalPrice.toLocaleString("en-IN")}</span>
+              <span className="text-[10px] text-slate-500 line-through leading-none">₹{pkg.originalPrice.toLocaleString("en-IN")}</span>
             )}
             <div className="flex items-baseline gap-1">
               <span className="text-lg font-black text-primary leading-tight">₹{pkg.pricePerPerson.toLocaleString("en-IN")}</span>
-              <span className="text-[9px] text-slate-500 font-semibold">/person</span>
+              <span className="text-[9px] text-slate-600 font-semibold">/person</span>
             </div>
           </div>
-          <button className="shrink-0 bg-primary text-white font-bold py-2.5 px-5 rounded-xl text-sm flex items-center gap-1.5 shadow-md shadow-primary/20 active:scale-95 transition-transform">
+          <button className="shrink-0 bg-primary text-white font-bold py-2.5 px-5 rounded-lg text-sm flex items-center gap-1.5 shadow-md shadow-primary/20 active:scale-95 transition-transform">
             View Details <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -371,12 +374,12 @@ function PackageCardComponent({
           {/* Top Badges */}
           <div className="absolute top-4 left-4 flex flex-col gap-2">
             {pkg.isTrending && (
-              <div className="bg-orange-500/90 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg">
+              <div className="bg-orange-500/90 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-lg">
                 <Zap className="w-2.5 h-2.5 fill-current" /> Trending
               </div>
             )}
             {pkg.isFeatured && (
-              <div className="bg-primary/90 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
+              <div className="bg-primary/90 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-lg border border-white/20">
                 <Sparkles className="w-2.5 h-2.5 text-accent" /> Top Rated
               </div>
             )}
@@ -384,7 +387,7 @@ function PackageCardComponent({
 
           {/* Discount */}
           {discount > 0 && (
-            <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg border border-white/20">
+            <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-lg border border-white/20">
               {discount}% OFF
             </div>
           )}
@@ -415,7 +418,7 @@ function PackageCardComponent({
                   <Star key={s} className={cn("w-2.5 h-2.5", s <= (pkg.rating || 5) ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
                 ))}
               </div>
-              <span className="text-[9px] font-bold text-slate-400 ml-1">{pkg.reviewCount || 150}+ Reviews</span>
+              <span className="text-[9px] font-bold text-slate-500 ml-1">{pkg.reviewCount || 150}+ Reviews</span>
             </div>
             <div className="flex items-center gap-1 text-[9px] font-bold text-primary px-2 py-0.5 bg-primary/5 rounded-lg border border-primary/10">
               <Clock className="w-3 h-3 text-accent" /> {pkg.nights}N/{pkg.duration}D
@@ -429,20 +432,20 @@ function PackageCardComponent({
           <div className="flex items-center gap-3 mb-3 py-1.5 border-y border-slate-50">
             {inclusionList.map((inc, i) => (
               <div key={i} className="flex flex-col items-center gap-0.5 group/inc">
-                <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center group-hover/inc:bg-primary/10 transition-colors">
-                  <inc.Icon className="w-3.5 h-3.5 text-primary" />
+                <div className="w-7 h-7 rounded-full bg-[#ebf3fc] border border-[#dbe7f6] flex items-center justify-center transition-colors">
+                  <inc.Icon className="w-3.5 h-3.5 text-accent" />
                 </div>
-                <span className="text-[7px] font-bold text-slate-400">{inc.label}</span>
+                <span className="text-[7px] font-bold text-slate-600">{inc.label}</span>
               </div>
             ))}
           </div>
 
           {/* Tour Highlights */}
           <div className="space-y-1.5 mb-3">
-            <p className="text-[9px] font-bold text-slate-300 px-1 mb-0.5">Tour Highlights</p>
+            <p className="text-[9px] font-bold text-slate-500 px-1 mb-0.5">Tour Highlights</p>
             <div className="grid grid-cols-1 gap-1">
               {displayHighlights.map((h, i) => (
-                <div key={i} className="flex items-start gap-2 text-[10px] text-slate-500 font-semibold">
+                <div key={i} className="flex items-start gap-2 text-[10px] text-slate-600 font-semibold">
                   <div className="w-1 h-1 rounded-full bg-accent mt-1.5 shrink-0" />
                   <span className="line-clamp-1 leading-tight">{h}</span>
                 </div>
@@ -453,13 +456,13 @@ function PackageCardComponent({
           {/* Footer */}
           <div className="mt-auto pt-3 border-t border-slate-100 flex items-end justify-between">
             <div className="flex flex-col">
-              <span className="text-[9px] text-slate-400 font-bold">Starting from</span>
+              <span className="text-[9px] text-slate-500 font-bold">Starting from</span>
               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
-                <span className="text-[10px] text-slate-300 line-through font-bold leading-none mb-0.5">₹{pkg.originalPrice.toLocaleString()}</span>
+                <span className="text-[10px] text-slate-400 line-through font-bold leading-none mb-0.5">₹{pkg.originalPrice.toLocaleString()}</span>
               ) : null}
               <div className="flex items-baseline gap-0.5">
                 <span className="text-xl font-bold text-primary leading-none">₹{pkg.pricePerPerson.toLocaleString()}</span>
-                <span className="text-[9px] text-slate-400 font-bold">/ PP</span>
+                <span className="text-[9px] text-slate-500 font-bold">/ PP</span>
               </div>
             </div>
 

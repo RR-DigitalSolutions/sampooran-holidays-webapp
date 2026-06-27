@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   MapPin, Phone, Mail, Menu, X, ChevronDown, Facebook, Instagram,
   Youtube, User, LogOut, Ticket, Building2, Share2, Linkedin, Shield,
-  Hotel, Compass, ChevronRight
+  Hotel, Compass, ChevronRight, Plane
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -75,13 +75,34 @@ const SOCIAL = [
 // ─── Main Layout ─────────────────────────────────────────────────────────────
 
 export function Layout({ children }: { children: ReactNode }) {
+  const [isNavigating, setIsNavigating] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [openFooterCol, setOpenFooterCol] = useState<number | null>(null);
   const pathname = usePathname();
   const { user, logout, isLoading } = useAuth();
+  const [devModalOpen, setDevModalOpen] = useState(false);
+  const [modalCount, setModalCount] = useState(0);
+
+  useEffect(() => {
+    // Show first modal 5 seconds after load
+    const initialTimer = setTimeout(() => {
+      setDevModalOpen(true);
+      setModalCount(1);
+    }, 5000);
+
+    return () => clearTimeout(initialTimer);
+  }, []);
+
+  useEffect(() => {
+    if (modalCount > 0 && modalCount < 5) {
+      const interval = setInterval(() => {
+        setDevModalOpen(true);
+        setModalCount(prev => prev + 1);
+      }, 120000); // 2 minutes
+
+      return () => clearInterval(interval);
+    }
+  }, [modalCount]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -90,8 +111,43 @@ export function Layout({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    setIsNavigating(false);
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest("a");
+      if (anchor) {
+        const href = anchor.getAttribute("href");
+        if (
+          href &&
+          href.startsWith("/") &&
+          !href.startsWith("/#") &&
+          !href.includes("#") &&
+          anchor.getAttribute("target") !== "_blank" &&
+          !e.defaultPrevented &&
+          e.button === 0 &&
+          !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+        ) {
+          const cleanHref = href.split("?")[0].split("#")[0];
+          const cleanCurrent = window.location.pathname;
+          
+          if (cleanHref !== cleanCurrent) {
+            setIsNavigating(true);
+          }
+        }
+      }
+    };
+
+    document.addEventListener("click", handleAnchorClick);
+    return () => document.removeEventListener("click", handleAnchorClick);
+  }, []);
+
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [openFooterCol, setOpenFooterCol] = useState<number | null>(null);
 
   const isHome = pathname === "/";
   const isDashboardRoute = pathname?.startsWith("/partner") || pathname?.startsWith("/admin");
@@ -560,6 +616,182 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* Live Support Chat */}
       <ChatWidget />
+
+      {/* Fullscreen Travel-Themed Page Transition Loader Overlay */}
+      <AnimatePresence>
+        {isNavigating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-gradient-to-tr from-slate-50 via-white to-slate-50 flex flex-col items-center justify-center p-6 select-none"
+          >
+            <TravelLoader onCancel={() => setIsNavigating(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Temporary Development Notification Modal */}
+      <AnimatePresence>
+        {devModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDevModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="relative w-full max-w-md bg-gradient-to-br from-[#0B1528] to-[#1B3A6B] text-white rounded-2xl p-6 shadow-2xl border border-white/10 overflow-hidden"
+            >
+              {/* Decorative backgrounds */}
+              <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F5A623]/20 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-[#1B3A6B]/50 rounded-full blur-2xl pointer-events-none" />
+
+              {/* Close Button */}
+              <button
+                onClick={() => setDevModalOpen(false)}
+                className="absolute top-4 right-4 p-1 rounded-full bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition-all cursor-pointer z-10"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Icon */}
+              <div className="flex justify-center mb-4">
+                <div className="w-14 h-14 rounded-full bg-[#F5A623]/20 border border-[#F5A623]/30 flex items-center justify-center shadow-lg shadow-[#F5A623]/10">
+                  <Plane className="w-7 h-7 text-[#F5A623] -rotate-45" />
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="text-center space-y-3.5 relative z-10">
+                <div className="inline-block px-3 py-1 bg-[#F5A623]/15 border border-[#F5A623]/30 rounded-full">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#F5A623]">Under Development</span>
+                </div>
+                <h3 className="text-lg md:text-xl font-bold font-serif text-white tracking-wide">
+                  Welcome to Sampooran Holidays!
+                </h3>
+                <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-medium">
+                  This webapp is currently under active development. We are extremely thankful for your visit! Kindly pay attention as we are working hard to soon bring you the absolute best travel platform for all travel communities, built with the best <span className="text-[#F5A623] font-bold">GENUINE</span> services.
+                </p>
+              </div>
+
+              {/* Action Button */}
+              <div className="mt-6 flex justify-center relative z-10">
+                <button
+                  onClick={() => setDevModalOpen(false)}
+                  className="w-full py-2.5 px-6 bg-accent text-accent-foreground hover:bg-accent/90 active:scale-98 transition-all font-bold text-xs md:text-sm rounded-xl shadow-lg shadow-accent/15 cursor-pointer text-center"
+                >
+                  Explore Current Preview
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Sub-Component: Dynamic Travel Facts Loader ──────────────────────────────
+const TRAVEL_FACTS = [
+  "Did you know? Hikkim in Himachal Pradesh houses the world's highest post office at 14,400 feet!",
+  "UNESCO Heritage Toy Train: The Kalka-Shimla rail route has 103 tunnels and over 800 bridges!",
+  "Khajjiar (Chamba) is India's 'Mini Switzerland', featuring a floating island in the center of its lake.",
+  "High Altitude Cricket: Dharamshala hosts the world's highest altitude international cricket stadium at 4,780 feet.",
+  "Bir Billing is the paragliding capital of India and paragliding world cup host.",
+  "Spiti Valley is home to Key Monastery, a majestic 1,000-year-old Tibetan Buddhist training center.",
+  "Did you know? Dharamshala is the holy residence of His Holiness the Dalai Lama."
+];
+
+function TravelLoader({ onCancel }: { onCancel: () => void }) {
+  const [factIdx, setFactIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFactIdx(prev => (prev + 1) % TRAVEL_FACTS.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center space-y-8 max-w-md w-full px-4 text-slate-800">
+      {/* Premium Orbiting Loader */}
+      <div className="relative w-24 h-24 flex items-center justify-center">
+        {/* Orbiting Airplane */}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Plane className="w-5 h-5 text-accent transform rotate-90 fill-accent" />
+          </div>
+        </motion.div>
+
+        {/* Outer Ring */}
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+          className="w-18 h-18 rounded-full border-2 border-dashed border-primary/20 flex items-center justify-center relative"
+        >
+          <span className="absolute top-0.5 text-[8px] font-black text-primary/40">N</span>
+          <span className="absolute right-0.5 text-[8px] font-black text-primary/40">E</span>
+          <span className="absolute bottom-0.5 text-[8px] font-black text-primary/40">S</span>
+          <span className="absolute left-0.5 text-[8px] font-black text-primary/40">W</span>
+        </motion.div>
+
+        {/* Compass needle inside */}
+        <motion.div
+          animate={{ rotate: [0, -15, 10, -5, 12, 0] }}
+          transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+          className="absolute w-1 h-12 bg-gradient-to-b from-red-500 via-red-500 to-slate-300 rounded-full flex items-center justify-center"
+        >
+          <div className="w-2 h-2 rounded-full bg-white border border-red-500 z-10" />
+        </motion.div>
+      </div>
+
+      {/* Main Loading text */}
+      <div className="text-center space-y-1">
+        <h3 className="text-base md:text-lg font-black text-primary uppercase tracking-widest animate-pulse">
+          Mapping Your Journey...
+        </h3>
+        <p className="text-xs text-slate-500 font-bold">Please wait while we pack your itinerary</p>
+      </div>
+
+      {/* Knowledge Fact Box */}
+      <div className="bg-white rounded-lg p-5 border border-slate-100 shadow-md w-full relative overflow-hidden flex flex-col items-center justify-center min-h-[92px]">
+        {/* Border accent strip */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-accent" />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={factIdx}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="text-xs md:text-sm text-slate-700 font-semibold text-center leading-relaxed"
+          >
+            {TRAVEL_FACTS[factIdx]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Manual Cancel Button */}
+      <button
+        onClick={onCancel}
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded-lg font-bold text-xs md:text-sm shadow-sm active:scale-95 transition-all touch-manipulation cursor-pointer"
+      >
+        Cancel & Go Back
+      </button>
     </div>
   );
 }

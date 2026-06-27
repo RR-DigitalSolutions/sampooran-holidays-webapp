@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Calendar, MapPin, Loader2, Star, Clock, Filter, SlidersHorizontal, Search, Info, X, Mountain, Activity, Sparkles, ShieldCheck, Utensils, Compass, LayoutGrid, List as ListIcon, BookOpen, Globe, CloudSun, Bus, CreditCard, MessageCircle, Heart, PhoneCall, ShoppingBag, Briefcase, ChevronDown, HelpCircle, ChevronLeft, Quote } from "lucide-react";
+import { ChevronRight, Calendar, MapPin, Loader2, Star, Clock, Filter, SlidersHorizontal, Search, Info, X, Mountain, Activity, Sparkles, ShieldCheck, Utensils, Compass, LayoutGrid, List as ListIcon, BookOpen, Globe, CloudSun, Bus, CreditCard, MessageCircle, Heart, PhoneCall, ShoppingBag, Briefcase, ChevronDown, HelpCircle, ChevronLeft, Quote, Hotel, Car, Bed, Binoculars, ArrowDown, Camera, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PackageCard } from "@/components/PackageCard";
 import { Youtube } from "lucide-react";
@@ -18,8 +18,168 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
   const [childPlaces, setChildPlaces] = useState<any[]>([]);
   const [visibleCount, setVisibleCount] = useState(10);
   const [activeTab, setActiveTab] = useState("cities");
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [showDetails, setShowDetails] = useState(false);
+
+  // Dynamic filter states
+  const [selectedBudgets, setSelectedBudgets] = useState<string[]>([]);
+  const [selectedDurations, setSelectedDurations] = useState<string[]>([]);
+  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [citySearch, setCitySearch] = useState("");
+  const [showAllCities, setShowAllCities] = useState(false);
+  const [sortBy, setSortBy] = useState("Popularity");
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    pricing: true,
+    duration: true,
+    themes: true,
+    cities: true
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const toggleBudget = (label: string) => {
+    setSelectedBudgets(prev =>
+      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
+    );
+  };
+
+  const toggleDuration = (label: string) => {
+    setSelectedDurations(prev =>
+      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
+    );
+  };
+
+  const toggleTheme = (label: string) => {
+    setSelectedThemes(prev =>
+      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
+    );
+  };
+
+  const toggleCity = (city: string) => {
+    setSelectedCities(prev =>
+      prev.includes(city) ? prev.filter(x => x !== city) : [...prev, city]
+    );
+  };
+
+  const resetFilters = () => {
+    setSelectedBudgets([]);
+    setSelectedDurations([]);
+    setSelectedThemes([]);
+    setSelectedCities([]);
+    setCitySearch("");
+    setShowAllCities(false);
+  };
+
+  // Extract all available cities from the packages loaded on the page
+  const availableCities = useMemo(() => {
+    const set = new Set<string>();
+    packages.forEach(p => {
+      const citiesList = p.cities || (p.destinationName ? [p.destinationName] : []);
+      citiesList.forEach((c: string) => {
+        if (c && c.trim()) {
+          set.add(c.trim());
+        }
+      });
+    });
+    return Array.from(set).sort();
+  }, [packages]);
+
+  // Compute package counts per city from original packages
+  const cityCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    packages.forEach(p => {
+      const citiesList = p.cities || (p.destinationName ? [p.destinationName] : []);
+      const uniqueInPkg = new Set(citiesList.map((c: string) => c.trim()).filter(Boolean));
+      uniqueInPkg.forEach((c: string) => {
+        counts[c] = (counts[c] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [packages]);
+
+  // Filter available cities by the search query
+  const displayedCities = useMemo(() => {
+    if (!citySearch.trim()) return availableCities;
+    const lowerQuery = citySearch.toLowerCase().trim();
+    return availableCities.filter(c => c.toLowerCase().includes(lowerQuery));
+  }, [availableCities, citySearch]);
+
+  const visibleCitiesList = useMemo(() => {
+    if (showAllCities || citySearch.trim()) {
+      return displayedCities;
+    }
+    return displayedCities.slice(0, 5);
+  }, [displayedCities, showAllCities, citySearch]);
+
+  const filteredPackages = useMemo(() => {
+    let result = [...packages];
+
+    // Filter by Cities/Places
+    if (selectedCities.length > 0) {
+      result = result.filter(p => {
+        const citiesList = p.cities || (p.destinationName ? [p.destinationName] : []);
+        return citiesList.some((c: string) => selectedCities.includes(c.trim()));
+      });
+    }
+
+    // Filter by Budgets
+    if (selectedBudgets.length > 0) {
+      result = result.filter(p => {
+        const price = Number(p.pricePerPerson || p.price || 0);
+        return selectedBudgets.some(b => {
+          if (b === "Under ₹10,000") return price < 10000;
+          if (b === "₹10,000 - ₹20,000") return price >= 10000 && price <= 20000;
+          if (b === "₹20,000 - ₹40,000") return price >= 20000 && price <= 40000;
+          if (b === "Above ₹40,000") return price > 40000;
+          return false;
+        });
+      });
+    }
+
+    // Filter by Durations
+    if (selectedDurations.length > 0) {
+      result = result.filter(p => {
+        const dur = p.duration || 0;
+        return selectedDurations.some(d => {
+          if (d === "1 to 3 Days") return dur >= 1 && dur <= 3;
+          if (d === "4 to 6 Days") return dur >= 4 && dur <= 6;
+          if (d === "7 to 9 Days") return dur >= 7 && dur <= 9;
+          if (d === "10+ Days") return dur >= 10;
+          return false;
+        });
+      });
+    }
+
+    // Filter by Themes
+    if (selectedThemes.length > 0) {
+      result = result.filter(p => {
+        const cat = (p.category || "").toLowerCase();
+        const tags = (p.tags || []).map((t: string) => t.toLowerCase());
+        return selectedThemes.some(t => {
+          const themeLower = t.toLowerCase();
+          return cat.includes(themeLower) || tags.some((tag: string) => tag.includes(themeLower));
+        });
+      });
+    }
+
+    // Sort packages
+    if (sortBy === "Price: Low to High") {
+      result.sort((a, b) => Number(a.pricePerPerson || 0) - Number(b.pricePerPerson || 0));
+    } else if (sortBy === "Price: High to Low") {
+      result.sort((a, b) => Number(b.pricePerPerson || 0) - Number(a.pricePerPerson || 0));
+    } else if (sortBy === "Duration: Short to Long") {
+      result.sort((a, b) => Number(a.duration || 0) - Number(b.duration || 0));
+    } else {
+      result.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
+    }
+
+    return result;
+  }, [packages, selectedCities, selectedBudgets, selectedDurations, selectedThemes, sortBy]);
 
 
   useEffect(() => {
@@ -79,6 +239,18 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
     fetchPlaces();
   }, [entityType, entityData.name, entityData.id]);
 
+  // Scroll to results when filter state changes to prevent losing focus to bottom elements
+  useEffect(() => {
+    if (selectedBudgets.length > 0 || selectedDurations.length > 0 || selectedThemes.length > 0 || selectedCities.length > 0) {
+      const el = document.getElementById('packages-section');
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [selectedBudgets, selectedDurations, selectedThemes, selectedCities]);
+
   return (
     <div className="w-full flex flex-col font-sans">
       {/* Dynamic Destination Hero */}
@@ -101,31 +273,77 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 items-center">
             {/* Left Content */}
-            <div className="flex flex-col space-y-3 md:space-y-6">
-              <h1 className="text-2xl md:text-5xl font-bold font-serif capitalize leading-tight">
+            <div className="flex flex-col space-y-2 md:space-y-5">
+              <h1 className="text-lg md:text-2xl font-bold font-serif capitalize leading-tight">
                 {entityData.name} Tour Packages
               </h1>
-              <p className="text-sm md:text-base font-normal opacity-90 max-w-xl line-clamp-2 md:line-clamp-none">
+              <p className="text-xs md:text-sm font-normal max-w-xl line-clamp-2 md:line-clamp-none text-white/95">
                 {entityData.shortDescription || `Explore curated itineraries and best deals for ${entityData.name}`}
               </p>
 
-              {/* Dynamic Price Range — hidden on mobile to keep hero compact */}
-              {!loading && packages.length > 0 && packages.some(p => Number(p.price) > 0) && (
-                <div className="hidden md:inline-flex bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 flex-col w-fit">
-                  <span className="text-sm text-accent font-bold mb-1">Package Pricing</span>
-                  <div className="flex items-center gap-2 text-2xl font-bold">
-                    <span>₹{Math.min(...packages.filter(p => Number(p.price) > 0).map(p => Number(p.price))).toLocaleString('en-IN')}</span>
-                    <span className="text-lg text-white/60">to</span>
-                    <span>₹{Math.max(...packages.filter(p => Number(p.price) > 0).map(p => Number(p.price))).toLocaleString('en-IN')}</span>
+              {/* Dynamic Inclusions & Pricing Card */}
+              {(() => {
+                if (loading || !packages || packages.length === 0) return null;
+                const prices = packages
+                  .map(p => Number(p.pricePerPerson || p.price || 0))
+                  .filter(price => price > 0);
+                if (prices.length === 0) return null;
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+
+                const inclusions = [
+                  { label: "Cab", Icon: Car },
+                  { label: "Stay", Icon: Hotel },
+                  { label: "Sightseeing", Icon: Camera },
+                  { label: "Meal", Icon: Utensils },
+                  { label: "Trip Expert", Icon: User },
+                  { label: "Secured", Icon: ShieldCheck }
+                ];
+
+                return (
+                  <div className="flex flex-col space-y-3 mt-1.5 z-20">
+                    {/* Inclusions Row */}
+                    <div className="flex items-center gap-3.5 pb-2 flex-wrap">
+                      {inclusions.map((inc) => (
+                        <div key={inc.label} className="flex flex-col items-center text-center space-y-1 group/inc">
+                          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all group-hover/inc:bg-white/20 group-hover/inc:scale-105">
+                            <inc.Icon className="w-4 h-4 md:w-5 md:h-5 text-accent stroke-[1.8]" />
+                          </div>
+                          <span className="text-[9px] md:text-[10px] text-white/90">{inc.label}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Pricing Card */}
+                    <div className="relative bg-white/95 backdrop-blur-md rounded-lg p-3.5 border-l-4 border-l-accent border-y border-r border-slate-100 shadow-xl flex items-center justify-between gap-4 md:gap-5 max-w-xs md:max-w-sm w-full text-slate-800 transition-all duration-300">
+                      <div className="flex flex-col items-center text-center flex-1">
+                        <span className="text-[10px] md:text-[11px] text-primary font-bold uppercase tracking-widest">Packages available from</span>
+                        <div className="text-lg md:text-xl font-extrabold text-[#1B3A6B] tracking-tight my-0.5">
+                          ₹{minPrice.toLocaleString('en-IN')} - ₹{maxPrice.toLocaleString('en-IN')}
+                        </div>
+                        <span className="text-[8px] md:text-[9px] text-slate-500 font-semibold uppercase tracking-widest block leading-none">
+                          Per Person on Twin Sharing
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          document.getElementById('packages-section')?.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className="flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-full bg-accent text-primary hover:bg-accent/90 active:scale-95 transition-all touch-manipulation cursor-pointer shrink-0 shadow-lg shadow-accent/20"
+                        title="Scroll to packages"
+                        aria-label="Scroll to packages"
+                      >
+                        <ArrowDown className="w-5 h-5 stroke-[3]" />
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-xs text-white/70 mt-1">Based on {packages.length} curated packages</span>
-                </div>
-              )}
+                );
+              })()}
 
             </div>
 
             {/* Right Media — compact on mobile, full on desktop */}
-            <div className="w-full relative aspect-video rounded-2xl md:rounded-3xl overflow-hidden border-2 md:border-4 border-white/10 shadow-xl md:shadow-2xl bg-black">
+            <div className="w-full relative aspect-video rounded-lg md:rounded-lg overflow-hidden border-1 border-white/10 shadow-lg md:shadow-2xl bg-accent">
               {entityData.heroVideoUrl ? (
                 (() => {
                   const ytId = getYouTubeId(entityData.heroVideoUrl);
@@ -184,14 +402,14 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                     <Link
                       key={idx}
                       href={`/${place.slug}-tour-packages`}
-                      className="inline-flex items-center gap-2 md:gap-3 bg-white/10 active:bg-white/20 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-white/10 transition-colors group"
+                      className="inline-flex items-center gap-1 md:gap-2 bg-white/10 active:bg-white/20 p-1 rounded-md border border-white/10 transition-colors group"
                     >
-                      <div className="relative w-7 h-7 md:w-10 md:h-10 rounded-md md:rounded-lg overflow-hidden shrink-0 border border-white/20">
+                      <div className="relative w-7 h-7 md:w-10 md:h-10 rounded-sm overflow-hidden shrink-0 border border-white/20">
                         <Image src={validateImageUrl(place.thumbnailUrl || place.imageUrl, 150, 150, "1:1")} alt="" fill className="object-cover" sizes="40px" />
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] md:text-xs font-bold text-white group-hover:text-accent transition-colors">{place.name}</span>
-                        <span className="text-[8px] md:text-[9px] font-medium text-white/60">Starts ₹{place.lowestPrice || "9,999"}</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] md:text-xs font-medium text-white group-hover:text-accent transition-colors">{place.name} Trip</span>
+                        <span className="text-[8px] md:text-[9px] font-medium text-primary bg-accent rounded-[6px] px-1">Starts Only ₹{place.lowestPrice || "9,999"}/-</span>
                       </div>
                     </Link>
                   ))}
@@ -208,7 +426,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
       {/* Breadcrumbs */}
       <div className="bg-white border-b border-slate-200 py-1">
-        <div className="container mx-auto px-4 flex items-center gap-2 text-slate-500 text-xs">
+        <div className="container mx-auto px-4 flex items-center gap-2 text-slate-600 text-xs">
           <Link href="/" className="hover:text-primary transition-colors">Home</Link>
           <ChevronRight className="w-4 h-4" />
           <Link href={`/${entityData.slug}-tourism`} className="hover:text-primary transition-colors capitalize">{entityData.name}</Link>
@@ -218,86 +436,297 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
       </div>
 
       {/* Listing Section */}
-      <section className="py-3 md:py-4 pt-2 bg-[#f4f4f4]">
+      <section id="packages-section" className="py-2 md:py-4 pt-2 bg-[#f4f4f4]">
         <div className="container mx-auto px-3 md:px-4">
 
           {/* Mobile Filter Chips — horizontal scroll, replaces sidebar on mobile */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-3 md:hidden no-scrollbar">
-            <span className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-full">
-              <Filter className="w-3 h-3" /> Filters
-            </span>
-            {["Honeymoon", "Family", "Adventure", "Luxury", "Under ₹10k", "4-6 Days"].map((f, i) => (
-              <button key={i} className="shrink-0 px-3 py-1.5 bg-white border border-slate-200 text-xs font-semibold text-slate-600 rounded-full active:bg-primary active:text-white transition-colors">{f}</button>
-            ))}
+            <button
+              onClick={() => setMobileFilterOpen(true)}
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all touch-manipulation"
+            >
+              <Filter className="w-3.5 h-3.5" /> Filters {(selectedBudgets.length + selectedDurations.length + selectedThemes.length + selectedCities.length) > 0 && `(${selectedBudgets.length + selectedDurations.length + selectedThemes.length + selectedCities.length})`}
+            </button>
+            {[
+              { label: "Honeymoon", type: "theme", value: "Honeymoon" },
+              { label: "Family", type: "theme", value: "Family" },
+              { label: "Adventure", type: "theme", value: "Adventure" },
+              { label: "Luxury", type: "theme", value: "Luxury" },
+              { label: "Under ₹10k", type: "budget", value: "Under ₹10,000" },
+              { label: "4-6 Days", type: "duration", value: "4 to 6 Days" }
+            ].map((chip) => {
+              const isActive = chip.type === "theme"
+                ? selectedThemes.includes(chip.value)
+                : chip.type === "budget"
+                  ? selectedBudgets.includes(chip.value)
+                  : selectedDurations.includes(chip.value);
+
+              const toggleFunc = chip.type === "theme"
+                ? () => toggleTheme(chip.value)
+                : chip.type === "budget"
+                  ? () => toggleBudget(chip.value)
+                  : () => toggleDuration(chip.value);
+
+              return (
+                <button
+                  key={chip.label}
+                  onClick={toggleFunc}
+                  className={cn(
+                    "shrink-0 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all touch-manipulation active:scale-95",
+                    isActive
+                      ? "bg-primary text-white border-primary shadow-sm"
+                      : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+            {(selectedBudgets.length + selectedDurations.length + selectedThemes.length + selectedCities.length) > 0 && (
+              <button
+                onClick={resetFilters}
+                className="shrink-0 px-3 py-1.5 text-xs font-bold text-red-500 bg-red-50 border border-red-200 rounded-lg active:scale-95 transition-all touch-manipulation"
+              >
+                Reset
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
 
             {/* Left Sidebar (Filters) — desktop only */}
             <div className="hidden lg:block w-full lg:w-1/4 shrink-0">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 sticky top-24 overflow-hidden">
-                <div className="p-2 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                  <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                    <Filter className="w-4 h-4" /> Filters
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 sticky top-[84px] max-h-[calc(100vh-110px)] overflow-y-auto custom-scrollbar">
+                <div className="py-2.5 px-4 border-b border-slate-100 bg-white flex items-center justify-between">
+                  <h3 className="font-bold text-sm tracking-wide text-slate-800 uppercase">
+                    Filters
                   </h3>
-                  <span className="text-xs text-primary font-bold cursor-pointer hover:underline">Reset</span>
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs font-bold text-primary hover:text-primary-dark transition-colors cursor-pointer uppercase tracking-wider"
+                  >
+                    Clear All
+                  </button>
                 </div>
-                <div className="p-5 border-b border-slate-100">
-                  <h4 className="font-bold text-sm text-slate-800 mb-4">Pricing (Per Person)</h4>
-                  <div className="space-y-3">
-                    {["Under ₹10,000", "₹10,000 - ₹20,000", "₹20,000 - ₹40,000", "Above ₹40,000"].map((label, i) => (
-                      <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 accent-primary" />
-                        <span className="text-sm text-slate-600 group-hover:text-slate-900">{label}</span>
-                      </label>
-                    ))}
+
+                {/* Pricing Accordion */}
+                <div className="py-3.5 px-4 border-b border-slate-100">
+                  <div
+                    onClick={() => toggleSection('pricing')}
+                    className="flex items-center justify-between cursor-pointer group select-none"
+                  >
+                    <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Pricing (Per Person)</h4>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.pricing && "rotate-180")} />
                   </div>
+                  <AnimatePresence initial={false}>
+                    {expandedSections.pricing && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2 mt-2.5">
+                          {["Under ₹10,000", "₹10,000 - ₹20,000", "₹20,000 - ₹40,000", "Above ₹40,000"].map((label) => (
+                            <label key={label} className="flex items-center gap-3 cursor-pointer group/item touch-manipulation">
+                              <input
+                                type="checkbox"
+                                checked={selectedBudgets.includes(label)}
+                                onChange={() => toggleBudget(label)}
+                                className="w-4 h-4 rounded border-slate-350 accent-primary cursor-pointer"
+                              />
+                              <span className="text-sm text-slate-600 group-hover/item:text-slate-900 font-medium transition-colors">{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <div className="p-5 border-b border-slate-100">
-                  <h4 className="font-bold text-sm text-slate-800 mb-4">Duration</h4>
-                  <div className="space-y-3">
-                    {["1 to 3 Days", "4 to 6 Days", "7 to 9 Days", "10+ Days"].map((label, i) => (
-                      <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 accent-primary" />
-                        <span className="text-sm text-slate-600 group-hover:text-slate-900">{label}</span>
-                      </label>
-                    ))}
+
+                {/* Duration Accordion */}
+                <div className="py-3.5 px-4 border-b border-slate-100">
+                  <div
+                    onClick={() => toggleSection('duration')}
+                    className="flex items-center justify-between cursor-pointer group select-none"
+                  >
+                    <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Duration</h4>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.duration && "rotate-180")} />
                   </div>
+                  <AnimatePresence initial={false}>
+                    {expandedSections.duration && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2 mt-2.5">
+                          {["1 to 3 Days", "4 to 6 Days", "7 to 9 Days", "10+ Days"].map((label) => (
+                            <label key={label} className="flex items-center gap-3 cursor-pointer group/item touch-manipulation">
+                              <input
+                                type="checkbox"
+                                checked={selectedDurations.includes(label)}
+                                onChange={() => toggleDuration(label)}
+                                className="w-4 h-4 rounded border-slate-350 accent-primary cursor-pointer"
+                              />
+                              <span className="text-sm text-slate-650 group-hover/item:text-slate-900 font-medium transition-colors">{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <div className="p-5">
-                  <h4 className="font-bold text-sm text-slate-800 mb-4">Themes</h4>
-                  <div className="space-y-3">
-                    {["Honeymoon", "Family", "Adventure", "Wildlife", "Luxury"].map((label, i) => (
-                      <label key={i} className="flex items-center gap-3 cursor-pointer group">
-                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 accent-primary" />
-                        <span className="text-sm text-slate-600 group-hover:text-slate-900">{label}</span>
-                      </label>
-                    ))}
+
+                {/* Themes Accordion */}
+                <div className="py-3.5 px-4 border-b border-slate-100">
+                  <div
+                    onClick={() => toggleSection('themes')}
+                    className="flex items-center justify-between cursor-pointer group select-none"
+                  >
+                    <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Themes</h4>
+                    <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.themes && "rotate-180")} />
                   </div>
+                  <AnimatePresence initial={false}>
+                    {expandedSections.themes && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2 mt-2.5">
+                          {["Honeymoon", "Family", "Adventure", "Wildlife", "Luxury"].map((label) => (
+                            <label key={label} className="flex items-center gap-3 cursor-pointer group/item touch-manipulation">
+                              <input
+                                type="checkbox"
+                                checked={selectedThemes.includes(label)}
+                                onChange={() => toggleTheme(label)}
+                                className="w-4 h-4 rounded border-slate-350 accent-primary cursor-pointer"
+                              />
+                              <span className="text-sm text-slate-655 group-hover/item:text-slate-900 font-medium transition-colors">{label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
+
+                {/* Cities / Places Accordion (Dynamic) */}
+                {availableCities.length > 0 && (
+                  <div className="py-3.5 px-4">
+                    <div
+                      onClick={() => toggleSection('cities')}
+                      className="flex items-center justify-between cursor-pointer group select-none"
+                    >
+                      <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Cities / Places</h4>
+                      <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.cities && "rotate-180")} />
+                    </div>
+                    <AnimatePresence initial={false}>
+                      {expandedSections.cities && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-2.5">
+                            {/* Search Input */}
+                            {availableCities.length > 5 && (
+                              <div className="relative mb-2.5 flex items-center bg-white border border-slate-200 rounded-md focus-within:border-primary/45 transition-colors">
+                                <input
+                                  type="text"
+                                  placeholder="Search city/place..."
+                                  value={citySearch}
+                                  onChange={(e) => setCitySearch(e.target.value)}
+                                  className="w-full pl-3 pr-8 py-1.5 text-xs text-slate-700 placeholder-slate-400 bg-transparent outline-none focus:ring-0 font-medium"
+                                />
+                                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
+                                {citySearch && (
+                                  <button
+                                    onClick={() => setCitySearch("")}
+                                    className="absolute right-8 text-slate-400 hover:text-slate-650 p-1"
+                                    title="Clear search"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Scrollable Checklist */}
+                            <div className={cn(
+                              "space-y-0.5 pr-1 custom-scrollbar",
+                              (showAllCities || citySearch.trim()) && "max-h-48 overflow-y-auto"
+                            )}>
+                              {displayedCities.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic py-2 text-center font-medium">No matching places</p>
+                              ) : (
+                                visibleCitiesList.map((city) => (
+                                  <label key={city} className="flex items-center justify-between cursor-pointer group py-1 touch-manipulation transition-all">
+                                    <div className="flex items-center gap-3">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedCities.includes(city)}
+                                        onChange={() => toggleCity(city)}
+                                        className="w-4 h-4 rounded border-slate-305 accent-primary cursor-pointer"
+                                      />
+                                      <span className="text-sm text-slate-600 group-hover:text-slate-900 font-medium transition-colors">
+                                        {city}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs text-slate-400 font-medium font-sans">
+                                      ({cityCounts[city] || 0})
+                                    </span>
+                                  </label>
+                                ))
+                              )}
+                            </div>
+
+                            {/* Show More / Show Less Link */}
+                            {displayedCities.length > 5 && !citySearch.trim() && (
+                              <button
+                                onClick={() => setShowAllCities(!showAllCities)}
+                                className="mt-2 text-xs text-primary font-bold hover:underline py-0.5 block text-left"
+                              >
+                                {showAllCities ? "Show Less" : `Show More (${displayedCities.length - 5} more)`}
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Right Content Area */}
             <div className="w-full lg:w-3/4 flex flex-col gap-3 md:gap-5">
-              {/* Sort Bar — compact on mobile */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 px-3 py-2 md:p-1 md:px-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm md:text-xl font-bold text-slate-800 md:mx-2 flex-1">
-                  <span className="text-primary">{packages.length}</span> <span className="hidden sm:inline">Packages in {entityData.name}</span><span className="sm:hidden">Packages</span>
+              {/* Sort Bar — static on scroll */}
+              <div className="bg-white rounded-lg shadow-sm border border-slate-200 px-3 py-2 md:p-1.5 md:px-3 flex items-center justify-between gap-2 transition-all mb-1">
+                <h2 className="text-xs md:text-sm font-bold text-slate-800 md:mx-2 flex-1">
+                  <span className="text-primary">{filteredPackages.length}</span> <span className="hidden sm:inline">Packages in {entityData.name}</span><span className="sm:hidden">Packages</span>
                 </h2>
 
                 {/* View Mode Toggle (Desktop only) */}
                 <div className="hidden md:flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200 mr-2">
                   <button
                     onClick={() => setViewMode("list")}
-                    className={cn("p-1.5 rounded-md transition-colors", viewMode === "list" ? "bg-white shadow-sm text-primary" : "text-slate-400 hover:text-slate-600")}
+                    className={cn("p-1.5 rounded-md transition-colors", viewMode === "list" ? "bg-white shadow-sm text-primary" : "text-slate-550 hover:text-slate-750")}
                     title="List View"
                   >
                     <ListIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-white shadow-sm text-primary" : "text-slate-400 hover:text-slate-600")}
+                    className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-white shadow-sm text-primary" : "text-slate-550 hover:text-slate-750")}
                     title="Grid View"
                   >
                     <LayoutGrid className="w-4 h-4" />
@@ -305,8 +734,14 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                 </div>
 
                 <div className="flex items-center gap-2 bg-slate-50 rounded-lg border border-slate-200">
-                  <label htmlFor="sortPackages" className="text-[10px] font-bold text-slate-500 pl-2 hidden sm:block">SORT BY:</label>
-                  <select id="sortPackages" aria-label="Sort packages by" className="bg-transparent text-xs md:text-sm font-bold text-slate-800 outline-none pr-2 md:pr-4 py-1.5 cursor-pointer">
+                  <label htmlFor="sortPackages" className="text-[10px] font-bold text-slate-600 pl-2 hidden sm:block">SORT BY:</label>
+                  <select
+                    id="sortPackages"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    aria-label="Sort packages by"
+                    className="bg-transparent text-xs md:text-sm font-bold text-slate-800 outline-none pr-2 md:pr-4 py-1.5 cursor-pointer"
+                  >
                     <option>Popularity</option>
                     <option>Price: Low to High</option>
                     <option>Price: High to Low</option>
@@ -317,30 +752,30 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
               {/* Packages List */}
               {loading ? (
-                <div className="flex justify-center items-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="flex justify-center items-center py-20 bg-white rounded-lg shadow-sm border border-slate-200">
                   <Loader2 className="w-10 h-10 animate-spin text-primary" />
                 </div>
-              ) : packages.length === 0 ? (
-                <div className="bg-white rounded-xl p-12 text-center border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+              ) : filteredPackages.length === 0 ? (
+                <div className="bg-white rounded-lg p-12 text-center border border-slate-200 shadow-sm flex flex-col items-center justify-center">
                   <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-slate-300" />
                   </div>
                   <h3 className="text-xl my-6 font-bold text-slate-800 mb-2">No packages found</h3>
-                  <p className="text-slate-500 max-w-md">We are currently updating our packages for {entityData.name}. Please try removing some filters or check back later.</p>
+                  <p className="text-slate-600 max-w-md">We are currently updating our packages for {entityData.name}. Please try removing some filters or check back later.</p>
                 </div>
               ) : (
                 <div className={cn("gap-5", viewMode === "list" ? "flex flex-col" : "grid grid-cols-1 md:grid-cols-2")}>
-                  {packages.slice(0, visibleCount).map((pkg) => (
+                  {filteredPackages.slice(0, visibleCount).map((pkg) => (
                     <PackageCard key={pkg.id} pkg={pkg} variant={viewMode === "list" ? "horizontal" : "default"} />
                   ))}
 
-                  {visibleCount < packages.length && (
+                  {visibleCount < filteredPackages.length && (
                     <div className={cn("flex justify-center mt-4 pb-4", viewMode === "grid" && "md:col-span-2")}>
                       <button
                         onClick={() => setVisibleCount(prev => prev + 10)}
-                        className="w-full md:w-auto bg-white active:bg-slate-50 text-primary font-bold px-6 md:px-10 py-3.5 rounded-2xl border-2 border-primary/20 transition-all flex items-center justify-center gap-2 shadow-sm text-sm"
+                        className="w-full md:w-auto bg-white active:bg-slate-50 text-primary font-bold px-6 md:px-10 py-3 rounded-lg border-2 border-primary/20 transition-all flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer touch-manipulation"
                       >
-                        Load More · {packages.length - visibleCount} remaining
+                        Load More · {filteredPackages.length - visibleCount} remaining
                       </button>
                     </div>
                   )}
@@ -359,7 +794,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
             {/* Tab Switcher — matches screenshot exactly */}
             <div className="flex justify-center mb-8">
-              <div className="inline-flex rounded-full border border-slate-200 overflow-hidden shadow-sm">
+              <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden shadow-sm">
                 <button
                   onClick={() => setActiveTab("cities")}
                   className={cn(
@@ -424,7 +859,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                       <Link
                         key={place.id}
                         href={`/${place.slug}-tour-packages`}
-                        className="px-5 py-2.5 bg-white border border-slate-200 rounded-full text-sm font-medium text-slate-700 hover:border-primary hover:text-primary transition-all shadow-sm hover:shadow-md"
+                        className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:border-primary hover:text-primary transition-all shadow-sm hover:shadow-md"
                       >
                         {place.name} Tour Packages
                       </Link>
@@ -440,7 +875,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   <Sparkles className="w-7 h-7 text-slate-300" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-800">Coming Soon</h3>
-                <p className="text-slate-500 text-sm mt-2">We're curating similar packages based on your interests.</p>
+                <p className="text-slate-600 text-sm mt-2">We're curating similar packages based on your interests.</p>
               </div>
             )}
 
@@ -448,18 +883,18 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         </section>
       )}
       {/* Inline Detailed Rich Content (SEO/AEO friendly) */}
-      <section className={cn("bg-white border-t border-slate-100 transition-all duration-500", showDetails ? "pt-16 pb-6" : "py-16")}>
+      <section className={cn("bg-white border-t border-slate-100 transition-all duration-500", showDetails ? "pt-6 pb-3 md:pt-12 md:pb-4" : "py-6 md:py-12")}>
         <div className="container mx-auto px-4 max-w-6xl">
-          <div className={cn("text-center max-w-5xl mx-auto", showDetails ? "mb-10" : "mb-0")}>
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-primary mb-4">
+          <div className={cn("text-center max-w-5xl mx-auto", showDetails ? "mb-6 md:mb-8" : "mb-0")}>
+            <h2 className="text-lg md:text-xl font-sans font-bold text-primary mb-3">
               More About {entityData.name}
             </h2>
-            <p className="text-slate-600">{entityData.longDescription || entityData.description}</p>
+            <p className="text-slate-600 text-xs md:text-xs leading-relaxed font-medium font-sans">{entityData.longDescription || entityData.description}</p>
 
             {!showDetails && (
               <button
                 onClick={() => setShowDetails(true)}
-                className="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-white text-primary border-2 border-primary rounded-full font-bold shadow-sm hover:bg-primary hover:text-white transition-all duration-300 group"
+                className="mt-4 md:mt-6 inline-flex items-center gap-2 px-6 py-2.5 bg-white text-primary border-2 border-primary rounded-lg font-bold text-xs md:text-sm shadow-sm hover:bg-primary hover:text-white transition-all duration-300 group"
               >
                 Know More in Detail <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -476,49 +911,49 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         }}
         className="overflow-hidden"
       >
-        <section className="pb-16 bg-white">
+        <section className="pb-8 md:pb-12 bg-white">
           <div className="container mx-auto px-4 max-w-6xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-slate-700 font-sans">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 text-slate-655 font-sans">
               {/* Essential Info & Guidelines */}
-              <div className="space-y-8">
-                <div className="space-y-6">
-                  <h3 className="text-xl font-bold font-serif text-slate-900 border-b pb-2">Essential Info</h3>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-base font-bold text-slate-850 border-b pb-1.5 font-sans">Essential Info</h3>
 
                   {entityData.bestTimeToVisit && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Calendar className="w-4 h-4" /> Best Time to Visit</h4>
-                      <p className="font-medium text-slate-800">{entityData.bestTimeToVisit}</p>
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Calendar className="w-3.5 h-3.5" /> Best Time to Visit</h4>
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed font-sans">{entityData.bestTimeToVisit}</p>
                     </div>
                   )}
                   {entityData.altitude && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Mountain className="w-4 h-4" /> Altitude</h4>
-                      <p className="text-sm font-medium">{entityData.altitude}</p>
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Mountain className="w-3.5 h-3.5" /> Altitude</h4>
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed font-sans">{entityData.altitude}</p>
                     </div>
                   )}
                   {entityData.howToReach && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><MapPin className="w-4 h-4" /> How to Reach</h4>
-                      <p className="text-sm whitespace-pre-wrap">{entityData.howToReach}</p>
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><MapPin className="w-3.5 h-3.5" /> How to Reach</h4>
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.howToReach}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Safety & Tips (If available) */}
                 {(entityData.safetyInfo || (entityData.travelTips && entityData.travelTips.length > 0)) && (
-                  <div className="space-y-4 pt-4">
+                  <div className="space-y-4 pt-2">
                     {entityData.safetyInfo && (
-                      <div className="bg-red-50 p-4 rounded-xl border border-red-100">
-                        <h4 className="text-xs font-bold text-red-600 flex items-center gap-2 mb-2"><ShieldCheck className="w-4 h-4" /> Safety Information</h4>
-                        <p className="text-sm text-red-900 whitespace-pre-wrap">{entityData.safetyInfo}</p>
+                      <div className="bg-red-50/50 p-3.5 rounded-lg border border-red-100/60">
+                        <h4 className="text-xs font-bold text-red-650 flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><ShieldCheck className="w-3.5 h-3.5" /> Safety Information</h4>
+                        <p className="text-xs text-red-800 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.safetyInfo}</p>
                       </div>
                     )}
                     {entityData.travelTips && entityData.travelTips.length > 0 && (
-                      <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-                        <h4 className="text-xs font-bold text-amber-600 flex items-center gap-2 mb-2"><Info className="w-4 h-4" /> Travel Tips</h4>
+                      <div className="bg-amber-50/50 p-3.5 rounded-lg border border-amber-100/60">
+                        <h4 className="text-xs font-bold text-amber-700 flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Info className="w-3.5 h-3.5" /> Travel Tips</h4>
                         <ul className="space-y-1">
                           {entityData.travelTips.map((t: string, i: number) => (
-                            <li key={i} className="text-sm text-amber-900 flex gap-2"><span className="text-amber-500">•</span> {t}</li>
+                            <li key={i} className="text-xs text-amber-800 font-medium leading-relaxed font-sans flex gap-1.5"><span className="text-amber-500 font-bold">•</span> {t}</li>
                           ))}
                         </ul>
                       </div>
@@ -528,16 +963,16 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
               </div>
 
               {/* Highlights & Experience */}
-              <div className="space-y-8">
-                <div className="space-y-6">
-                  <h3 className="text-xl font-bold font-serif text-slate-900 border-b pb-2">Experience {entityData.name}</h3>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-base font-bold text-slate-850 border-b pb-1.5 font-sans">Experience {entityData.name}</h3>
 
                   {entityData.highlights && entityData.highlights.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4" /> Key Highlights</h4>
-                      <ul className="space-y-2">
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-2 uppercase tracking-wider font-sans"><Sparkles className="w-3.5 h-3.5" /> Key Highlights</h4>
+                      <ul className="space-y-1.5">
                         {entityData.highlights.map((h: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm font-medium text-slate-800">
+                          <li key={i} className="flex items-start gap-2 text-xs font-medium text-slate-600 font-sans">
                             <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                             {h}
                           </li>
@@ -549,10 +984,10 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   {/* Local Attractions */}
                   {entityData.localAttractions && entityData.localAttractions.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-3"><Compass className="w-4 h-4" /> Local Attractions</h4>
-                      <div className="flex flex-wrap gap-2">
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-2 uppercase tracking-wider font-sans"><Compass className="w-3.5 h-3.5" /> Local Attractions</h4>
+                      <div className="flex flex-wrap gap-1.5">
                         {entityData.localAttractions.map((t: string, i: number) => (
-                          <span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-100 shadow-sm">{t}</span>
+                          <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-[10px] md:text-xs font-semibold border border-blue-100/60 shadow-sm font-sans">{t}</span>
                         ))}
                       </div>
                     </div>
@@ -561,10 +996,10 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   {/* Activities & Things to Do */}
                   {(entityData.activities || entityData.thingsToDo) && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-3"><Activity className="w-4 h-4" /> Top Activities</h4>
-                      <div className="flex flex-wrap gap-2">
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-2 uppercase tracking-wider font-sans"><Activity className="w-3.5 h-3.5" /> Top Activities</h4>
+                      <div className="flex flex-wrap gap-1.5">
                         {(entityData.activities || entityData.thingsToDo).map((t: string, i: number) => (
-                          <span key={i} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold">{t}</span>
+                          <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-655 rounded-md text-[10px] md:text-xs font-medium font-sans">{t}</span>
                         ))}
                       </div>
                     </div>
@@ -573,11 +1008,11 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   {/* Local Cuisine */}
                   {entityData.localCuisine && entityData.localCuisine.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-3"><Utensils className="w-4 h-4" /> Local Cuisine</h4>
-                      <ul className="space-y-2">
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-2 uppercase tracking-wider font-sans"><Utensils className="w-3.5 h-3.5" /> Local Cuisine</h4>
+                      <ul className="space-y-1.5">
                         {entityData.localCuisine.map((item: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm font-medium text-slate-800">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0 inline-block" />
+                          <li key={i} className="flex items-start gap-2 text-xs font-medium text-slate-600 font-sans">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
                             {item}
                           </li>
                         ))}
@@ -588,8 +1023,8 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   {/* Famous For */}
                   {entityData.famousFor && entityData.famousFor.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Star className="w-4 h-4" /> Famous For</h4>
-                      <p className="text-sm font-medium text-slate-600">
+                      <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Star className="w-3.5 h-3.5" /> Famous For</h4>
+                      <p className="text-xs font-medium text-slate-600 font-sans">
                         {Array.isArray(entityData.famousFor) ? entityData.famousFor.join(', ') : entityData.famousFor}
                       </p>
                     </div>
@@ -602,38 +1037,38 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
         {/* Advanced Traveler Knowledge Base */}
         {(entityData.historyAndCulture || entityData.geography || entityData.weatherAndClimate || entityData.transportation || entityData.currencyAndPayments || entityData.languageAndCommunication || entityData.localEtiquette || entityData.healthTips || entityData.emergencyNumbers || entityData.packingList || entityData.shopping) && (
-          <section className="py-16 bg-slate-50 border-t border-slate-100">
+          <section className="py-12 bg-slate-50 border-t border-slate-100">
             <div className="container mx-auto px-4 max-w-6xl">
-              <div className="mb-10 text-center max-w-3xl mx-auto">
-                <h2 className="text-3xl md:text-4xl font-serif font-bold text-primary mb-4">
+              <div className="mb-8 text-center max-w-3xl mx-auto">
+                <h2 className="text-lg md:text-xl font-sans font-bold text-primary mb-2">
                   Traveler's Knowledge Base
                 </h2>
-                <p className="text-slate-600">Everything you need to know before visiting {entityData.name}.</p>
+                <p className="text-xs text-slate-500 font-sans">Everything you need to know before visiting {entityData.name}.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-slate-700 font-sans">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 text-slate-655 font-sans">
 
                 {/* General Background */}
                 {(entityData.historyAndCulture || entityData.geography || entityData.weatherAndClimate) && (
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-bold font-serif text-slate-900 border-b pb-2">Background</h3>
+                  <div className="space-y-4">
+                    <h3 className="text-base font-bold text-slate-850 border-b pb-1.5 font-sans">Background</h3>
 
                     {entityData.historyAndCulture && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><BookOpen className="w-4 h-4" /> History & Culture</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.historyAndCulture}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><BookOpen className="w-3.5 h-3.5" /> History & Culture</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.historyAndCulture}</p>
                       </div>
                     )}
                     {entityData.geography && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Globe className="w-4 h-4" /> Geography</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.geography}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Globe className="w-3.5 h-3.5" /> Geography</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.geography}</p>
                       </div>
                     )}
                     {entityData.weatherAndClimate && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><CloudSun className="w-4 h-4" /> Weather & Climate</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.weatherAndClimate}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><CloudSun className="w-3.5 h-3.5" /> Weather & Climate</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.weatherAndClimate}</p>
                       </div>
                     )}
                   </div>
@@ -641,31 +1076,31 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
                 {/* Practical Info */}
                 {(entityData.transportation || entityData.currencyAndPayments || entityData.languageAndCommunication || entityData.localEtiquette) && (
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-bold font-serif text-slate-900 border-b pb-2">Practical Info</h3>
+                  <div className="space-y-4">
+                    <h3 className="text-base font-bold text-slate-850 border-b pb-1.5 font-sans">Practical Info</h3>
 
                     {entityData.transportation && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Bus className="w-4 h-4" /> Getting Around</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.transportation}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Bus className="w-3.5 h-3.5" /> Getting Around</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.transportation}</p>
                       </div>
                     )}
                     {entityData.currencyAndPayments && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><CreditCard className="w-4 h-4" /> Currency & Payments</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.currencyAndPayments}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><CreditCard className="w-3.5 h-3.5" /> Currency & Payments</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.currencyAndPayments}</p>
                       </div>
                     )}
                     {entityData.languageAndCommunication && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><MessageCircle className="w-4 h-4" /> Language</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.languageAndCommunication}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><MessageCircle className="w-3.5 h-3.5" /> Language</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.languageAndCommunication}</p>
                       </div>
                     )}
                     {entityData.localEtiquette && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Heart className="w-4 h-4" /> Local Etiquette</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.localEtiquette}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Heart className="w-3.5 h-3.5" /> Local Etiquette</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.localEtiquette}</p>
                       </div>
                     )}
                   </div>
@@ -673,31 +1108,31 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
                 {/* Tips & Specifics */}
                 {(entityData.healthTips || entityData.emergencyNumbers || entityData.packingList || entityData.shopping) && (
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-bold font-serif text-slate-900 border-b pb-2">Tips & Specifics</h3>
+                  <div className="space-y-4">
+                    <h3 className="text-base font-bold text-slate-850 border-b pb-1.5 font-sans">Tips & Specifics</h3>
 
                     {entityData.healthTips && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><ShieldCheck className="w-4 h-4" /> Health & Safety</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.healthTips}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><ShieldCheck className="w-3.5 h-3.5" /> Health & Safety</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.healthTips}</p>
                       </div>
                     )}
                     {entityData.emergencyNumbers && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><PhoneCall className="w-4 h-4" /> Emergency Numbers</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.emergencyNumbers}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><PhoneCall className="w-3.5 h-3.5" /> Emergency Numbers</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.emergencyNumbers}</p>
                       </div>
                     )}
                     {entityData.shopping && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><ShoppingBag className="w-4 h-4" /> Shopping</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.shopping}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><ShoppingBag className="w-3.5 h-3.5" /> Shopping</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.shopping}</p>
                       </div>
                     )}
                     {entityData.packingList && (
                       <div>
-                        <h4 className="text-sm font-bold text-accent flex items-center gap-2 mb-2"><Briefcase className="w-4 h-4" /> Packing List</h4>
-                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{entityData.packingList}</p>
+                        <h4 className="text-xs font-bold text-accent flex items-center gap-2 mb-1.5 uppercase tracking-wider font-sans"><Briefcase className="w-3.5 h-3.5" /> Packing List</h4>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap font-sans">{entityData.packingList}</p>
                       </div>
                     )}
                   </div>
@@ -708,10 +1143,10 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
           </section>
         )}
 
-        <div className="bg-slate-50 pb-16 flex justify-center border-t border-slate-200 pt-8">
+        <div className="bg-slate-50 pb-8 md:pb-16 flex justify-center border-t border-slate-200 pt-6 md:pt-8">
           <button
             onClick={() => setShowDetails(false)}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-white text-slate-600 border border-slate-300 rounded-full font-bold shadow-sm hover:bg-slate-100 transition-all duration-300"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-white text-slate-600 border border-slate-300 rounded-lg font-bold shadow-sm hover:bg-slate-100 transition-all duration-300"
           >
             Show Less
           </button>
@@ -730,6 +1165,204 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         if (faqs.length === 0) return null;
         return <FaqSection faqs={faqs} entityName={entityData.name} />;
       })()}
+
+      {/* Mobile Fullscreen Filter Drawer */}
+      <AnimatePresence>
+        {mobileFilterOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileFilterOpen(false)}
+              className="fixed inset-0 bg-black z-50 md:hidden"
+            />
+            {/* Drawer Body */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+              className="fixed inset-x-0 bottom-0 top-16 bg-white z-50 rounded-t-lg flex flex-col md:hidden overflow-hidden shadow-2xl border-t border-slate-200"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
+                <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                  <SlidersHorizontal className="w-5 h-5" /> Filter Packages
+                </h3>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={resetFilters}
+                    className="text-xs text-primary font-bold hover:underline py-1.5 px-3 touch-manipulation"
+                  >
+                    Reset All
+                  </button>
+                  <button
+                    onClick={() => setMobileFilterOpen(false)}
+                    className="p-1.5 hover:bg-slate-100 rounded-md text-slate-400 hover:text-slate-600 touch-manipulation"
+                    aria-label="Close filters"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Filters Content */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-6 pb-24">
+                {/* Cities / Places */}
+                {availableCities.length > 0 && (
+                  <div className="border-b border-slate-100 pb-5">
+                    <h4 className="font-bold text-sm text-slate-800 mb-3">Cities / Places</h4>
+
+                    {/* Search Input for Mobile */}
+                    {availableCities.length > 4 && (
+                      <div className="relative mb-3 flex items-center bg-slate-50 border border-slate-200 rounded-lg focus-within:border-primary/45 transition-colors">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Search city/place..."
+                          value={citySearch}
+                          onChange={(e) => setCitySearch(e.target.value)}
+                          className="w-full pl-9 pr-8 py-2 text-xs text-slate-700 placeholder-slate-400 bg-transparent outline-none focus:ring-0 font-medium"
+                        />
+                        {citySearch && (
+                          <button
+                            onClick={() => setCitySearch("")}
+                            className="absolute right-2 text-slate-400 hover:text-slate-650 p-1"
+                            title="Clear search"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Scrollable Container with checkbox pills for Mobile */}
+                    <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                      {displayedCities.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic py-2 text-center font-medium">No matching places</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {displayedCities.map((city) => {
+                            const isSelected = selectedCities.includes(city);
+                            return (
+                              <button
+                                key={city}
+                                onClick={() => toggleCity(city)}
+                                className={cn(
+                                  "py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center touch-manipulation active:scale-95 flex items-center gap-1.5",
+                                  isSelected
+                                    ? "bg-primary text-white border-primary shadow-sm"
+                                    : "bg-slate-50 text-slate-600 border-slate-200"
+                                )}
+                              >
+                                <span>{city}</span>
+                                <span className={cn(
+                                  "text-[9px] font-black px-1.5 py-0.5 rounded-md",
+                                  isSelected ? "bg-white/20 text-white" : "bg-slate-200/60 text-slate-500"
+                                )}>
+                                  {cityCounts[city] || 0}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Budget */}
+                <div className="border-b border-slate-100 pb-5">
+                  <h4 className="font-bold text-sm text-slate-800 mb-3">Pricing (Per Person)</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Under ₹10,000", "₹10,000 - ₹20,000", "₹20,000 - ₹40,000", "Above ₹40,000"].map((label) => {
+                      const isSelected = selectedBudgets.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => toggleBudget(label)}
+                          className={cn(
+                            "py-2.5 px-3 text-xs font-bold rounded-lg border transition-all text-center touch-manipulation active:scale-95",
+                            isSelected
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : "bg-slate-50 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div className="border-b border-slate-100 pb-5">
+                  <h4 className="font-bold text-sm text-slate-800 mb-3">Duration</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["1 to 3 Days", "4 to 6 Days", "7 to 9 Days", "10+ Days"].map((label) => {
+                      const isSelected = selectedDurations.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => toggleDuration(label)}
+                          className={cn(
+                            "py-2.5 px-3 text-xs font-bold rounded-lg border transition-all text-center touch-manipulation active:scale-95",
+                            isSelected
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : "bg-slate-50 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Themes */}
+                <div>
+                  <h4 className="font-bold text-sm text-slate-800 mb-3">Themes</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {["Honeymoon", "Family", "Adventure", "Wildlife", "Luxury"].map((label) => {
+                      const isSelected = selectedThemes.includes(label);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => toggleTheme(label)}
+                          className={cn(
+                            "py-2.5 px-4 text-xs font-bold rounded-lg border transition-all touch-manipulation active:scale-95",
+                            isSelected
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : "bg-slate-50 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Sticky Action Bar */}
+              <div className="bg-white border-t border-slate-100 p-4 shrink-0 flex items-center justify-between gap-3 shadow-[0_-8px_30px_rgb(0,0,0,0.06)] border-t border-slate-100">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Matching Packages</span>
+                  <span className="text-base font-black text-primary">{filteredPackages.length} Available</span>
+                </div>
+                <button
+                  onClick={() => setMobileFilterOpen(false)}
+                  className="bg-primary text-white hover:bg-accent hover:text-slate-900 transition-all font-bold text-sm px-6 py-3 rounded-lg flex-1 text-center shadow-lg shadow-primary/10 touch-manipulation active:scale-95"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -740,7 +1373,7 @@ function MasonryCard({ place, tall }: { place: any; tall: boolean }) {
     <Link href={`/${place.slug}-tour-packages`} className="group block">
       {/* Image container with fixed height */}
       <div className={cn(
-        "relative w-full overflow-hidden rounded-xl border border-slate-100 shadow-sm transition-all duration-300 group-hover:shadow-lg group-hover:-translate-y-0.5",
+        "relative w-full overflow-hidden rounded-lg border border-slate-100 shadow-sm transition-all duration-300 group-hover:shadow-lg group-hover:-translate-y-0.5",
         tall ? "h-[220px] md:h-[300px] lg:h-[340px]" : "h-[120px] md:h-[140px] lg:h-[160px]"
       )}>
         <Image
@@ -786,13 +1419,13 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
       .then(data => {
         if (data?.testimonials?.length > 0) setReviews(data.testimonials);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const toggle = (idx: number) => setOpenIdx(prev => prev === idx ? null : idx);
 
   return (
-    <section className="py-16 md:py-20 bg-gradient-to-b from-white to-slate-50 border-t border-slate-100">
+    <section className="py-8 md:py-16 bg-gradient-to-b from-white to-slate-50 border-t border-slate-100">
       <div className="container mx-auto px-4 max-w-4xl">
 
         {/* Section Header */}
@@ -801,23 +1434,23 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center mb-12"
+          className="text-center mb-6 md:mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-full mb-5">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-lg mb-5">
             <HelpCircle className="w-4 h-4 text-primary" />
             <span className="text-xs font-black uppercase tracking-[0.25em] text-primary">Frequently Asked Questions</span>
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-primary mb-4">
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-serif font-bold text-primary mb-4">
             Got Questions About{" "}
-            <span className="text-accent italic">{entityName}?</span>
+            <span className="text-accent">{entityName}?</span>
           </h2>
-          <p className="text-slate-500 text-base max-w-xl mx-auto">
+          <p className="text-slate-600 text-xs md:text-sm max-w-xl mx-auto">
             Everything you need to know before planning your trip.
           </p>
         </motion.div>
 
         {/* FAQ Items */}
-        <div className="space-y-3">
+        <div className="space-y-2 md:space-y-3">
           {faqs.map((faq, idx) => {
             const isOpen = openIdx === idx;
             return (
@@ -830,7 +1463,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
               >
                 <div
                   className={cn(
-                    "rounded-2xl border overflow-hidden transition-all duration-300",
+                    "rounded-lg border overflow-hidden transition-all duration-300",
                     isOpen
                       ? "border-primary/30 bg-white shadow-lg shadow-primary/5"
                       : "border-slate-200 bg-white hover:border-primary/20 hover:shadow-md shadow-sm"
@@ -839,7 +1472,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
                   {/* Question Row */}
                   <button
                     onClick={() => toggle(idx)}
-                    className="w-full flex items-start gap-4 px-6 py-5 text-left group"
+                    className="w-full flex items-start gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-5 text-left group"
                     aria-expanded={isOpen}
                   >
                     <span
@@ -854,7 +1487,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
                     </span>
                     <span
                       className={cn(
-                        "flex-1 font-bold text-base leading-snug transition-colors duration-200",
+                        "flex-1 font-bold text-sm leading-snug transition-colors duration-200",
                         isOpen ? "text-primary" : "text-slate-800 group-hover:text-primary"
                       )}
                     >
@@ -882,9 +1515,9 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
                         transition={{ duration: 0.32, ease: [0.04, 0.62, 0.23, 0.98] }}
                         style={{ overflow: "hidden" }}
                       >
-                        <div className="px-6 pb-6 pl-[4.25rem]">
+                        <div className="px-4 pb-4 pl-[3rem] md:px-6 md:pb-6 md:pl-[4.25rem]">
                           <div className="h-px bg-slate-100 mb-5" />
-                          <p className="text-slate-600 text-sm leading-relaxed font-medium whitespace-pre-line">
+                          <p className="text-slate-600 text-xs md:text-sm leading-relaxed font-medium whitespace-pre-line">
                             {faq.answer}
                           </p>
                         </div>
@@ -903,11 +1536,11 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-16 -mx-4 px-4 py-10 bg-slate-50/30 border-t border-slate-100 rounded-3xl overflow-hidden"
+          className="mt-8 md:mt-16 -mx-4 px-4 py-6 md:py-10 bg-slate-50/30 border-t border-slate-100 rounded-lg overflow-hidden"
         >
           {/* Header — exact match to /customized-holidays */}
-          <div className="flex items-center justify-between mb-12">
-            <h3 className="text-xl md:text-2xl font-black text-primary uppercase tracking-tight flex items-center gap-3">
+          <div className="flex items-center justify-between mb-6 md:mb-10">
+            <h3 className="text-base md:text-lg font-black text-primary uppercase tracking-tight flex items-center gap-3">
               What customers <span className="text-accent">says about us</span>
             </h3>
             <div className="flex gap-2">
@@ -934,7 +1567,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
               <div className="flex gap-8">
                 {reviews.map((rev, i) => (
                   <div key={rev.id || i} className="flex-[0_0_90%] sm:flex-[0_0_45%] lg:flex-[0_0_31%] min-w-0 py-4">
-                    <div className="relative bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-50 h-full flex flex-col">
+                    <div className="relative bg-white rounded-lg p-5 md:p-8 shadow-xl shadow-slate-200/50 border border-slate-50 h-full flex flex-col">
 
                       {/* Avatar badge — overlapping top-left corner */}
                       <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
@@ -947,7 +1580,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
 
                       {/* Review text — NOT italic */}
                       <div className="flex-1 pt-4">
-                        <p className="text-slate-500 text-xs md:text-sm font-medium leading-relaxed line-clamp-4 relative">
+                        <p className="text-slate-700 text-[11px] md:text-xs font-medium leading-relaxed line-clamp-4 relative">
                           &ldquo;{rev.content || rev.comment}&rdquo;
                           {(rev.content || rev.comment)?.length > 150 && (
                             <span className="text-accent font-black ml-1 cursor-pointer">Read more</span>
@@ -968,9 +1601,9 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
                             />
                           ))}
                         </div>
-                        <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{rev.name}</h4>
+                        <h4 className="text-[10px] font-black text-primary uppercase tracking-wider">{rev.name}</h4>
                         {rev.location && (
-                          <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{rev.location}</p>
+                          <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">{rev.location}</p>
                         )}
                       </div>
 
