@@ -80,6 +80,7 @@ export default function HomePageManager() {
   
   const smallAds = offers.filter(o => o.category === "SPONSORED_SMALL");
   const bannerAds = offers.filter(o => o.category === "SPONSORED_BANNER");
+  const filteredOffers = offers.filter((o: Offer) => o.category !== "SPONSORED_BANNER" && o.category !== "SPONSORED_SMALL");
   
   // Modal states
   const [editingTheme, setEditingTheme] = useState<Category | null>(null);
@@ -605,7 +606,7 @@ export default function HomePageManager() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {offers.map(offer => (
+                {filteredOffers.map((offer: Offer) => (
                   <div key={offer.id} className="group border border-slate-100 rounded-[2rem] overflow-hidden hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 bg-white flex h-36">
                     <div className="relative w-36 h-full bg-slate-100 shrink-0 border-r border-slate-50">
                       {offer.imageUrl ? (
