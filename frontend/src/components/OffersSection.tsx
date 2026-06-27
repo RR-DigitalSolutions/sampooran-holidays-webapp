@@ -162,9 +162,9 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
                       className="block group group/card"
                     >
                       <div className={cn(
-                        "flex h-[130px] md:h-[150px] rounded-md overflow-hidden bg-white relative transition-all duration-500",
-                        "border-0 md:border md:border-slate-100 hover:border-accent/40",
-                        "shadow-[0_10px_35px_rgba(0,0,0,0.05)] md:shadow-none hover:shadow-2xl hover:shadow-accent/10"
+                        "flex h-[130px] md:h-[150px] rounded-2xl overflow-hidden bg-white relative transition-all duration-500",
+                        "border border-slate-100/80 hover:border-accent/40",
+                        "shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_35px_rgba(245,158,11,0.12)] hover:-translate-y-0.5"
                       )}>
 
                         {/* Left Image - Overlapping slightly to prevent seam lines */}

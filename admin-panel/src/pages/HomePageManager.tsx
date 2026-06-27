@@ -80,7 +80,7 @@ export default function HomePageManager() {
   
   const smallAds = offers.filter(o => o.category === "SPONSORED_SMALL");
   const bannerAds = offers.filter(o => o.category === "SPONSORED_BANNER");
-  const filteredOffers = offers.filter((o: Offer) => o.category !== "SPONSORED_BANNER" && o.category !== "SPONSORED_SMALL");
+  const filteredOffers = offers.filter((o: Offer) => o.category !== "SPONSORED_BANNER");
   
   // Modal states
   const [editingTheme, setEditingTheme] = useState<Category | null>(null);
@@ -1301,6 +1301,7 @@ export default function HomePageManager() {
                                 <option value="CABS">Cabs</option>
                                 <option value="BANK">Bank Offers</option>
                                 <option value="SPONSORED_BANNER">Sponsored Ad (Banner)</option>
+                                <option value="SPONSORED_SMALL">Sponsored Ad (Small Card)</option>
                               </select>
                               <ChevronRight className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 rotate-90 pointer-events-none" />
                             </div>
