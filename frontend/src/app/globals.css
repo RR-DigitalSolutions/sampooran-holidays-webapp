@@ -307,8 +307,24 @@ html {
 }
 
 /* ─── Card click ripple — fast native feel ──────────────────────────────── */
-/* Cards get a subtle scale-down on tap for that "native app" feel           */
-.group:active,
-[data-interactive]:active {
-  transform: scale(0.985);
+/* Cards get a subtle scale-down on tap for that "native app" feel.          */
+/* Wrapped in hover media query to prevent scaling calculations from         */
+/* causing scrolling lag during touch drags on mobile devices.              */
+@media (hover: hover) {
+  .group:active,
+  [data-interactive]:active {
+    transform: scale(0.985);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Native app-like bouncy active click/tap feedback on small interactive      */
+/* elements (buttons, filter tags, close icons). Safe on touch devices since  */
+/* small elements do not trigger container layout reflows during scroll.     */
+button:active,
+.btn:active,
+.interactive-tap:active,
+[role="button"]:active {
+  transform: scale(0.96);
+  transition: transform 0.05s ease-out;
 }

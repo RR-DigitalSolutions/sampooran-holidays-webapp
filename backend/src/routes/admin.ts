@@ -845,6 +845,7 @@ router.patch("/home/sections/:id", requirePermission("SETTINGS"), async (req, re
   try {
     const [updated] = await db.update(homePageSectionsTable).set(req.body).where(eq(homePageSectionsTable.id, Number(req.params.id))).returning();
     clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json(updated);
   } catch (e: any) {
     res.status(500).json({ error: "Failed to update section" });
@@ -885,6 +886,8 @@ router.post("/home/offers", requirePermission("SETTINGS"), async (req, res) => {
         isActive: isActive !== undefined ? isActive : true
       })
       .returning();
+    clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.status(201).json(inserted);
   } catch (e: any) {
     logger.error({ error: e.message, stack: e.stack, body: req.body }, "Failed to create offer");
@@ -921,6 +924,8 @@ router.patch("/home/offers/:id", requirePermission("SETTINGS"), async (req, res)
     if (!updated) {
       return res.status(404).json({ error: "Offer not found" });
     }
+    clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json(updated);
   } catch (e: any) {
     logger.error({ error: e.message, stack: e.stack, body: req.body, id: req.params.id }, "Failed to update offer");
@@ -932,6 +937,8 @@ router.patch("/home/offers/:id", requirePermission("SETTINGS"), async (req, res)
 router.delete("/home/offers/:id", requirePermission("SETTINGS"), async (req, res) => {
   try {
     await db.delete(offersTable).where(eq(offersTable.id, Number(req.params.id)));
+    clearCachePattern("cache:/api/ota/home/config*");
+    syncHomeConfig();
     res.json({ message: "Offer deleted" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete offer" });

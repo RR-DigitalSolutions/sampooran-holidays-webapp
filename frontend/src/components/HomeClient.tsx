@@ -69,14 +69,13 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   }, []);
 
   useEffect(() => {
-    if (initialData?.config) return;
-
-    // 2. Client-side Config Fetch for real-time CMS sync
+    // Client-side Config Fetch for real-time CMS sync - query the standard endpoint (served instantly from backend Redis cache)
+    // and pass { cache: 'no-store' } to ensure the browser fetches the latest cache state from the server.
     const fetchConfig = async () => {
       setIsConfigLoading(true);
       try {
         const baseUrl = getApiUrl();
-        const res = await fetch(`${baseUrl}/ota/home/config`);
+        const res = await fetch(`${baseUrl}/ota/home/config`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           setConfig(data);
@@ -90,7 +89,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
       }
     };
     fetchConfig();
-  }, [initialData?.config]);
+  }, []);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 60 }, [
     Autoplay({ delay: 6000, stopOnInteraction: false }),
