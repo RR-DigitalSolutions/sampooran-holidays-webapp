@@ -318,14 +318,14 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
                 return (
                   <div className="flex flex-col space-y-3 mt-1.5 z-20">
-                    {/* Inclusions Row */}
-                    <div className="flex items-center gap-3.5 pb-2 flex-wrap justify-center lg:justify-start">
+                    {/* Inclusions Row - flex-nowrap to prevent wrap and maintain single line */}
+                    <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 pb-2 justify-center lg:justify-start flex-nowrap overflow-x-auto no-scrollbar w-full max-w-full">
                       {inclusions.map((inc) => (
-                        <div key={inc.label} className="flex flex-col items-center text-center space-y-1 group/inc">
-                          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all group-hover/inc:bg-white/20 group-hover/inc:scale-105">
-                            <inc.Icon className="w-4 h-4 md:w-5 md:h-5 text-accent stroke-[1.8]" />
+                        <div key={inc.label} className="flex flex-col items-center text-center space-y-1 group/inc shrink-0">
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all group-hover/inc:bg-white/20 group-hover/inc:scale-105">
+                            <inc.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-accent stroke-[1.8]" />
                           </div>
-                          <span className="text-[9px] md:text-[10px] text-white/90">{inc.label}</span>
+                          <span className="text-[7.5px] sm:text-[9px] md:text-[10px] text-white/90 whitespace-nowrap">{inc.label}</span>
                         </div>
                       ))}
                     </div>
@@ -404,9 +404,9 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                 <p className="text-xs font-bold text-white">To Cover</p>
               </div>
               {/* Mobile label */}
-              <div className="px-3 py-2 shrink-0 border-r border-white/20 md:hidden">
-                <p className="text-[9px] font-black text-accent uppercase tracking-wider">Places</p>
-                <p className="text-[10px] font-black text-white uppercase tracking-wider">Covered</p>
+              <div className="px-2 py-2 shrink-0 border-r border-white/20 md:hidden">
+                <p className="text-[7.5px] font-black text-accent uppercase tracking-wider">Places</p>
+                <p className="text-[8.5px] font-black text-white uppercase tracking-wider">Covered</p>
               </div>
 
               {/* Swipeable Flex Row Container */}
