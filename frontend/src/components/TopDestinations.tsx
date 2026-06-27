@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, MapPin, Star, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +30,7 @@ type TopDestinationsData = {
 };
 
 export default function TopDestinations({ initialData }: { initialData?: TopDestinationsData | null }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "international" | "domestic">("all");
   const [data, setData] = useState<TopDestinationsData | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
@@ -229,65 +231,77 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                             Explore the most enchanting corners of {selectedDest.name}. A journey curated for the modern traveler.
                           </p>
                         </div>
-                        <Link href={
-                          selectedDest.type === 'international'
+                        {(() => {
+                          const exploreHref = selectedDest.type === 'international'
                             ? `/packages?country=${selectedDest.slug}`
-                            : `/${selectedDest.slug}-tour-packages`
-                        }>
-                          <button className="bg-white text-primary hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded-sm font-bold text-sm transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap">
-                            Explore <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </Link>
+                            : `/${selectedDest.slug}-tour-packages`;
+                          return (
+                            <Link
+                              href={exploreHref}
+                              onTouchStart={() => router.prefetch(exploreHref)}
+                              onMouseEnter={() => router.prefetch(exploreHref)}
+                            >
+                              <button className="bg-white text-primary hover:bg-accent hover:text-accent-foreground px-2 py-1 rounded-sm font-bold text-sm transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap">
+                                Explore <ChevronRight className="h-4 w-4" />
+                              </button>
+                            </Link>
+                          );
+                        })()}
                       </div>
                     </div>
 
                     {/* Places/Attractions Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {selectedDest.gallery?.length > 0 ? (
-                        selectedDest.gallery.slice(0, 6).map((place, pIdx) => (
-                          <Link
-                            key={place.slug || place.name}
-                            href={`/${place.slug || place.name.toLowerCase().replace(/\s+/g, '-')}-tour-packages`}
-                            className="group/place relative h-40 md:h-48 rounded-md overflow-hidden block"
-                          >
-                            <motion.div
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: pIdx * 0.1 }}
-                              onMouseEnter={() => setHoveredPlace(place.name)}
-                              onMouseLeave={() => setHoveredPlace(null)}
-                              className="relative w-full h-full"
+                        selectedDest.gallery.slice(0, 6).map((place, pIdx) => {
+                          const placeHref = `/${place.slug || place.name.toLowerCase().replace(/\s+/g, '-')}-tour-packages`;
+                          return (
+                            <Link
+                              key={place.slug || place.name}
+                              href={placeHref}
+                              onTouchStart={() => router.prefetch(placeHref)}
+                              onMouseEnter={() => router.prefetch(placeHref)}
+                              className="group/place relative h-40 md:h-48 rounded-md overflow-hidden block"
                             >
-                              <Image
-                                src={validateImageUrl(place.image, 400, 300, "4:3")}
-                                alt={place.name}
-                                fill
-                                sizes="(max-width: 768px) 50vw, 33vw"
-                                className="object-cover transition-transform duration-700 group-hover/place:scale-110"
-                              />
-                              <div className={`absolute inset-0 transition-opacity duration-300 ${hoveredPlace === place.name ? "bg-black/50" : "bg-black/25"}`} />
+                              <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: pIdx * 0.1 }}
+                                onMouseEnter={() => setHoveredPlace(place.name)}
+                                onMouseLeave={() => setHoveredPlace(null)}
+                                className="relative w-full h-full"
+                              >
+                                <Image
+                                  src={validateImageUrl(place.image, 400, 300, "4:3")}
+                                  alt={place.name}
+                                  fill
+                                  sizes="(max-width: 768px) 50vw, 33vw"
+                                  className="object-cover transition-transform duration-700 group-hover/place:scale-110"
+                                />
+                                <div className={`absolute inset-0 transition-opacity duration-300 ${hoveredPlace === place.name ? "bg-black/50" : "bg-black/25"}`} />
 
-                              <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4">
-                                <h4 className="text-white font-bold text-[12px] md:text-[14px] mb-0.5 drop-shadow-md">{place.name}</h4>
-                                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                                  {(place.packageCount ?? 0) > 0 && (
-                                    <span className="text-white/90 text-[9px] md:text-[10px] font-semibold tracking-wide drop-shadow-sm">{place.packageCount} Packages</span>
-                                  )}
-                                  {(place.startingPrice ?? 0) > 0 && (
-                                    <>
-                                      <span className="text-white/50 text-[8px]">•</span>
-                                      <span className="text-accent text-[9px] md:text-[10px] font-black tracking-wide drop-shadow-sm">Starts ₹{place.startingPrice?.toLocaleString('en-IN')}</span>
-                                    </>
-                                  )}
+                                <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4">
+                                  <h4 className="text-white font-bold text-[12px] md:text-[14px] mb-0.5 drop-shadow-md">{place.name}</h4>
+                                  <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                    {(place.packageCount ?? 0) > 0 && (
+                                      <span className="text-white/90 text-[9px] md:text-[10px] font-semibold tracking-wide drop-shadow-sm">{place.packageCount} Packages</span>
+                                    )}
+                                    {(place.startingPrice ?? 0) > 0 && (
+                                      <>
+                                        <span className="text-white/50 text-[8px]">•</span>
+                                        <span className="text-accent text-[9px] md:text-[10px] font-black tracking-wide drop-shadow-sm">Starts ₹{place.startingPrice?.toLocaleString('en-IN')}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover/place:opacity-100 transition-all translate-y-2 group-hover/place:translate-y-0 duration-300">
+                                    <span className="text-[9px] md:text-[10px] text-white font-bold uppercase tracking-wider">Explore</span>
+                                    <ArrowUpRight className="h-3 w-3 text-white" />
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover/place:opacity-100 transition-all translate-y-2 group-hover/place:translate-y-0 duration-300">
-                                  <span className="text-[9px] md:text-[10px] text-white font-bold uppercase tracking-wider">Explore</span>
-                                  <ArrowUpRight className="h-3 w-3 text-white" />
-                                </div>
-                              </div>
-                            </motion.div>
-                          </Link>
-                        ))
+                              </motion.div>
+                            </Link>
+                          );
+                        })
                       ) : (
                         // Fallback if no sub-places found
                         <div className="col-span-3 py-10 text-center border-2 border-dashed border-slate-100 rounded-3xl">

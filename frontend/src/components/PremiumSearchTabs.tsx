@@ -76,6 +76,13 @@ export default function PremiumSearchTabs() {
     router.push(`${basePath}?${params.toString()}`);
   };
 
+  const prefetchSearch = () => {
+    const basePath = activeTab === "packages"
+      ? `/india-holiday-tour-packages`
+      : `/${activeTab}`;
+    router.prefetch(basePath);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto px-2 md:px-0">
       {/* Search Tabs Selector */}
@@ -254,6 +261,8 @@ export default function PremiumSearchTabs() {
             <button
               type="button"
               onClick={() => handleSearch()}
+              onTouchStart={prefetchSearch}
+              onMouseEnter={prefetchSearch}
               className={cn(
                 "group relative w-full md:px-6 py-2 md:py-2 rounded-md font-black text-[10px] md:text-lg tracking-[0.2em] uppercase transition-all overflow-hidden active:scale-95",
                 "bg-gradient-to-r from-accent via-[#FFD700] to-accent text-primary shadow-[0_10px_20px_-10px_rgba(255,215,0,0.5)] md:shadow-[0_15px_40px_-10px_rgba(255,215,0,0.5)] border border-white md:border-4"

@@ -4,6 +4,7 @@ import React, { useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, validateImageUrl } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 import {
   Mountain, Heart, Users, TreePine, Waves,
   Coffee, Zap, Camera, TrendingUp, Globe,
@@ -36,6 +37,7 @@ interface Theme {
 const DEFAULT_IMAGES: Record<string, string> = {};
 
 export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: Theme[], title?: string, subtitle?: string, loading?: boolean }) {
+  const router = useRouter();
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
@@ -120,7 +122,12 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
 
                 return (
                   <div key={theme.id || idx} className="flex-none w-[82px] md:w-[125px]">
-                    <Link href={linkHref} className="flex flex-col items-center gap-1.5 md:gap-2 group">
+                    <Link
+                      href={linkHref}
+                      onTouchStart={() => router.prefetch(linkHref)}
+                      onMouseEnter={() => router.prefetch(linkHref)}
+                      className="flex flex-col items-center gap-1.5 md:gap-2 group"
+                    >
 
                       <div className="relative p-[1.5px] md:p-[2px] rounded-full flex items-center justify-center">
                         {/* Theme Colors & Pink Glow (Behind) - Adjusted scale to prevent cutting */}

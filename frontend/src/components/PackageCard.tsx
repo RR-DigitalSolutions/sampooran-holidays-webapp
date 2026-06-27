@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Star, MapPin, Clock, CheckCircle, Sparkles, Zap,
   ArrowRight, Plane, Hotel, Car, Utensils, Camera, Ticket, ShieldCheck,
@@ -46,6 +47,7 @@ function PackageCardComponent({
   pkg: Pkg;
   variant?: "default" | "compact" | "horizontal" | "carousel";
 }) {
+  const router = useRouter();
   const [wishlisted, setWishlisted] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -107,8 +109,13 @@ function PackageCardComponent({
 
   /* ── Horizontal variant (List View) ── */
   if (variant === "horizontal") {
+    const href = `/packages/${pkg.slug}`;
     return (
-      <Link href={`/packages/${pkg.slug}`}>
+      <Link
+        href={href}
+        onTouchStart={() => router.prefetch(href)}
+        onMouseEnter={() => router.prefetch(href)}
+      >
         <div
           className="group relative rounded-lg overflow-hidden bg-white border border-slate-200 hover:border-primary/30 hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col md:flex-row h-full min-h-[220px]"
           onMouseEnter={() => setHovered(true)}
@@ -248,8 +255,14 @@ function PackageCardComponent({
       return cities.slice(0, 3).map(c => `${c} (${Math.max(1, Math.floor(pkg.nights / Math.max(1, cities.length)))})`).join(" → ");
     };
 
+    const href = `/packages/${pkg.slug}`;
     return (
-      <Link href={`/packages/${pkg.slug}`} className="block h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300">
+      <Link
+        href={href}
+        onTouchStart={() => router.prefetch(href)}
+        onMouseEnter={() => router.prefetch(href)}
+        className="block h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
+      >
         {/* Top Image Section (65%) */}
         <div className="absolute top-0 left-0 right-0 h-[65%] w-full">
           <MotionImage
@@ -338,8 +351,14 @@ function PackageCardComponent({
   }
 
   /* ── Default / Grid variant ── */
+  const href = `/packages/${pkg.slug}`;
   return (
-    <Link href={`/packages/${pkg.slug}`} className="h-full block group perspective-1000">
+    <Link
+      href={href}
+      onTouchStart={() => router.prefetch(href)}
+      onMouseEnter={() => router.prefetch(href)}
+      className="h-full block group perspective-1000"
+    >
       <motion.div
         whileHover={{ y: -10, scale: 1.015 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}

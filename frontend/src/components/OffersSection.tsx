@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { cn, validateImageUrl } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
@@ -36,6 +37,7 @@ const CATEGORIES = [
 ];
 
 export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("ALL");
 
   const regularOffers = offers.filter(o => o.category !== "SPONSORED" && o.category !== "SPONSORED_BANNER");
@@ -152,7 +154,13 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
               {filteredOffers.length > 0 ? (
                 filteredOffers.slice(0, 6).map((offer) => (
                   <div key={offer.id} className="flex-[0_0_88%] min-w-0 md:flex-auto">
-                    <Link key={offer.id} href={offer.ctaLink || "/"} className="block group group/card">
+                    <Link
+                      key={offer.id}
+                      href={offer.ctaLink || "/"}
+                      onTouchStart={() => { if (offer.ctaLink?.startsWith("/")) router.prefetch(offer.ctaLink); }}
+                      onMouseEnter={() => { if (offer.ctaLink?.startsWith("/")) router.prefetch(offer.ctaLink); }}
+                      className="block group group/card"
+                    >
                       <div className={cn(
                         "flex h-[130px] md:h-[150px] rounded-md overflow-hidden bg-white relative transition-all duration-500",
                         "border-0 md:border md:border-slate-100 hover:border-accent/40",
@@ -222,7 +230,12 @@ export function OffersSection({ offers, title, subtitle }: OffersSectionProps) {
           </div>
 
           <div className="flex justify-center border-t border-slate-50">
-            <Link href="/offers" className="text-primary font-bold uppercase tracking-widest text-[10px] hover:text-accent flex items-center gap-2 group">
+            <Link
+              href="/offers"
+              onTouchStart={() => router.prefetch("/offers")}
+              onMouseEnter={() => router.prefetch("/offers")}
+              className="text-primary font-bold uppercase tracking-widest text-[10px] hover:text-accent flex items-center gap-2 group"
+            >
               View All Offers
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
             </Link>

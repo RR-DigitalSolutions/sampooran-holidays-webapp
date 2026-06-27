@@ -4,11 +4,13 @@ import { useEffect, useCallback, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, MessageSquareText, PhoneCall, Sparkles, Send } from "lucide-react";
 import { PackageCard } from "./PackageCard";
 import { motion } from "framer-motion";
 
 export function PopularPackagesCarousel({ packages, loading }: { packages: any[], loading?: boolean }) {
+  const router = useRouter();
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     align: "start",
@@ -65,7 +67,12 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex flex-col items-end gap-6 pr-2 pb-2">
-              <Link href="/packages" className="text-primary font-bold text-sm hover:text-accent flex items-center gap-1.5 group transition-colors">
+              <Link
+                href="/packages"
+                onTouchStart={() => router.prefetch("/packages")}
+                onMouseEnter={() => router.prefetch("/packages")}
+                className="text-primary font-bold text-sm hover:text-accent flex items-center gap-1.5 group transition-colors"
+              >
                 All Holiday Packages <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
               <div className="flex items-center gap-2">
