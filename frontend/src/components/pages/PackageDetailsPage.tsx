@@ -508,23 +508,22 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
              {/* ── RIGHT: Price card + quick CTA ── */}
              <aside className="w-full hidden lg:block">
               {/* Combined Price panel + Trust indicators */}
-              <div className="rounded-md bg-black/30 backdrop-blur-md border border-white/20 p-4 text-white shadow-2xl flex flex-col gap-4">
+              <div className="rounded-md bg-black/30 backdrop-blur-md border border-white/20 p-2 text-white shadow-2xl flex flex-col gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-white/60 mb-1">Starting from</p>
                   <div className="flex items-end gap-3">
                     <p className="text-4xl font-extrabold tracking-tight">{priceLabel}</p>
                     {savings > 0 && (
+                      <div className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-bold text-emerald-300">
+                        You save ₹{savings.toLocaleString("en-IN")}
+                        {packageData.discountPercent ? ` · ${packageData.discountPercent}% OFF` : ""}
+                      </div>
+                    )}
+                    {savings > 0 && (
                       <p className="text-sm text-white/50 line-through mb-1">₹{originalPrice.toLocaleString("en-IN")}</p>
                     )}
                   </div>
                   <p className="text-xs text-white/60 mt-1">Per person · Twin sharing</p>
-
-                  {savings > 0 && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-bold text-emerald-300">
-                      You save ₹{savings.toLocaleString("en-IN")}
-                      {packageData.discountPercent ? ` · ${packageData.discountPercent}% OFF` : ""}
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -663,7 +662,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   Trusted itinerary
                 </div>
               </div>
-              <div className="mt-6 prose prose-slate max-w-none text-sm leading-7" dangerouslySetInnerHTML={{ __html: packageData.longDescription || packageData.shortDescription || "No overview available." }} />
+              <div className="mt-4 prose prose-sm prose-slate max-w-none text-xs sm:text-sm leading-relaxed text-slate-600 animate-fade-in" dangerouslySetInnerHTML={{ __html: packageData.longDescription || packageData.shortDescription || "No overview available." }} />
             </section>
 
             {/* Itinerary Section with Timeline Accordion Design */}
@@ -698,16 +697,16 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <div key={idx} className="relative pb-6">
                         {/* Timeline line and dot */}
                         {idx < normalizedItinerary.length - 1 && (
-                          <div className="absolute left-4 sm:left-6 top-9 sm:top-12 bottom-0 w-0.5 bg-slate-300" />
+                          <div className="absolute left-3 sm:left-5 top-8 sm:top-10 bottom-0 w-0.5 bg-slate-300" />
                         )}
-                        <div className="absolute left-0 top-6 h-8 w-8 sm:h-12 sm:w-12 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center z-10">
-                          <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                        <div className="absolute left-0 top-5.5 h-6.5 w-6.5 sm:h-10 sm:w-10 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center z-10">
+                          <MapPin className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-blue-600" />
                         </div>
 
                         {/* Day header with expand button */}
                         <button
                           onClick={handleToggle}
-                          className="w-full pl-11 sm:pl-20 pr-3 sm:pr-6 py-2.5 sm:py-4 hover:bg-slate-50 rounded-md transition flex items-start justify-between gap-4"
+                          className="w-full pl-8 sm:pl-16 pr-3 sm:pr-6 py-1.5 sm:py-2.5 hover:bg-slate-50 rounded-md transition flex items-start justify-between gap-4"
                         >
                           <div className="text-left flex-1">
                             <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-slate-500">
@@ -728,7 +727,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                         {/* Expanded content */}
                         {isExpanded && (
-                          <div className="pl-11 pr-3 pb-4 sm:pl-20 sm:pr-6 space-y-4">
+                          <div className="pl-8 pr-3 pb-3 sm:pl-16 sm:pr-6 space-y-2">
                             {/* Main description */}
                             {(day.description || day.content) && (
                               <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
@@ -738,10 +737,10 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                             {/* Today's Sightseeing */}
                             {showSightseeing && (
-                              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                                <div className="flex items-center gap-3 mb-4">
-                                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                                    <Camera className="h-5 w-5" />
+                              <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5 sm:p-3">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 shrink-0">
+                                    <Camera className="h-4 w-4" />
                                   </span>
                                   <div>
                                     <p className="text-xs sm:text-sm font-semibold text-slate-900">Sightseeing and Attractions</p>
@@ -803,28 +802,28 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               </div>
                             )}
 
-                            {/* Enroute Dining Stops */}
+                             {/* Enroute Dining Stops */}
                              {enrouteStops.length > 0 && (
-                               <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
-                                 <div className="flex items-center gap-3 mb-3">
-                                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
-                                     <Coffee className="h-5 w-5 text-orange-600" />
+                               <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
+                                 <div className="flex items-center gap-3 mb-2">
+                                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-50 shrink-0">
+                                     <Coffee className="h-4 w-4 text-orange-600" />
                                    </div>
                                    <div>
                                      <p className="text-xs sm:text-sm font-semibold text-slate-900">Enroute Dining</p>
                                      <p className="text-[10px] sm:text-xs text-slate-500">Flexible stop details based on the day’s route.</p>
                                    </div>
                                  </div>
-                                 <p className="text-xs sm:text-sm text-slate-700 ml-13">{enrouteStops.join(', ')}</p>
+                                 <p className="text-xs sm:text-sm text-slate-700 ml-0 mt-2 sm:ml-11 sm:mt-0">{enrouteStops.join(', ')}</p>
                                </div>
                              )}
 
                              {/* Meals */}
                              {mealItems.length > 0 && (
-                               <div className="rounded-md border border-slate-200 bg-slate-50 p-3 md:p-4">
-                                 <div className="flex items-center gap-3 mb-4">
-                                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                                     <Utensils className="h-5 w-5" />
+                               <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                 <div className="flex items-center gap-3 mb-3">
+                                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shrink-0">
+                                     <Utensils className="h-4 w-4" />
                                    </span>
                                    <div>
                                      <p className="text-xs sm:text-sm font-semibold text-slate-900">Delicious Dining</p>
@@ -843,14 +842,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                              {/* Transport info */}
                              {(day.transport || day.cab) && (
-                               <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+                               <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
                                  <div className="flex items-center gap-3 mb-2">
-                                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-                                     <Car className="h-5 w-5 text-blue-600" />
+                                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 shrink-0">
+                                     <Car className="h-4 w-4 text-blue-600" />
                                    </div>
                                    <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Travel Details</h4>
                                  </div>
-                                 <div className="text-xs sm:text-sm text-slate-700 ml-13 space-y-2">
+                                 <div className="text-xs sm:text-sm text-slate-700 ml-0 mt-2 sm:ml-11 sm:mt-0 space-y-1.5">
                                    {day.transport && <p>{day.transport}</p>}
                                    {day.cab && <p>{day.cab}</p>}
                                  </div>
@@ -859,14 +858,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                              {/* Night Stay */}
                              {formattedAccommodation && (
-                               <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+                               <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
                                  <div className="flex items-center gap-3 mb-2">
-                                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50">
-                                     <Building2 className="h-5 w-5 text-amber-600" />
+                                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 shrink-0">
+                                     <Building2 className="h-4 w-4 text-amber-600" />
                                    </div>
                                    <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Night Stay in {day.location || 'TBA'}</h4>
                                  </div>
-                                 <p className="text-xs sm:text-sm text-slate-700 ml-13">{formattedAccommodation}</p>
+                                 <p className="text-xs sm:text-sm text-slate-700 ml-0 mt-2 sm:ml-11 sm:mt-0">{formattedAccommodation}</p>
                                </div>
                              )}
                           </div>
@@ -1207,28 +1206,28 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
       {/* Mobile Sticky Price Strip (positioned directly above BottomNav) */}
       <div 
-        className="fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-3 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
+        className="fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-2 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
         style={{ bottom: "64px" }}
         onClick={() => setShowBookingDrawer(true)}
       >
         <div className="container mx-auto flex items-center justify-between gap-3">
           {/* Price Info */}
           <div className="flex flex-col shrink-0">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Starting From</span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">Starting From</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-lg font-black text-white">{priceLabel}</span>
+              <span className="text-base font-black text-white leading-tight">{priceLabel}</span>
               {savings > 0 && (
-                <span className="text-[10px] text-slate-400 line-through">₹{originalPrice.toLocaleString("en-IN")}</span>
+                <>
+                  <span className="text-[9px] font-bold text-emerald-400 leading-none">{discountLabel}</span>
+                  <span className="text-[10px] text-slate-400 line-through leading-none">₹{originalPrice.toLocaleString("en-IN")}</span>
+                </>
               )}
             </div>
-            {savings > 0 && (
-              <span className="text-[9px] font-bold text-emerald-400 mt-0.5">{discountLabel}</span>
-            )}
           </div>
           {/* Action indicator trigger */}
-          <div className="flex items-center gap-1 bg-accent text-white px-4 py-2 rounded-md font-bold text-xs shadow-sm">
+          <div className="flex items-center gap-1 bg-accent text-white px-3 py-1.5 rounded-md font-bold text-xs shadow-sm">
             <span>Book/Customize</span>
-            <ChevronUp className="w-3.5 h-3.5" />
+            <ChevronUp className="w-3 h-3" />
           </div>
         </div>
       </div>

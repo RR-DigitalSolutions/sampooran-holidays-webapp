@@ -264,7 +264,7 @@ export default function ChatWidget() {
       dragConstraints={dragConstraints} 
       dragElastic={0.1} 
       dragMomentum={false}
-      className="fixed bottom-20 lg:bottom-26 right-6 z-[100] flex flex-col items-end select-none"
+      className="fixed bottom-[136px] sm:bottom-26 right-4 sm:right-6 z-[100] flex flex-col items-end select-none"
     >
       <AnimatePresence>
         {isOpen && (
@@ -460,12 +460,13 @@ export default function ChatWidget() {
       </AnimatePresence>
 
       {/* FAB Button Wrapper with Circular Tagline */}
-      <div className="relative flex items-center justify-center w-24 h-24 -mr-5 -mb-5">
-        {/* Rotating Tagline SVG */}
+      {/* FAB Button Wrapper with Circular Tagline */}
+      <div className="relative flex items-center justify-center w-16 h-16 sm:w-24 sm:h-24 -mr-2 -mb-2 sm:-mr-5 sm:-mb-5">
+        {/* Rotating Tagline SVG (Hidden on mobile for compact UI) */}
         <motion.svg
           animate={{ rotate: 360 }}
           transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 w-full h-full pointer-events-none"
+          className="absolute inset-0 w-full h-full pointer-events-none hidden sm:block"
           viewBox="0 0 100 100"
         >
           <path
@@ -485,7 +486,7 @@ export default function ChatWidget() {
           whileHover={{ scale: 1.07 }}
           whileTap={{ scale: 0.93 }}
           onClick={() => setIsOpen(o => !o)}
-          className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-grab active:cursor-grabbing z-10 bg-[#1B3A6B] text-[#F5A623]"
+          className="w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-grab active:cursor-grabbing z-10 bg-[#1B3A6B] text-[#F5A623]"
           aria-label="Toggle chat"
         >
           <AnimatePresence mode="wait">
@@ -496,7 +497,7 @@ export default function ChatWidget() {
                 animate={{ rotate: 0, opacity: 1 }} 
                 exit={{ rotate: 90, opacity: 0 }}
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </motion.div>
             ) : (
               <motion.div 
@@ -506,12 +507,12 @@ export default function ChatWidget() {
                 exit={{ rotate: -90, opacity: 0 }}
                 className="animate-pulse"
               >
-                <MessageCircle className="w-6 h-6 fill-[#F5A623] text-[#F5A623]" />
+                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F5A623] text-[#F5A623]" />
               </motion.div>
             )}
           </AnimatePresence>
           {unread > 0 && !isOpen && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg z-20">
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[8px] sm:text-[10px] font-black rounded-full flex items-center justify-center shadow-lg z-20">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
