@@ -83,18 +83,18 @@ export function InclusionsSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
-              className="flex flex-col items-center text-center p-2 rounded-3xl border border-slate-50 hover:border-accent/20 hover:bg-slate-50/50 transition-all duration-500 group"
+              className="flex flex-col items-center text-center p-1.5 md:p-3 rounded-2xl md:rounded-3xl border border-slate-50 hover:border-accent/20 hover:bg-slate-50/50 transition-all duration-500 group"
             >
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-primary to-[#1e3a8a] rounded-xl flex items-center justify-center mb-2 relative overflow-hidden transition-transform group-hover:scale-110 group-hover:-rotate-3 duration-500 shadow-lg shadow-primary/20 shrink-0">
+              <div className="w-7 h-7 md:w-12 md:h-12 bg-gradient-to-br from-primary to-[#1e3a8a] rounded-lg md:rounded-xl flex items-center justify-center mb-1.5 md:mb-2 relative overflow-hidden transition-transform group-hover:scale-110 group-hover:-rotate-3 duration-500 shadow-lg shadow-primary/20 shrink-0">
                 {/* Animation Shine Effect */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
 
-                <item.icon className="w-5 h-5 md:w-6 md:h-6 text-accent transition-all duration-500 group-hover:scale-110 group-hover:rotate-6" />
+                <item.icon className="w-3.5 h-3.5 md:w-6 md:h-6 text-accent transition-all duration-500 group-hover:scale-110 group-hover:rotate-6" />
               </div>
-              <h3 className="text-[11px] md:text-sm font-semibold text-primary tracking-tight leading-tight mb-1">
+              <h3 className="text-[9.5px] md:text-sm font-semibold text-primary tracking-tight leading-tight mb-1">
                 {item.title}
               </h3>
-              <p className="text-slate-500 leading-relaxed text-[9px] md:text-xs font-medium line-clamp-3">
+              <p className="text-slate-500 leading-relaxed text-[8px] md:text-xs font-medium line-clamp-3">
                 {item.desc}
               </p>
             </motion.div>

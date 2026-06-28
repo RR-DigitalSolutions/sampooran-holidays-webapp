@@ -325,75 +325,81 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
         switch (section.sectionType) {
           case "HERO":
             return (
-              <section key={idx} className="relative h-[75vh] min-h-[520px] md:h-screen md:min-h-[600px] max-h-[960px] flex flex-col justify-center overflow-hidden">
-                <div className="absolute inset-0 z-0 overflow-hidden" ref={emblaRef}>
-                  <div className="flex h-full w-full">
-                    {slides.map((slide: any, i: number) => (
-                      <div key={i} className="relative flex-[0_0_100%] min-w-0 h-full">
-                        {slide.videoUrl ? (
-                          <video src={slide.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover select-none pointer-events-none" />
-                        ) : (
-                          <div
-                            ref={el => { zoomDivsRef.current[i] = el; }}
-                            className="absolute inset-0 hero-slide"
-                          >
-                            <Image
-                              src={validateImageUrl(slide.imageUrl || slide.image_url, 1600, 900, "16:9")}
-                              alt={slide.title || "Slide image"}
-                              fill
-                              className="object-cover select-none pointer-events-none"
-                              priority={i === 0}
-                              sizes="100vw"
-                              loading={i === 0 ? "eager" : "lazy"}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+              <div key={idx} className="relative bg-gradient-to-r from-primary via-[#0A1931] to-primary pb-3 sm:pb-4 md:pb-6 mb-0">
+                <section className="relative h-[38vh] xs:h-[44vh] sm:h-[55vh] md:h-[80vh] lg:h-screen min-h-[320px] md:min-h-[600px] max-h-[960px] flex flex-col justify-center overflow-hidden">
+                  <div className="absolute inset-0 z-0 overflow-hidden" ref={emblaRef}>
+                    <div className="flex h-full w-full">
+                      {slides.map((slide: any, i: number) => (
+                        <div key={i} className="relative flex-[0_0_100%] min-w-0 h-full">
+                          {slide.videoUrl ? (
+                            <video src={slide.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover select-none pointer-events-none" />
+                          ) : (
+                            <div
+                              ref={el => { zoomDivsRef.current[i] = el; }}
+                              className="absolute inset-0 hero-slide"
+                            >
+                              <Image
+                                src={validateImageUrl(slide.imageUrl || slide.image_url, 1600, 900, "16:9")}
+                                alt={slide.title || "Slide image"}
+                                fill
+                                className="object-cover select-none pointer-events-none"
+                                priority={i === 0}
+                                sizes="100vw"
+                                loading={i === 0 ? "eager" : "lazy"}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black/80 z-[1] pointer-events-none" />
-                <div className="relative z-10 container mx-auto px-4 text-center text-white pt-24 md:pt-32 mt-8 md:mt-0">
-                  <div className="inline-block bg-accent text-accent-foreground text-[10px] md:text-xs font-bold px-3 py-1 md:px-4 md:py-1.5 rounded-full mb-3 md:mb-6 shadow-lg">
-                    {slides[heroIdx]?.tag || "Explore"} Destinations
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black/80 z-[1] pointer-events-none" />
+                  
+                  {/* Hero Text Content */}
+                  <div className="relative z-10 container mx-auto px-4 text-center text-white pt-14 md:pt-24 mt-2 md:mt-0">
+                    <div className="inline-block bg-accent text-accent-foreground text-[9px] md:text-xs font-bold px-2 py-0.5 md:px-4 md:py-1.5 rounded-full mb-1.5 md:mb-6 shadow-lg">
+                      {slides[heroIdx]?.tag || "Explore"} Destinations
+                    </div>
+                    <h1 className="text-2xl xs:text-3xl md:text-7xl lg:text-8xl font-serif font-bold mb-1.5 md:mb-4 leading-tight drop-shadow-2xl animate-in slide-in-from-bottom-6 px-2">
+                      {slides[heroIdx]?.title}
+                    </h1>
+                    <p className="text-xs xs:text-sm md:text-xl text-white/85 mb-4 md:mb-10 max-w-2xl mx-auto font-light leading-relaxed animate-in slide-in-from-bottom-8 line-clamp-2 md:line-clamp-none">
+                      {slides[heroIdx]?.subtitle}
+                    </p>
+                    <div className="mt-8 hidden md:flex flex-wrap gap-3 justify-center items-center pb-4">
+                      <span className="text-[11px] font-bold text-white/60">Popular:</span>
+                      {["Manali Package", "Ladakh Tour", "Kashmir Honeymoon", "Spiti Expedition", "Family Tour"].map(q => (
+                        <button key={q} onClick={() => router.push(`/packages?q=${encodeURIComponent(q)}`)} className="bg-white/10 border border-white/20 text-white text-xs px-5 py-2 rounded-full hover:bg-white/20 hover:border-white/40 transition-all backdrop-blur-md font-light tracking-wide">
+                          {q}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <h1 className="text-3xl md:text-7xl lg:text-8xl font-serif font-bold mb-2 md:mb-4 leading-tight drop-shadow-2xl animate-in slide-in-from-bottom-6 px-2">
-                    {slides[heroIdx]?.title}
-                  </h1>
-                  <p className="text-sm md:text-xl text-white/85 mb-6 md:mb-10 max-w-2xl mx-auto font-light leading-relaxed animate-in slide-in-from-bottom-8 line-clamp-2 md:line-clamp-none">
-                    {slides[heroIdx]?.subtitle}
-                  </p>
-                  <div className="relative z-20">
-                    <PremiumSearchTabs />
-                  </div>
-                  <div className="mt-8 hidden md:flex flex-wrap gap-3 justify-center items-center pb-4">
-                    <span className="text-[11px] font-bold text-white/60">Popular:</span>
-                    {["Manali Package", "Ladakh Tour", "Kashmir Honeymoon", "Spiti Expedition", "Family Tour"].map(q => (
-                      <button key={q} onClick={() => router.push(`/packages?q=${encodeURIComponent(q)}`)} className="bg-white/10 border border-white/20 text-white text-xs px-5 py-2 rounded-full hover:bg-white/20 hover:border-white/40 transition-all backdrop-blur-md font-light tracking-wide">
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <style>{`
-                  @keyframes heroKenBurns {
-                    from { transform: scale(1.00); }
-                    to   { transform: scale(1.10); }
-                  }
-                `}</style>
+                  <style>{`
+                    @keyframes heroKenBurns {
+                      from { transform: scale(1.00); }
+                      to   { transform: scale(1.10); }
+                    }
+                  `}</style>
 
-                <div className="absolute bottom-4 md:bottom-8 left-0 right-0 flex justify-center gap-2 z-10">
-                  {slides.map((_: any, i: number) => (
-                    <button
-                      key={i}
-                      onClick={() => emblaApi?.scrollTo(i)}
-                      className={`transition-all duration-300 rounded-full ${i === heroIdx ? "w-8 h-2 bg-accent shadow-[0_0_10px_rgba(245,166,35,0.8)]" : "w-2 h-2 bg-white/50 hover:bg-white/80"}`}
-                      aria-label={`Go to slide ${i + 1}`}
-                      title={`Slide ${i + 1}`}
-                    />
-                  ))}
+                  <div className="absolute bottom-14 xs:bottom-18 sm:bottom-24 md:bottom-8 left-0 right-0 flex justify-center gap-2 z-10">
+                    {slides.map((_: any, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => emblaApi?.scrollTo(i)}
+                        className={`transition-all duration-300 rounded-full ${i === heroIdx ? "w-8 h-2 bg-accent shadow-[0_0_10px_rgba(245,166,35,0.8)]" : "w-2 h-2 bg-white/50 hover:bg-white/80"}`}
+                        aria-label={`Go to slide ${i + 1}`}
+                        title={`Slide ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </section>
+                
+                {/* Search Engine overlapping bottom transition */}
+                <div className="relative z-20 -mt-10 xs:-mt-14 sm:-mt-20 md:-mt-28 lg:-mt-32 container mx-auto px-4">
+                  <PremiumSearchTabs />
                 </div>
-              </section>
+              </div>
             );
 
           case "TRENDING_HOTELS":
@@ -415,13 +421,13 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
             );
           case "STATS":
             return (
-              <div key={idx} className="bg-gradient-to-r from-primary via-[#0A1931] to-primary text-white">
-                <div className="container mx-auto px-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
+              <div key={idx} className="bg-gradient-to-r from-primary via-[#0A1931] to-primary text-white relative -mt-[1px] z-10">
+                <div className="container mx-auto px-2 xs:px-4">
+                  <div className="grid grid-cols-4 divide-x divide-white/10">
                     {[["12+", "Years Experience"], ["5,000+", "Happy Travelers"], ["120+", "Tour Packages"], ["500+", "Travel Agent Partners"]].map(([v, l]) => (
-                      <div key={l} className="py-2 text-center">
-                        <div className="text-2xl md:text-3xl font-bold text-accent">{v}</div>
-                        <div className="text-white/70 text-xs mt-0.5">{l}</div>
+                      <div key={l} className="py-1 px-0.5 md:py-1.5 text-center">
+                        <div className="text-xs xs:text-sm md:text-2xl font-bold text-accent">{v}</div>
+                        <div className="text-white/70 text-[7.5px] xs:text-[9px] md:text-[10px] leading-tight mt-0">{l}</div>
                       </div>
                     ))}
                   </div>

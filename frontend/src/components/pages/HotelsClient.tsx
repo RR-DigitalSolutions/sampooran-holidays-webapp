@@ -391,28 +391,28 @@ export default function HotelsClient({
       )}
 
       {/* ── Hero ── */}
-      <div className="relative bg-[#0A0D17] pt-32 pb-44 overflow-hidden">
+      <div className="relative bg-[#0A0D17] pt-20 pb-20 md:pt-36 md:pb-24 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img src={cityInfo?.imageUrl || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600"}
             className="w-full h-full object-cover opacity-30 grayscale-[0.3]" alt={pageTitle || "Himalayan stays"} />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A0D17] via-transparent to-[#0A0D17]" />
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center">
-          <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+          <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 animate-fade-in">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/10">
               <Sparkles className="h-4 w-4 text-accent" />
               <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">
                 {pageSubtitle || "Himalayan Luxury Collection"}
               </span>
             </div>
-            <h1 className="text-6xl md:text-8xl font-serif font-black text-white tracking-tighter leading-none italic">
+            <h1 className="text-2xl xs:text-3xl md:text-5xl lg:text-6xl font-serif font-black text-white tracking-tight leading-none">
               {pageTitle ? (
                 <>{pageTitle.split(" ").slice(0, -1).join(" ")} <span className="text-accent not-italic">{pageTitle.split(" ").slice(-1)[0]}.</span></>
               ) : (
                 <>Extraordinary <span className="text-accent not-italic">Stays.</span></>
               )}
             </h1>
-            <p className="text-slate-300 text-lg font-medium max-w-2xl mx-auto leading-relaxed opacity-80">
+            <p className="text-slate-300 text-xs xs:text-sm md:text-base leading-relaxed opacity-80 max-w-xl mx-auto">
               {cityInfo?.description
                 ? cityInfo.description.slice(0, 180)
                 : "Hotels, Resorts, Cottages, Homestays & more — verified and curated across the Himalayas."}

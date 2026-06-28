@@ -87,8 +87,8 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
           </div>
 
           {/* Embla Carousel Container */}
-          <div className="overflow-hidden -mx-4 px-4 sm:mx-0 sm:px-0" ref={emblaRef}>
-            <div className="flex -ml-4 md:-ml-6 pb-2 pt-4">
+          <div className="overflow-hidden -mx-2 px-2 sm:mx-0 sm:px-0" ref={emblaRef}>
+            <div className="flex -ml-3 md:-ml-6 pb-2 pt-4">
             {hotels.map((hotel) => {
               // Map TrendingHotel shape to HotelCard shape
               const mappedHotel = {
@@ -105,7 +105,7 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
               };
 
               return (
-                <div key={hotel.id} className="flex-[0_0_85%] sm:flex-[0_0_45%] lg:flex-[0_0_24%] min-w-0 pl-4 md:pl-6">
+                <div key={hotel.id} className="flex-[0_0_46%] sm:flex-[0_0_45%] lg:flex-[0_0_24%] min-w-0 pl-3 md:pl-6">
                   <HotelCard hotel={mappedHotel} />
                 </div>
               );

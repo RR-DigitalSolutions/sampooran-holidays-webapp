@@ -86,10 +86,10 @@ const SORT_OPTIONS = [
 ];
 
 const TRUST_BADGES = [
-  { icon: Shield, label: "Verified & Safe", color: "text-emerald-600 bg-emerald-50" },
-  { icon: Headphones, label: "24/7 Support", color: "text-blue-600 bg-blue-50" },
-  { icon: Zap, label: "Instant Confirmation", color: "text-amber-600 bg-amber-50" },
-  { icon: TrendingUp, label: "Best Price Guarantee", color: "text-rose-600 bg-rose-50" },
+  { icon: Shield, label: "Verified & Safe", shortLabel: "Verified & Safe", color: "text-emerald-600 bg-emerald-50" },
+  { icon: Headphones, label: "24/7 Support", shortLabel: "24/7 Support", color: "text-blue-600 bg-blue-50" },
+  { icon: Zap, label: "Instant Confirmation", shortLabel: "Instant Confirm", color: "text-amber-600 bg-amber-50" },
+  { icon: TrendingUp, label: "Best Price Guarantee", shortLabel: "Best Price", color: "text-rose-600 bg-rose-50" },
 ];
 
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
@@ -390,7 +390,7 @@ export default function PackagesPage() {
     <div className="min-h-screen bg-[#F5F7FA]">
 
       {/* ─── HERO SECTION ───────────────────────────────────────────── */}
-      <section className="relative bg-gradient-to-br from-[#061226] via-[#0D1B3E] to-[#0B2050] pt-28 pb-16 md:pt-36 md:pb-20 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-[#061226] via-[#0D1B3E] to-[#0B2050] pt-20 pb-10 md:pt-36 md:pb-20 overflow-hidden">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-[0.04]"
           style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }}
@@ -409,11 +409,11 @@ export default function PackagesPage() {
               <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.28em] text-[#F5A623] mb-4">
                 <Sparkles className="w-3 h-3" /> Explore & Discover
               </span>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-black text-white leading-[1.1] mb-4">
+              <h1 className="text-2xl xs:text-3xl md:text-5xl lg:text-6xl font-serif font-black text-white leading-[1.1] mb-4">
                 Find Your Perfect{" "}
-                <span className="text-[#F5A623] italic font-light">Holiday.</span>
+                <span className="text-[#F5A623] font-light">Holiday.</span>
               </h1>
-              <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-xl mx-auto">
+              <p className="text-slate-400 text-xs xs:text-sm md:text-base leading-relaxed mb-4 md:mb-6 max-w-xl mx-auto">
                 Curated itineraries, verified stays & flexible pricing — across India and the world.
               </p>
             </motion.div>
@@ -464,12 +464,15 @@ export default function PackagesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.35 }}
-              className="mt-6 flex flex-wrap items-center justify-center gap-4 md:gap-6"
+              className="mt-4 md:mt-6 flex flex-nowrap items-center justify-center gap-1 px-1 xs:gap-2 md:gap-6 overflow-hidden w-full"
             >
               {TRUST_BADGES.map(b => (
-                <div key={b.label} className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                  <b.icon className="w-3.5 h-3.5 text-[#F5A623]" />
-                  {b.label}
+                <div key={b.label} className="flex items-center gap-1 text-[7.5px] xs:text-[9px] md:text-[11px] font-semibold text-slate-400 shrink-0">
+                  <b.icon className="w-2.5 h-2.5 xs:w-3 xs:h-3 md:w-3.5 md:h-3.5 text-[#F5A623] shrink-0" />
+                  <span>
+                    <span className="hidden sm:inline">{b.label}</span>
+                    <span className="inline sm:hidden">{b.shortLabel}</span>
+                  </span>
                 </div>
               ))}
             </motion.div>

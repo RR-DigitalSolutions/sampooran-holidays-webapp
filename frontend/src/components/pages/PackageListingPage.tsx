@@ -109,8 +109,8 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
     const counts: Record<string, number> = {};
     packages.forEach(p => {
       const citiesList = p.cities || (p.destinationName ? [p.destinationName] : []);
-      const uniqueInPkg = new Set(citiesList.map((c: string) => c.trim()).filter(Boolean));
-      uniqueInPkg.forEach((c: string) => {
+      const uniqueInPkg = new Set<string>(citiesList.map((c: any) => c.trim()).filter(Boolean));
+      uniqueInPkg.forEach((c) => {
         counts[c] = (counts[c] || 0) + 1;
       });
     });

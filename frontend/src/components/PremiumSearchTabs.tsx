@@ -96,7 +96,7 @@ export default function PremiumSearchTabs() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex-1 md:flex-none flex items-center justify-center gap-2 md:gap-3 px-3 md:px-7 py-1 md:py-1.5 transition-all duration-500 relative group shrink-0",
+                  "flex-1 md:flex-none flex items-center justify-center gap-2 md:gap-3 px-3 md:px-7 py-2 md:py-3 transition-all duration-500 relative group shrink-0",
                   isActive
                     ? "bg-accent text-primary shadow-[0_-5px_20px_rgba(255,215,0,0.4)] z-20"
                     : "hover:bg-white/5 text-white/80"
@@ -131,11 +131,11 @@ export default function PremiumSearchTabs() {
       {/* Main Search Panel */}
       <div className="bg-white rounded-lg shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] p-0.5 md:p-1.5 relative group/panel border border-white/20">
         <div className="bg-slate-50/20 rounded-lg p-0.5 md:p-1.5 border border-slate-100">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-lg shadow-sm">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-lg shadow-sm pb-16 md:pb-0">
 
             {/* Destination Section */}
             <div
-              className="flex-[1.4] w-full p-2 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-text"
+              className="flex-[1.4] w-full py-1.5 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-text"
               onClick={() => document.getElementById('search-dest')?.focus()}
             >
               <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
@@ -153,7 +153,7 @@ export default function PremiumSearchTabs() {
                   placeholder={activeTab === "hotels" ? "Search Stays..." : "Where to next?"}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-transparent text-sm md:text-2xl font-black focus:outline-none placeholder:text-slate-200 text-primary pb-0.5 truncate font-serif"
+                  className="w-full bg-transparent text-base md:text-2xl font-bold focus:outline-none placeholder:text-slate-400 text-primary pb-0.5 truncate font-sans tracking-tight"
                 />
                 <button
                   type="button"
@@ -170,7 +170,7 @@ export default function PremiumSearchTabs() {
                   <Navigation className="w-3.5 h-3.5 md:w-4 md:h-4 opacity-20 group-hover/field:opacity-100" />
                 </button>
               </div>
-              <p className="pl-6 md:pl-8.5 text-[9px] md:text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5 md:mt-1 truncate opacity-60">
+              <p className="pl-6 md:pl-8.5 text-[9px] md:text-[10px] font-bold text-slate-400 hidden sm:flex items-center gap-1 mt-0.5 md:mt-1 truncate opacity-60">
                 <Sparkles className="w-2.5 h-2.5 text-accent shrink-0" />
                 Manali, Ladakh, Kashmir
               </p>
@@ -179,7 +179,7 @@ export default function PremiumSearchTabs() {
             {/* Date Section */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex-1 w-full p-2 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[180px]">
+                <div className="flex-1 w-full py-1.5 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[180px]">
                   <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
                     <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-blue-50 flex items-center justify-center">
                       <Calendar className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-blue-500" />
@@ -190,7 +190,7 @@ export default function PremiumSearchTabs() {
                     <ChevronDown className="w-3 h-3 md:w-4 md:h-4 ml-auto text-slate-200" />
                   </div>
                   <div className="pl-6 md:pl-8.5">
-                    <div className="text-sm md:text-2xl font-black text-primary flex items-baseline gap-1 md:gap-2 font-serif">
+                    <div className="text-base md:text-2xl font-bold text-primary flex items-baseline gap-1 md:gap-2 font-sans tracking-tight">
                       {date ? (
                         <>
                           {format(date, "dd")} <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{format(date, "MMM yyyy")}</span>
@@ -199,7 +199,7 @@ export default function PremiumSearchTabs() {
                         <span className="text-sm md:text-xl">Select</span>
                       )}
                     </div>
-                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 mt-0.5 md:mt-1 opacity-60">{date ? format(date, "EEEE") : "Any day"}</p>
+                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 mt-0.5 md:mt-1 opacity-60 hidden sm:block">{date ? format(date, "EEEE") : "Any day"}</p>
                   </div>
                 </div>
               </PopoverTrigger>
@@ -217,7 +217,7 @@ export default function PremiumSearchTabs() {
             {/* Guests Section */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex-1 w-full p-2 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[160px] md:rounded-r-lg">
+                <div className="flex-1 w-full py-1.5 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[160px] md:rounded-r-lg">
                   <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
                     <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-indigo-50 flex items-center justify-center">
                       <Users className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-indigo-500" />
@@ -228,10 +228,10 @@ export default function PremiumSearchTabs() {
                     <ChevronDown className="w-3 h-3 md:w-4 md:h-4 ml-auto text-slate-200" />
                   </div>
                   <div className="pl-6 md:pl-8.5">
-                    <div className="text-sm md:text-2xl font-black text-primary flex items-baseline gap-1 md:gap-2 font-serif">
+                    <div className="text-base md:text-2xl font-bold text-primary flex items-baseline gap-1 md:gap-2 font-sans tracking-tight">
                       {guests} <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{guests > 1 ? "Travelers" : "Traveler"}</span>
                     </div>
-                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 mt-0.5 md:mt-1 opacity-60">1 Room</p>
+                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 mt-0.5 md:mt-1 opacity-60 hidden sm:block">1 Room</p>
                   </div>
                 </div>
               </PopoverTrigger>
@@ -256,21 +256,21 @@ export default function PremiumSearchTabs() {
         </div>
 
         {/* Search Button (Professional Compact Style) */}
-        <div className="absolute -bottom-4 md:-bottom-7 left-1/2 -translate-x-1/2 w-[95%] md:w-auto">
-          <div className="animate-bounce w-full">
+        <div className="absolute bottom-2 md:-bottom-7 left-1/2 -translate-x-1/2 w-[90%] md:w-auto">
+          <div className="w-full">
             <button
               type="button"
               onClick={() => handleSearch()}
               onTouchStart={prefetchSearch}
               onMouseEnter={prefetchSearch}
               className={cn(
-                "group relative w-full md:px-6 py-2 md:py-2 rounded-md font-black text-[10px] md:text-lg tracking-[0.2em] uppercase transition-all overflow-hidden active:scale-95",
-                "bg-gradient-to-r from-accent via-[#FFD700] to-accent text-primary shadow-[0_10px_20px_-10px_rgba(255,215,0,0.5)] md:shadow-[0_15px_40px_-10px_rgba(255,215,0,0.5)] border border-white md:border-4"
+                "group relative w-full md:px-12 py-3 md:py-3.5 rounded-full font-black text-xs md:text-base tracking-[0.15em] uppercase transition-all overflow-hidden active:scale-95",
+                "bg-gradient-to-r from-accent via-yellow-400 to-accent text-primary shadow-[0_8px_25px_rgba(245,166,35,0.4)] border border-white"
               )}
             >
               <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12" />
-              <span className="relative flex items-center justify-center gap-1.5 md:gap-3">
-                <Search className="w-3.5 h-3.5 md:w-5 md:h-5 stroke-[3]" />
+              <span className="relative flex items-center justify-center gap-2 md:gap-3">
+                <Search className="w-4 h-4 md:w-5 md:h-5 stroke-[3]" />
                 Search Now
                 <Compass className="w-4 h-4 md:w-5 md:h-5 hidden md:block animate-[spin_4s_linear_infinite]" />
               </span>

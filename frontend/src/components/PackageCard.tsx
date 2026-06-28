@@ -261,10 +261,10 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
+        className="block h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
       >
         {/* Top Image Section (65%) */}
-        <div className="absolute top-0 left-0 right-0 h-[65%] w-full">
+        <div className="absolute top-0 left-0 right-0 h-[63%] w-full">
           <MotionImage
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
             alt={pkg.name || "Package image"}
@@ -278,10 +278,10 @@ function PackageCardComponent({
           <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-[#1B3A6B] to-transparent opacity-90" />
 
           {/* Top Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-20">
+          <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1.5 z-20">
             {pkg.isTrending && (
-              <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="bg-accent/95 backdrop-blur-sm text-primary text-[9px] font-bold px-2.5 py-1 rounded shadow-lg flex items-center gap-1 border border-accent/20">
-                <Zap className="w-2.5 h-2.5 fill-current" /> TRENDING
+              <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="bg-accent/95 backdrop-blur-sm text-primary text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded shadow-lg flex items-center gap-1 border border-accent/20">
+                <Zap className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-current" /> TRENDING
               </motion.div>
             )}
           </div>
@@ -299,33 +299,33 @@ function PackageCardComponent({
                 scale: { type: "spring", stiffness: 400, damping: 25 },
                 rotate: { duration: 0.6, repeat: Infinity, repeatDelay: 2.5, delay: 1 }
               }}
-              className="absolute top-3 right-3 bg-red-600 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded shadow-lg z-20 shadow-red-600/30 border border-red-500/50"
+              className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-red-600 backdrop-blur-sm text-white text-[8px] sm:text-[10px] font-black px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded shadow-lg z-20 shadow-red-600/30 border border-red-500/50"
             >
               {discount}% OFF
             </motion.div>
           )}
 
-          <h3 className="absolute bottom-2 left-4 right-4 text-white text-[16px] md:text-[18px] font-bold leading-tight z-10 shadow-black/50 drop-shadow-lg line-clamp-2">
+          <h3 className="absolute bottom-1.5 left-2 right-2 sm:bottom-2 sm:left-4 sm:right-4 text-white text-[11px] xs:text-[13px] sm:text-[14px] md:text-[18px] font-bold leading-tight z-10 shadow-black/50 drop-shadow-lg line-clamp-2">
             {pkg.name}
           </h3>
         </div>
 
-        {/* Bottom Solid Block (35%) */}
-        <div className="absolute bottom-0 left-0 right-0 h-[35%] w-full p-4 flex flex-col justify-between z-10 bg-primary">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold px-2.5 py-1 rounded flex items-center justify-center shrink-0">
+        {/* Bottom Solid Block (37%) */}
+        <div className="absolute bottom-0 left-0 right-0 h-[37%] w-full p-2 sm:p-4 flex flex-col justify-between z-10 bg-primary">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+            <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded flex items-center justify-center shrink-0">
               {pkg.duration}D & {pkg.nights}N
             </div>
-            <div className="text-white/80 text-[11px] font-medium truncate">
+            <div className="text-white/80 text-[9px] sm:text-[11px] font-medium truncate">
               {formatRoute(citiesList)}
             </div>
           </div>
 
           {/* Inclusions Icons */}
-          <div className="flex items-center gap-1.5 mb-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
             {inclusionList.slice(0, 4).map((inc, i) => (
-              <div key={i} className="flex items-center justify-center w-6 h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors" title={inc.label}>
-                <inc.Icon className="w-3 h-3" />
+              <div key={i} className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors" title={inc.label}>
+                <inc.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               </div>
             ))}
           </div>
@@ -333,15 +333,15 @@ function PackageCardComponent({
           <div className="flex items-end justify-between mt-auto">
             <div className="flex flex-col">
               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
-                <span className="text-white/50 text-[10px] line-through font-semibold leading-none mb-0.5">
+                <span className="text-white/50 text-[8px] xs:text-[9px] sm:text-[10px] line-through font-semibold leading-none mb-0.5">
                   ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
                 </span>
-              ) : <span className="h-3" />}
-              <span className="text-white text-[18px] font-bold leading-none tracking-tight">
+              ) : <span className="h-2.5 xs:h-3" />}
+              <span className="text-white text-sm xs:text-base sm:text-[18px] font-bold leading-none tracking-tight">
                 ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
               </span>
             </div>
-            <button className="bg-white text-primary text-[11px] font-bold px-3 py-1.5 rounded-sm hover:bg-slate-100 transition-colors shadow-sm active:scale-95 shrink-0">
+            <button className="hidden sm:block bg-white text-primary text-[11px] font-bold px-3 py-1.5 rounded-sm hover:bg-slate-100 transition-colors shadow-sm active:scale-95 shrink-0">
               View Details
             </button>
           </div>
