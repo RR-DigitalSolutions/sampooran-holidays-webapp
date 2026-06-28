@@ -216,6 +216,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [activitiesMap, setActivitiesMap] = useState<Map<string, AttractionActivityData>>(new Map());
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
+  const [showBookingDrawer, setShowBookingDrawer] = useState(false);
 
   const handleAttractionClick = async (name: string) => {
     setLoadingDetail(true);
@@ -440,12 +441,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   return (
     <div className="w-full min-h-screen bg-[#F4F5F7] text-slate-900">
       {/* ═══════════════════════════════════════════
-           HERO SECTION — Full-screen image slider
-           with smooth Ken Burns zoom animation
+           HERO SECTION — Adaptive Image Slider & Details Flow
       ════════════════════════════════════════════ */}
-      <section className="relative min-h-[78vh] overflow-hidden flex items-end">
-        {/* Full-screen image slider background */}
-        <div className="absolute inset-0">
+      <section className="relative lg:min-h-[78vh] overflow-hidden flex flex-col lg:block bg-[#0B1528]">
+        {/* Adaptive image slider background */}
+        <div className="relative w-full h-[30vh] xs:h-[36vh] sm:h-[48vh] lg:absolute lg:inset-0 lg:h-full z-0">
           <HeroImageSlider
             images={galleryImages.length > 0 ? galleryImages : [packageData.imageUrl || "/default-hero.jpg"]}
             alt={packageData.name || "Package"}
@@ -457,8 +457,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           <div className="absolute inset-y-0 left-0 w-[65%] bg-gradient-to-r from-black/60 to-transparent" />
         </div>
 
-        <div className="relative z-10 w-full container mx-auto px-4 lg:px-8 pt-32 pb-8 lg:pb-12">
-          <div className="grid gap-3 xl:gap-4 xl:grid-cols-[1fr_330px] items-end">
+        <div className="relative z-10 w-full container mx-auto px-4 lg:px-8 pt-6 pb-6 lg:pt-32 lg:pb-12 bg-[#0B1528] lg:bg-transparent">
+          <div className="grid gap-4 lg:grid-cols-[1fr_330px] items-end">
 
             {/* ── LEFT: Informative content ── */}
             <div className="text-white flex flex-col items-start gap-3.5 max-w-2xl">
@@ -466,27 +466,27 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {/* Duration + nights + themes + places chips in a single row (placed above title) */}
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
                 {packageData.duration && (
-                  <span className="rounded-full bg-white/12 backdrop-blur-sm border border-white/20 px-4 py-1.5">
+                  <span className="rounded-md bg-white/12 backdrop-blur-sm border border-white/20 px-3.5 py-1.5">
                     {packageData.duration} {Number(packageData.duration) === 1 ? "Day" : "Days"}
                   </span>
                 )}
                 {packageData.nights && (
-                  <span className="rounded-full bg-white/12 backdrop-blur-sm border border-white/20 px-4 py-1.5">
+                  <span className="rounded-md bg-white/12 backdrop-blur-sm border border-white/20 px-3.5 py-1.5">
                     {packageData.nights} {Number(packageData.nights) === 1 ? "Night" : "Nights"}
                   </span>
                 )}
                 {packageData.category && (
-                  <span className="rounded-full bg-accent/90 px-4 py-1.5 text-white shadow tracking-wide uppercase">
+                  <span className="rounded-md bg-accent/90 px-3.5 py-1.5 text-white shadow tracking-wide uppercase">
                     {packageData.category}
                   </span>
                 )}
                 {heroBadges.map((badge, idx) => (
-                  <span key={idx} className="rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-1.5 text-white/90">
+                  <span key={idx} className="rounded-md bg-white/15 backdrop-blur-sm border border-white/20 px-3.5 py-1.5 text-white/90">
                     {badge}
                   </span>
                 ))}
                 {departureCities && (
-                  <span className="inline-flex items-center gap-1.5 text-white/90 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-sm border border-white/10">
+                  <span className="inline-flex items-center gap-1.5 text-white/90 px-3 py-1.5 rounded-md bg-black/30 backdrop-blur-sm border border-white/10">
                     <MapPin className="w-3.5 h-3.5" />
                     {departureCities}
                   </span>
@@ -494,21 +494,21 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </div>
 
               {/* Combined Title & Description with single background and reduced spacing */}
-              <div className="bg-black/30 backdrop-blur-md rounded-2xl px-5 py-4 border border-white/10 shadow-xl flex flex-col gap-2">
-                <h1 className="text-2xl sm:text-3xl lg:text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight drop-shadow-lg text-white">
+              <div className="bg-black/30 backdrop-blur-md rounded-md p-3 sm:p-4 border border-white/10 shadow-xl flex flex-col gap-2 w-full">
+                <h1 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight drop-shadow-lg text-white">
                   {packageData.name}
                 </h1>
-                <p className="text-xs sm:text-sm text-white/90 leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-white/80 leading-relaxed">
                   {packageData.shortDescription || packageData.longDescription?.slice(0, 200) || "A curated escape with premium stays and local experiences."}
                 </p>
               </div>
 
             </div>
 
-            {/* ── RIGHT: Price card + quick CTA ── */}
-            <aside>
+             {/* ── RIGHT: Price card + quick CTA ── */}
+             <aside className="w-full hidden lg:block">
               {/* Combined Price panel + Trust indicators */}
-              <div className="rounded-3xl bg-black/30 backdrop-blur-md border border-white/20 p-5 sm:p-6 text-white shadow-2xl flex flex-col gap-4">
+              <div className="rounded-md bg-black/30 backdrop-blur-md border border-white/20 p-4 text-white shadow-2xl flex flex-col gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-white/60 mb-1">Starting from</p>
                   <div className="flex items-end gap-3">
@@ -520,7 +520,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   <p className="text-xs text-white/60 mt-1">Per person · Twin sharing</p>
 
                   {savings > 0 && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-bold text-emerald-300">
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-bold text-emerald-300">
                       You save ₹{savings.toLocaleString("en-IN")}
                       {packageData.discountPercent ? ` · ${packageData.discountPercent}% OFF` : ""}
                     </div>
@@ -531,7 +531,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   {/* Primary CTA */}
                   <Link
                     href="#enquire"
-                    className="flex w-full items-center justify-center rounded-xl bg-accent py-3 text-sm font-bold text-white shadow-lg hover:bg-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="flex w-full items-center justify-center rounded-md bg-accent py-3 text-sm font-bold text-white shadow-lg hover:bg-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
                   >
                     Book This Package
                   </Link>
@@ -542,7 +542,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       const el = document.getElementById("enquire");
                       el?.scrollIntoView({ behavior: "smooth" });
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 py-2.5 text-sm font-semibold text-white/85 hover:bg-white/10 transition-all"
+                    className="flex w-full items-center justify-center gap-2 rounded-md border border-white/20 bg-white/5 py-2.5 text-sm font-semibold text-white/85 hover:bg-white/10 transition-all"
                   >
                     <Phone className="w-3.5 h-3.5" />
                     Request a Callback
@@ -578,7 +578,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         <div className="grid gap-8 xl:grid-cols-[1.75fr_0.75fr] items-start">
           <main className="space-y-8">
             {/* Unified Package Overview Highlights, Gallery & Inclusions Card */}
-            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+            <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Left side: Highlights */}
                 {packageHighlights.length > 0 && (
@@ -586,7 +586,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     <h3 className="text-lg font-bold text-slate-900 mb-3 shrink-0">Tour Highlights</h3>
                     <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
                       {packageHighlights.map((highlight, idx) => (
-                        <div key={idx} className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-700 font-medium border border-slate-100/80 hover:bg-slate-100/50 transition-colors">
+                        <div key={idx} className="rounded-md bg-slate-50 px-3 py-2 md:px-4 md:py-3 text-xs text-slate-700 font-medium border border-slate-100/80 hover:bg-slate-100/50 transition-colors">
                           • {highlight}
                         </div>
                       ))}
@@ -598,7 +598,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 {galleryImages.length > 0 && (
                   <div className="flex flex-col h-[280px]">
                     <h3 className="text-lg font-bold text-slate-900 mb-3 shrink-0">Tour Gallery</h3>
-                    <div className="flex-1 grid grid-cols-2 gap-2 overflow-hidden rounded-xl">
+                    <div className="flex-1 grid grid-cols-2 gap-2 overflow-hidden rounded-md">
                       {galleryImages.slice(0, 4).map((image, idx) => {
                         const isLast = idx === 3;
                         const hasMore = galleryImages.length > 4;
@@ -606,7 +606,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                           <div
                             key={idx}
                             onClick={() => setActiveLightboxIndex(idx)}
-                            className="relative w-full h-full overflow-hidden bg-slate-100 group cursor-pointer"
+                            className="relative w-full h-full overflow-hidden bg-slate-100 group cursor-pointer rounded-md"
                           >
                             <Image
                               src={validateImageUrl(image, 400, 300, "4:3")}
@@ -616,7 +616,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               className="object-cover transition duration-500 group-hover:scale-105"
                             />
                             {isLast && hasMore && (
-                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white font-extrabold text-sm md:text-base backdrop-blur-[2px] transition group-hover:bg-black/55">
+                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white font-extrabold text-sm md:text-base backdrop-blur-[2px] transition group-hover:bg-black/55 rounded-md">
                                 <span className="text-xl md:text-2xl">+{galleryImages.length - 4}</span>
                                 <span className="text-[10px] uppercase tracking-wider text-white/80 font-bold mt-0.5">Photos</span>
                               </div>
@@ -633,15 +633,15 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {inclusionItems.length > 0 && (
                 <div className="pt-5 border-t border-slate-100">
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Key Inclusions</h3>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2 md:gap-3">
                     {inclusionItems.map((item, idx) => {
                       const IconComponent = item.Icon;
                       return (
-                        <div key={idx} className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 hover:border-primary/20 transition-all">
-                          <div className="w-8 h-8 rounded-lg bg-[#1B3A6B] text-[#E5F1FF] flex items-center justify-center shadow-sm shrink-0">
-                            <IconComponent className="w-4.5 h-4.5" />
+                        <div key={idx} className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 bg-slate-50 border border-slate-100 rounded-md px-2.5 py-1.5 sm:px-4 sm:py-2 hover:border-primary/20 transition-all">
+                          <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-md bg-[#1B3A6B] text-[#E5F1FF] flex items-center justify-center shadow-sm shrink-0">
+                            <IconComponent className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
                           </div>
-                          <span className="text-[11px] font-extrabold text-slate-800 tracking-wider uppercase">
+                          <span className="text-[9px] sm:text-[11px] font-extrabold text-slate-800 tracking-wider uppercase">
                             {item.label}
                           </span>
                         </div>
@@ -652,13 +652,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               )}
             </section>
 
-            <section id="overview" className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+            <section id="overview" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Package Overview</h2>
+                  <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Package Overview</h2>
                   <p className="mt-2 text-sm text-slate-500">A complete summary of what’s included in your journey.</p>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
                   <Check className="h-4 w-4" />
                   Trusted itinerary
                 </div>
@@ -668,8 +668,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
             {/* Itinerary Section with Timeline Accordion Design */}
             {normalizedItinerary.length > 0 && (
-              <section id="itinerary" className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm">
-                <h2 className="text-2xl pl-8 font-bold text-slate-900 mb-8">Itinerary</h2>
+              <section id="itinerary" className="rounded-md border border-slate-200 bg-white p-3 md:p-4 shadow-sm">
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-6">Itinerary</h2>
 
                 <div className="space-y-0">
                   {normalizedItinerary.map((day, idx) => {
@@ -698,22 +698,22 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <div key={idx} className="relative pb-6">
                         {/* Timeline line and dot */}
                         {idx < normalizedItinerary.length - 1 && (
-                          <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-slate-300" />
+                          <div className="absolute left-4 sm:left-6 top-9 sm:top-12 bottom-0 w-0.5 bg-slate-300" />
                         )}
-                        <div className="absolute left-0 top-6 h-12 w-12 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center z-10">
-                          <MapPin className="h-5 w-5 text-blue-600" />
+                        <div className="absolute left-0 top-6 h-8 w-8 sm:h-12 sm:w-12 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center z-10">
+                          <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                         </div>
 
                         {/* Day header with expand button */}
                         <button
                           onClick={handleToggle}
-                          className="w-full pl-20 pr-6 py-4 hover:bg-slate-50 rounded-lg transition flex items-start justify-between gap-4"
+                          className="w-full pl-11 sm:pl-20 pr-3 sm:pr-6 py-2.5 sm:py-4 hover:bg-slate-50 rounded-md transition flex items-start justify-between gap-4"
                         >
                           <div className="text-left flex-1">
-                            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                              Day {idx + 1} / {String(day.title || '').match(/\d+ \w+, \d+/)?.[0] || 'TBA'}
+                            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-slate-500">
+                               Day {idx + 1} / {String(day.title || '').match(/\d+ \w+, \d+/)?.[0] || 'TBA'}
                             </p>
-                            <h3 className="mt-1 text-lg font-semibold text-slate-900">
+                            <h3 className="mt-1 text-sm sm:text-lg font-bold text-slate-900">
                               {day.title || `Day ${idx + 1}`}
                             </h3>
                           </div>
@@ -728,39 +728,39 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                         {/* Expanded content */}
                         {isExpanded && (
-                          <div className="pl-10 pr-6 pb-6 space-y-4">
+                          <div className="pl-11 pr-3 pb-4 sm:pl-20 sm:pr-6 space-y-4">
                             {/* Main description */}
                             {(day.description || day.content) && (
-                              <p className="text-sm text-slate-700 leading-relaxed">
+                              <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
                                 {day.description || day.content}
                               </p>
                             )}
 
                             {/* Today's Sightseeing */}
                             {showSightseeing && (
-                              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                                 <div className="flex items-center gap-3 mb-4">
                                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                                     <Camera className="h-5 w-5" />
                                   </span>
                                   <div>
-                                    <p className="text-sm font-semibold text-slate-900">Sightseeing and Attractions</p>
-                                    <p className="text-xs text-slate-500">Plans, sights and experiences curated for the day.</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Sightseeing and Attractions</p>
+                                    <p className="text-[10px] sm:text-xs text-slate-500">Plans, sights and experiences curated for the day.</p>
                                   </div>
                                 </div>
                                 {day.sightseeing ? (
-                                  <p className="text-sm text-slate-700">{day.sightseeing}</p>
+                                  <p className="text-xs sm:text-sm text-slate-700">{day.sightseeing}</p>
                                 ) : (
                                   <div className="space-y-3">
                                     {attractions.length > 0 && (
                                       <div>
-                                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Attractions</p>
+                                        <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Attractions</p>
                                         <div className="flex flex-wrap gap-2">
                                           {attractions.map((item, attrIdx) => (
                                             <button
                                               key={attrIdx}
                                               onClick={() => handleAttractionClick(item)}
-                                              className="rounded-full border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:text-blue-700 transition cursor-pointer"
+                                              className="rounded-full border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 hover:text-blue-700 transition cursor-pointer"
                                               disabled={loadingDetail}
                                             >
                                               {item}
@@ -771,7 +771,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                     )}
                                     {uniqueActivities.length > 0 && (
                                       <div>
-                                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Activities</p>
+                                        <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Activities</p>
                                         <div className="flex flex-wrap gap-2">
                                           {uniqueActivities.map((item, activityIdx) => {
                                             const activity = activitiesMap.get(item.toLowerCase());
@@ -782,13 +782,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                               <div key={activityIdx} className="relative">
                                                 <button
                                                   onClick={() => handleActivityClick(item)}
-                                                  className="rounded-full border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:text-green-700 transition cursor-pointer"
+                                                  className="rounded-full border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 hover:text-green-700 transition cursor-pointer"
                                                   disabled={loadingDetail}
                                                 >
                                                   {item}
                                                 </button>
                                                 {priceRange && (
-                                                  <span className="absolute -top-2 -right-1 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700 border border-green-200">
+                                                  <span className="absolute -top-2 -right-1 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[9px] sm:text-xs font-bold text-green-700 border border-green-200">
                                                     {priceRange}
                                                   </span>
                                                 )}
@@ -804,71 +804,71 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                             )}
 
                             {/* Enroute Dining Stops */}
-                            {enrouteStops.length > 0 && (
-                              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
-                                    <Coffee className="h-5 w-5 text-orange-600" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-semibold text-slate-900">Enroute Dining</p>
-                                    <p className="text-xs text-slate-500">Flexible stop details based on the day’s route.</p>
-                                  </div>
-                                </div>
-                                <p className="text-sm text-slate-700 ml-13">{enrouteStops.join(', ')}</p>
-                              </div>
-                            )}
+                             {enrouteStops.length > 0 && (
+                               <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+                                 <div className="flex items-center gap-3 mb-3">
+                                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-orange-50">
+                                     <Coffee className="h-5 w-5 text-orange-600" />
+                                   </div>
+                                   <div>
+                                     <p className="text-xs sm:text-sm font-semibold text-slate-900">Enroute Dining</p>
+                                     <p className="text-[10px] sm:text-xs text-slate-500">Flexible stop details based on the day’s route.</p>
+                                   </div>
+                                 </div>
+                                 <p className="text-xs sm:text-sm text-slate-700 ml-13">{enrouteStops.join(', ')}</p>
+                               </div>
+                             )}
 
-                            {/* Meals */}
-                            {mealItems.length > 0 && (
-                              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                                <div className="flex items-center gap-3 mb-4">
-                                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                                    <Utensils className="h-5 w-5" />
-                                  </span>
-                                  <div>
-                                    <p className="text-sm font-semibold text-slate-900">Delicious Dining</p>
-                                    <p className="text-xs text-slate-500">Mouthwatering meals carefully chosen for your tour.</p>
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {mealItems.map((meal, mealIdx) => (
-                                    <span key={mealIdx} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                                      {meal}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                             {/* Meals */}
+                             {mealItems.length > 0 && (
+                               <div className="rounded-md border border-slate-200 bg-slate-50 p-3 md:p-4">
+                                 <div className="flex items-center gap-3 mb-4">
+                                   <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                                     <Utensils className="h-5 w-5" />
+                                   </span>
+                                   <div>
+                                     <p className="text-xs sm:text-sm font-semibold text-slate-900">Delicious Dining</p>
+                                     <p className="text-[10px] sm:text-xs text-slate-500">Mouthwatering meals carefully chosen for your tour.</p>
+                                   </div>
+                                 </div>
+                                 <div className="flex flex-wrap gap-2">
+                                   {mealItems.map((meal, mealIdx) => (
+                                     <span key={mealIdx} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-700">
+                                       {meal}
+                                     </span>
+                                   ))}
+                                 </div>
+                               </div>
+                             )}
 
-                            {/* Transport info */}
-                            {(day.transport || day.cab) && (
-                              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
-                                    <Car className="h-5 w-5 text-blue-600" />
-                                  </div>
-                                  <h4 className="text-sm font-semibold text-slate-900">Travel Details</h4>
-                                </div>
-                                <div className="text-sm text-slate-700 ml-13 space-y-2">
-                                  {day.transport && <p>{day.transport}</p>}
-                                  {day.cab && <p>{day.cab}</p>}
-                                </div>
-                              </div>
-                            )}
+                             {/* Transport info */}
+                             {(day.transport || day.cab) && (
+                               <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+                                 <div className="flex items-center gap-3 mb-2">
+                                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50">
+                                     <Car className="h-5 w-5 text-blue-600" />
+                                   </div>
+                                   <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Travel Details</h4>
+                                 </div>
+                                 <div className="text-xs sm:text-sm text-slate-700 ml-13 space-y-2">
+                                   {day.transport && <p>{day.transport}</p>}
+                                   {day.cab && <p>{day.cab}</p>}
+                                 </div>
+                               </div>
+                             )}
 
-                            {/* Night Stay */}
-                            {formattedAccommodation && (
-                              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50">
-                                    <Building2 className="h-5 w-5 text-amber-600" />
-                                  </div>
-                                  <h4 className="text-sm font-semibold text-slate-900">Night Stay in {day.location || 'TBA'}</h4>
-                                </div>
-                                <p className="text-sm text-slate-700 ml-13">{formattedAccommodation}</p>
-                              </div>
-                            )}
+                             {/* Night Stay */}
+                             {formattedAccommodation && (
+                               <div className="bg-slate-50 rounded-md p-4 border border-slate-200">
+                                 <div className="flex items-center gap-3 mb-2">
+                                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50">
+                                     <Building2 className="h-5 w-5 text-amber-600" />
+                                   </div>
+                                   <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Night Stay in {day.location || 'TBA'}</h4>
+                                 </div>
+                                 <p className="text-xs sm:text-sm text-slate-700 ml-13">{formattedAccommodation}</p>
+                               </div>
+                             )}
                           </div>
                         )}
                       </div>
@@ -879,7 +879,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             )}
 
             {(packageInclusions.length > 0 || packageExclusions.length > 0) && (
-              <section id="inclusions" className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+              <section id="inclusions" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
                 <div className="grid gap-6 lg:grid-cols-2">
                   {packageInclusions.length > 0 && (
                     <div>
@@ -905,8 +905,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </section>
             )}
 
-            <section id="policies" className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-slate-900 mb-5">Policies</h2>
+            <section id="policies" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+              <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Policies</h2>
               <div className="space-y-6 text-sm text-slate-700 leading-7">
                 <div>
                   <p className="font-semibold text-slate-900 mb-2">Payment Policy</p>
@@ -920,8 +920,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             </section>
 
             {importantNotes.length > 0 && (
-              <section id="important-notes" className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
-                <h2 className="text-2xl font-bold text-slate-900 mb-5">Important Notes</h2>
+              <section id="important-notes" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Important Notes</h2>
                 <ul className="list-disc pl-5 space-y-3 text-sm text-slate-700">
                   {importantNotes.map((note, idx) => (
                     <li key={idx}>{note}</li>
@@ -931,11 +931,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             )}
 
             {packageHotels.length > 0 && (
-              <section id="hotels" className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
-                <h2 className="text-2xl font-bold text-slate-900 mb-5">Hotels &amp; Stay</h2>
+              <section id="hotels" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Hotels &amp; Stay</h2>
                 <div className="space-y-4">
                   {packageHotels.map((hotel, idx) => (
-                    <div key={idx} className="rounded-[28px] border border-slate-200 bg-slate-50 p-6">
+                    <div key={idx} className="rounded-md border border-slate-200 bg-slate-50 p-4 md:p-5">
                       <p className="text-base font-semibold text-slate-900">{hotel.hotelName || 'Hotel'}</p>
                       <p className="mt-2 text-sm text-slate-600">{hotel.city || 'Location'} • {hotel.category || 'Category'} • {hotel.nights ?? '-'} Nights</p>
                       {hotel.roomType && <p className="mt-2 text-sm text-slate-600">Room type: {hotel.roomType}</p>}
@@ -946,11 +946,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             )}
 
             {faqs.length > 0 && (
-              <section id="faqs" className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm pb-16">
-                <h2 className="text-2xl font-bold text-slate-900 mb-5">Frequently Asked Questions</h2>
+              <section id="faqs" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm pb-10">
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Frequently Asked Questions</h2>
                 <div className="space-y-4">
                   {faqs.map((faq, idx) => (
-                    <div key={idx} className="rounded-[28px] border border-slate-200 overflow-hidden">
+                    <div key={idx} className="rounded-md border border-slate-200 overflow-hidden">
                       <button
                         onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
                         className="w-full flex items-center justify-between gap-4 p-5 bg-slate-50 hover:bg-slate-100 transition"
@@ -971,14 +971,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
           <aside className="space-y-4 xl:sticky xl:top-20">
             {/* ── Compact Fare Summary Card ── */}
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
+            <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col hidden xl:flex">
               {/* Header row */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fare Summary</p>
                   <p className="text-base font-bold text-slate-900 mt-0.5 leading-tight">Book this package</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm">
                   <Users className="w-3 h-3 text-slate-500" />
                   {guestCountLabel}
                 </span>
@@ -1045,13 +1045,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               <div className="px-4 pb-4 grid gap-2 mt-auto">
                 <Link
                   href="#enquire"
-                  className="block w-full rounded-xl bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98]"
+                  className="block w-full rounded-md bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98]"
                 >
                   Book Now
                 </Link>
                 <Link
                   href="#enquire"
-                  className="block w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-center text-sm font-bold text-white hover:from-amber-600 hover:to-orange-600 transition-all hover:shadow-md active:scale-[0.98]"
+                  className="block w-full rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-center text-sm font-bold text-white hover:from-amber-600 hover:to-orange-600 transition-all hover:shadow-md active:scale-[0.98]"
                 >
                   ✦ Customize My Trip
                 </Link>
@@ -1059,7 +1059,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="block w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-all"
+                  className="block w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-all"
                 >
                   Chat on WhatsApp
                 </a>
@@ -1067,7 +1067,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             </div>
 
             {/* ── Why book with us ── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-md border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Why book with us</p>
               <ul className="space-y-2.5">
                 {[
@@ -1086,12 +1086,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             </div>
 
             {/* ── Support / Call ── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-md border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Support</p>
               <p className="text-xs text-slate-600 mb-3">We are here to help you book confidently with expert travel guidance.</p>
               <a
                 href="tel:+919000000000"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1B3A6B] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#1B3A6B] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md"
               >
                 <Phone className="w-3.5 h-3.5" />
                 Call +91 900 000 0000
@@ -1101,20 +1101,135 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         </div>
       </section>
 
-      <div
-        className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 p-3 flex items-center justify-between transition-transform duration-300 lg:hidden shadow-[0_-10px_20px_rgba(0,0,0,0.05)]",
-          showStickyBar ? "translate-y-0" : "translate-y-full"
-        )}
-      >
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Starting Price</span>
-          <span className="text-xl font-bold text-slate-900 leading-none">{priceLabel}</span>
+      {/* Mobile Booking Drawer (Bottom Sheet) */}
+      {showBookingDrawer && (
+        <div className="fixed inset-0 z-[110] bg-black/60 lg:hidden flex flex-col justify-end" onClick={() => setShowBookingDrawer(false)}>
+          <div 
+            className="bg-white rounded-t-2xl p-4 flex flex-col max-h-[80vh] overflow-y-auto shadow-[0_-10px_30px_rgba(0,0,0,0.3)] text-slate-800"
+            onClick={(e) => e.stopPropagation()}
+            style={{ marginBottom: "64px" }}
+          >
+            {/* Header / Close button */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fare Summary</p>
+                <p className="text-sm font-bold text-slate-900 mt-0.5">Booking Details</p>
+              </div>
+              <button 
+                onClick={() => setShowBookingDrawer(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Price rows — ultra compact */}
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">Package Cost</span>
+                <span className="font-semibold text-slate-800">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+              </div>
+
+              {totalSavings > 0 && (
+                <div className="flex items-center justify-between py-1.5 rounded bg-emerald-50 px-2">
+                  <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                    <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white text-[8px] font-black">✓</span>
+                    {discountLabel}
+                  </span>
+                  <span className="font-bold text-emerald-700">−₹{totalSavings.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">After Discount</span>
+                <span className="font-semibold text-slate-800">₹{priceAfterDiscount.toLocaleString('en-IN')}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-500">GST (5%)</span>
+                <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-2 bg-slate-50 px-3 rounded-md my-2">
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Grand Total</p>
+                  <p className="text-xl font-black text-slate-900 leading-tight">₹{grandTotal.toLocaleString('en-IN')}</p>
+                </div>
+                {totalSavings > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700">
+                    Saved ₹{totalSavings.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+
+              {/* EMI chip */}
+              <div className="flex items-center justify-between rounded bg-slate-900 px-3 py-2 text-white">
+                <div>
+                  <p className="text-[9px] font-bold text-white/60 uppercase tracking-wider">No-cost EMI</p>
+                  <p className="text-xs font-black text-white">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}<span className="text-[9px] font-normal text-white/60"> /mo × 3</span></p>
+                </div>
+                <span className="rounded bg-white/15 border border-white/20 px-2 py-0.5 text-[9px] font-bold text-white tracking-wide">EMI AVAILABLE</span>
+              </div>
+            </div>
+
+            {/* CTA Actions */}
+            <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100">
+              <Link
+                href="#enquire"
+                onClick={() => setShowBookingDrawer(false)}
+                className="block w-full rounded-md bg-[#1B3A6B] py-2.5 text-center text-xs font-bold text-white hover:bg-[#152e55]"
+              >
+                Book Now
+              </Link>
+              <button
+                onClick={() => {
+                  setShowBookingDrawer(false);
+                  const el = document.getElementById("enquire");
+                  el?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="block w-full rounded-md bg-gradient-to-r from-amber-500 to-orange-500 py-2.5 text-center text-xs font-bold text-white hover:brightness-110"
+              >
+                Customize
+              </button>
+            </div>
+            
+            <a
+              href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full rounded-md border border-slate-200 bg-slate-50 py-2.5 text-center text-xs font-semibold text-slate-800 hover:bg-slate-100 mt-2"
+            >
+              Chat on WhatsApp
+            </a>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link href="#enquire" className="bg-gradient-to-r from-[#1B3A6B] to-blue-700 text-white px-8 h-12 rounded-xl flex items-center justify-center font-bold text-sm shadow-md shadow-blue-900/20 active:scale-95 transition-transform">
-            Book Now
-          </Link>
+      )}
+
+      {/* Mobile Sticky Price Strip (positioned directly above BottomNav) */}
+      <div 
+        className="fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-3 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
+        style={{ bottom: "64px" }}
+        onClick={() => setShowBookingDrawer(true)}
+      >
+        <div className="container mx-auto flex items-center justify-between gap-3">
+          {/* Price Info */}
+          <div className="flex flex-col shrink-0">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Starting From</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
+              <span className="text-lg font-black text-white">{priceLabel}</span>
+              {savings > 0 && (
+                <span className="text-[10px] text-slate-400 line-through">₹{originalPrice.toLocaleString("en-IN")}</span>
+              )}
+            </div>
+            {savings > 0 && (
+              <span className="text-[9px] font-bold text-emerald-400 mt-0.5">{discountLabel}</span>
+            )}
+          </div>
+          {/* Action indicator trigger */}
+          <div className="flex items-center gap-1 bg-accent text-white px-4 py-2 rounded-md font-bold text-xs shadow-sm">
+            <span>Book/Customize</span>
+            <ChevronUp className="w-3.5 h-3.5" />
+          </div>
         </div>
       </div>
 

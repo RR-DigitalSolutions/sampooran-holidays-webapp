@@ -427,60 +427,60 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {/* Quick Contact Bar */}
         <div className="bg-white/5 border-b border-white/10">
-          <div className="container mx-auto px-4 py-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="container mx-auto px-4 py-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-5">
 
               {/* Offices */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 md:w-9 md:h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0 border border-white/10">
-                  <Building2 className="w-4 h-4 text-[#F5A623]" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-7.5 h-7.5 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
+                  <Building2 className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-[10px] uppercase tracking-widest text-white/90 mb-0.5">Our Offices</p>
-                  <Link href="/contact" className="text-[#F5A623] font-medium text-[10px] hover:underline transition-colors">
+                  <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Our Offices</p>
+                  <Link href="/contact" className="text-[#F5A623] font-bold text-[9.5px] sm:text-[10px] hover:underline transition-colors">
                     Locate Us →
                   </Link>
                 </div>
               </div>
 
               {/* Call Us */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 md:w-9 md:h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0 border border-white/10">
-                  <Phone className="w-4 h-4 text-[#F5A623]" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-7.5 h-7.5 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
+                  <Phone className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-[10px] uppercase tracking-widest text-white/90 mb-0.5">Call Us</p>
-                  <a href="tel:+918595513009" className="text-white font-semibold text-xs hover:text-[#F5A623] transition-colors">
+                  <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Call Us</p>
+                  <a href="tel:+918595513009" className="text-white font-bold text-[11px] sm:text-xs hover:text-[#F5A623] transition-colors">
                     +91 85955 13009
                   </a>
                 </div>
               </div>
 
               {/* Write to us */}
-              <div className="flex items-center gap-3 col-span-2 md:col-span-1">
-                <div className="w-8 h-8 md:w-9 md:h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0 border border-white/10">
-                  <Mail className="w-4 h-4 text-[#F5A623]" />
+              <div className="flex items-center gap-2.5 col-span-2 md:col-span-1">
+                <div className="w-7.5 h-7.5 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
+                  <Mail className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-[10px] uppercase tracking-widest text-white/90 mb-0.5">Write to Us</p>
-                  <a href="mailto:info@sampooranholidays.com" className="text-white/70 text-[10px] hover:text-[#F5A623] transition-colors">
+                  <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Write to Us</p>
+                  <a href="mailto:info@sampooranholidays.com" className="text-white/80 font-semibold text-[10.5px] sm:text-xs hover:text-[#F5A623] transition-colors">
                     info@sampooranholidays.com
                   </a>
                 </div>
               </div>
 
               {/* Social */}
-              <div className="flex items-center gap-3 col-span-2 md:col-span-1">
-                <div className="w-8 h-8 md:w-9 md:h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0 border border-white/10">
-                  <Share2 className="w-4 h-4 text-[#F5A623]" />
+              <div className="flex items-center gap-2.5 col-span-2 md:col-span-1">
+                <div className="w-7.5 h-7.5 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
+                  <Share2 className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
                 </div>
                 <div>
-                  <p className="font-semibold text-[10px] uppercase tracking-widest text-white/90 mb-1.5">Follow Us</p>
-                  <div className="flex items-center gap-2">
+                  <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-1">Follow Us</p>
+                  <div className="flex items-center gap-1.5">
                     {SOCIAL.map((s) => (
                       <a key={s.label} href={s.href} aria-label={s.label}
-                        className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white transition-all hover:scale-110 hover:shadow-lg", s.color)}>
-                        <s.icon className="w-3 h-3" />
+                        className={cn("w-5.5 h-5.5 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center text-white transition-all hover:scale-105", s.color)}>
+                        <s.icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                       </a>
                     ))}
                   </div>
