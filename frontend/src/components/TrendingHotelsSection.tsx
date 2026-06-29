@@ -111,7 +111,7 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
               };
 
               return (
-                <div key={hotel.id} className="flex-[0_0_52%] xs:flex-[0_0_50%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
+                <div key={hotel.id} className="flex-[0_0_47%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
                   <HotelCard hotel={mappedHotel} />
                 </div>
               );

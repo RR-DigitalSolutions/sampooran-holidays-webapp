@@ -260,7 +260,7 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[210px] xs:h-[230px] sm:h-[310px] md:h-[365px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
+        className="block h-[210px] xs:h-[230px] sm:h-[310px] md:h-[365px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20"
       >
         {/* Top Image Section (58%) */}
         <div className="absolute top-0 left-0 right-0 h-[58%] w-full">

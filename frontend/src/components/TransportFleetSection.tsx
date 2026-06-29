@@ -128,7 +128,7 @@ export default function TransportFleetSection({ vehicles }: TransportFleetSectio
             <div className="overflow-hidden" ref={emblaRef}>
               <div className="flex -ml-2 md:-ml-3 pb-2 pt-4">
                 {displayVehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="flex-[0_0_52%] xs:flex-[0_0_50%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
+                  <div key={vehicle.id} className="flex-[0_0_47%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
                     <VehicleCard vehicle={vehicle} />
                   </div>
                 ))}

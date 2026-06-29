@@ -72,16 +72,16 @@ export function BottomNav() {
                   onClick={handleNavClick}
                   onTouchStart={prefetchRoute}
                   onMouseEnter={prefetchRoute}
-                  className="flex flex-col items-center justify-center -mt-7 z-10"
+                  className="flex flex-col items-center justify-center -mt-8 z-10"
                 >
                   {/* Conic RGB outer ring with smooth slow 360 degree rotation */}
-                  <div className="relative w-13 h-13 rounded-full overflow-hidden flex items-center justify-center shadow-md shadow-accent/20">
+                  <div className="relative w-13 h-13 rounded-full overflow-hidden flex items-center justify-center shadow-md shadow-accent/25">
                     <div className="absolute inset-0 w-[150%] h-[150%] -left-[25%] -top-[25%] bg-[conic-gradient(from_0deg,#ff007f,#00f2fe,#4facfe,#ff007f)] animate-conic-spin" />
                     
-                    {/* Inner navy blue container — inset reduced to 1.5px for thin border */}
-                    <div className="absolute inset-[1.5px] rounded-full bg-primary flex items-center justify-center z-10">
+                    {/* Inner navy blue container — inset reduced for minimal border outline */}
+                    <div className="absolute inset-[1.2px] rounded-full bg-primary flex items-center justify-center z-10">
                       <item.icon 
-                        className="w-6 h-6 text-accent transition-transform duration-100 ease-out" 
+                        className="w-7 h-7 text-accent transition-transform duration-100 ease-out" 
                         style={{ transform: `rotate(${scrollRotation}deg)` }}
                       />
                     </div>
