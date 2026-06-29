@@ -1,44 +1,29 @@
-"use client";
+ï»¿"use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { getApiUrl } from "@/lib/api-url";
 
-// --- Types -------------------------------------------------------------------
-
 export interface SiteSettings {
-  // Brand & Identity
   siteName: string;
   tagline: string;
   logoUrl: string;
-
-  // Contact Info
   phone: string;
   phone2: string;
   email: string;
   whatsapp: string;
   address: string;
   supportHours: string;
-
-  // Legal
   gstNumber: string;
   cinNumber: string;
-
-  // Map
   mapEmbedUrl: string;
-
-  // Social Media
   social_facebook: string;
   social_instagram: string;
   social_youtube: string;
   social_linkedin: string;
   social_twitter: string;
   social_whatsapp_channel: string;
-
-  // OG Banner
   og_banner: string;
 }
-
-// --- Defaults ----------------------------------------------------------------
 
 export const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "Sampooran Holidays",
@@ -48,8 +33,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   phone2: "",
   email: "info@sampooranholidays.com",
   whatsapp: "918595513009",
-  address: "Mall Road, Manali, Himachal Pradesh — 175131",
-  supportHours: "Mon–Sat, 9am–7pm",
+  address: "Mall Road, Manali, Himachal Pradesh 175131",
+  supportHours: "Mon-Sat, 9am-7pm",
   gstNumber: "",
   cinNumber: "",
   mapEmbedUrl: "",
@@ -62,8 +47,6 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   og_banner: "https://sampooranholidays.com/logo.png",
 };
 
-// --- Context -----------------------------------------------------------------
-
 interface SiteSettingsContextType {
   settings: SiteSettings;
   isLoading: boolean;
@@ -73,8 +56,6 @@ const SiteSettingsContext = createContext<SiteSettingsContextType>({
   settings: DEFAULT_SETTINGS,
   isLoading: true,
 });
-
-// --- Provider ----------------------------------------------------------------
 
 export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
@@ -90,7 +71,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw: Record<string, string> = await res.json();
 
-        // Merge non-empty fetched values over defaults
         const merged: SiteSettings = { ...DEFAULT_SETTINGS };
         const keys = Object.keys(DEFAULT_SETTINGS) as (keyof SiteSettings)[];
         keys.forEach((k) => {
@@ -114,8 +94,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     </SiteSettingsContext.Provider>
   );
 }
-
-// --- Hook ---------------------------------------------------------------------
 
 export function useSiteSettings(): SiteSettings {
   const { settings } = useContext(SiteSettingsContext);

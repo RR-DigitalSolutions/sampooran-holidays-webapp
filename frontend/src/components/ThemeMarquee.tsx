@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn, validateImageUrl } from "@/lib/utils";
@@ -9,10 +9,10 @@ import {
   Mountain, Heart, Users, TreePine, Waves,
   Coffee, Zap, Camera, TrendingUp, Globe,
   Sunset, Clock, Navigation, User, Building2,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, ArrowRight
 } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
+import { useCarouselGuide } from "@/hooks/useCarouselGuide";
 
 const ICON_MAP: Record<string, any> = {
   Mountain, Heart, Users, TreePine, Waves,
@@ -25,7 +25,7 @@ interface Theme {
   label: string;
   iconName: string;
   imageUrl?: string;
-  image_url?: string; // Support snake_case from DB
+  image_url?: string;
   href: string;
   color?: string;
   packageCount?: number;
@@ -38,18 +38,16 @@ const DEFAULT_IMAGES: Record<string, string> = {};
 
 export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: Theme[], title?: string, subtitle?: string, loading?: boolean }) {
   const router = useRouter();
+  const sectionRef = useRef<HTMLDivElement>(null);
+
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
     dragFree: false,
     loop: true,
-  }, [
-    Autoplay({
-      delay: 3000,
-      stopOnInteraction: false,
-      stopOnMouseEnter: true
-    })
-  ]);
+  });
+
+  const { showHint } = useCarouselGuide({ emblaRef: sectionRef, emblaApi, sectionId: "themes", waitMs: 3000 });
 
   const scrollPrev = useCallback(() => {
     if (!emblaApi) return;
@@ -65,12 +63,11 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
   if (!themes.length) return null;
 
   return (
-    <div className="container mx-auto px-2 md:px-4 my-6">
+    <div ref={sectionRef} className="container mx-auto px-2 md:px-4 my-6">
       <section className="bg-white rounded-lg overflow-hidden border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] py-2">
         <div className="px-2 flex items-end justify-between mb-2">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-
               <p className="text-accent font-bold text-[9px] md-text-[12px] uppercase tracking-[0.1em] font-sans">
                 {subtitle || "Handpicked Collections"}
               </p>
@@ -112,76 +109,80 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
         </div>
 
         <div>
-          <div className="cursor-grab active:cursor-grabbing overflow-hidden" ref={emblaRef}>
-            <div className="flex gap-1 md:gap-4">
-              {themes.map((theme, idx) => {
-                const themeLabel = theme.label || theme.name || "Theme";
-                const rawThemeImage = theme.imageUrl?.trim() || theme.image_url?.trim();
-                const finalImageUrl = rawThemeImage ? validateImageUrl(rawThemeImage, 200, 200, "1:1") : "";
-                const linkHref = theme.href || `/packages?theme=${theme.slug || themeLabel}`;
+          {/* One-time Swipe Hint Pill */}
+          <div className="relative">
+            {showHint && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                <div className="flex items-center gap-1.5 bg-primary/90 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+                  <span>Swipe to explore</span>
+                  <ArrowRight className="w-3 h-3" />
+                </div>
+              </div>
+            )}
+            <div className="cursor-grab active:cursor-grabbing overflow-hidden" ref={emblaRef}>
+              <div className="flex gap-1 md:gap-4">
+                {themes.map((theme, idx) => {
+                  const themeLabel = theme.label || theme.name || "Theme";
+                  const rawThemeImage = theme.imageUrl?.trim() || theme.image_url?.trim();
+                  const finalImageUrl = rawThemeImage ? validateImageUrl(rawThemeImage, 200, 200, "1:1") : "";
+                  const linkHref = theme.href || `/packages?theme=${theme.slug || themeLabel}`;
 
-                return (
-                  <div key={theme.id || idx} className="flex-none w-[82px] md:w-[125px]">
-                    <Link
-                      href={linkHref}
-                      onTouchStart={() => router.prefetch(linkHref)}
-                      onMouseEnter={() => router.prefetch(linkHref)}
-                      className="flex flex-col items-center gap-1.5 md:gap-2 group"
-                    >
-
-                      <div className="relative p-[1.5px] md:p-[2px] rounded-full flex items-center justify-center">
-                        {/* Theme Colors & Pink Glow (Behind) - Adjusted scale to prevent cutting */}
-                        <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-60 blur-lg transition-all duration-500 scale-125 -z-10" />
-
-                        {/* Clean Instagram-style Solid Ring with Pink */}
-                        <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
-
-                        {/* Main Circle Container */}
-                        <div className="relative w-16 h-16 md:w-28 md:h-28 rounded-full bg-white p-[2px] md:p-[3px] z-10 shadow-sm group-hover:shadow-xl transition-all duration-300">
-                          <div className="w-full h-full rounded-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
-                            {finalImageUrl ? (
-                              <Image
-                                src={finalImageUrl}
-                                alt={theme.label || theme.name || "Theme image"}
-                                fill
-                                sizes="(max-width: 768px) 64px, 120px"
-                                className="object-cover transition-transform duration-700 group-hover:scale-110"
-                              />
-                            ) : (
-                              <div className="text-slate-300">
-                                {ICON_MAP[theme.iconName] ? React.createElement(ICON_MAP[theme.iconName], { className: "w-6 h-6 md:w-8 md:h-8" }) : <Mountain className="w-6 h-6 md:w-8 md:h-8" />}
-                              </div>
-                            )}
+                  return (
+                    <div key={theme.id || idx} className="flex-none w-[82px] md:w-[125px]">
+                      <Link
+                        href={linkHref}
+                        onTouchStart={() => router.prefetch(linkHref)}
+                        onMouseEnter={() => router.prefetch(linkHref)}
+                        className="flex flex-col items-center gap-1.5 md:gap-2 group"
+                      >
+                        <div className="relative p-[1.5px] md:p-[2px] rounded-full flex items-center justify-center">
+                          <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-60 blur-lg transition-all duration-500 scale-125 -z-10" />
+                          <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+                          <div className="relative w-16 h-16 md:w-28 md:h-28 rounded-full bg-white p-[2px] md:p-[3px] z-10 shadow-sm group-hover:shadow-xl transition-all duration-300">
+                            <div className="w-full h-full rounded-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
+                              {finalImageUrl ? (
+                                <Image
+                                  src={finalImageUrl}
+                                  alt={theme.label || theme.name || "Theme image"}
+                                  fill
+                                  sizes="(max-width: 768px) 64px, 120px"
+                                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                />
+                              ) : (
+                                <div className="text-slate-300">
+                                  {ICON_MAP[theme.iconName] ? React.createElement(ICON_MAP[theme.iconName], { className: "w-6 h-6 md:w-8 md:h-8" }) : <Mountain className="w-6 h-6 md:w-8 md:h-8" />}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Theme Title & Dynamic Data */}
-                      <div className="flex flex-col items-center min-w-0 w-full">
-                        <span
-                          className="text-[9px] md:text-[11px] font-black text-primary uppercase group-hover:text-accent transition-colors text-center truncate w-full px-1"
-                          style={{ fontFamily: "'Poppins', sans-serif" }}
-                        >
-                          {theme.label}
-                        </span>
-                        <div className="flex flex-col items-center">
-                          <span className="text-[7.5px] md:text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                            {theme.packageCount || 0} + Tours
+                        <div className="flex flex-col items-center min-w-0 w-full">
+                          <span
+                            className="text-[9px] md:text-[11px] font-black text-primary uppercase group-hover:text-accent transition-colors text-center truncate w-full px-1"
+                            style={{ fontFamily: "'Poppins', sans-serif" }}
+                          >
+                            {theme.label}
                           </span>
-                          <span className="text-[7.5px] md:text-[9px] font-bold text-slate-600">
-                            From ₹{theme.startingPrice?.toLocaleString('en-IN') || "9,999"}
-                          </span>
+                          <div className="flex flex-col items-center">
+                            <span className="text-[7.5px] md:text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                              {theme.packageCount || 0} + Tours
+                            </span>
+                            <span className="text-[7.5px] md:text-[9px] font-bold text-slate-600">
+                              From Rs.{theme.startingPrice?.toLocaleString("en-IN") || "9,999"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  </div>
-                );
-              })}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </section >
-    </div >
+      </section>
+    </div>
   );
 }
 

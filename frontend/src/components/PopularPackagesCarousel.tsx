@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, MessageSquareText, PhoneCall, Sparkles, Send } from "lucide-react";
 import { PackageCard } from "./PackageCard";
 import { motion } from "framer-motion";
+import { useCarouselGuide } from "@/hooks/useCarouselGuide";
 
 export function PopularPackagesCarousel({ packages, loading }: { packages: any[], loading?: boolean }) {
   const router = useRouter();
+  const sectionRef = useRef<HTMLDivElement>(null);
+
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     align: "start",
     containScroll: "trimSnaps",
-    dragFree: false, // Changed for better snapping
-  }, [Autoplay({ delay: 5000, stopOnInteraction: true })]);
+    dragFree: false,
+  });
+
+  const { showHint } = useCarouselGuide({ emblaRef: sectionRef, emblaApi, sectionId: "packages", waitMs: 3000 });
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -46,7 +50,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
   if (!packages || packages.length === 0) return null;
 
   return (
-    <div className="container mx-auto px-2 md:px-4 my-6">
+    <div ref={sectionRef} className="container mx-auto px-2 md:px-4 my-6">
       <section className="bg-white relative overflow-hidden rounded-md border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
 
         <div className="relative z-10">
@@ -87,13 +91,24 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
           </div>
 
           {/* Embla Carousel */}
-          <div className="overflow-hidden" ref={emblaRef}>
-            <div className="flex -ml-3 md:-ml-4 pb-2 pt-4">
-              {packages.map((pkg) => (
-                <div key={pkg.id} className="flex-[0_0_84%] xs:flex-[0_0_80%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-3 md:pl-4">
-                  <PackageCard pkg={pkg} variant="carousel" />
+          <div className="relative">
+            {/* One-time Swipe Hint Pill (MakeMyTrip style) */}
+            {showHint && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                <div className="flex items-center gap-1.5 bg-primary/90 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+                  <span>Swipe to explore</span>
+                  <ArrowRight className="w-3 h-3" />
                 </div>
-              ))}
+              </div>
+            )}
+            <div className="overflow-hidden" ref={emblaRef}>
+              <div className="flex -ml-3 md:-ml-4 pb-2 pt-4">
+                {packages.map((pkg) => (
+                  <div key={pkg.id} className="flex-[0_0_48%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-3 md:pl-4">
+                    <PackageCard pkg={pkg} variant="carousel" />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

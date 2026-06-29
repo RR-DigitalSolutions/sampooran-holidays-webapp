@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
-import Autoplay from "embla-carousel-autoplay";
 import { HotelCard } from "@/components/HotelCard";
+import { useCarouselGuide } from "@/hooks/useCarouselGuide";
 
 interface TrendingHotel {
   id: number;
@@ -24,18 +24,15 @@ interface TrendingHotelsSectionProps {
 
 export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionProps) {
   const [currentMonth, setCurrentMonth] = useState("");
+  const sectionRef = useRef<HTMLDivElement>(null);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
     loop: true,
-  }, [
-    Autoplay({
-      delay: 5000,
-      stopOnInteraction: false,
-      stopOnMouseEnter: true
-    })
-  ]);
+  });
+
+  const { showHint } = useCarouselGuide({ emblaRef: sectionRef, emblaApi, sectionId: "hotels", waitMs: 3000 });
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -52,7 +49,7 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
   if (!hotels || hotels.length === 0) return null;
 
   return (
-    <div className="container mx-auto px-2 md:px-4 my-6">
+    <div ref={sectionRef} className="container mx-auto px-2 md:px-4 my-6">
       <section className="bg-white relative overflow-hidden rounded-md border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -87,8 +84,17 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
           </div>
 
           {/* Embla Carousel Container */}
-          <div className="overflow-hidden" ref={emblaRef}>
-            <div className="flex -ml-3 md:-ml-4 pb-2 pt-4">
+          <div className="relative">
+            {showHint && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+                <div className="flex items-center gap-1.5 bg-primary/90 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg animate-bounce">
+                  <span>Swipe to explore</span>
+                  <ArrowRight className="w-3 h-3" />
+                </div>
+              </div>
+            )}
+            <div className="overflow-hidden" ref={emblaRef}>
+              <div className="flex -ml-3 md:-ml-4 pb-2 pt-4">
             {hotels.map((hotel) => {
               // Map TrendingHotel shape to HotelCard shape
               const mappedHotel = {
@@ -105,12 +111,13 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
               };
 
               return (
-                <div key={hotel.id} className="flex-[0_0_84%] xs:flex-[0_0_80%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-3 md:pl-4">
+                <div key={hotel.id} className="flex-[0_0_48%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-3 md:pl-4">
                   <HotelCard hotel={mappedHotel} />
                 </div>
               );
             })}
           </div>
+        </div>
         </div>
         </div>
       </section>
