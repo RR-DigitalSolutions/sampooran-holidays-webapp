@@ -165,7 +165,7 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
               <h2 className="text-xl md:text-3xl font-serif font-bold text-primary leading-tight">
                 Trending Holiday <span className="text-accent font-light">Packages</span>
               </h2>
-              <p className="text-slate-500 text-xs md:text-xs">
+              <p className="text-slate-500 text-[10px] sm:text-xs md:text-sm">
                 Explore our most sought-after destinations. Handpicked, premium itineraries designed for unforgettable experiences.
               </p>
             </div>
@@ -203,9 +203,9 @@ export function PopularPackagesCarousel({ packages, loading }: { packages: any[]
               </div>
             )}
             <div className="overflow-hidden" ref={emblaRef}>
-              <div className="flex -ml-3 md:-ml-4 pb-2 pt-4">
+              <div className="flex -ml-2 md:-ml-3 pb-2 pt-4">
                 {packages.map((pkg) => (
-                  <div key={pkg.id} className="flex-[0_0_48%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-3 md:pl-4">
+                  <div key={pkg.id} className="flex-[0_0_52%] xs:flex-[0_0_50%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
                     <PackageCard pkg={pkg} variant="carousel" />
                   </div>
                 ))}

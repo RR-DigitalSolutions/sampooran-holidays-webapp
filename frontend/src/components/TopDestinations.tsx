@@ -169,7 +169,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                           )}
                         </div>
                         <p className={`text-[9px] md:text-[10px] capitalize font-semi-bold ${selectedDest?.slug === dest.slug ? "text-white/80" : "text-slate-600"}`}>
-                          {dest.type} • {dest.packageCount} Packages • Starts ₹{dest.startingPrice?.toLocaleString('en-IN') || "9,999"}
+                          {dest.type === "domestic" ? "India" : dest.type === "international" ? "World" : dest.type} • {dest.packageCount} Packages • Starts ₹{dest.startingPrice?.toLocaleString('en-IN') || "9,999"}
                         </p>
                       </div>
                     </div>

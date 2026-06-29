@@ -279,7 +279,7 @@ function PackageCardComponent({
           {/* Top Badges */}
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1.5 z-20">
             {pkg.isTrending && (
-              <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="bg-accent/95 backdrop-blur-sm text-primary text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded shadow-lg flex items-center gap-1 border border-accent/20">
+              <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="bg-emerald-500 text-white text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded shadow-lg flex items-center gap-1 border border-emerald-500/25">
                 <Zap className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-current" /> TRENDING
               </motion.div>
             )}
@@ -322,15 +322,24 @@ function PackageCardComponent({
             <div className="flex items-center gap-1 overflow-x-auto scrollbar-none touch-pan-x w-full py-0.5">
               {citiesList.length > 0 ? (
                 citiesList.map((city, i) => (
-                  <div key={i} className="flex items-center gap-0.5 shrink-0 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5">
-                    <MapPin className="w-2 h-2 text-accent shrink-0" />
-                    <span className="text-white/90 text-[7px] xs:text-[8px] sm:text-[9px] font-semibold">{city}</span>
-                  </div>
+                  <span key={i} className="flex items-center gap-0.5 shrink-0">
+                    <span className="flex items-center gap-0.5">
+                      <MapPin className="w-1.5 h-1.5 text-accent shrink-0" />
+                      <span className="text-white/70 font-sans text-[5.5px] xs:text-[6px] sm:text-[7.5px] font-medium uppercase tracking-wide leading-none">
+                        {city}
+                      </span>
+                    </span>
+                    {i < citiesList.length - 1 && (
+                      <span className="text-accent font-black text-[7px] xs:text-[8px] sm:text-[9px] shrink-0 mx-0.5">→</span>
+                    )}
+                  </span>
                 ))
               ) : (
-                <div className="flex items-center gap-0.5 shrink-0 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5">
-                  <MapPin className="w-2 h-2 text-accent shrink-0" />
-                  <span className="text-white/90 text-[7px] xs:text-[8px] sm:text-[9px] font-semibold">{pkg.destinationName || "Himachal"}</span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <MapPin className="w-1.5 h-1.5 text-accent shrink-0" />
+                  <span className="text-white/70 font-sans text-[5.5px] xs:text-[6px] sm:text-[7.5px] font-medium uppercase tracking-wide leading-none">
+                    {pkg.destinationName || "Himachal"}
+                  </span>
                 </div>
               )}
             </div>
