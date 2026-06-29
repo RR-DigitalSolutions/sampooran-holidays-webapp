@@ -112,7 +112,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
 
             {/* Futuristic Tabs */}
             <div className="flex w-full md:w-auto overflow-x-auto no-scrollbar p-1 bg-slate-100 rounded-md border border-slate-200 backdrop-blur-sm">
-              {(["all", "international", "domestic"] as const).map((tab) => (
+              {(["all", "domestic", "international"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -126,7 +126,9 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
-                  <span className="relative z-10">{tab === "all" ? "All" : tab}</span>
+                  <span className="relative z-10">
+                    {tab === "all" ? "All" : tab === "domestic" ? "India" : "World"}
+                  </span>
                 </button>
               ))}
             </div>

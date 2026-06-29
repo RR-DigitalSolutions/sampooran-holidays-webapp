@@ -260,10 +260,10 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[270px] xs:h-[290px] sm:h-[340px] md:h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
+        className="block h-[210px] xs:h-[230px] sm:h-[310px] md:h-[365px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
       >
-        {/* Top Image Section (62%) */}
-        <div className="absolute top-0 left-0 right-0 h-[62%] w-full">
+        {/* Top Image Section (58%) */}
+        <div className="absolute top-0 left-0 right-0 h-[58%] w-full">
           <MotionImage
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
             alt={pkg.name || "Package image"}
@@ -304,45 +304,46 @@ function PackageCardComponent({
             </motion.div>
           )}
 
-          <h3 className="absolute bottom-1.5 left-2 right-2 sm:bottom-2 sm:left-4 sm:right-4 text-white text-[11px] xs:text-[13px] sm:text-[14px] md:text-[18px] font-bold leading-tight z-10 shadow-black/50 drop-shadow-lg line-clamp-2">
-            {pkg.name}
-          </h3>
+          {/* Duration & Title Absolute Overlay */}
+          <div className="absolute bottom-1.5 left-2 right-2 sm:bottom-2.5 sm:left-4 sm:right-4 z-10 flex flex-col items-start gap-1">
+            <span className="bg-accent text-primary text-[7.5px] xs:text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm tracking-wider uppercase leading-none">
+              {pkg.duration}D &amp; {pkg.nights}N
+            </span>
+            <h3 className="text-white text-[10px] xs:text-[11.5px] sm:text-[13px] md:text-[16px] font-bold leading-tight shadow-black/50 drop-shadow-lg line-clamp-2">
+              {pkg.name}
+            </h3>
+          </div>
         </div>
 
-        {/* Bottom Solid Block (38%) */}
-        <div className="absolute bottom-0 left-0 right-0 h-[38%] w-full p-2 sm:p-3.5 flex flex-col justify-between z-10 bg-primary">
-          {/* Duration + Cities row */}
-          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded flex items-center justify-center shrink-0">
-              {pkg.duration}D &amp; {pkg.nights}N
-            </div>
-            {/* Cities with icons */}
-            <div className="flex items-center gap-0.5 flex-1 overflow-hidden">
+        {/* Bottom Solid Block (42%) */}
+        <div className="absolute bottom-0 left-0 right-0 h-[42%] w-full p-2 sm:p-3 flex flex-col justify-between z-10 bg-primary">
+          {/* Covered Places: Touch-responsive horizontal scroll list */}
+          <div className="w-full">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none touch-pan-x w-full py-0.5">
               {citiesList.length > 0 ? (
-                citiesList.slice(0, 4).map((city, i) => (
-                  <div key={i} className="flex items-center gap-0.5 shrink-0">
+                citiesList.map((city, i) => (
+                  <div key={i} className="flex items-center gap-0.5 shrink-0 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5">
                     <MapPin className="w-2 h-2 text-accent shrink-0" />
-                    <span className="text-white/80 text-[8px] xs:text-[9px] sm:text-[10px] font-medium truncate max-w-[50px] xs:max-w-[60px]">{city}</span>
-                    {i < Math.min(citiesList.length - 1, 3) && <span className="text-white/30 text-[8px] mx-0.5">›</span>}
+                    <span className="text-white/90 text-[7px] xs:text-[8px] sm:text-[9px] font-semibold">{city}</span>
                   </div>
                 ))
               ) : (
-                <span className="text-white/70 text-[9px] sm:text-[10px] truncate">{pkg.destinationName || ""}</span>
-              )}
-              {citiesList.length > 4 && (
-                <span className="text-accent text-[8px] font-bold shrink-0 ml-0.5">+{citiesList.length - 4}</span>
+                <div className="flex items-center gap-0.5 shrink-0 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5">
+                  <MapPin className="w-2 h-2 text-accent shrink-0" />
+                  <span className="text-white/90 text-[7px] xs:text-[8px] sm:text-[9px] font-semibold">{pkg.destinationName || "Himachal"}</span>
+                </div>
               )}
             </div>
           </div>
 
           {/* Inclusions Icons row */}
-          <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 my-1">
             {inclusionList.slice(0, 5).map((inc, i) => (
               <div key={i} className="flex items-center gap-0.5 sm:gap-1" title={inc.label}>
-                <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
+                <div className="flex items-center justify-center w-4 h-4 sm:w-5.5 sm:h-5.5 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
                   <inc.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 </div>
-                <span className="hidden xs:inline text-white/60 text-[7px] font-medium capitalize">{inc.label}</span>
+                <span className="hidden xs:inline text-white/60 text-[6.5px] font-medium capitalize">{inc.label}</span>
               </div>
             ))}
           </div>
@@ -350,16 +351,16 @@ function PackageCardComponent({
           <div className="flex items-end justify-between mt-auto">
             <div className="flex flex-col">
               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
-                <span className="text-white/50 text-[8px] xs:text-[9px] sm:text-[10px] line-through font-semibold leading-none mb-0.5">
+                <span className="text-white/50 text-[7.5px] xs:text-[8px] sm:text-[9px] line-through font-semibold leading-none mb-0.5">
                   ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
                 </span>
-              ) : <span className="h-2.5 xs:h-3" />}
-              <span className="text-white text-sm xs:text-base sm:text-[18px] font-bold leading-none tracking-tight">
+              ) : <span className="h-2" />}
+              <span className="text-white text-xs xs:text-sm sm:text-[16px] font-bold leading-none tracking-tight">
                 ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
               </span>
             </div>
-            <button className="hidden sm:block bg-white text-primary text-[11px] font-bold px-3 py-1.5 rounded-sm hover:bg-slate-100 transition-colors shadow-sm active:scale-95 shrink-0">
-              View Details
+            <button className="hidden sm:block bg-white text-primary text-[10px] font-bold px-2.5 py-1.5 rounded-sm hover:bg-slate-100 transition-colors shadow-sm active:scale-95 shrink-0">
+              Details
             </button>
           </div>
         </div>

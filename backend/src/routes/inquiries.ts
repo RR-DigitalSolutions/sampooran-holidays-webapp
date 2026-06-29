@@ -18,6 +18,33 @@ const inquiryLimiter = rateLimit({
 });
 
 router.post("/inquiries", inquiryLimiter, async (req, res): Promise<void> => {
+  // ── Smart Bot/Spam Protection ──
+  // 1. Honeypot check (hidden fields filled by bots)
+  if (req.body.website || req.body.address_confirm || req.body.honeypot) {
+    // Return mock successful response to trick the bot into stopping
+    res.status(201).json({
+      id: 9999,
+      name: "Verification",
+      status: "new",
+      message: "Genuine inquiry simulated",
+      createdAt: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // 2. Quick-submit time check (humans take > 1.5s to submit, bots are instant)
+  const submitDuration = req.body.submitDuration ? parseInt(req.body.submitDuration) : null;
+  if (submitDuration !== null && submitDuration < 1500) {
+    res.status(201).json({
+      id: 9999,
+      name: "Verification",
+      status: "new",
+      message: "Speed limit exceeded",
+      createdAt: new Date().toISOString(),
+    });
+    return;
+  }
+
   const parsed = SubmitInquiryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
