@@ -1,12 +1,35 @@
 import { Router } from "express";
 import { cacheMiddleware } from "../lib/cache";
-import { db, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, themesTable, packagesTable, packageThemesTable, offersTable, hotelsTable } from "@workspace/db";
+import { db, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, themesTable, packagesTable, packageThemesTable, offersTable, hotelsTable, settingsTable } from "@workspace/db";
 import { eq, and, asc, desc, ne, sql, inArray, or, ilike } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { getCollection, COLLECTIONS } from "../lib/mongodb";
 import type { MongoHomeConfig } from "../lib/mongoSync";
 
 const router = Router();
+
+/**
+ * GET /api/ota/home/site-settings
+ * ⚡ PUBLIC — No auth required.
+ * Returns all platform settings as a flat { key: value } object.
+ * Powers the frontend's dynamic contact info, social links, and brand details.
+ * Cached for 60 seconds so admin changes propagate quickly after a save.
+ */
+router.get("/site-settings", cacheMiddleware(60), async (req, res) => {
+  try {
+    const rows = await db.select().from(settingsTable);
+    const settingsMap: Record<string, string> = {};
+    rows.forEach((row) => {
+      settingsMap[row.key] = row.value ?? "";
+    });
+    res.json(settingsMap);
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Error fetching site settings");
+    // Return empty object so frontend gracefully falls back to defaults
+    res.json({});
+  }
+});
+
 
 /**
  * GET /api/ota/home/config

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   MapPin, Phone, Mail, Menu, X, ChevronDown, Facebook, Instagram,
   Youtube, User, LogOut, Ticket, Building2, Share2, Linkedin, Shield,
-  Hotel, Compass, ChevronRight, Plane, Search
+  Hotel, Compass, ChevronRight, Plane, Search, Twitter
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +17,7 @@ import { BottomNav } from "./BottomNav";
 import { MobileNav } from "./MobileNav";
 import dynamic from "next/dynamic";
 import PremiumSearchTabs from "./PremiumSearchTabs";
+import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 const ChatWidget = dynamic(() => import("./ChatWidget"), { ssr: false });
 
@@ -66,12 +67,7 @@ const FOOTER_COLS = [
   },
 ];
 
-const SOCIAL = [
-  { icon: Facebook, color: "bg-[#1877F2]", label: "Facebook", href: "#" },
-  { icon: Youtube, color: "bg-[#FF0000]", label: "YouTube", href: "#" },
-  { icon: Linkedin, color: "bg-[#0A66C2]", label: "LinkedIn", href: "#" },
-  { icon: Instagram, color: "bg-gradient-to-tr from-[#F58529] via-[#D62976] to-[#962FBF]", label: "Instagram", href: "#" },
-];
+// SOCIAL is now built dynamically from SiteSettingsContext inside the Layout component
 
 // ─── Main Layout ─────────────────────────────────────────────────────────────
 
@@ -84,6 +80,18 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user, logout, isLoading } = useAuth();
   const [devModalOpen, setDevModalOpen] = useState(false);
   const [modalCount, setModalCount] = useState(0);
+
+  // Dynamic site settings (contact info, social links, brand)
+  const siteSettings = useSiteSettings();
+
+  // Build social links array dynamically from settings
+  const SOCIAL = [
+    ...(siteSettings.social_facebook ? [{ icon: Facebook, color: "bg-[#1877F2]", label: "Facebook", href: siteSettings.social_facebook }] : []),
+    ...(siteSettings.social_youtube ? [{ icon: Youtube, color: "bg-[#FF0000]", label: "YouTube", href: siteSettings.social_youtube }] : []),
+    ...(siteSettings.social_linkedin ? [{ icon: Linkedin, color: "bg-[#0A66C2]", label: "LinkedIn", href: siteSettings.social_linkedin }] : []),
+    ...(siteSettings.social_instagram ? [{ icon: Instagram, color: "bg-gradient-to-tr from-[#F58529] via-[#D62976] to-[#962FBF]", label: "Instagram", href: siteSettings.social_instagram }] : []),
+    ...(siteSettings.social_twitter ? [{ icon: Twitter, color: "bg-[#1DA1F2]", label: "Twitter", href: siteSettings.social_twitter }] : []),
+  ];
 
   useEffect(() => {
     // Show first modal 5 seconds after load
@@ -450,8 +458,8 @@ export function Layout({ children }: { children: ReactNode }) {
                 </div>
                 <div>
                   <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Call Us</p>
-                  <a href="tel:+918595513009" className="text-white font-bold text-[11px] sm:text-xs hover:text-[#F5A623] transition-colors">
-                    +91 85955 13009
+                  <a href={`tel:${siteSettings.phone.replace(/[^+\d]/g, "")}`} className="text-white font-bold text-[11px] sm:text-xs hover:text-[#F5A623] transition-colors">
+                    {siteSettings.phone}
                   </a>
                 </div>
               </div>
@@ -463,8 +471,8 @@ export function Layout({ children }: { children: ReactNode }) {
                 </div>
                 <div className="min-w-0">
                   <p className="font-bold text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Write to Us</p>
-                  <a href="mailto:info@sampooranholidays.com" className="text-white/80 font-semibold text-[8.5px] sm:text-xs hover:text-[#F5A623] transition-colors truncate block">
-                    info@sampooranholidays.com
+                  <a href={`mailto:${siteSettings.email}`} className="text-white/80 font-semibold text-[8.5px] sm:text-xs hover:text-[#F5A623] transition-colors truncate block">
+                    {siteSettings.email}
                   </a>
                 </div>
               </div>

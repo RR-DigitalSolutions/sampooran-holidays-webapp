@@ -27,7 +27,7 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="h-full flex w-full"
       >
-        <div className="group w-full bg-primary rounded-xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
+        <div className="group w-full bg-primary rounded-lg overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
           {/* Visual Section */}
           <div className="relative h-28 xs:h-36 sm:h-56 overflow-hidden shrink-0 w-full">
             <motion.img 

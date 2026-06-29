@@ -1,10 +1,12 @@
 import AdminLayout from "../components/AdminLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Save, Globe, Phone, Mail, MapPin, 
   Shield, Key, Bell, Ticket, Share2, 
   Award, RefreshCw, Loader2, Image as ImageIcon,
-  BookOpen, HeartHandshake, Laptop
+  BookOpen, HeartHandshake, Laptop, Twitter,
+  MessageCircle, Hash, Building, FileText, Clock,
+  CheckCircle2, X, AlertCircle, Info, ExternalLink
 } from "lucide-react";
 import { useAuth, API_BASE } from "../context/AuthContext";
 
@@ -13,31 +15,158 @@ interface Setting {
   value: string;
 }
 
+interface ConfirmModalProps {
+  isOpen: boolean;
+  changes: { label: string; key: string; oldVal: string; newVal: string }[];
+  onConfirm: () => void;
+  onCancel: () => void;
+  saving: boolean;
+}
+
+// ─── Confirmation Modal ───────────────────────────────────────────────────────
+
+function ConfirmModal({ isOpen, changes, onConfirm, onCancel, saving }: ConfirmModalProps) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={!saving ? onCancel : undefined}
+      />
+      {/* Modal */}
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#1B3A6B]/5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#1B3A6B]/10 flex items-center justify-center">
+              <Save className="w-5 h-5 text-[#1B3A6B]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm">Confirm Settings Update</h3>
+              <p className="text-[11px] text-gray-500">Review changes before publishing to website</p>
+            </div>
+          </div>
+          {!saving && (
+            <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Changes list */}
+        <div className="px-6 py-4 max-h-72 overflow-y-auto">
+          {changes.length === 0 ? (
+            <div className="flex items-center gap-3 py-4 text-gray-400">
+              <Info className="w-5 h-5 shrink-0" />
+              <p className="text-sm">No changes detected. All values are the same as before.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                {changes.length} field{changes.length !== 1 ? "s" : ""} will be updated:
+              </p>
+              {changes.map((c, i) => (
+                <div key={i} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{c.label}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[9px] text-gray-400 font-semibold">Before</span>
+                      <p className="text-gray-500 line-through truncate mt-0.5 font-mono text-[10px]">
+                        {c.oldVal || <span className="italic text-gray-300">empty</span>}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-emerald-600 font-semibold">After</span>
+                      <p className="text-gray-800 font-medium truncate mt-0.5 font-mono text-[10px]">
+                        {c.newVal || <span className="italic text-gray-300">empty</span>}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Warning */}
+        <div className="mx-6 mb-4 flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100">
+          <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700 leading-relaxed">
+            These changes will reflect <strong>live on the website</strong> within ~60 seconds after saving. Contact info, social links, and brand details will update automatically.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 px-6 pb-5">
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            Go Back & Edit
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={saving || changes.length === 0}
+            className="flex-1 py-2.5 rounded-xl text-sm font-black text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ background: "linear-gradient(135deg, #1B3A6B, #2a519b)" }}
+          >
+            {saving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+            ) : (
+              <><CheckCircle2 className="w-4 h-4" /> Confirm & Publish</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Page ────────────────────────────────────────────────────────────
+
 export default function Settings() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [activeTab, setActiveTab] = useState<"general" | "social" | "seo" | "rewards">("general");
-  
-  // Local state for settings grouping
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<{ label: string; key: string; oldVal: string; newVal: string }[]>([]);
+
+  // ── Snapshot for change detection
+  const savedSnapshot = useRef<Record<string, string>>({});
+
+  // ── General Settings State
   const [general, setGeneral] = useState({
     siteName: "Sampooran Holidays",
     tagline: "Your Dream Holiday, Planned Perfectly",
     phone: "+91-85955-13009",
+    phone2: "",
     email: "info@sampooranholidays.com",
-    address: "Mall Road, Manali, Himachal Pradesh — 175131",
     whatsapp: "918595513009",
-    og_banner: "https://sampooranholidays.com/logo.png"
+    address: "Mall Road, Manali, Himachal Pradesh — 175131",
+    supportHours: "Mon–Sat, 9am–7pm",
+    gstNumber: "",
+    cinNumber: "",
+    mapEmbedUrl: "",
+    logoUrl: "",
+    og_banner: "https://sampooranholidays.com/logo.png",
   });
 
+  // ── Social Links State
   const [social, setSocial] = useState({
     social_facebook: "https://facebook.com/sampooranholidays",
     social_instagram: "https://instagram.com/sampooranholidays",
     social_youtube: "https://youtube.com/sampooranholidays",
     social_linkedin: "https://linkedin.com/company/sampooranholidays",
+    social_twitter: "",
+    social_whatsapp_channel: "",
   });
 
+  // ── SEO State
   const [seo, setSeo] = useState({
     home: { title: "", description: "", keywords: "" },
     about: { title: "", description: "", keywords: "" },
@@ -50,12 +179,15 @@ export default function Settings() {
     "customized-holidays": { title: "", description: "", keywords: "" },
   });
 
+  // ── Enterprise / Rewards State
   const [enterprise, setEnterprise] = useState({
     SIGNUP_BONUS_INR: "1000",
     REFERRAL_PERCENT_REFERRER: "5",
     REFERRAL_PERCENT_REFEREE: "2",
     AGENT_MARKUP_MAX: "25",
   });
+
+  // ─── Fetch settings on mount ──────────────────────────────────────────────
 
   useEffect(() => {
     fetchSettings();
@@ -64,39 +196,24 @@ export default function Settings() {
   const fetchSettings = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/settings`, {
-        headers: { "Authorization": `Bearer ${user?.token}` }
+        headers: { Authorization: `Bearer ${user?.token}` },
       });
       if (!res.ok) throw new Error("Failed to fetch settings");
       const items: Setting[] = await res.json();
-      
-      // Map DB items to state
+
       const newGeneral = { ...general };
       const newSocial = { ...social };
       const newEnterprise = { ...enterprise };
       const newSeo = { ...seo };
 
-      items.forEach(item => {
-        // General
-        if (item.key in newGeneral) {
-          (newGeneral as any)[item.key] = item.value;
-        }
-        // Social
-        if (item.key in newSocial) {
-          (newSocial as any)[item.key] = item.value;
-        }
-        // Enterprise
-        if (item.key in newEnterprise) {
-          (newEnterprise as any)[item.key] = item.value;
-        }
-        // SEO page metas
+      items.forEach((item) => {
+        if (item.key in newGeneral) (newGeneral as any)[item.key] = item.value;
+        if (item.key in newSocial) (newSocial as any)[item.key] = item.value;
+        if (item.key in newEnterprise) (newEnterprise as any)[item.key] = item.value;
         if (item.key.startsWith("meta_")) {
           const pageName = item.key.replace("meta_", "");
           if (pageName in newSeo) {
-            try {
-              (newSeo as any)[pageName] = JSON.parse(item.value);
-            } catch (e) {
-              console.error("Failed to parse SEO meta setting", item.key, e);
-            }
+            try { (newSeo as any)[pageName] = JSON.parse(item.value); } catch {}
           }
         }
       });
@@ -105,6 +222,11 @@ export default function Settings() {
       setSocial(newSocial);
       setEnterprise(newEnterprise);
       setSeo(newSeo);
+
+      // Save snapshot for change detection
+      const snap: Record<string, string> = {};
+      items.forEach((item) => { snap[item.key] = item.value ?? ""; });
+      savedSnapshot.current = snap;
     } catch (error) {
       console.error(error);
     } finally {
@@ -112,58 +234,108 @@ export default function Settings() {
     }
   };
 
+  // ─── Detect changes and open confirmation modal ───────────────────────────
+
+  const FIELD_LABELS: Record<string, string> = {
+    siteName: "Site Name", tagline: "Tagline", phone: "Primary Phone",
+    phone2: "Secondary Phone", email: "Email Address", whatsapp: "WhatsApp Number",
+    address: "Office Address", supportHours: "Support Hours",
+    gstNumber: "GST Number", cinNumber: "CIN Number",
+    mapEmbedUrl: "Google Maps Embed URL", logoUrl: "Logo URL", og_banner: "OG Banner Image",
+    social_facebook: "Facebook URL", social_instagram: "Instagram URL",
+    social_youtube: "YouTube URL", social_linkedin: "LinkedIn URL",
+    social_twitter: "Twitter / X URL", social_whatsapp_channel: "WhatsApp Channel URL",
+    SIGNUP_BONUS_INR: "Signup Bonus (₹)", REFERRAL_PERCENT_REFERRER: "Referrer Earn %",
+    REFERRAL_PERCENT_REFEREE: "Referee Earn %", AGENT_MARKUP_MAX: "Agent Max Markup %",
+  };
+
+  const handleCommitClick = () => {
+    const allCurrent: Record<string, string> = {
+      ...general,
+      ...social,
+      ...enterprise,
+    };
+
+    const changes: typeof pendingChanges = [];
+    Object.entries(allCurrent).forEach(([key, newVal]) => {
+      const oldVal = savedSnapshot.current[key] ?? "";
+      if (String(oldVal) !== String(newVal)) {
+        changes.push({
+          key,
+          label: FIELD_LABELS[key] || key,
+          oldVal: String(oldVal),
+          newVal: String(newVal),
+        });
+      }
+    });
+
+    // Also check SEO
+    Object.entries(seo).forEach(([pageKey, val]) => {
+      const dbKey = `meta_${pageKey}`;
+      const oldVal = savedSnapshot.current[dbKey] ?? "{}";
+      const newVal = JSON.stringify(val);
+      if (oldVal !== newVal) {
+        changes.push({
+          key: dbKey,
+          label: `SEO – ${pageKey}`,
+          oldVal,
+          newVal,
+        });
+      }
+    });
+
+    setPendingChanges(changes);
+    setConfirmOpen(true);
+  };
+
+  // ─── Actual save ──────────────────────────────────────────────────────────
+
   const handleSave = async () => {
     setSaving(true);
+    setSaveError("");
     try {
-      // Prepare payload for DB
       const settingsPayload: Array<{ key: string; value: string }> = [];
+      Object.entries(general).forEach(([key, value]) => settingsPayload.push({ key, value }));
+      Object.entries(social).forEach(([key, value]) => settingsPayload.push({ key, value }));
+      Object.entries(enterprise).forEach(([key, value]) => settingsPayload.push({ key, value }));
+      Object.entries(seo).forEach(([key, value]) =>
+        settingsPayload.push({ key: `meta_${key}`, value: JSON.stringify(value) })
+      );
 
-      // 1. General Settings
-      Object.entries(general).forEach(([key, value]) => {
-        settingsPayload.push({ key, value });
-      });
-
-      // 2. Social Links
-      Object.entries(social).forEach(([key, value]) => {
-        settingsPayload.push({ key, value });
-      });
-
-      // 3. Enterprise
-      Object.entries(enterprise).forEach(([key, value]) => {
-        settingsPayload.push({ key, value });
-      });
-
-      // 4. SEO Page Metadata
-      Object.entries(seo).forEach(([key, value]) => {
-        settingsPayload.push({ key: `meta_${key}`, value: JSON.stringify(value) });
-      });
-      
       const res = await fetch(`${API_BASE}/api/admin/settings`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${user?.token}` 
+          Authorization: `Bearer ${user?.token}`,
         },
         body: JSON.stringify({ settings: settingsPayload }),
       });
 
       if (!res.ok) throw new Error("Save failed");
 
+      // Update snapshot
+      const newSnap: Record<string, string> = {};
+      settingsPayload.forEach((item) => { newSnap[item.key] = item.value; });
+      savedSnapshot.current = { ...savedSnapshot.current, ...newSnap };
+
+      setConfirmOpen(false);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setTimeout(() => setSaved(false), 3000);
     } catch (error) {
-      alert("Error saving settings");
+      setSaveError("Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
+  // ─── Loading state ────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <AdminLayout title="Settings" subtitle="Loading configurations...">
         <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-           <RefreshCw className="w-8 h-8 animate-spin mb-2" />
-           <p className="text-sm font-medium">Syncing with Enterprise Engine...</p>
+          <RefreshCw className="w-8 h-8 animate-spin mb-2" />
+          <p className="text-sm font-medium">Syncing with Enterprise Engine...</p>
         </div>
       </AdminLayout>
     );
@@ -171,23 +343,32 @@ export default function Settings() {
 
   return (
     <AdminLayout title="Settings" subtitle="Configure your platform profiles, marketing, and SEO metadata">
-      
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        changes={pendingChanges}
+        onConfirm={handleSave}
+        onCancel={() => setConfirmOpen(false)}
+        saving={saving}
+      />
+
       {/* Tabs */}
-      <div className="flex border-b border-gray-100 gap-4 mb-6">
+      <div className="flex border-b border-gray-100 gap-4 mb-6 overflow-x-auto">
         {[
           { id: "general", label: "General & Brand", icon: Globe },
           { id: "social", label: "Socials & OG Banner", icon: Share2 },
           { id: "seo", label: "SEO Page Metadata", icon: BookOpen },
           { id: "rewards", label: "Growth & Rewards", icon: Ticket },
-        ].map(t => {
+        ].map((t) => {
           const Icon = t.icon;
           return (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-bold transition-all ${
-                activeTab === t.id 
-                  ? "border-[#1B3A6B] text-[#1B3A6B]" 
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-bold transition-all whitespace-nowrap ${
+                activeTab === t.id
+                  ? "border-[#1B3A6B] text-[#1B3A6B]"
                   : "border-transparent text-gray-400 hover:text-gray-600"
               }`}
             >
@@ -199,104 +380,198 @@ export default function Settings() {
       </div>
 
       <div className="max-w-4xl grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Main Content Area */}
+
+        {/* ── Main Content Area ── */}
         <div className="lg:col-span-2 space-y-6">
-          
-          {/* TAB 1: General & Brand */}
+
+          {/* ── TAB 1: General & Brand ── */}
           {activeTab === "general" && (
-            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-              <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-                <Globe className="w-5 h-5 text-blue-600" />
-                <div>
-                  <h3 className="font-bold text-gray-900">General Settings</h3>
-                  <p className="text-xs text-gray-500">Public profile & contact info</p>
+            <div className="space-y-6">
+              {/* Brand Identity */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <Globe className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <h3 className="font-bold text-gray-900">Brand Identity</h3>
+                    <p className="text-xs text-gray-500">Site name, tagline, and logo</p>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4">
+                  {[
+                    { label: "Site Name", key: "siteName", icon: Globe, placeholder: "Sampooran Holidays" },
+                    { label: "Tagline", key: "tagline", icon: Hash, placeholder: "Your Dream Holiday, Planned Perfectly" },
+                    { label: "Logo URL (optional)", key: "logoUrl", icon: ImageIcon, placeholder: "https://your-cdn.com/logo.png" },
+                    { label: "Default OG Banner URL (1200×630 px)", key: "og_banner", icon: ImageIcon, placeholder: "https://your-cdn.com/og-banner.jpg" },
+                  ].map(({ label, key, icon: Icon, placeholder }) => (
+                    <div key={key}>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">{label}</label>
+                      <div className="relative">
+                        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                        <input
+                          value={(general as any)[key]}
+                          onChange={(e) => setGeneral({ ...general, [key]: e.target.value })}
+                          placeholder={placeholder}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {/* OG Preview */}
+                  {general.og_banner && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-2xl flex items-center gap-4">
+                      <img
+                        src={general.og_banner}
+                        alt="OG Preview"
+                        className="w-20 h-12 object-cover rounded-lg border border-gray-200 shrink-0 bg-white"
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
+                      />
+                      <div className="text-[10px] text-gray-500 leading-normal">
+                        Social media thumbnail when your links are shared on Facebook, WhatsApp, or LinkedIn.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="p-6 space-y-4">
-                {[
-                  { label: "Site Name", key: "siteName", icon: Globe, state: general, setState: setGeneral },
-                  { label: "Tagline", key: "tagline", icon: Globe, state: general, setState: setGeneral },
-                  { label: "Phone", key: "phone", icon: Phone, state: general, setState: setGeneral },
-                  { label: "Email", key: "email", icon: Mail, state: general, setState: setGeneral },
-                  { label: "WhatsApp Number (Digits Only)", key: "whatsapp", icon: Phone, state: general, setState: setGeneral },
-                  { label: "Office Address", key: "address", icon: MapPin, state: general, setState: setGeneral },
-                ].map(({ label, key, icon: Icon, state, setState }) => (
-                  <div key={key}>
-                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">{label}</label>
+
+              {/* Contact Information */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <Phone className="w-5 h-5 text-emerald-600" />
+                  <div>
+                    <h3 className="font-bold text-gray-900">Contact Information</h3>
+                    <p className="text-xs text-gray-500">Phone, email, address — displayed on website header and footer</p>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4">
+                  {[
+                    { label: "Primary Phone", key: "phone", icon: Phone, placeholder: "+91-85955-13009", type: "tel" },
+                    { label: "Secondary / Alternate Phone", key: "phone2", icon: Phone, placeholder: "+91-XXXXX-XXXXX (optional)", type: "tel" },
+                    { label: "Email Address", key: "email", icon: Mail, placeholder: "info@sampooranholidays.com", type: "email" },
+                    { label: "WhatsApp Number (digits only, with country code)", key: "whatsapp", icon: MessageCircle, placeholder: "918595513009", type: "tel" },
+                    { label: "Support Hours", key: "supportHours", icon: Clock, placeholder: "Mon–Sat, 9am–7pm", type: "text" },
+                  ].map(({ label, key, icon: Icon, placeholder, type }) => (
+                    <div key={key}>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">{label}</label>
+                      <div className="relative">
+                        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                        <input
+                          type={type}
+                          value={(general as any)[key]}
+                          onChange={(e) => setGeneral({ ...general, [key]: e.target.value })}
+                          placeholder={placeholder}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {/* Address (textarea) */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Office Address</label>
                     <div className="relative">
-                      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                      <input
-                        value={(state as any)[key]}
-                        onChange={e => setState({ ...state, [key]: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
+                      <MapPin className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-300" />
+                      <textarea
+                        rows={2}
+                        value={general.address}
+                        onChange={(e) => setGeneral({ ...general, address: e.target.value })}
+                        placeholder="Mall Road, Manali, Himachal Pradesh — 175131"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800 resize-none"
                       />
                     </div>
                   </div>
-                ))}
+                  {/* Map Embed URL */}
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Google Maps Embed URL (optional)</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                      <input
+                        value={general.mapEmbedUrl}
+                        onChange={(e) => setGeneral({ ...general, mapEmbedUrl: e.target.value })}
+                        placeholder="https://www.google.com/maps/embed?pb=..."
+                        className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
+                      />
+                    </div>
+                    <p className="text-[9px] text-gray-400 mt-1 ml-1">Paste the src from Google Maps → Share → Embed a map</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legal & Compliance */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <FileText className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <h3 className="font-bold text-gray-900">Legal & Compliance</h3>
+                    <p className="text-xs text-gray-500">GST and company registration numbers for invoices and compliance</p>
+                  </div>
+                </div>
+                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { label: "GST Number", key: "gstNumber", icon: Building, placeholder: "22AAAAA0000A1Z5" },
+                    { label: "CIN Number", key: "cinNumber", icon: FileText, placeholder: "U63040DL2024PTC000000" },
+                  ].map(({ label, key, icon: Icon, placeholder }) => (
+                    <div key={key}>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">{label}</label>
+                      <div className="relative">
+                        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                        <input
+                          value={(general as any)[key]}
+                          onChange={(e) => setGeneral({ ...general, [key]: e.target.value })}
+                          placeholder={placeholder}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: Socials & OG Banner */}
+          {/* ── TAB 2: Socials & OG Banner ── */}
           {activeTab === "social" && (
-            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm space-y-6">
+            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
               <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
                 <Share2 className="w-5 h-5 text-purple-600" />
                 <div>
-                  <h3 className="font-bold text-gray-900">Social Connections & Banner</h3>
-                  <p className="text-xs text-gray-500">Facebook, Instagram, and default OG image link</p>
+                  <h3 className="font-bold text-gray-900">Social Media & Messaging</h3>
+                  <p className="text-xs text-gray-500">All links update live in the website footer and header</p>
                 </div>
               </div>
               <div className="p-6 space-y-4">
                 {[
-                  { label: "Facebook Page URL", key: "social_facebook", state: social, setState: setSocial },
-                  { label: "Instagram Profile URL", key: "social_instagram", state: social, setState: setSocial },
-                  { label: "YouTube Channel URL", key: "social_youtube", state: social, setState: setSocial },
-                  { label: "LinkedIn Company URL", key: "social_linkedin", state: social, setState: setSocial },
-                ].map(({ label, key, state, setState }) => (
+                  { label: "Facebook Page URL", key: "social_facebook", color: "text-[#1877F2]", placeholder: "https://facebook.com/yourpage" },
+                  { label: "Instagram Profile URL", key: "social_instagram", color: "text-[#E1306C]", placeholder: "https://instagram.com/yourprofile" },
+                  { label: "YouTube Channel URL", key: "social_youtube", color: "text-[#FF0000]", placeholder: "https://youtube.com/@yourchannel" },
+                  { label: "LinkedIn Company URL", key: "social_linkedin", color: "text-[#0A66C2]", placeholder: "https://linkedin.com/company/yourcompany" },
+                  { label: "Twitter / X Profile URL", key: "social_twitter", color: "text-[#1DA1F2]", placeholder: "https://twitter.com/yourhandle (optional)" },
+                  { label: "WhatsApp Channel / Community URL", key: "social_whatsapp_channel", color: "text-[#25D366]", placeholder: "https://whatsapp.com/channel/... (optional)" },
+                ].map(({ label, key, placeholder }) => (
                   <div key={key}>
                     <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">{label}</label>
                     <div className="relative">
                       <Share2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
                       <input
-                        value={(state as any)[key]}
-                        onChange={e => setState({ ...state, [key]: e.target.value })}
+                        value={(social as any)[key]}
+                        onChange={(e) => setSocial({ ...social, [key]: e.target.value })}
+                        placeholder={placeholder}
                         className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
                       />
                     </div>
                   </div>
                 ))}
 
-                {/* OG Banner Custom Image URL */}
-                <div className="pt-4 border-t border-gray-50">
-                  <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Default OG Banner Image URL (1200 x 630 px)</label>
-                  <div className="relative">
-                    <ImageIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                    <input
-                      value={general.og_banner}
-                      onChange={e => setGeneral({ ...general, og_banner: e.target.value })}
-                      placeholder="https://cloudinary.com/..."
-                      className="w-full pl-10 pr-4 py-3 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:border-[#1B3A6B] bg-gray-50/30 transition-all font-medium text-slate-800"
-                    />
-                  </div>
-                  <div className="mt-3 p-3 bg-gray-50 rounded-2xl flex items-center gap-4">
-                    <img 
-                      src={general.og_banner || "/logo.png"} 
-                      alt="OG Preview" 
-                      className="w-20 h-12 object-cover rounded-lg border border-gray-200 shrink-0 bg-white"
-                      onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png" }}
-                    />
-                    <div className="text-[10px] text-gray-500 leading-normal">
-                      This banner represents the social media thumbnail when anyone shares your links on Facebook or WhatsApp.
-                    </div>
-                  </div>
+                {/* Live preview tip */}
+                <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100 mt-2">
+                  <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-blue-700 leading-relaxed">
+                    These links appear in the website footer's <strong>"Follow Us"</strong> section and the contact bar. Leave a field empty to hide that platform's icon.
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 3: SEO Page Metadata */}
+          {/* ── TAB 3: SEO Page Metadata ── */}
           {activeTab === "seo" && (
             <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
               <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
@@ -316,8 +591,8 @@ export default function Settings() {
                   { id: "packages", label: "Tour Packages Grid" },
                   { id: "transport", label: "Cabs & Transport Hub" },
                   { id: "travel-guide", label: "Travel Guide Hub" },
-                  { id: "customized-holidays", label: "Plan Custom Trip Form" }
-                ].map(p => (
+                  { id: "customized-holidays", label: "Plan Custom Trip Form" },
+                ].map((p) => (
                   <div key={p.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-3">
                     <h4 className="text-xs font-black text-slate-800 border-b border-slate-100 pb-1.5 uppercase tracking-wide">{p.label}</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -325,10 +600,7 @@ export default function Settings() {
                         <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">SEO Title</label>
                         <input
                           value={(seo as any)[p.id]?.title || ""}
-                          onChange={e => setSeo({
-                            ...seo,
-                            [p.id]: { ...(seo as any)[p.id], title: e.target.value }
-                          })}
+                          onChange={(e) => setSeo({ ...seo, [p.id]: { ...(seo as any)[p.id], title: e.target.value } })}
                           placeholder="Leave blank for fallback default"
                           className="w-full px-3 py-2 border border-gray-100 rounded-xl text-xs bg-white text-slate-800"
                         />
@@ -337,10 +609,7 @@ export default function Settings() {
                         <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Keywords</label>
                         <input
                           value={(seo as any)[p.id]?.keywords || ""}
-                          onChange={e => setSeo({
-                            ...seo,
-                            [p.id]: { ...(seo as any)[p.id], keywords: e.target.value }
-                          })}
+                          onChange={(e) => setSeo({ ...seo, [p.id]: { ...(seo as any)[p.id], keywords: e.target.value } })}
                           placeholder="comma, separated, tags"
                           className="w-full px-3 py-2 border border-gray-100 rounded-xl text-xs bg-white text-slate-800"
                         />
@@ -351,11 +620,8 @@ export default function Settings() {
                       <textarea
                         rows={2}
                         value={(seo as any)[p.id]?.description || ""}
-                        onChange={e => setSeo({
-                          ...seo,
-                          [p.id]: { ...(seo as any)[p.id], description: e.target.value }
-                        })}
-                        placeholder="Limit to 150-160 characters for best display on Google search snippet."
+                        onChange={(e) => setSeo({ ...seo, [p.id]: { ...(seo as any)[p.id], description: e.target.value } })}
+                        placeholder="Limit to 150-160 characters for best Google snippet display."
                         className="w-full px-3 py-2 border border-gray-100 rounded-xl text-xs bg-white text-slate-800"
                       />
                     </div>
@@ -365,7 +631,7 @@ export default function Settings() {
             </div>
           )}
 
-          {/* TAB 4: Growth & Rewards */}
+          {/* ── TAB 4: Growth & Rewards ── */}
           {activeTab === "rewards" && (
             <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
               <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
@@ -378,59 +644,50 @@ export default function Settings() {
               <div className="p-6 space-y-6">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                     <label className="text-[10px] uppercase font-bold text-gray-400">Signup Bonus (INR)</label>
-                     <span className="text-[10px] font-bold text-primary px-2 py-0.5 bg-primary/10 rounded-full">One-time Credit</span>
+                    <label className="text-[10px] uppercase font-bold text-gray-400">Signup Bonus (INR)</label>
+                    <span className="text-[10px] font-bold text-[#1B3A6B] px-2 py-0.5 bg-[#1B3A6B]/10 rounded-full">One-time Credit</span>
                   </div>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400 text-sm">₹</div>
                     <input
                       type="number"
                       value={enterprise.SIGNUP_BONUS_INR}
-                      onChange={e => setEnterprise({ ...enterprise, SIGNUP_BONUS_INR: e.target.value })}
-                      className="w-full pl-9 pr-4 py-4 border border-gray-100 rounded-2xl text-lg font-black focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all bg-gray-50/50 text-slate-800"
+                      onChange={(e) => setEnterprise({ ...enterprise, SIGNUP_BONUS_INR: e.target.value })}
+                      className="w-full pl-9 pr-4 py-4 border border-gray-100 rounded-2xl text-lg font-black focus:outline-none focus:ring-4 focus:ring-[#1B3A6B]/5 focus:border-[#1B3A6B] transition-all bg-gray-50/50 text-slate-800"
                     />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-2">Referrer Earn (%)</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={enterprise.REFERRAL_PERCENT_REFERRER}
-                        onChange={e => setEnterprise({ ...enterprise, REFERRAL_PERCENT_REFERRER: e.target.value })}
-                        className="w-full pl-4 pr-10 py-3 border border-gray-100 rounded-2xl text-md font-bold focus:outline-none focus:border-primary bg-gray-50/30 text-slate-800"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
+                  {[
+                    { label: "Referrer Earn (%)", key: "REFERRAL_PERCENT_REFERRER" },
+                    { label: "Referee Earn (%)", key: "REFERRAL_PERCENT_REFEREE" },
+                  ].map(({ label, key }) => (
+                    <div key={key}>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-2">{label}</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={(enterprise as any)[key]}
+                          onChange={(e) => setEnterprise({ ...enterprise, [key]: e.target.value })}
+                          className="w-full pl-4 pr-10 py-3 border border-gray-100 rounded-2xl text-md font-bold focus:outline-none focus:border-[#1B3A6B] bg-gray-50/30 text-slate-800"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-2">Referee Earn (%)</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={enterprise.REFERRAL_PERCENT_REFEREE}
-                        onChange={e => setEnterprise({ ...enterprise, REFERRAL_PERCENT_REFEREE: e.target.value })}
-                        className="w-full pl-4 pr-10 py-3 border border-gray-100 rounded-2xl text-md font-bold focus:outline-none focus:border-primary bg-gray-50/30 text-slate-800"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                     <Award className="w-4 h-4 text-primary" />
-                     <label className="text-[10px] uppercase font-bold text-gray-400">Agent Max Markup (%)</label>
+                    <Award className="w-4 h-4 text-[#1B3A6B]" />
+                    <label className="text-[10px] uppercase font-bold text-gray-400">Agent Max Markup (%)</label>
                   </div>
                   <div className="relative">
                     <input
                       type="number"
                       max="100"
                       value={enterprise.AGENT_MARKUP_MAX}
-                      onChange={e => setEnterprise({ ...enterprise, AGENT_MARKUP_MAX: e.target.value })}
-                      className="w-full pl-4 pr-10 py-4 border border-gray-100 rounded-2xl text-lg font-black focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all bg-gray-50/50 text-slate-800"
+                      onChange={(e) => setEnterprise({ ...enterprise, AGENT_MARKUP_MAX: e.target.value })}
+                      className="w-full pl-4 pr-10 py-4 border border-gray-100 rounded-2xl text-lg font-black focus:outline-none focus:ring-4 focus:ring-[#1B3A6B]/5 focus:border-[#1B3A6B] transition-all bg-gray-50/50 text-slate-800"
                     />
                     <span className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 font-bold">%</span>
                   </div>
@@ -439,33 +696,75 @@ export default function Settings() {
               </div>
             </div>
           )}
-
         </div>
 
-        {/* Side Controls panel */}
+        {/* ── Side Controls ── */}
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl border-2 border-primary/10 overflow-hidden shadow-xl shadow-primary/5 p-6">
-            <h3 className="font-bold text-gray-900 mb-2">Settings Operations</h3>
-            <p className="text-xs text-gray-500 mb-6">Commit your updates to the live cluster database.</p>
-            
-            <button 
-              onClick={handleSave}
+
+          {/* Commit Button Panel */}
+          <div className="bg-white rounded-3xl border-2 border-[#1B3A6B]/10 overflow-hidden shadow-xl shadow-[#1B3A6B]/5 p-6">
+            <h3 className="font-bold text-gray-900 mb-1">Settings Operations</h3>
+            <p className="text-xs text-gray-500 mb-4">Review changes before committing to the live database.</p>
+
+            {saveError && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-2xl border border-red-100 mb-4">
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                <p className="text-xs text-red-600 font-medium">{saveError}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleCommitClick}
               disabled={saving}
               className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-black text-sm text-white shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70"
-              style={{ background: saved ? "#059669" : "linear-gradient(135deg, #1B3A6B, #2a519b)" }}>
-              {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : saved ? "✓ CONFIGS UPDATED" : <><Save className="w-4 h-4" /> COMMIT CHANGES</>}
+              style={{ background: saved ? "#059669" : "linear-gradient(135deg, #1B3A6B, #2a519b)" }}
+            >
+              {saving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : saved ? (
+                <><CheckCircle2 className="w-5 h-5" /> SETTINGS SAVED!</>
+              ) : (
+                <><Save className="w-4 h-4" /> COMMIT CHANGES</>
+              )}
             </button>
+            {saved && (
+              <p className="text-[10px] text-emerald-600 font-bold text-center mt-2">✓ Live website will update within 60 seconds</p>
+            )}
           </div>
 
+          {/* Live Update Info */}
+          <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-sm space-y-3">
+            <h4 className="text-xs font-black text-gray-800 uppercase tracking-wide flex items-center gap-2">
+              <ExternalLink className="w-3.5 h-3.5 text-[#1B3A6B]" /> What Updates on Site
+            </h4>
+            <div className="space-y-2">
+              {[
+                { dot: "bg-emerald-500", text: "Header contact bar phone & email" },
+                { dot: "bg-emerald-500", text: "Footer social media icons & links" },
+                { dot: "bg-emerald-500", text: "Footer copyright site name" },
+                { dot: "bg-emerald-500", text: "WhatsApp click-to-chat button" },
+                { dot: "bg-blue-500", text: "OG banner for social sharing" },
+                { dot: "bg-blue-500", text: "SEO titles & meta descriptions" },
+                { dot: "bg-amber-500", text: "Agent markup & referral rewards" },
+              ].map(({ dot, text }, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+                  <span className="text-[10px] text-gray-500">{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* API Sync Panel */}
           <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden group">
-             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-               <RefreshCw className="w-24 h-24" />
-             </div>
-             <h4 className="text-xl font-black mb-1">API Sync Active</h4>
-             <p className="text-xs text-gray-400 mb-4">Connected to enterprise cluster `sampooran-holidays-core`</p>
-             <button className="text-[10px] font-bold uppercase tracking-widest text-primary bg-white px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
-               Force Global Sync
-             </button>
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+              <RefreshCw className="w-24 h-24" />
+            </div>
+            <h4 className="text-xl font-black mb-1">API Sync Active</h4>
+            <p className="text-xs text-gray-400 mb-4">Connected to enterprise cluster `sampooran-holidays-core`</p>
+            <button className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B] bg-white px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors">
+              Force Global Sync
+            </button>
           </div>
         </div>
 

@@ -118,10 +118,10 @@ export default function TransportFleetSection({ vehicles }: TransportFleetSectio
           </div>
 
           {/* Embla Carousel Container */}
-          <div className="overflow-hidden -mx-2 px-2 sm:mx-0 sm:px-0" ref={emblaRef}>
-            <div className="flex -ml-3 md:-ml-6 pb-2 pt-4">
+          <div className="overflow-hidden" ref={emblaRef}>
+            <div className="flex -ml-3 md:-ml-4 pb-2 pt-4">
               {displayVehicles.map((vehicle) => (
-                <div key={vehicle.id} className="flex-[0_0_46%] sm:flex-[0_0_45%] lg:flex-[0_0_24%] min-w-0 pl-3 md:pl-6">
+                <div key={vehicle.id} className="flex-[0_0_84%] xs:flex-[0_0_80%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-3 md:pl-4">
                   <VehicleCard vehicle={vehicle} />
                 </div>
               ))}

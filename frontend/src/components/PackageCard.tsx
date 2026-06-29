@@ -251,8 +251,7 @@ function PackageCardComponent({
   if (variant === "carousel") {
     const formatRoute = (cities: string[]) => {
       if (!cities || cities.length === 0) return pkg.destinationName || "";
-      // Format as "Shimla (2) → Manali (3)"
-      return cities.slice(0, 3).map(c => `${c} (${Math.max(1, Math.floor(pkg.nights / Math.max(1, cities.length)))})`).join(" → ");
+      return cities.slice(0, 3).join(" → ");
     };
 
     const href = `/packages/${pkg.slug}`;
@@ -261,10 +260,10 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
+        className="block h-[270px] xs:h-[290px] sm:h-[340px] md:h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300"
       >
-        {/* Top Image Section (65%) */}
-        <div className="absolute top-0 left-0 right-0 h-[63%] w-full">
+        {/* Top Image Section (62%) */}
+        <div className="absolute top-0 left-0 right-0 h-[62%] w-full">
           <MotionImage
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
             alt={pkg.name || "Package image"}
@@ -310,22 +309,40 @@ function PackageCardComponent({
           </h3>
         </div>
 
-        {/* Bottom Solid Block (37%) */}
-        <div className="absolute bottom-0 left-0 right-0 h-[37%] w-full p-2 sm:p-4 flex flex-col justify-between z-10 bg-primary">
-          <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+        {/* Bottom Solid Block (38%) */}
+        <div className="absolute bottom-0 left-0 right-0 h-[38%] w-full p-2 sm:p-3.5 flex flex-col justify-between z-10 bg-primary">
+          {/* Duration + Cities row */}
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
             <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded flex items-center justify-center shrink-0">
-              {pkg.duration}D & {pkg.nights}N
+              {pkg.duration}D &amp; {pkg.nights}N
             </div>
-            <div className="text-white/80 text-[9px] sm:text-[11px] font-medium truncate">
-              {formatRoute(citiesList)}
+            {/* Cities with icons */}
+            <div className="flex items-center gap-0.5 flex-1 overflow-hidden">
+              {citiesList.length > 0 ? (
+                citiesList.slice(0, 4).map((city, i) => (
+                  <div key={i} className="flex items-center gap-0.5 shrink-0">
+                    <MapPin className="w-2 h-2 text-accent shrink-0" />
+                    <span className="text-white/80 text-[8px] xs:text-[9px] sm:text-[10px] font-medium truncate max-w-[50px] xs:max-w-[60px]">{city}</span>
+                    {i < Math.min(citiesList.length - 1, 3) && <span className="text-white/30 text-[8px] mx-0.5">›</span>}
+                  </div>
+                ))
+              ) : (
+                <span className="text-white/70 text-[9px] sm:text-[10px] truncate">{pkg.destinationName || ""}</span>
+              )}
+              {citiesList.length > 4 && (
+                <span className="text-accent text-[8px] font-bold shrink-0 ml-0.5">+{citiesList.length - 4}</span>
+              )}
             </div>
           </div>
 
-          {/* Inclusions Icons */}
+          {/* Inclusions Icons row */}
           <div className="flex items-center gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
-            {inclusionList.slice(0, 4).map((inc, i) => (
-              <div key={i} className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors" title={inc.label}>
-                <inc.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            {inclusionList.slice(0, 5).map((inc, i) => (
+              <div key={i} className="flex items-center gap-0.5 sm:gap-1" title={inc.label}>
+                <div className="flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
+                  <inc.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                </div>
+                <span className="hidden xs:inline text-white/60 text-[7px] font-medium capitalize">{inc.label}</span>
               </div>
             ))}
           </div>
