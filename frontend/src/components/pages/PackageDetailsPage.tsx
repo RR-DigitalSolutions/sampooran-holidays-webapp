@@ -142,8 +142,8 @@ function normalizeList(v: unknown): string[] {
     const values = hasComma
       ? v.split(",")
       : hasNewline
-      ? v.split(/\r?\n/)
-      : [v];
+        ? v.split(/\r?\n/)
+        : [v];
     return dedupeStrings(values.map((s) => s.trim()).filter(Boolean));
   }
   if (typeof v === "object") {
@@ -213,15 +213,24 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0]));
   const [selectedAttraction, setSelectedAttraction] = useState<AttractionActivityData | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<AttractionActivityData | null>(null);
+  const [selectedHotel, setSelectedHotel] = useState<any | null>(null);
+  const [selectedTransport, setSelectedTransport] = useState<any | null>(null);
+  const [selectedDining, setSelectedDining] = useState<any | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [activitiesMap, setActivitiesMap] = useState<Map<string, AttractionActivityData>>(new Map());
+  const [hotelsMap, setHotelsMap] = useState<Map<string, any>>(new Map());
+  const [transportMap, setTransportMap] = useState<Map<string, any>>(new Map());
+  const [diningMap, setDiningMap] = useState<Map<string, any>>(new Map());
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
   const [showBookingDrawer, setShowBookingDrawer] = useState(false);
 
-  const handleAttractionClick = async (name: string) => {
+  const handleAttractionClick = async (name: string, rawData?: any) => {
+    if (rawData && typeof rawData === 'object' && rawData.longDescription) {
+      setSelectedAttraction(rawData);
+      return;
+    }
     setLoadingDetail(true);
     try {
-      // Fetch all active attractions (high limit to catch demo content)
       const response = await fetch(`/api/attractions?limit=500`);
       if (!response.ok) return;
       const attractions = await response.json();
@@ -239,7 +248,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     }
   };
 
-  const handleActivityClick = async (name: string) => {
+  const handleActivityClick = async (name: string, rawData?: any) => {
+    if (rawData && typeof rawData === 'object' && rawData.longDescription) {
+      setSelectedActivity(rawData);
+      return;
+    }
     const activity = activitiesMap.get(name.toLowerCase());
     if (activity) {
       setSelectedActivity(activity);
@@ -270,6 +283,117 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     }
   };
 
+  const handleHotelClick = async (name: string, rawData?: any) => {
+    if (rawData && typeof rawData === 'object' && rawData.data) {
+      setSelectedHotel(rawData.data);
+      return;
+    }
+    const cleanName = name.replace(/\s+or\s+similar$/i, "").toLowerCase().trim();
+    const hotel = hotelsMap.get(cleanName) || hotelsMap.get(name.toLowerCase().trim());
+    if (hotel) {
+      setSelectedHotel(hotel);
+    } else {
+      setLoadingDetail(true);
+      try {
+        const response = await fetch(`/api/hotels?q=${encodeURIComponent(cleanName)}`);
+        if (response.ok) {
+          const res = await response.json();
+          const found = (res.hotels || []).find((h: any) => h.name.toLowerCase().trim() === cleanName || h.name.toLowerCase().trim() === name.toLowerCase().trim());
+          if (found) setSelectedHotel(found);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingDetail(false);
+      }
+    }
+  };
+
+  const handleTransportClick = async (name: string, rawData?: any) => {
+    if (rawData && typeof rawData === 'object' && rawData.data) {
+      setSelectedTransport(rawData.data);
+      return;
+    }
+    const transport = transportMap.get(name.toLowerCase().trim());
+    if (transport) {
+      setSelectedTransport(transport);
+    } else {
+      setLoadingDetail(true);
+      try {
+        const response = await fetch(`/api/transport`);
+        if (response.ok) {
+          const res = await response.json();
+          const found = (res.services || []).find((s: any) => s.name.toLowerCase().trim() === name.toLowerCase().trim());
+          if (found) setSelectedTransport(found);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingDetail(false);
+      }
+    }
+  };
+
+  const handleDiningClick = async (name: string, rawData?: any) => {
+    if (rawData && typeof rawData === 'object' && rawData.data) {
+      setSelectedDining(rawData.data);
+      return;
+    }
+    const dining = diningMap.get(name.toLowerCase().trim());
+    if (dining) {
+      setSelectedDining(dining);
+    } else {
+      setLoadingDetail(true);
+      try {
+        const response = await fetch(`/api/dining?limit=500`);
+        if (response.ok) {
+          const res = await response.json();
+          const found = res.find((d: any) => d.name.toLowerCase().trim() === name.toLowerCase().trim());
+          if (found) setSelectedDining(found);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingDetail(false);
+      }
+    }
+  };
+
+  const parseHotel = (name: string): any => {
+    if (!name || name.toLowerCase() === "no accommodation" || name.toLowerCase() === "overnight journey") {
+      return null;
+    }
+    const cleanName = name.replace(/\s+or\s+similar$/i, "").toLowerCase().trim();
+    const hotelData = hotelsMap.get(cleanName) || hotelsMap.get(name.toLowerCase().trim());
+    if (hotelData) {
+      const image = hotelData.primaryImageUrl || (Array.isArray(hotelData.images) ? hotelData.images[0] : null);
+      return {
+        id: hotelData.id,
+        name: name,
+        image: image,
+        starRating: hotelData.starRating,
+        data: hotelData
+      };
+    }
+    return { name: name };
+  };
+
+  const parseTransport = (name: string): any => {
+    if (!name) return null;
+    const transportData = transportMap.get(name.toLowerCase().trim());
+    if (transportData) {
+      return {
+        id: transportData.id,
+        name: name,
+        image: transportData.imageUrl,
+        type: transportData.type,
+        capacity: transportData.capacity,
+        data: transportData
+      };
+    }
+    return { name: name };
+  };
+
   const parsedItinerary = useMemo(() => {
     try {
       const data =
@@ -283,34 +407,162 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   }, [packageData.itinerary]);
 
   useEffect(() => {
-    const fetchActivities = async () => {
+    const fetchCmsData = async () => {
       try {
-        const response = await fetch(`/api/activities?limit=2000`);
-        if (!response.ok) {
-          console.error(`Failed to fetch activities: HTTP ${response.status}`);
-          return;
-        }
-        const activities = await response.json();
-        if (!Array.isArray(activities)) {
-          console.error("Invalid activities response format");
-          return;
-        }
-        const map = new Map();
-        activities.forEach((activity: AttractionActivityData) => {
-          if (activity?.name) {
-            map.set(String(activity.name).toLowerCase(), activity);
+        const [activitiesRes, hotelsRes, transportRes, diningRes] = await Promise.all([
+          fetch(`/api/activities?limit=2000`),
+          fetch(`/api/hotels?limit=500`),
+          fetch(`/api/transport`),
+          fetch(`/api/dining?limit=500`)
+        ]);
+
+        if (activitiesRes.ok) {
+          const activities = await activitiesRes.json();
+          if (Array.isArray(activities)) {
+            const map = new Map();
+            activities.forEach((activity: AttractionActivityData) => {
+              if (activity?.name) {
+                map.set(String(activity.name).toLowerCase(), activity);
+              }
+            });
+            setActivitiesMap(map);
           }
-        });
-        setActivitiesMap(map);
+        }
+
+        if (hotelsRes.ok) {
+          const res = await hotelsRes.json();
+          const map = new Map();
+          (res.hotels || []).forEach((h: any) => {
+            if (h.name) map.set(h.name.toLowerCase().trim(), h);
+          });
+          setHotelsMap(map);
+        }
+
+        if (transportRes.ok) {
+          const res = await transportRes.json();
+          const map = new Map();
+          (res.services || []).forEach((s: any) => {
+            if (s.name) map.set(s.name.toLowerCase().trim(), s);
+          });
+          setTransportMap(map);
+        }
+
+        if (diningRes.ok) {
+          const res = await diningRes.json();
+          if (Array.isArray(res)) {
+            const map = new Map();
+            res.forEach((d: any) => {
+              if (d.name) map.set(d.name.toLowerCase().trim(), d);
+            });
+            setDiningMap(map);
+          }
+        }
       } catch (error) {
-        console.error("Failed to fetch activities:", error);
+        console.error("Failed to fetch CMS metadata for itinerary hydration:", error);
       }
     };
-    fetchActivities();
+    fetchCmsData();
   }, []);
 
-  const normalizedItinerary = useMemo<PackageItineraryDay[]>(() => {
-    const normalizeDay = (d: Record<string, unknown>): PackageItineraryDay => {
+  const normalizedItinerary = useMemo<any[]>(() => {
+    const parseAttractions = (raw: any): any[] => {
+      if (!raw) return [];
+      const arr = Array.isArray(raw) ? raw : [raw];
+      return arr.map(item => {
+        if (typeof item === 'string') {
+          return { name: item.trim() };
+        }
+        if (item && typeof item === 'object') {
+          return {
+            id: item.id,
+            name: normalizeTextItem(item.name ?? item.title),
+            coverImage: item.coverImage || null,
+            type: item.type || 'sightseeing',
+            timingInfo: item.timingInfo || null,
+            entryFee: item.entryFee || null,
+            duration: item.duration || null,
+            bestTimeToVisit: item.bestTimeToVisit || null,
+            highlights: item.highlights || [],
+            tips: item.tips || [],
+            famousFor: item.famousFor || [],
+            shortDescription: item.shortDescription || null,
+            longDescription: item.longDescription || null,
+            address: item.address || null,
+            latitude: item.latitude || null,
+            longitude: item.longitude || null,
+            data: item
+          };
+        }
+        return { name: String(item) };
+      }).filter(item => item.name);
+    };
+
+    const parseActivities = (raw: any): any[] => {
+      if (!raw) return [];
+      const arr = Array.isArray(raw) ? raw : [raw];
+      return arr.map(item => {
+        const name = typeof item === 'string' ? item.trim() : normalizeTextItem(item?.name ?? item?.title);
+        const activityData = activitiesMap.get(name.toLowerCase());
+        if (activityData) {
+          return {
+            id: activityData.id,
+            name: name,
+            coverImage: activityData.coverImage || null,
+            type: activityData.type || 'adventure',
+            timingInfo: activityData.timingInfo || null,
+            entryFee: activityData.entryFee || null,
+            duration: activityData.duration || null,
+            bestTimeToVisit: activityData.bestTimeToVisit || null,
+            priceMin: activityData.priceMin || null,
+            priceMax: activityData.priceMax || null,
+            highlights: activityData.highlights || [],
+            tips: activityData.tips || [],
+            famousFor: activityData.famousFor || [],
+            shortDescription: activityData.shortDescription || null,
+            longDescription: activityData.longDescription || null,
+            address: activityData.address || null,
+            latitude: activityData.latitude || null,
+            longitude: activityData.longitude || null,
+            data: activityData
+          };
+        }
+        return { name: name };
+      }).filter(item => item.name);
+    };
+
+    const parseDiningStops = (raw: any): any[] => {
+      if (!raw) return [];
+      const arr = Array.isArray(raw) ? raw : [raw];
+      return arr.map(item => {
+        if (typeof item === 'string') {
+          return { name: item.trim() };
+        }
+        if (item && typeof item === 'object') {
+          const diningPoint = item.diningPoint || {};
+          const name = normalizeTextItem(diningPoint.name ?? diningPoint.title ?? item.venueName ?? item.name);
+          return {
+            id: diningPoint.id || item.diningPointId,
+            name: name,
+            coverImage: diningPoint.coverImage || null,
+            type: diningPoint.type || 'restaurant',
+            mealType: item.mealType || null,
+            notes: item.notes || null,
+            cuisine: diningPoint.cuisine || [],
+            specialItems: diningPoint.specialItems || [],
+            address: diningPoint.address || null,
+            timingInfo: diningPoint.timingInfo || null,
+            priceRange: diningPoint.priceRange || null,
+            longDescription: diningPoint.longDescription || diningPoint.shortDescription || null,
+            latitude: diningPoint.latitude || null,
+            longitude: diningPoint.longitude || null,
+            data: diningPoint
+          };
+        }
+        return { name: String(item) };
+      }).filter(item => item.name);
+    };
+
+    const normalizeDay = (d: Record<string, unknown>): any => {
       // Attraction IDs come from admin → hydrated to full objects by backend
       // d["attractions"] = array of full attraction objects OR string names
       // d["activities"] = array of string names from admin
@@ -335,21 +587,21 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         description: normalizeTextItem(d["description"] ?? d["content"] ?? d["detail"]),
         accommodation: normalizeTextItem(d["accommodation"] ?? d["hotel"] ?? d["stay"] ?? d["nightStay"]),
         sightseeing: normalizeTextItem(d["sightseeing"] ?? altSight),
-        attractions: normalizeList(rawAttractions ?? altAttractions),
+        attractions: parseAttractions(rawAttractions ?? altAttractions),
         meals: normalizeMeals(altMeals),
-        enrouteDiningStops: normalizeDiningStops(altEnroute),
+        enrouteDiningStops: parseDiningStops(altEnroute),
         transport: normalizeTextItem(d["transport"] ?? d["cab"] ?? d["vehicle"] ?? d["travelMode"]),
         cab: normalizeTextItem(d["cab"] ?? d["vehicle"]),
         // Activities are stored separately from attractions — never merge them
-        activities: normalizeList(altActivities),
+        activities: parseActivities(altActivities),
       };
     };
 
     return parsedItinerary.map((d) => {
-      if (!d || typeof d !== "object") return {} as PackageItineraryDay;
+      if (!d || typeof d !== "object") return {} as any;
       return normalizeDay(d as Record<string, unknown>);
     });
-  }, [parsedItinerary]);
+  }, [parsedItinerary, activitiesMap, diningMap]);
 
   const faqs = useMemo<PackageFaq[]>(() => {
     try {
@@ -520,8 +772,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
             </div>
 
-             {/* ── RIGHT: Price card + quick CTA ── */}
-             <aside className="w-full hidden lg:block">
+            {/* ── RIGHT: Price card + quick CTA ── */}
+            <aside className="w-full hidden lg:block">
               {/* Combined Price panel + Trust indicators */}
               <div className="rounded-md bg-black/30 backdrop-blur-md border border-white/20 p-2 text-white shadow-2xl flex flex-col gap-4">
                 <div>
@@ -589,8 +841,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       </section>
 
       <section className="container mx-auto px-4 lg:px-8 py-10">
-        <div className="grid gap-8 xl:grid-cols-[1.75fr_0.75fr] items-start">
-          <main className="space-y-8">
+        <div className="grid gap-8 xl:grid-cols-[1.75fr_0.75fr] items-start w-full min-w-0">
+          <main className="space-y-8 min-w-0 w-full overflow-hidden">
             {/* Unified Package Overview Highlights, Gallery & Inclusions Card */}
             <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
@@ -682,20 +934,23 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
             {/* Itinerary Section with Timeline Accordion Design */}
             {normalizedItinerary.length > 0 && (
-              <section id="itinerary" className="rounded-md border border-slate-200 bg-white p-3 md:p-4 shadow-sm">
+              <section id="itinerary" className="rounded-md border border-slate-200 bg-white p-3 md:p-4 shadow-sm w-full min-w-0 overflow-hidden">
                 <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-6">Itinerary</h2>
 
                 <div className="space-y-0">
                   {normalizedItinerary.map((day, idx) => {
                     const isExpanded = expandedDays.has(idx);
-                    const attractions = normalizeList(day.attractions);
-                    const activities = normalizeList(day.activities);
+                    const attractions = day.attractions || [];
+                    const activities = day.activities || [];
                     // Keep attractions and activities STRICTLY SEPARATE — do not de-dup across them
                     const mealItems = normalizeMeals(day.meals);
-                    const enrouteStops = normalizeDiningStops(day.enrouteDiningStops ?? day.diningStops);
+                    const enrouteStops = day.enrouteDiningStops || [];
                     const hasSightseeingText = Boolean(day.sightseeing);
                     const hasAttractions = attractions.length > 0;
                     const hasActivities = activities.length > 0;
+                    const hotelInfo = day.accommodation ? parseHotel(day.accommodation) : null;
+                    const transportName = day.transport || day.cab;
+                    const transportInfo = transportName ? parseTransport(transportName) : null;
                     const formattedAccommodation = day.accommodation
                       ? `${day.accommodation}${/or similar$/i.test(day.accommodation) ? "" : " or similar"}`
                       : "";
@@ -711,40 +966,40 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     };
 
                     return (
-                      <div key={idx} className="relative pb-6">
+                      <div key={idx} className="relative pb-3">
                         {/* Timeline line and dot */}
                         {idx < normalizedItinerary.length - 1 && (
-                          <div className="absolute left-3 sm:left-5 top-8 sm:top-10 bottom-0 w-0.5 bg-slate-300" />
+                          <div className="absolute left-2.5 sm:left-4 top-5 sm:top-6 bottom-0 w-0.5 bg-slate-200" />
                         )}
-                        <div className="absolute left-0 top-5.5 h-6.5 w-6.5 sm:h-10 sm:w-10 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center z-10">
-                          <MapPin className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-blue-600" />
+                        <div className="absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center z-10">
+                          <MapPin className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-blue-600" />
                         </div>
 
                         {/* Day header with expand button */}
                         <button
                           onClick={handleToggle}
-                          className="w-full pl-8 sm:pl-16 pr-3 sm:pr-6 py-1.5 sm:py-2.5 hover:bg-slate-50 rounded-md transition flex items-start justify-between gap-4"
+                          className="w-full pl-7 sm:pl-12 pr-3 sm:pr-4 py-1 sm:py-1.5 hover:bg-slate-50/50 rounded-md transition flex items-start justify-between gap-3"
                         >
-                          <div className="text-left flex-1">
-                            <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-slate-500">
-                               Day {idx + 1} / {String(day.title || '').match(/\d+ \w+, \d+/)?.[0] || 'TBA'}
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">
+                              Day {idx + 1} / {String(day.title || '').match(/\d+ \w+, \d+/)?.[0] || 'TBA'}
                             </p>
-                            <h3 className="mt-1 text-sm sm:text-lg font-bold text-slate-900">
+                            <h3 className="mt-0.5 text-xs sm:text-base font-bold text-slate-800 truncate">
                               {day.title || `Day ${idx + 1}`}
                             </h3>
                           </div>
                           <div className="mt-0.5 flex-shrink-0">
                             {isExpanded ? (
-                              <ChevronUp className="h-6 w-6 text-slate-400" />
+                              <ChevronUp className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-slate-400" />
                             ) : (
-                              <ChevronDown className="h-6 w-6 text-slate-400" />
+                              <ChevronDown className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-slate-400" />
                             )}
                           </div>
                         </button>
 
                         {/* Expanded content */}
                         {isExpanded && (
-                          <div className="pl-8 pr-3 pb-3 sm:pl-16 sm:pr-6 space-y-2">
+                          <div className="pl-7 pr-2 pb-2 sm:pl-12 sm:pr-4 space-y-1.5 w-full min-w-0 overflow-hidden">
                             {/* Main description */}
                             {(day.description || day.content) && (
                               <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
@@ -754,152 +1009,239 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                             {/* ── CARD 1: Sightseeing (free-text field from admin) ── */}
                             {hasSightseeingText && (
-                              <div className="rounded-md border border-blue-100 bg-blue-50/40 p-2.5 sm:p-3">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 shrink-0">
-                                    <Camera className="h-4 w-4" />
-                                  </span>
-                                  <div>
-                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Sightseeing</p>
-                                    <p className="text-[10px] sm:text-xs text-slate-500">Places and landmarks curated for the day.</p>
-                                  </div>
+                              <div className="rounded-lg border border-blue-100 bg-blue-50/20 p-2.5 sm:p-3">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Camera className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                  <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Sightseeing Summary</p>
                                 </div>
-                                <p className="text-xs sm:text-sm text-slate-700 ml-0 sm:ml-11">{day.sightseeing}</p>
+                                <p className="text-[11px] sm:text-xs text-slate-700 ml-5 leading-relaxed">{day.sightseeing}</p>
                               </div>
                             )}
 
-                            {/* ── CARD 2: Attractions (from admin CMS — separately selectable) ── */}
+                            {/* Attractions Section */}
                             {hasAttractions && (
-                              <div className="rounded-md border border-indigo-100 bg-indigo-50/30 p-2.5 sm:p-3">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shrink-0">
-                                    <Ticket className="h-4 w-4" />
-                                  </span>
-                                  <div>
-                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Attractions &amp; Sightseeing</p>
-                                    <p className="text-[10px] sm:text-xs text-slate-500">Key attractions and experiences included in this day.</p>
+                              <div className="rounded-lg border border-indigo-100 bg-indigo-50/20 p-2 sm:p-2.5 space-y-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Ticket className="h-3.5 w-3.5 text-indigo-650 shrink-0" />
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Attractions &amp; Sightseeing</p>
                                   </div>
+                                  <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Key attractions and experiences included in this day.</p>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 show-horizontal-scrollbar">
                                   {attractions.map((item, attrIdx) => (
                                     <button
                                       key={attrIdx}
-                                      onClick={() => handleAttractionClick(item)}
-                                      className="rounded-full border border-indigo-200 bg-white hover:bg-indigo-50 hover:border-indigo-400 px-3 py-1 text-[10px] sm:text-xs font-semibold text-indigo-700 hover:text-indigo-800 transition cursor-pointer shadow-sm"
+                                      onClick={() => handleAttractionClick(item.name, item)}
+                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-indigo-300 hover:shadow-md active:scale-95 transition-all text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
                                       disabled={loadingDetail}
                                     >
-                                      {item}
+                                      {item.coverImage ? (
+                                        <img
+                                          src={item.coverImage}
+                                          alt={item.name}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-650 flex items-center justify-center">
+                                          <Camera className="w-4 h-4 text-white/30" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                                      <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
+                                        <p className="text-[5.5px] uppercase tracking-wider text-slate-350 font-bold leading-none truncate">
+                                          {item.type || 'Sightseeing'}
+                                        </p>
+                                        <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-indigo-200 transition-colors">
+                                          {item.name}
+                                        </p>
+                                      </div>
                                     </button>
                                   ))}
                                 </div>
                               </div>
                             )}
 
-                            {/* ── CARD 3: Activities (from admin — completely separate from attractions) ── */}
+                            {/* Activities Section */}
                             {hasActivities && (
-                              <div className="rounded-md border border-green-100 bg-green-50/30 p-2.5 sm:p-3">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-600 shrink-0">
-                                    <Zap className="h-4 w-4" />
-                                  </span>
-                                  <div>
-                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Activities</p>
-                                    <p className="text-[10px] sm:text-xs text-slate-500">Curated experiences and adventures for this day.</p>
+                              <div className="rounded-lg border border-green-100 bg-green-50/20 p-2 sm:p-2.5 space-y-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Zap className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Activities</p>
                                   </div>
+                                  <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Curated experiences and adventures for this day.</p>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {activities.map((item, activityIdx) => {
-                                    const activityData = activitiesMap.get(item.toLowerCase());
-                                    const priceRange = activityData && activityData.priceMin && activityData.priceMax
-                                      ? `₹${activityData.priceMin.toLocaleString()}-${activityData.priceMax.toLocaleString()}`
-                                      : null;
-                                    return (
-                                      <div key={activityIdx} className="relative">
-                                        <button
-                                          onClick={() => handleActivityClick(item)}
-                                          className="rounded-full border border-green-200 bg-white hover:bg-green-50 hover:border-green-400 px-3 py-1 text-[10px] sm:text-xs font-semibold text-green-700 hover:text-green-800 transition cursor-pointer shadow-sm"
-                                          disabled={loadingDetail}
-                                        >
-                                          {item}
-                                        </button>
-                                        {priceRange && (
-                                          <span className="absolute -top-2 -right-1 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[9px] sm:text-xs font-bold text-green-700 border border-green-200">
-                                            {priceRange}
-                                          </span>
-                                        )}
+                                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 show-horizontal-scrollbar">
+                                  {activities.map((item, activityIdx) => (
+                                    <button
+                                      key={activityIdx}
+                                      onClick={() => handleActivityClick(item.name, item)}
+                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-green-300 hover:shadow-md active:scale-95 transition-all text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
+                                      disabled={loadingDetail}
+                                    >
+                                      {item.coverImage ? (
+                                        <img
+                                          src={item.coverImage}
+                                          alt={item.name}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-green-500 to-emerald-650 flex items-center justify-center">
+                                          <Zap className="w-4 h-4 text-white/30" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                                      <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
+                                        <p className="text-[5.5px] uppercase tracking-wider text-slate-300 font-bold leading-none truncate">
+                                          {item.type || 'Activity'}
+                                        </p>
+                                        <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-green-200 transition-colors">
+                                          {item.name}
+                                        </p>
                                       </div>
-                                    );
-                                  })}
+                                    </button>
+                                  ))}
                                 </div>
                               </div>
                             )}
 
-                             {/* Enroute Dining Stops */}
-                             {enrouteStops.length > 0 && (
-                               <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
-                                 <div className="flex items-center gap-3 mb-2">
-                                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-50 shrink-0">
-                                     <Coffee className="h-4 w-4 text-orange-600" />
-                                   </div>
-                                   <div>
-                                     <p className="text-xs sm:text-sm font-semibold text-slate-900">Enroute Dining</p>
-                                     <p className="text-[10px] sm:text-xs text-slate-500">Flexible stop details based on the day’s route.</p>
-                                   </div>
-                                 </div>
-                                 <p className="text-xs sm:text-sm text-slate-700 ml-0 mt-2 sm:ml-11 sm:mt-0">{enrouteStops.join(', ')}</p>
-                               </div>
-                             )}
+                            {/* Enroute Dining Stops */}
+                            {enrouteStops.length > 0 && (
+                              <div className="rounded-lg border border-orange-100 bg-orange-50/20 p-2 sm:p-2.5 space-y-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Coffee className="h-3.5 w-3.5 text-orange-600 shrink-0" />
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Enroute Dining Stops</p>
+                                  </div>
+                                  <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Best recommended food stops during travel journey.</p>
+                                </div>
+                                <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 show-horizontal-scrollbar">
+                                  {enrouteStops.map((item, diningIdx) => (
+                                    <button
+                                      key={diningIdx}
+                                      onClick={() => handleDiningClick(item.name, item)}
+                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-orange-300 hover:shadow-md active:scale-95 transition-all text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
+                                      disabled={loadingDetail}
+                                    >
+                                      {item.coverImage ? (
+                                        <img
+                                          src={item.coverImage}
+                                          alt={item.name}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-orange-500 to-red-650 flex items-center justify-center">
+                                          <Coffee className="w-4 h-4 text-white/30" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                                      <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
+                                        <p className="text-[5.5px] uppercase tracking-wider text-slate-350 font-bold leading-none truncate">
+                                          {item.mealType ? `${item.mealType} Stop` : 'Dining Stop'}
+                                        </p>
+                                        <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-orange-200 transition-colors">
+                                          {item.name}
+                                        </p>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
-                             {/* Meals */}
-                             {mealItems.length > 0 && (
-                               <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                                 <div className="flex items-center gap-3 mb-3">
-                                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shrink-0">
-                                     <Utensils className="h-4 w-4" />
-                                   </span>
-                                   <div>
-                                     <p className="text-xs sm:text-sm font-semibold text-slate-900">Delicious Dining</p>
-                                     <p className="text-[10px] sm:text-xs text-slate-500">Mouthwatering meals carefully chosen for your tour.</p>
-                                   </div>
-                                 </div>
-                                 <div className="flex flex-wrap gap-2">
-                                   {mealItems.map((meal, mealIdx) => (
-                                     <span key={mealIdx} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-700">
-                                       {meal}
-                                     </span>
-                                   ))}
-                                 </div>
-                               </div>
-                             )}
+                            {/* Transport info */}
+                            {transportInfo && (
+                              <div className="rounded-lg border border-blue-100 bg-blue-50/20 p-2 sm:p-2.5 space-y-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Car className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Travel Details</p>
+                                  </div>
+                                  <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Transportation mode for this day.</p>
+                                </div>
+                                <button
+                                  onClick={() => handleTransportClick(transportInfo.name, transportInfo)}
+                                  className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-blue-300 hover:shadow-md active:scale-95 transition-all text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
+                                  disabled={loadingDetail}
+                                >
+                                  {transportInfo.image ? (
+                                    <img
+                                      src={transportInfo.image}
+                                      alt={transportInfo.name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-650 flex items-center justify-center">
+                                      <Car className="w-4 h-4 text-white/30" />
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                                  <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
+                                    <p className="text-[5.5px] uppercase tracking-wider text-slate-330 font-bold leading-none truncate">
+                                      {transportInfo.type ? `${transportInfo.type} • ${transportInfo.capacity} Pax` : 'Cab Service'}
+                                    </p>
+                                    <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-blue-200 transition-colors">
+                                      {transportInfo.name}
+                                    </p>
+                                  </div>
+                                </button>
+                              </div>
+                            )}
 
-                             {/* Transport info */}
-                             {(day.transport || day.cab) && (
-                               <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
-                                 <div className="flex items-center gap-3 mb-2">
-                                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 shrink-0">
-                                     <Car className="h-4 w-4 text-blue-600" />
-                                   </div>
-                                   <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Travel Details</h4>
-                                 </div>
-                                 <div className="text-xs sm:text-sm text-slate-700 ml-0 mt-2 sm:ml-11 sm:mt-0 space-y-1.5">
-                                   {day.transport && <p>{day.transport}</p>}
-                                   {day.cab && <p>{day.cab}</p>}
-                                 </div>
-                               </div>
-                             )}
+                            {/* Night Stay & Hotel Meals */}
+                            {(hotelInfo || mealItems.length > 0) && (
+                              <div className="rounded-lg border border-amber-100 bg-amber-50/20 p-2 sm:p-2.5 space-y-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Building2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Night Stay &amp; Meals</p>
+                                  </div>
+                                  <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Accommodation and meals included at the hotel stay.</p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                  {hotelInfo && (
+                                    <button
+                                      onClick={() => handleHotelClick(hotelInfo.name, hotelInfo)}
+                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-amber-300 hover:shadow-md active:scale-95 text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
+                                      disabled={loadingDetail}
+                                    >
+                                      {hotelInfo.image ? (
+                                        <img
+                                          src={hotelInfo.image}
+                                          alt={hotelInfo.name}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-amber-500 to-orange-650 flex items-center justify-center">
+                                          <Building2 className="w-4 h-4 text-white/30" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                                      <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
+                                        <p className="text-[5.5px] uppercase tracking-wider text-slate-350 font-bold leading-none truncate">
+                                          {hotelInfo.starRating ? `${hotelInfo.starRating} Star stay` : 'Hotel Stay'}
+                                        </p>
+                                        <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-amber-200 transition-colors">
+                                          {hotelInfo.name}
+                                        </p>
+                                      </div>
+                                    </button>
+                                  )}
 
-                             {/* Night Stay */}
-                             {formattedAccommodation && (
-                               <div className="bg-slate-50 rounded-md p-3 border border-slate-200">
-                                 <div className="flex items-center gap-3 mb-2">
-                                   <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 shrink-0">
-                                     <Building2 className="h-4 w-4 text-amber-600" />
-                                   </div>
-                                   <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Night Stay in {day.location || 'TBA'}</h4>
-                                 </div>
-                                 <p className="text-xs sm:text-sm text-slate-700 ml-0 mt-2 sm:ml-11 sm:mt-0">{formattedAccommodation}</p>
-                               </div>
-                             )}
+                                  {mealItems.length > 0 && (
+                                    <div className="flex-1 flex flex-wrap gap-1 items-center">
+                                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block w-full mb-0.5">Meals Included:</span>
+                                      {mealItems.map((meal, mealIdx) => (
+                                        <span key={mealIdx} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-emerald-100 bg-white text-[9px] font-semibold text-emerald-700 shadow-xs">
+                                          <span>🍽️</span> {meal}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1135,7 +1477,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       {/* Mobile Booking Drawer (Bottom Sheet) */}
       {showBookingDrawer && (
         <div className="fixed inset-0 z-[110] bg-black/60 lg:hidden flex flex-col justify-end" onClick={() => setShowBookingDrawer(false)}>
-          <div 
+          <div
             className="bg-white rounded-t-2xl p-4 flex flex-col max-h-[80vh] overflow-y-auto shadow-[0_-10px_30px_rgba(0,0,0,0.3)] text-slate-800"
             onClick={(e) => e.stopPropagation()}
             style={{ marginBottom: "64px" }}
@@ -1146,7 +1488,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fare Summary</p>
                 <p className="text-sm font-bold text-slate-900 mt-0.5">Booking Details</p>
               </div>
-              <button 
+              <button
                 onClick={() => setShowBookingDrawer(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold hover:bg-slate-200"
               >
@@ -1223,7 +1565,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 Customize
               </button>
             </div>
-            
+
             <a
               href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')}`}
               target="_blank"
@@ -1237,7 +1579,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       )}
 
       {/* Mobile Sticky Price Strip (positioned directly above BottomNav) */}
-      <div 
+      <div
         className="fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-2 lg:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
         style={{ bottom: "64px" }}
         onClick={() => setShowBookingDrawer(true)}
@@ -1276,6 +1618,27 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         data={selectedActivity}
         isOpen={!!selectedActivity}
         onClose={() => setSelectedActivity(null)}
+      />
+
+      <AttractionActivityModal
+        type="hotel"
+        data={selectedHotel}
+        isOpen={!!selectedHotel}
+        onClose={() => setSelectedHotel(null)}
+      />
+
+      <AttractionActivityModal
+        type="transport"
+        data={selectedTransport}
+        isOpen={!!selectedTransport}
+        onClose={() => setSelectedTransport(null)}
+      />
+
+      <AttractionActivityModal
+        type="dining"
+        data={selectedDining}
+        isOpen={!!selectedDining}
+        onClose={() => setSelectedDining(null)}
       />
 
       {/* Lightbox Modal */}

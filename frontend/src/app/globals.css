@@ -203,6 +203,23 @@
   display: none;
 }
 
+/* Custom thin horizontal scrollbar */
+.show-horizontal-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  display: block !important;
+}
+.show-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+.show-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.show-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Custom thin scrollbar for destination list */
 .custom-scrollbar {}
 

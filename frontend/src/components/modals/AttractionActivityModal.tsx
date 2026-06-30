@@ -6,7 +6,7 @@ import Image from "next/image";
 import { cn, validateImageUrl } from "@/lib/utils";
 
 type AttractionActivityModalProps = {
-  type: "attraction" | "activity";
+  type: "attraction" | "activity" | "hotel" | "transport" | "dining";
   data: any;
   isOpen: boolean;
   onClose: () => void;
@@ -20,10 +20,11 @@ export function AttractionActivityModal({
 }: AttractionActivityModalProps) {
   if (!isOpen || !data) return null;
 
-  const images = data.images && Array.isArray(data.images) ? data.images : [];
-  const allImages = data.coverImage
-    ? [data.coverImage, ...images].filter(Boolean)
-    : images;
+  const rawImages = data.images && Array.isArray(data.images) ? data.images : [];
+  const cover = data.coverImage || data.image || data.imageUrl || null;
+  const allImages = cover
+    ? [cover, ...rawImages].filter(Boolean)
+    : rawImages;
 
   const highlights = Array.isArray(data.highlights) ? data.highlights : [];
   const tips = Array.isArray(data.tips) ? data.tips : [];
@@ -41,75 +42,85 @@ export function AttractionActivityModal({
       {/* Modal */}
       <div className="fixed inset-0 z-[101] overflow-y-auto flex items-start justify-center pt-4 pb-8 px-4 sm:pt-8">
         <div
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-auto"
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden border border-slate-100 animate-scale-up"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header with close button */}
-          <div className="sticky top-0 flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 bg-white rounded-t-2xl">
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                  {type === "attraction" ? "Attraction" : "Activity"}
+          {/* Top Hero Banner */}
+          <div className="relative h-[200px] sm:h-[280px] bg-slate-900 overflow-hidden">
+            {cover ? (
+              <img
+                src={validateImageUrl(cover, 1200, 600, "16:9")}
+                alt={data.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center">
+                <ImageIcon className="w-12 h-12 text-white/40" />
+              </div>
+            )}
+            
+            {/* Dark overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10" />
+
+            {/* Floating Top Header (Close button only) */}
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={onClose}
+                className="p-2 bg-black/40 hover:bg-black/60 active:scale-95 text-white rounded-full backdrop-blur-md transition shadow-md cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Title & Badges Overlay */}
+            <div className="absolute bottom-4 left-4 right-4 text-white">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500 text-white uppercase tracking-wider shadow-sm">
+                  {type === "attraction" ? "Attraction" : type === "activity" ? "Activity" : type === "hotel" ? "Hotel stay" : type === "dining" ? "Enroute Dining" : "Transport service"}
                 </span>
                 {data.type && (
-                  <span className="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 capitalize">
+                  <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 backdrop-blur-sm text-white uppercase tracking-wider border border-white/10">
                     {data.type}
                   </span>
                 )}
               </div>
-              <h2 className="mt-2 text-2xl sm:text-3xl font-bold text-slate-900">
+              <h2 className="text-xl sm:text-3xl font-extrabold leading-tight tracking-tight drop-shadow-md">
                 {data.name}
               </h2>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-100 rounded-lg transition"
-              aria-label="Close modal"
-            >
-              <X className="w-6 h-6 text-slate-400" />
-            </button>
           </div>
 
           {/* Content */}
-          <div className="overflow-y-auto max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-220px)]">
-            {/* Gallery */}
-            {allImages.length > 0 && (
-              <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-200">
-                <p className="text-sm font-semibold text-slate-500 uppercase mb-4">
-                  Gallery
+          <div className="overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-360px)]">
+            {/* Gallery strip (only if we have >1 image) */}
+            {allImages.length > 1 && (
+              <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 bg-slate-50/50">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                  Gallery Photos
                 </p>
-                {allImages.length === 1 ? (
-                  <div className="rounded-xl overflow-hidden bg-slate-100 aspect-video">
-                    <img
-                      src={validateImageUrl(allImages[0], 800, 450, "16:9")}
-                      alt={data.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {allImages.map((img: string, idx: number) => (
-                      <div
-                        key={idx}
-                        className="rounded-lg overflow-hidden bg-slate-100 aspect-square"
-                      >
-                        <img
-                          src={validateImageUrl(img, 400, 400, "1:1")}
-                          alt={`${data.name} ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {allImages.map((img: string, idx: number) => (
+                    <div
+                      key={idx}
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200/60"
+                    >
+                      <img
+                        src={validateImageUrl(img, 200, 200, "1:1")}
+                        alt={`${data.name} ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Description */}
-            {data.shortDescription && (
+            {(data.shortDescription || data.description) && (
               <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-200">
                 <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
-                  {data.shortDescription}
+                  {data.shortDescription || data.description}
                 </p>
               </div>
             )}
@@ -201,6 +212,61 @@ export function AttractionActivityModal({
                     </div>
                   </div>
                 )}
+                {data.minPrice && (
+                  <div className="flex gap-3">
+                    <DollarSign className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Starting Price</p>
+                      <p className="text-sm text-slate-900 font-medium">
+                        ₹{data.minPrice.toLocaleString()} / night
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {data.starRating && (
+                  <div className="flex gap-3">
+                    <Award className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Rating</p>
+                      <p className="text-sm text-slate-900 font-medium flex items-center gap-1">
+                        {data.starRating} Stars {"★".repeat(Math.round(data.starRating))}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {data.capacity && (
+                  <div className="flex gap-3">
+                    <Award className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Capacity</p>
+                      <p className="text-sm text-slate-900 font-medium">
+                        Up to {data.capacity} passengers
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {data.vehicleModel && (
+                  <div className="flex gap-3">
+                    <Clock className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Vehicle Model</p>
+                      <p className="text-sm text-slate-900 font-medium">
+                        {data.vehicleModel}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {data.isAC !== undefined && (
+                  <div className="flex gap-3">
+                    <Award className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">A/C Status</p>
+                      <p className="text-sm text-slate-900 font-medium">
+                        {data.isAC ? "Air Conditioned" : "Non-Air Conditioned"}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {data.duration && (
                   <div className="flex gap-3">
                     <Clock className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
@@ -225,6 +291,56 @@ export function AttractionActivityModal({
                 )}
               </div>
             </div>
+
+            {/* Amenities/Features */}
+            {((data.amenities && Array.isArray(data.amenities)) || (data.features && Array.isArray(data.features))) && (
+              <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-200">
+                <p className="text-sm font-semibold text-slate-500 uppercase mb-3">
+                  {type === "hotel" ? "Amenities" : "Key Features"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(data.amenities || data.features || []).map((feat: string, idx: number) => (
+                    <span key={idx} className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
+                      {feat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Cuisine & Specialties */}
+            {((data.cuisine && Array.isArray(data.cuisine) && data.cuisine.length > 0) || (data.specialItems && Array.isArray(data.specialItems) && data.specialItems.length > 0)) && (
+              <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-200 space-y-4">
+                {data.cuisine && data.cuisine.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase mb-2">
+                      Cuisines Served
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {data.cuisine.map((item: string, idx: number) => (
+                        <span key={idx} className="inline-flex items-center rounded-full bg-orange-50 border border-orange-100 px-3 py-1 text-xs font-semibold text-orange-700">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {data.specialItems && data.specialItems.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-slate-500 uppercase mb-2">
+                      Must-Try Specialties
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {data.specialItems.map((item: string, idx: number) => (
+                        <span key={idx} className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          😋 {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Location */}
             {(data.address || data.latitude || data.longitude) && (

@@ -395,6 +395,7 @@ router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
     }
     const [inserted] = await db.insert(packagesTable).values(data).returning();
     clearCachePattern("cache:/api/packages*");
+    clearCachePattern("cache:/api/destinations/resolve-slug*");
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: sync to MongoDB in background (non-blocking)
     syncPackage(inserted.id);
@@ -426,6 +427,7 @@ router.patch("/packages/:id", requirePermission("PACKAGES"), async (req, res) =>
       .where(eq(packagesTable.id, Number(id)))
       .returning();
     clearCachePattern("cache:/api/packages*");
+    clearCachePattern("cache:/api/destinations/resolve-slug*");
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: sync updated package to MongoDB
     syncPackage(Number(id));
@@ -441,6 +443,7 @@ router.delete("/packages/:id", requirePermission("PACKAGES"), async (req, res) =
   try {
     await db.delete(packagesTable).where(eq(packagesTable.id, Number(req.params.id)));
     clearCachePattern("cache:/api/packages*");
+    clearCachePattern("cache:/api/destinations/resolve-slug*");
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: remove from MongoDB
     deleteMongoPackage(Number(req.params.id));
