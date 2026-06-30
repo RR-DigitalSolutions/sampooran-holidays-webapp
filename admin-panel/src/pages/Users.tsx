@@ -4,7 +4,7 @@ import {
   Users, Search, User, Mail, Phone, 
   MapPin, Ticket, Award, Edit3, 
   ShieldCheck, AlertCircle, RefreshCw,
-  Plus, Minus, Save, X
+  Plus, Minus, Save, X, Building2
 } from "lucide-react";
 import { useAuth, API_BASE } from "../context/AuthContext";
 
@@ -17,9 +17,12 @@ interface Traveler {
   badge: string;
   pointsBalance: number;
   createdAt: string;
+  vendorVerified?: boolean;
+  vendorBusinessName?: string | null;
+  vendorBusinessAddress?: string | null;
 }
 
-export default function UsersPage() {
+export default function UsersPage({ mode = "TRAVELERS" }: { mode?: "TRAVELERS" | "HOTELS" | "TRANSPORT" }) {
   const { user } = useAuth();
   const [users, setUsers] = useState<Traveler[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +33,12 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+    setSelectedUser(null);
+    setIsEditing(false);
+  }, [mode]);
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/admin/users`, {
         headers: { "Authorization": `Bearer ${user?.token}` }
@@ -67,10 +73,23 @@ export default function UsersPage() {
     }
   };
 
-  const filtered = users.filter(u => 
-    u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = users.filter(u => {
+    const matchesSearch = 
+      u.name.toLowerCase().includes(search.toLowerCase()) || 
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.phoneNumber && u.phoneNumber.includes(search));
+
+    if (!matchesSearch) return false;
+
+    if (mode === "HOTELS") {
+      return u.role === "HOTEL_OWNER";
+    }
+    if (mode === "TRANSPORT") {
+      return u.role === "TRANSPORTER";
+    }
+    // Travelers mode: show standard users and agents, filter out hoteliers and transporters
+    return u.role !== "HOTEL_OWNER" && u.role !== "TRANSPORTER";
+  });
 
   const getBadgeColor = (badge: string) => {
     switch(badge?.toUpperCase()) {
@@ -82,8 +101,25 @@ export default function UsersPage() {
     }
   };
 
+  const getTitle = () => {
+    if (mode === "HOTELS") return "Hotel Partners";
+    if (mode === "TRANSPORT") return "Transport Partners";
+    return "Travelers & Agents";
+  };
+
+  const getSubtitle = () => {
+    if (mode === "HOTELS") return "Manage hoteliers, property owners, and hosts";
+    if (mode === "TRANSPORT") return "Manage drivers, transport fleets, and logistics partners";
+    return "Manage global traveler community and B2B booking agents";
+  };
+
+  const getPlaceholderIcon = (role: string) => {
+    if (role === "HOTEL_OWNER") return <Building2 className="w-5 h-5" />;
+    return <User className="w-5 h-5" />;
+  };
+
   return (
-    <AdminLayout title="Travelers & Agents" subtitle="Manage your global community and loyalty engine">
+    <AdminLayout title={getTitle()} subtitle={getSubtitle()}>
       <div className="flex flex-col lg:flex-row gap-8">
         
         {/* User List Section */}
@@ -102,7 +138,7 @@ export default function UsersPage() {
             {loading ? (
               <div className="p-20 text-center text-gray-400 flex flex-col items-center">
                 <RefreshCw className="w-8 h-8 animate-spin mb-4 text-primary" />
-                <p className="font-medium animate-pulse">Syncing Traveler Registry...</p>
+                <p className="font-medium animate-pulse">Syncing Registry...</p>
               </div>
             ) : (
               <table className="w-full text-left border-collapse">
@@ -110,7 +146,12 @@ export default function UsersPage() {
                   <tr>
                     <th className="px-6 py-4 text-[10px] uppercase font-bold text-gray-500 tracking-widest">Identity</th>
                     <th className="px-6 py-4 text-[10px] uppercase font-bold text-gray-500 tracking-widest">Type</th>
-                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-gray-500 tracking-widest">Balance</th>
+                    {mode === "TRAVELERS" && (
+                      <th className="px-6 py-4 text-[10px] uppercase font-bold text-gray-500 tracking-widest">Balance</th>
+                    )}
+                    {(mode === "HOTELS" || mode === "TRANSPORT") && (
+                      <th className="px-6 py-4 text-[10px] uppercase font-bold text-gray-500 tracking-widest">Business Detail</th>
+                    )}
                     <th className="px-6 py-4 text-[10px] uppercase font-bold text-gray-500 tracking-widest">Actions</th>
                   </tr>
                 </thead>
@@ -124,7 +165,7 @@ export default function UsersPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3 font-medium">
                           <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400">
-                            <User className="w-5 h-5" />
+                            {getPlaceholderIcon(u.role)}
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900 leading-tight">{u.name}</p>
@@ -134,19 +175,39 @@ export default function UsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full uppercase w-fit ${u.role === 'AGENT' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          <span className={`text-[9px] font-black tracking-widest px-2 py-0.5 rounded-full uppercase w-fit ${
+                            u.role === 'AGENT' ? 'bg-indigo-100 text-indigo-700' : 
+                            u.role === 'HOTEL_OWNER' ? 'bg-amber-100 text-amber-700' :
+                            u.role === 'TRANSPORTER' ? 'bg-blue-100 text-blue-700' :
+                            'bg-emerald-100 text-emerald-700'
+                          }`}>
                             {u.role}
                           </span>
-                          {u.badge && (
+                          {u.badge && mode === "TRAVELERS" && (
                             <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md border w-fit ${getBadgeColor(u.badge)}`}>
                               {u.badge}
                             </span>
                           )}
+                          {(u.role === 'HOTEL_OWNER' || u.role === 'TRANSPORTER') && (
+                            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md border w-fit ${
+                              u.vendorVerified ? 'bg-emerald-100 border-emerald-200 text-emerald-700' : 'bg-amber-100 border-amber-200 text-amber-700'
+                            }`}>
+                              {u.vendorVerified ? 'VERIFIED' : 'PENDING'}
+                            </span>
+                          )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-mono font-bold text-sm text-gray-900">
-                        ₹{u.pointsBalance?.toLocaleString()}
-                      </td>
+                      {mode === "TRAVELERS" && (
+                        <td className="px-6 py-4 font-mono font-bold text-sm text-gray-900">
+                          ₹{u.pointsBalance?.toLocaleString()}
+                        </td>
+                      )}
+                      {(mode === "HOTELS" || mode === "TRANSPORT") && (
+                        <td className="px-6 py-4">
+                          <p className="text-xs font-bold text-gray-900">{u.vendorBusinessName || "N/A"}</p>
+                          <p className="text-[10px] text-gray-400 truncate max-w-[200px]">{u.vendorBusinessAddress || "N/A"}</p>
+                        </td>
+                      )}
                       <td className="px-6 py-4">
                          <button className="p-2 text-gray-400 hover:text-primary transition-colors">
                            <Edit3 className="w-4 h-4" />
@@ -167,7 +228,7 @@ export default function UsersPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                    <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
-                     <Users className="w-6 h-6" />
+                     {getPlaceholderIcon(selectedUser.role)}
                    </div>
                    <div>
                      <h3 className="font-bold text-gray-900">{selectedUser.name}</h3>
@@ -188,8 +249,20 @@ export default function UsersPage() {
                      <Mail className="w-4 h-4 text-gray-400" /> <span className="font-medium text-gray-600">{selectedUser.email}</span>
                    </div>
                    <div className="flex items-center gap-3 text-xs">
-                     <Phone className="w-4 h-4 text-gray-400" /> <span className="font-medium text-gray-600">{selectedUser.phoneNumber}</span>
+                     <Phone className="w-4 h-4 text-gray-400" /> <span className="font-medium text-gray-600">{selectedUser.phoneNumber || "No phone"}</span>
                    </div>
+                   {(selectedUser.role === 'HOTEL_OWNER' || selectedUser.role === 'TRANSPORTER') && (
+                     <>
+                       <div className="flex items-center gap-3 text-xs border-t border-gray-200/50 pt-2 mt-2">
+                         <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+                         <span className="font-bold text-gray-700 truncate">{selectedUser.vendorBusinessName || "No business name registered"}</span>
+                       </div>
+                       <div className="flex items-center gap-3 text-xs">
+                         <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+                         <span className="font-medium text-gray-500 break-words">{selectedUser.vendorBusinessAddress || "No address registered"}</span>
+                       </div>
+                     </>
+                   )}
                 </div>
 
                 <div className="p-6 bg-linear-to-br from-gray-900 to-black rounded-[2rem] text-white relative overflow-hidden">
@@ -208,43 +281,82 @@ export default function UsersPage() {
                              value={adjustAmount}
                              onChange={e => setAdjustAmount(e.target.value)}
                              placeholder="Amount"
-                             className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary"
+                             className="flex-1 bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary text-white"
                            />
                            <button 
                              onClick={() => updateUser({ pointsBalance: (selectedUser.pointsBalance || 0) + Number(adjustAmount) })}
-                             className="bg-primary hover:bg-primary/90 text-white p-2 rounded-xl transition-colors"
+                             className="bg-primary hover:bg-primary/90 text-white p-2 rounded-xl transition-colors cursor-pointer"
                            >
                              <Plus className="w-4 h-4" />
                            </button>
                            <button 
                              onClick={() => updateUser({ pointsBalance: Math.max(0, (selectedUser.pointsBalance || 0) - Number(adjustAmount)) })}
-                             className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-xl transition-colors"
+                             className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-xl transition-colors cursor-pointer"
                            >
                              <Minus className="w-4 h-4" />
                            </button>
                         </div>
                      </div>
                    ) : (
-                     <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 w-fit px-2 py-1 rounded-lg">
-                        <ShieldCheck className="w-3 h-3" /> VERIFIED GENUINE
-                     </div>
+                     (selectedUser.role === 'HOTEL_OWNER' || selectedUser.role === 'TRANSPORTER') ? (
+                       <div className={`mt-4 flex items-center gap-2 text-[10px] font-bold w-fit px-2.5 py-1 rounded-lg ${
+                         selectedUser.vendorVerified 
+                           ? 'text-emerald-400 bg-emerald-400/10' 
+                           : 'text-amber-400 bg-amber-400/10'
+                       }`}>
+                         <ShieldCheck className="w-3.5 h-3.5" /> 
+                         {selectedUser.vendorVerified ? "VERIFIED PARTNER" : "PENDING VERIFICATION"}
+                       </div>
+                     ) : (
+                       <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 w-fit px-2.5 py-1 rounded-lg">
+                          <ShieldCheck className="w-3.5 h-3.5" /> VERIFIED GENUINE
+                       </div>
+                     )
                    )}
                 </div>
 
                 {isEditing && (
                   <div className="space-y-4 pt-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Change Identity Role</label>
-                      <select 
-                        value={selectedUser.role}
-                        onChange={e => updateUser({ role: e.target.value })}
-                        className="w-full mt-1.5 p-3 border border-gray-100 rounded-2xl text-sm font-bold bg-white"
-                      >
-                        <option value="USER">Standard Traveler</option>
-                        <option value="AGENT">B2B Travel Agent</option>
-                        <option value="ADMIN">System Administrator</option>
-                      </select>
-                    </div>
+                    {(selectedUser.role === 'HOTEL_OWNER' || selectedUser.role === 'TRANSPORTER') ? (
+                      <div className="p-4 bg-gray-50 rounded-2xl space-y-3">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block ml-1">Manage Vendor Verification</label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateUser({ vendorVerified: true })}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-black tracking-widest border transition-all ${
+                              selectedUser.vendorVerified 
+                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
+                                : 'bg-white border-gray-200 text-gray-400 hover:border-emerald-500/30 hover:bg-emerald-50/20'
+                            }`}
+                          >
+                            VERIFIED
+                          </button>
+                          <button
+                            onClick={() => updateUser({ vendorVerified: false })}
+                            className={`flex-1 py-2 rounded-xl text-[10px] font-black tracking-widest border transition-all ${
+                              !selectedUser.vendorVerified 
+                                ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20' 
+                                : 'bg-white border-gray-200 text-gray-400 hover:border-amber-500/30 hover:bg-amber-50/20'
+                            }`}
+                          >
+                            PENDING
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Change Identity Role</label>
+                        <select 
+                          value={selectedUser.role}
+                          onChange={e => updateUser({ role: e.target.value })}
+                          className="w-full mt-1.5 p-3 border border-gray-100 rounded-2xl text-sm font-bold bg-white"
+                        >
+                          <option value="USER">Standard Traveler</option>
+                          <option value="AGENT">B2B Travel Agent</option>
+                          <option value="ADMIN">System Administrator</option>
+                        </select>
+                      </div>
+                    )}
 
                     {selectedUser.role === 'AGENT' && (
                       <div>
@@ -271,7 +383,7 @@ export default function UsersPage() {
                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                  <AlertCircle className="w-8 h-8 opacity-20" />
                </div>
-               <p className="font-bold text-sm">Select a Traveler</p>
+               <p className="font-bold text-sm">Select a Profile</p>
                <p className="text-xs max-w-[150px] mt-1">Select a record from the list to manage their profile and rewards.</p>
             </div>
           )}

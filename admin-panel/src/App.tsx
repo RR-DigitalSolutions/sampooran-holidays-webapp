@@ -84,7 +84,13 @@ function AppRoutes() {
         <ProtectedRoute component={Agents} />
       </Route>
       <Route path="/users">
-        <ProtectedRoute component={UsersPage} />
+        <ProtectedRoute component={() => <UsersPage mode="TRAVELERS" />} />
+      </Route>
+      <Route path="/hotel-vendors">
+        <ProtectedRoute component={() => <UsersPage mode="HOTELS" />} />
+      </Route>
+      <Route path="/transport-vendors">
+        <ProtectedRoute component={() => <UsersPage mode="TRANSPORT" />} />
       </Route>
       <Route path="/finance">
         <ProtectedRoute component={FinancePage} />
