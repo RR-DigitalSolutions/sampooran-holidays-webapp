@@ -221,10 +221,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const handleAttractionClick = async (name: string) => {
     setLoadingDetail(true);
     try {
-      const response = await fetch(`/api/attractions?limit=100`);
+      // Fetch all active attractions (high limit to catch demo content)
+      const response = await fetch(`/api/attractions?limit=500`);
+      if (!response.ok) return;
       const attractions = await response.json();
+      const normalizedName = name.toLowerCase().trim();
       const found = attractions.find(
-        (a: AttractionActivityData) => String(a.name || "").toLowerCase() === name.toLowerCase()
+        (a: AttractionActivityData) => String(a.name || "").toLowerCase().trim() === normalizedName
       );
       if (found) {
         setSelectedAttraction(found);
@@ -282,7 +285,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        const response = await fetch(`/api/activities?limit=1000`);
+        const response = await fetch(`/api/activities?limit=2000`);
         if (!response.ok) {
           console.error(`Failed to fetch activities: HTTP ${response.status}`);
           return;
@@ -308,9 +311,20 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   const normalizedItinerary = useMemo<PackageItineraryDay[]>(() => {
     const normalizeDay = (d: Record<string, unknown>): PackageItineraryDay => {
+      // Attraction IDs come from admin → hydrated to full objects by backend
+      // d["attractions"] = array of full attraction objects OR string names
+      // d["activities"] = array of string names from admin
+      // d["diningStops"] = backend-hydrated dining stops (admin saves as diningStops)
+      // d["enrouteDiningStops"] = legacy field name (fallback)
+      const rawAttractions = d["attractions"];
       const altAttractions = d["attraction"] ?? d["sights"] ?? d["sightseeingList"];
       const altActivities = d["activities"] ?? d["activity"] ?? d["activityList"];
-      const altEnroute = d["diningStops"] ?? d["enrouteStops"] ?? d["enroute"];
+      // Backend always hydrates to "diningStops"; "enrouteDiningStops" is legacy
+      const altEnroute =
+        d["enrouteDiningStops"] ??
+        d["diningStops"] ??
+        d["enrouteStops"] ??
+        d["enroute"];
       const altMeals = d["meals"] ?? d["meal"] ?? d["mealsProvided"] ?? d["mealsIncluded"];
       const altSight = d["sightSeeing"] ?? d["sight"] ?? d["todaySightseeing"];
 
@@ -321,11 +335,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         description: normalizeTextItem(d["description"] ?? d["content"] ?? d["detail"]),
         accommodation: normalizeTextItem(d["accommodation"] ?? d["hotel"] ?? d["stay"] ?? d["nightStay"]),
         sightseeing: normalizeTextItem(d["sightseeing"] ?? altSight),
-        attractions: normalizeList(d["attractions"] ?? altAttractions),
+        attractions: normalizeList(rawAttractions ?? altAttractions),
         meals: normalizeMeals(altMeals),
-        enrouteDiningStops: normalizeDiningStops(d["enrouteDiningStops"] ?? altEnroute),
+        enrouteDiningStops: normalizeDiningStops(altEnroute),
         transport: normalizeTextItem(d["transport"] ?? d["cab"] ?? d["vehicle"] ?? d["travelMode"]),
         cab: normalizeTextItem(d["cab"] ?? d["vehicle"]),
+        // Activities are stored separately from attractions — never merge them
         activities: normalizeList(altActivities),
       };
     };
@@ -675,10 +690,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     const isExpanded = expandedDays.has(idx);
                     const attractions = normalizeList(day.attractions);
                     const activities = normalizeList(day.activities);
-                    const uniqueActivities = activities.filter((activity) => !attractions.some((attr) => attr.toLowerCase() === activity.toLowerCase()));
+                    // Keep attractions and activities STRICTLY SEPARATE — do not de-dup across them
                     const mealItems = normalizeMeals(day.meals);
-                    const enrouteStops = normalizeDiningStops(day.enrouteDiningStops || day.diningStops);
-                    const showSightseeing = Boolean(day.sightseeing || uniqueActivities.length > 0 || attractions.length > 0);
+                    const enrouteStops = normalizeDiningStops(day.enrouteDiningStops ?? day.diningStops);
+                    const hasSightseeingText = Boolean(day.sightseeing);
+                    const hasAttractions = attractions.length > 0;
+                    const hasActivities = activities.length > 0;
                     const formattedAccommodation = day.accommodation
                       ? `${day.accommodation}${/or similar$/i.test(day.accommodation) ? "" : " or similar"}`
                       : "";
@@ -735,70 +752,85 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               </p>
                             )}
 
-                            {/* Today's Sightseeing */}
-                            {showSightseeing && (
-                              <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5 sm:p-3">
-                                <div className="flex items-center gap-3 mb-3">
-                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 shrink-0">
+                            {/* ── CARD 1: Sightseeing (free-text field from admin) ── */}
+                            {hasSightseeingText && (
+                              <div className="rounded-md border border-blue-100 bg-blue-50/40 p-2.5 sm:p-3">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 shrink-0">
                                     <Camera className="h-4 w-4" />
                                   </span>
                                   <div>
-                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Sightseeing and Attractions</p>
-                                    <p className="text-[10px] sm:text-xs text-slate-500">Plans, sights and experiences curated for the day.</p>
+                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Sightseeing</p>
+                                    <p className="text-[10px] sm:text-xs text-slate-500">Places and landmarks curated for the day.</p>
                                   </div>
                                 </div>
-                                {day.sightseeing ? (
-                                  <p className="text-xs sm:text-sm text-slate-700">{day.sightseeing}</p>
-                                ) : (
-                                  <div className="space-y-3">
-                                    {attractions.length > 0 && (
-                                      <div>
-                                        <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Attractions</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {attractions.map((item, attrIdx) => (
-                                            <button
-                                              key={attrIdx}
-                                              onClick={() => handleAttractionClick(item)}
-                                              className="rounded-full border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 hover:text-blue-700 transition cursor-pointer"
-                                              disabled={loadingDetail}
-                                            >
-                                              {item}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                    {uniqueActivities.length > 0 && (
-                                      <div>
-                                        <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-slate-500 mb-2">Activities</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {uniqueActivities.map((item, activityIdx) => {
-                                            const activity = activitiesMap.get(item.toLowerCase());
-                                            const priceRange = activity && activity.priceMin && activity.priceMax
-                                              ? `₹${activity.priceMin.toLocaleString()}-${activity.priceMax.toLocaleString()}`
-                                              : null;
-                                            return (
-                                              <div key={activityIdx} className="relative">
-                                                <button
-                                                  onClick={() => handleActivityClick(item)}
-                                                  className="rounded-full border border-slate-200 bg-white hover:bg-green-50 hover:border-green-300 px-3 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 hover:text-green-700 transition cursor-pointer"
-                                                  disabled={loadingDetail}
-                                                >
-                                                  {item}
-                                                </button>
-                                                {priceRange && (
-                                                  <span className="absolute -top-2 -right-1 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[9px] sm:text-xs font-bold text-green-700 border border-green-200">
-                                                    {priceRange}
-                                                  </span>
-                                                )}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
+                                <p className="text-xs sm:text-sm text-slate-700 ml-0 sm:ml-11">{day.sightseeing}</p>
+                              </div>
+                            )}
+
+                            {/* ── CARD 2: Attractions (from admin CMS — separately selectable) ── */}
+                            {hasAttractions && (
+                              <div className="rounded-md border border-indigo-100 bg-indigo-50/30 p-2.5 sm:p-3">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 shrink-0">
+                                    <Ticket className="h-4 w-4" />
+                                  </span>
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Attractions &amp; Sightseeing</p>
+                                    <p className="text-[10px] sm:text-xs text-slate-500">Key attractions and experiences included in this day.</p>
                                   </div>
-                                )}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {attractions.map((item, attrIdx) => (
+                                    <button
+                                      key={attrIdx}
+                                      onClick={() => handleAttractionClick(item)}
+                                      className="rounded-full border border-indigo-200 bg-white hover:bg-indigo-50 hover:border-indigo-400 px-3 py-1 text-[10px] sm:text-xs font-semibold text-indigo-700 hover:text-indigo-800 transition cursor-pointer shadow-sm"
+                                      disabled={loadingDetail}
+                                    >
+                                      {item}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* ── CARD 3: Activities (from admin — completely separate from attractions) ── */}
+                            {hasActivities && (
+                              <div className="rounded-md border border-green-100 bg-green-50/30 p-2.5 sm:p-3">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-600 shrink-0">
+                                    <Zap className="h-4 w-4" />
+                                  </span>
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-semibold text-slate-900">Activities</p>
+                                    <p className="text-[10px] sm:text-xs text-slate-500">Curated experiences and adventures for this day.</p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {activities.map((item, activityIdx) => {
+                                    const activityData = activitiesMap.get(item.toLowerCase());
+                                    const priceRange = activityData && activityData.priceMin && activityData.priceMax
+                                      ? `₹${activityData.priceMin.toLocaleString()}-${activityData.priceMax.toLocaleString()}`
+                                      : null;
+                                    return (
+                                      <div key={activityIdx} className="relative">
+                                        <button
+                                          onClick={() => handleActivityClick(item)}
+                                          className="rounded-full border border-green-200 bg-white hover:bg-green-50 hover:border-green-400 px-3 py-1 text-[10px] sm:text-xs font-semibold text-green-700 hover:text-green-800 transition cursor-pointer shadow-sm"
+                                          disabled={loadingDetail}
+                                        >
+                                          {item}
+                                        </button>
+                                        {priceRange && (
+                                          <span className="absolute -top-2 -right-1 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[9px] sm:text-xs font-bold text-green-700 border border-green-200">
+                                            {priceRange}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
 

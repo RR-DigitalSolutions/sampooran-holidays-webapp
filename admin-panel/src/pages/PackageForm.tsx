@@ -125,9 +125,10 @@ export default function PackageForm() {
     const fallbackActivities = allAttractions.flatMap((a) =>
       Array.isArray(a.activities) ? a.activities.map((item: unknown) => String(item).trim()) : []
     );
+    // Use truthy check (not strict ===) because DB may return 1/0 or null instead of boolean
     const cmsActivityNames = allCmsActivities
-      .filter((a) => a.isActive === true)
-      .map((a) => String(a.name || a.title).trim())
+      .filter((a) => a.isActive !== false)
+      .map((a) => String(a.name || a.title || "").trim())
       .filter(Boolean);
     const combined = [...approvedActivities, ...cmsActivityNames, ...fallbackActivities, ...selectedPackageActivities];
     const unique = Array.from(new Set(combined.map((item) => String(item).trim()).filter(Boolean)));
@@ -483,46 +484,103 @@ export default function PackageForm() {
                       </div>
                     </div>
                     
-                    {/* Attractions Selection */}
+                    {/* Attractions Selection - pinned from CMS */}
                     <div className="col-span-2">
-                      <p className="text-xs font-bold text-gray-500 mb-1">Attractions & Sightseeing</p>
-                      <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-lg border min-h-[42px]">
-                        {allAttractions.filter(a => selectedDestIds.includes(a.destinationId)).map(attr => {
-                          const isSel = day.attractionIds?.includes(attr.id);
-                          return <button type="button" key={attr.id} onClick={() => {
-                            const ni=[...itinerary]; 
-                            if(isSel) ni[idx].attractionIds = (ni[idx].attractionIds||[]).filter(id=>id!==attr.id);
-                            else ni[idx].attractionIds = [...(ni[idx].attractionIds||[]), attr.id];
-                            setItinerary(ni);
-                          }} className={`text-[10px] px-2 py-1 rounded-full font-bold border ${isSel ? "bg-[#1B3A6B] text-white border-[#1B3A6B]":"bg-white text-gray-600 border-gray-200"}`}>{attr.name}</button>
-                        })}
-                        {!selectedDestIds.length && <span className="text-xs text-gray-400 p-1">Select destinations first (Tab 2)</span>}
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-gray-500">Attractions & Sightseeing</p>
+                        <span className="text-[10px] text-gray-400">Click to select/deselect</span>
+                      </div>
+                      {/* Selected attractions pinned at top */}
+                      {(day.attractionIds || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-[#1B3A6B]/5 rounded-t-lg border border-b-0 border-[#1B3A6B]/20 min-h-[36px]">
+                          {(day.attractionIds || []).map(attrId => {
+                            const attr = allAttractions.find(a => a.id === attrId);
+                            if (!attr) return null;
+                            return (
+                              <button type="button" key={attr.id} onClick={() => {
+                                const ni=[...itinerary];
+                                ni[idx].attractionIds = (ni[idx].attractionIds||[]).filter(id=>id!==attr.id);
+                                setItinerary(ni);
+                              }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-[#1B3A6B] text-white border-[#1B3A6B] flex items-center gap-1">
+                                {attr.name} ✕
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* All available attractions from CMS */}
+                      <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-b-lg border min-h-[42px] max-h-32 overflow-y-auto">
+                        {(() => {
+                          const filtered = selectedDestIds.length > 0
+                            ? allAttractions.filter(a => selectedDestIds.includes(a.destinationId))
+                            : allAttractions;
+                          if (filtered.length === 0 && selectedDestIds.length > 0) {
+                            return <span className="text-xs text-gray-400 p-1">No attractions found for selected destinations. Add them in the Attractions page.</span>;
+                          }
+                          if (filtered.length === 0) {
+                            return <span className="text-xs text-gray-400 p-1">No attractions in CMS yet. Add them in the Attractions page.</span>;
+                          }
+                          return filtered.map(attr => {
+                            const isSel = day.attractionIds?.includes(attr.id);
+                            if (isSel) return null; // already shown above
+                            return (
+                              <button type="button" key={attr.id} onClick={() => {
+                                const ni=[...itinerary];
+                                ni[idx].attractionIds = [...(ni[idx].attractionIds||[]), attr.id];
+                                setItinerary(ni);
+                              }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition">
+                                {attr.name}
+                              </button>
+                            );
+                          });
+                        })()}
+                        {!selectedDestIds.length && allAttractions.length > 0 && (
+                          <div className="w-full mt-1 pt-1 border-t border-gray-100">
+                            <span className="text-[9px] text-amber-600 font-bold">⚠ Select destinations in Tab 2 to filter by location</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    {/* Activities Selection */}
+                    {/* Activities Selection — strictly separate from Attractions */}
                     <div className="col-span-2">
-                      <p className="text-xs font-bold text-gray-500 mb-1">Activities</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-green-700">Activities <span className="font-normal text-gray-400 normal-case">(separate from Attractions above)</span></p>
+                        <span className="text-[10px] text-gray-400">Click selected to remove</span>
+                      </div>
+                      {/* Selected activities */}
                       <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-lg border min-h-[42px]">
                         {(day.activities || []).map((activity, activityIdx) => (
                           <button key={`${idx}-activity-${activityIdx}`} type="button" onClick={() => {
                             const ni = [...itinerary];
                             ni[idx].activities = (ni[idx].activities || []).filter((a: string) => a !== activity);
                             setItinerary(ni);
-                          }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-[#1B3A6B] text-white border-[#1B3A6B]">
-                            {activity}
+                          }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-green-600 text-white border-green-600 flex items-center gap-1">
+                            {activity} ✕
                           </button>
                         ))}
-                        {!day.activities?.length && <span className="text-xs text-gray-400 p-1">Tap a suggestion or add a custom activity.</span>}
+                        {!day.activities?.length && <span className="text-xs text-gray-400 p-1">No activities selected. Add from suggestions below or type a custom one.</span>}
                       </div>
-                      <div className="mt-3 grid grid-cols-1 gap-2">
-                        <input
-                          value={activityInputs[idx] || ""}
-                          onChange={(e) => setActivityInputs({ ...activityInputs, [idx]: e.target.value })}
-                          placeholder="Add a custom activity"
-                          className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white"
-                        />
+                      {/* Custom activity input + CMS suggestions */}
+                      <div className="mt-2 space-y-2">
                         <div className="flex gap-2">
+                          <input
+                            value={activityInputs[idx] || ""}
+                            onChange={(e) => setActivityInputs({ ...activityInputs, [idx]: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const value = (activityInputs[idx] || "").trim();
+                                if (!value) return;
+                                const ni = [...itinerary];
+                                ni[idx].activities = Array.from(new Set([...(ni[idx].activities || []), value]));
+                                setItinerary(ni);
+                                setActivityInputs({ ...activityInputs, [idx]: "" });
+                              }
+                            }}
+                            placeholder="Type a custom activity and press Enter or click Add"
+                            className="flex-1 px-3 py-2 rounded-lg border outline-none text-sm bg-white focus:border-green-400"
+                          />
                           <button type="button" onClick={() => {
                             const value = (activityInputs[idx] || "").trim();
                             if (!value) return;
@@ -530,38 +588,71 @@ export default function PackageForm() {
                             ni[idx].activities = Array.from(new Set([...(ni[idx].activities || []), value]));
                             setItinerary(ni);
                             setActivityInputs({ ...activityInputs, [idx]: "" });
-                          }} className="px-3 py-2 rounded-lg bg-[#1B3A6B] text-white text-xs font-bold hover:bg-[#2a519b] transition">Add Activity</button>
-                          {allActivities.slice(0, 10).map((activity) => {
-                            const isSel = (day.activities || []).includes(activity);
-                            return (
-                              <button key={`${idx}-suggest-${activity}`} type="button" onClick={() => {
-                                const ni = [...itinerary];
-                                ni[idx].activities = isSel ? (ni[idx].activities || []).filter((a: string) => a !== activity) : [...new Set([...(ni[idx].activities || []), activity])];
-                                setItinerary(ni);
-                              }} className={`text-[10px] px-2 py-1 rounded-full font-bold border ${isSel ? "bg-[#1B3A6B] text-white border-[#1B3A6B]" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
-                                {activity}
-                              </button>
-                            );
-                          })}
+                          }} className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition whitespace-nowrap">+ Add</button>
                         </div>
+                        {/* CMS Activity suggestions */}
+                        {allActivities.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Suggestions from CMS ({allActivities.length})</p>
+                            <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 rounded-lg border max-h-28 overflow-y-auto">
+                              {allActivities.map((activity) => {
+                                const isSel = (day.activities || []).includes(activity);
+                                if (isSel) return null;
+                                return (
+                                  <button key={`${idx}-suggest-${activity}`} type="button" onClick={() => {
+                                    const ni = [...itinerary];
+                                    ni[idx].activities = [...new Set([...(ni[idx].activities || []), activity])];
+                                    setItinerary(ni);
+                                  }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-white text-gray-600 border-gray-200 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
+                                    {activity}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Dining Stops Selection */}
                     <div className="col-span-2">
-                      <p className="text-xs font-bold text-gray-500 mb-1">Enroute Dining Stops</p>
-                      <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-lg border min-h-[42px]">
-                        {allDining.filter(d => selectedDestIds.includes(d.destinationId) && d.isEnrouteStop).map(d => {
-                          const stops = day.diningStops || [];
-                          const isSel = stops.some(s => s.diningPointId === d.id);
-                          return <button type="button" key={d.id} onClick={() => {
-                            const ni=[...itinerary];
-                            if(isSel) ni[idx].diningStops = stops.filter(s=>s.diningPointId!==d.id);
-                            else ni[idx].diningStops = [...stops, { diningPointId: d.id, mealType: "lunch" }];
-                            setItinerary(ni);
-                          }} className={`text-[10px] px-2 py-1 rounded-full font-bold border ${isSel ? "bg-orange-500 text-white border-orange-500":"bg-white text-gray-600 border-gray-200"}`}>🍽️ {d.name}</button>
-                        })}
-                        {!selectedDestIds.length && <span className="text-xs text-gray-400 p-1">Select destinations first (Tab 2)</span>}
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-orange-700">Enroute Dining Stops</p>
+                        <span className="text-[10px] text-gray-400">Orange = selected</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-lg border min-h-[42px] max-h-28 overflow-y-auto">
+                        {(() => {
+                          const enrouteDining = allDining.filter(d => d.isEnrouteStop);
+                          const filtered = selectedDestIds.length > 0
+                            ? enrouteDining.filter(d => selectedDestIds.includes(d.destinationId))
+                            : enrouteDining;
+                          if (filtered.length === 0 && enrouteDining.length === 0) {
+                            return <span className="text-xs text-gray-400 p-1">No enroute dining points in CMS. Add them in the Dining Points page.</span>;
+                          }
+                          if (filtered.length === 0 && selectedDestIds.length > 0) {
+                            return <span className="text-xs text-gray-400 p-1">No enroute dining for selected destinations. Add them in the Dining Points page.</span>;
+                          }
+                          return filtered.map(d => {
+                            const stops = day.diningStops || [];
+                            const isSel = stops.some(s => s.diningPointId === d.id);
+                            const destName = allDests.find(dest => dest.id === d.destinationId)?.name;
+                            return (
+                              <button type="button" key={d.id} onClick={() => {
+                                const ni=[...itinerary];
+                                if(isSel) ni[idx].diningStops = stops.filter(s=>s.diningPointId!==d.id);
+                                else ni[idx].diningStops = [...stops, { diningPointId: d.id, mealType: "lunch" }];
+                                setItinerary(ni);
+                              }} className={`text-[10px] px-2 py-1 rounded-full font-bold border transition ${isSel ? "bg-orange-500 text-white border-orange-500":"bg-white text-gray-600 border-gray-200 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700"}`}>
+                                🍽️ {d.name}{destName ? ` (${destName})` : ''}
+                              </button>
+                            );
+                          });
+                        })()}
+                        {!selectedDestIds.length && allDining.filter(d => d.isEnrouteStop).length > 0 && (
+                          <div className="w-full mt-1 pt-1 border-t border-gray-100">
+                            <span className="text-[9px] text-amber-600 font-bold">⚠ Select destinations in Tab 2 to filter by location</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
