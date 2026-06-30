@@ -976,7 +976,6 @@ export default function Destinations() {
           {tab === "places" && filtered.places.map(item => (
             <DestCard key={item.id} title={item.name} sub={`${item.stateName || ""}, ${item.countryName || ""}`}
               featured={item.isFeatured} active={item.isActive}
-              badges={[item.altitude, item.bestTimeToVisit].filter(Boolean)}
               hotelsMenuOrder={item.showInHotelsMenu ? item.hotelsMenuOrder : undefined}
               onEdit={() => setModal({ type: "places", item })}
               onDelete={() => handleDelete("places", item.id)} />

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../components/AdminLayout";
-import { Plus, Search, Edit, Trash2, MapPin, Camera, Save, X, Loader2, CheckCircle, XCircle, Upload, Star, Clock, Tag, Image as ImageIcon } from "lucide-react";
+import { Plus, Search, Edit, Trash2, MapPin, Camera, Save, X, Loader2, CheckCircle, XCircle, Upload, Star, Clock, Tag, Image as ImageIcon, Mountain } from "lucide-react";
 import { customFetch } from "../utils/api";
 import { getApiUrl } from "@/utils/api-url";
 import { toast } from "sonner";
@@ -328,11 +328,9 @@ export default function Attractions() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(item => (
-            <div key={item.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden group hover:shadow-md transition-all">
-              <div className="relative h-36 bg-gradient-to-br from-blue-50 to-indigo-100">
-                {item.coverImage
-                  ? <img src={item.coverImage} alt={item.name} className="w-full h-full object-cover" />
-                  : <Camera className="absolute inset-0 m-auto w-10 h-10 text-[#1B3A6B] opacity-20" />}
+            <div key={item.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden group hover:shadow-md transition-all" style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+              <div className="h-24 relative flex items-center justify-center" style={{ background: "linear-gradient(135deg, #EEF2FF, #DBEAFE)" }}>
+                <Mountain className="w-8 h-8 text-[#1B3A6B] opacity-30" />
                 <span className={`absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full capitalize ${TYPE_COLORS[item.type] || "bg-gray-100 text-gray-600"}`}>{item.type}</span>
                 <span className={`absolute top-2 right-2 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${item.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                   {item.isActive ? <CheckCircle className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}{item.isActive ? "Active" : "Draft"}
