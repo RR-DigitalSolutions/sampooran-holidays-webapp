@@ -37,6 +37,9 @@ const ALLOWED_FOLDERS: Record<string, string> = {
   "destinations/places":    `${ROOT}/destinations/places`,
   "packages":               `${ROOT}/packages`,
   "blogs":                  `${ROOT}/blogs`,
+  "attractions":            `${ROOT}/attractions`,
+  "activities":             `${ROOT}/activities`,
+  "dining":                 `${ROOT}/dining`,
   "misc":                   `${ROOT}/misc`,
 };
 
