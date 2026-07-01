@@ -430,32 +430,51 @@ export default function PackageForm() {
               <button type="button" onClick={() => setItinerary([...itinerary, { day: itinerary.length+1, title: "", description: "", location: "", accommodation: "", meals: {}, attractionIds: [], diningStops: [], activities: [] }])} className="text-[#1B3A6B] font-bold text-sm flex items-center gap-1 hover:underline"><Plus className="w-4 h-4"/> Add Day</button>
             </div>
             <div className="space-y-4">
-              {itinerary.map((day, idx) => (
-                <div key={idx} className="border border-gray-200 rounded-xl p-5 bg-gray-50">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="bg-[#1B3A6B] text-white px-3 py-1 rounded-lg font-bold text-xs">DAY {day.day}</span>
-                    <button type="button" onClick={() => setItinerary(itinerary.filter((_,i) => i!==idx))} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <input value={day.title} onChange={e => { const ni=[...itinerary]; ni[idx].title=e.target.value; setItinerary(ni); }} placeholder="Day Title (e.g. Arrival in Manali)" className="col-span-2 px-3 py-2 rounded-lg border outline-none font-bold" />
-                    <textarea value={day.description} onChange={e => { const ni=[...itinerary]; ni[idx].description=e.target.value; setItinerary(ni); }} placeholder="Detailed description..." rows={2} className="col-span-2 px-3 py-2 rounded-lg border outline-none text-sm" />
-                    
-                    {/* Location & Accommodation */}
-                    <div>
-                      <input list={`locations-${idx}`} value={day.location} onChange={e => { const ni=[...itinerary]; ni[idx].location=e.target.value; setItinerary(ni); }} placeholder="Location (City)" className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
-                      <datalist id={`locations-${idx}`}>
-                        {allDests.map(d => <option key={d.id} value={d.name} />)}
-                      </datalist>
+              {itinerary.map((day, idx) => {
+                const dayLocationNames = (day.location || "")
+                  .split(/[,;&]/)
+                  .map((s: string) => s.trim().toLowerCase())
+                  .filter(Boolean);
+                const dayDestIds = allDests
+                  .filter(d => dayLocationNames.includes(d.name.toLowerCase()))
+                  .map(d => d.id);
+                const activeDestIds = dayDestIds.length > 0 ? dayDestIds : selectedDestIds;
+
+                return (
+                  <div key={idx} className="border border-gray-200 rounded-xl p-5 bg-gray-50">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="bg-[#1B3A6B] text-white px-3 py-1 rounded-lg font-bold text-xs">DAY {day.day}</span>
+                      <button type="button" onClick={() => setItinerary(itinerary.filter((_,i) => i!==idx))} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4"/></button>
                     </div>
-                    
-                    <div>
-                      <input list={`hotels-${idx}`} value={day.accommodation} onChange={e => { const ni=[...itinerary]; ni[idx].accommodation=e.target.value; setItinerary(ni); }} placeholder="Search or type Accommodation..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
-                      <datalist id={`hotels-${idx}`}>
-                        <option value="No Accommodation" />
-                        <option value="Overnight Journey" />
-                        {allGlobalHotels.map((h, hidx) => <option key={hidx} value={h.name}>{h.name} ({allDests.find(d => d.id === h.destinationId)?.name || 'Unknown'})</option>)}
-                      </datalist>
-                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <input value={day.title} onChange={e => { const ni=[...itinerary]; ni[idx].title=e.target.value; setItinerary(ni); }} placeholder="Day Title (e.g. Arrival in Manali)" className="col-span-2 px-3 py-2 rounded-lg border outline-none font-bold" />
+                      <textarea value={day.description} onChange={e => { const ni=[...itinerary]; ni[idx].description=e.target.value; setItinerary(ni); }} placeholder="Detailed description..." rows={2} className="col-span-2 px-3 py-2 rounded-lg border outline-none text-sm" />
+                      
+                      {/* Location & Accommodation */}
+                      <div>
+                        <input list={`locations-${idx}`} value={day.location} onChange={e => { const ni=[...itinerary]; ni[idx].location=e.target.value; setItinerary(ni); }} placeholder="Location (City)" className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
+                        <datalist id={`locations-${idx}`}>
+                          {allDests.map(d => <option key={d.id} value={d.name} />)}
+                        </datalist>
+                      </div>
+                      
+                      <div>
+                        <input list={`hotels-${idx}`} value={day.accommodation} onChange={e => { const ni=[...itinerary]; ni[idx].accommodation=e.target.value; setItinerary(ni); }} placeholder="Search or type Accommodation..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
+                        <datalist id={`hotels-${idx}`}>
+                          <option value="No Accommodation" />
+                          <option value="Overnight Journey" />
+                          {(() => {
+                            const filteredHotels = activeDestIds.length > 0
+                              ? allGlobalHotels.filter(h => activeDestIds.includes(h.destinationId))
+                              : allGlobalHotels;
+                            return filteredHotels.map((h, hidx) => (
+                              <option key={hidx} value={h.name}>
+                                {h.name} ({allDests.find(d => d.id === h.destinationId)?.name || 'Unknown'})
+                              </option>
+                            ));
+                          })()}
+                        </datalist>
+                      </div>
                     
                     {/* Meals Selection */}
                     <div className="col-span-2">
@@ -487,7 +506,14 @@ export default function PackageForm() {
                     {/* Attractions Selection - pinned from CMS */}
                     <div className="col-span-2">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-bold text-gray-500">Attractions & Sightseeing</p>
+                        <p className="text-xs font-bold text-gray-500">
+                          Attractions &amp; Sightseeing
+                          {dayDestIds.length > 0 && (
+                            <span className="text-[10px] text-blue-600 font-semibold normal-case ml-1.5 bg-blue-50 px-1.5 py-0.5 rounded">
+                              Filtered by {day.location}
+                            </span>
+                          )}
+                        </p>
                         <span className="text-[10px] text-gray-400">Click to select/deselect</span>
                       </div>
                       {/* Selected attractions pinned at top */}
@@ -511,10 +537,10 @@ export default function PackageForm() {
                       {/* All available attractions from CMS */}
                       <div className="flex flex-wrap gap-1.5 p-2 bg-white rounded-b-lg border min-h-[42px] max-h-32 overflow-y-auto">
                         {(() => {
-                          const filtered = selectedDestIds.length > 0
-                            ? allAttractions.filter(a => selectedDestIds.includes(a.destinationId))
+                          const filtered = activeDestIds.length > 0
+                            ? allAttractions.filter(a => activeDestIds.includes(a.destinationId))
                             : allAttractions;
-                          if (filtered.length === 0 && selectedDestIds.length > 0) {
+                          if (filtered.length === 0 && activeDestIds.length > 0) {
                             return <span className="text-xs text-gray-400 p-1">No attractions found for selected destinations. Add them in the Attractions page.</span>;
                           }
                           if (filtered.length === 0) {
@@ -528,15 +554,15 @@ export default function PackageForm() {
                                 const ni=[...itinerary];
                                 ni[idx].attractionIds = [...(ni[idx].attractionIds||[]), attr.id];
                                 setItinerary(ni);
-                              }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-white text-gray-600 border-gray-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition">
+                              }} className="text-[9.5px] px-2 py-0.5 rounded-md font-semibold border bg-white text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition">
                                 {attr.name}
                               </button>
                             );
                           });
                         })()}
-                        {!selectedDestIds.length && allAttractions.length > 0 && (
+                        {!activeDestIds.length && allAttractions.length > 0 && (
                           <div className="w-full mt-1 pt-1 border-t border-gray-100">
-                            <span className="text-[9px] text-amber-600 font-bold">⚠ Select destinations in Tab 2 to filter by location</span>
+                            <span className="text-[9px] text-amber-600 font-bold">⚠ Select city above to filter attractions by location</span>
                           </div>
                         )}
                       </div>
@@ -591,26 +617,57 @@ export default function PackageForm() {
                           }} className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition whitespace-nowrap">+ Add</button>
                         </div>
                         {/* CMS Activity suggestions */}
-                        {allActivities.length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Suggestions from CMS ({allActivities.length})</p>
-                            <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 rounded-lg border max-h-28 overflow-y-auto">
-                              {allActivities.map((activity) => {
-                                const isSel = (day.activities || []).includes(activity);
-                                if (isSel) return null;
-                                return (
-                                  <button key={`${idx}-suggest-${activity}`} type="button" onClick={() => {
-                                    const ni = [...itinerary];
-                                    ni[idx].activities = [...new Set([...(ni[idx].activities || []), activity])];
-                                    setItinerary(ni);
-                                  }} className="text-[10px] px-2 py-1 rounded-full font-bold border bg-white text-gray-600 border-gray-200 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition">
-                                    {activity}
-                                  </button>
-                                );
-                              })}
+                        {(() => {
+                          const filteredSuggestions = activeDestIds.length > 0
+                            ? (() => {
+                                const cmsNames = allCmsActivities
+                                  .filter(a => a.isActive !== false && activeDestIds.includes(a.destinationId))
+                                  .map(a => String(a.name || a.title || "").trim())
+                                  .filter(Boolean);
+                                const attrNames = allAttractions
+                                  .filter(a => activeDestIds.includes(a.destinationId))
+                                  .flatMap(a => Array.isArray(a.activities) ? a.activities.map((item: any) => String(item).trim()) : []);
+                                return Array.from(new Set([...cmsNames, ...attrNames].map(item => String(item).trim()).filter(Boolean)));
+                              })()
+                            : allActivities;
+
+                          if (filteredSuggestions.length === 0) return null;
+
+                          return (
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                                <span>
+                                  Suggestions from CMS ({filteredSuggestions.length})
+                                  {dayDestIds.length > 0 && (
+                                    <span className="text-green-600 normal-case ml-1.5 bg-green-50 px-1.5 py-0.5 rounded font-semibold">
+                                      Filtered by {day.location}
+                                    </span>
+                                  )}
+                                </span>
+                              </p>
+                              <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 rounded-lg border max-h-28 overflow-y-auto">
+                                {filteredSuggestions.map((activity) => {
+                                  const isSel = (day.activities || []).includes(activity);
+                                  if (isSel) return null;
+                                  return (
+                                    <button
+                                      key={`${idx}-suggest-${activity}`}
+                                      type="button"
+                                      onClick={() => {
+                                        const ni = [...itinerary];
+                                        ni[idx].activities = [...new Set([...(ni[idx].activities || []), activity])];
+                                        setItinerary(ni);
+                                      }}
+                                      className="text-[9.5px] px-2 py-0.5 rounded-md font-semibold border bg-white text-gray-700 border-gray-200 hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition"
+                                    >
+                                      {activity}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -642,7 +699,7 @@ export default function PackageForm() {
                                 if(isSel) ni[idx].diningStops = stops.filter(s=>s.diningPointId!==d.id);
                                 else ni[idx].diningStops = [...stops, { diningPointId: d.id, mealType: "lunch" }];
                                 setItinerary(ni);
-                              }} className={`text-[10px] px-2 py-1 rounded-full font-bold border transition ${isSel ? "bg-orange-500 text-white border-orange-500":"bg-white text-gray-600 border-gray-200 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700"}`}>
+                              }} className={`text-[9.5px] px-2 py-0.5 rounded-md font-semibold border transition ${isSel ? "bg-orange-500 text-white border-orange-500":"bg-white text-gray-700 border-gray-200 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700"}`}>
                                 🍽️ {d.name}{destName ? ` (${destName})` : ''}
                               </button>
                             );
@@ -659,7 +716,8 @@ export default function PackageForm() {
                     {/* Basic Meals String (Legacy - Removed to favor structured UI above) */}
                   </div>
                 </div>
-              ))}
+              );
+            })}
               {!itinerary.length && <p className="text-gray-400 text-sm text-center py-6">No days added yet.</p>}
             </div>
           </div>
