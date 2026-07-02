@@ -939,8 +939,8 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
             </div>
 
             {activeTab === "cities" && (() => {
-              const gridPlaces = childPlaces.slice(0, 20);
-              const tagPlaces = childPlaces.slice(20);
+              const gridPlaces = childPlaces.slice(0, 16);
+              const tagPlaces = childPlaces.slice(16);
               return (
                 <div>
                   {/* Mobile 2-Column Balanced Masonry (md:hidden) */}
@@ -1022,7 +1022,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         </section>
       )}
       {/* Inline Detailed Rich Content (SEO/AEO friendly) */}
-      <section className={cn("bg-white border-t border-slate-100 transition-all duration-500", showDetails ? "pt-6 pb-3 md:pt-12 md:pb-4" : "py-6 md:py-12")}>
+      <section className={cn("bg-white border-t border-slate-100 transition-all duration-500", showDetails ? "pt-6 pb-3 md:pt-12 md:pb-4" : "py-6 md:py-6")}>
         <div className="container mx-auto px-4 max-w-6xl">
           <div className={cn("text-center max-w-5xl mx-auto", showDetails ? "mb-6 md:mb-8" : "mb-0")}>
             <h2 className="text-lg md:text-xl font-sans font-bold text-primary mb-3">
@@ -1415,8 +1415,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const [reviews, setReviews] = useState<any[]>(FALLBACK_REVIEWS);
   const [emblaRef, emblaApi] = useEmblaCarousel(
-    { loop: true, align: "start", slidesToScroll: 1 },
-    [Autoplay({ delay: 4000, stopOnInteraction: true, stopOnMouseEnter: true })]
+    { loop: true, align: "start", slidesToScroll: 1 }
   );
 
   useEffect(() => {
@@ -1431,8 +1430,9 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
   const toggle = (idx: number) => setOpenIdx(prev => prev === idx ? null : idx);
 
   return (
-    <section className="py-8 md:py-16 bg-gradient-to-b from-white to-slate-50 border-t border-slate-100">
-      <div className="container mx-auto px-4 max-w-4xl">
+    <section className="py-6 md:py-8 bg-gradient-to-b from-white to-slate-50 border-t border-slate-100">
+      {/* FAQ Container - Max width 5xl */}
+      <div className="mx-auto px-4 max-w-5xl">
 
         {/* Section Header */}
         <motion.div
@@ -1442,7 +1442,7 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="text-center mb-6 md:mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-lg mb-5">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 rounded-lg mb-2">
             <HelpCircle className="w-4 h-4 text-primary" />
             <span className="text-xs font-black uppercase tracking-[0.25em] text-primary">Frequently Asked Questions</span>
           </div>
@@ -1535,20 +1535,24 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
             );
           })}
         </div>
+      </div>
 
+      {/* Reviews Container - Full width container max-w-6xl */}
+      <div className="container mx-auto px-4 max-w-6xl mt-12 md:mt-20">
         {/* ── Happy Clients Reviews Carousel ── */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mt-8 md:mt-16 -mx-4 px-4 py-6 md:py-10 bg-slate-50/30 border-t border-slate-100 rounded-lg overflow-hidden"
+          className="bg-slate-50/30 border-t border-slate-100 rounded-lg overflow-hidden py-4 md:py-6"
         >
           {/* Header — exact match to /customized-holidays */}
-          <div className="flex items-center justify-between mb-6 md:mb-10">
+          <div className="flex items-center justify-between mb-2 md:mb-2">
             <h3 className="text-base md:text-lg font-black text-primary uppercase tracking-tight flex items-center gap-3">
               What customers <span className="text-accent">says about us</span>
             </h3>
+            <p className="text-slate-600 text-sm md:text-base max-w-lg mx-auto">Here are some of our happy clients, read more about their travel experiences with us.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => emblaApi?.scrollPrev()}
@@ -1569,19 +1573,18 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
 
           {/* Embla Carousel — exact same structure as /customized-holidays */}
           <div className="relative">
-            <div className="overflow-hidden px-4 -mx-4" ref={emblaRef}>
-              <div className="flex gap-8">
+            <div className="overflow-hidden px-4 -mx-4 py-4 -my-4" ref={emblaRef}>
+              <div className="flex -ml-6">
                 {reviews.map((rev, i) => (
-                  <div key={rev.id || i} className="flex-[0_0_90%] sm:flex-[0_0_45%] lg:flex-[0_0_31%] min-w-0 py-4">
+                  <div key={rev.id || i} className="flex-[0_0_90%] sm:flex-[0_0_45%] lg:flex-[0_0_31%] min-w-0 pl-6 py-4">
                     <div className="relative bg-white rounded-lg p-5 md:p-8 shadow-xl shadow-slate-200/50 border border-slate-50 h-full flex flex-col">
 
                       {/* Avatar badge — overlapping top-left corner */}
-                      <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
-                        <img
-                          src={rev.avatar || rev.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rev.name)}`}
-                          alt={rev.name}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="absolute -top-3.5 -left-3.5 w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-br from-primary to-[#1D4ED8] flex items-center justify-center text-white font-bold text-xs tracking-wider select-none shrink-0">
+                        {rev.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
+                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border border-white flex items-center justify-center shadow-sm">
+                          <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />
+                        </div>
                       </div>
 
                       {/* Review text — NOT italic */}
@@ -1620,7 +1623,6 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
             </div>
           </div>
         </motion.div>
-
       </div>
     </section>
   );
