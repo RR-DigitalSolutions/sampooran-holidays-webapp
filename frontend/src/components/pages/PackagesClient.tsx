@@ -172,7 +172,7 @@ function MultiSelectDropdown({
             <span>All Destinations</span>
             {isAllSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
           </button>
-          
+
           <div className="border-t border-slate-100 my-1" />
 
           {options.map(opt => {
@@ -297,7 +297,7 @@ export default function PackagesPage() {
         const themes = data.themes?.map((t: any) => t.name) || [];
         const unique = Array.from(new Set([...cats, ...themes])) as string[];
         if (unique.length > 0) setDynamicCategories(["All", ...unique]);
-      } catch {}
+      } catch { }
     }
     fetchConfig();
   }, []);
@@ -569,7 +569,7 @@ export default function PackagesPage() {
         <div className="container mx-auto px-4 flex items-center justify-between gap-3 text-xs">
           <div className="flex-1 grid grid-cols-4 gap-4 divide-x divide-white/10">
             <div className="flex flex-col min-w-0">
-              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Starting From</span>
+              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Start From</span>
               <select
                 value={startingFrom}
                 onChange={e => setStartingFrom(e.target.value)}
@@ -591,7 +591,7 @@ export default function PackagesPage() {
               />
             </div>
             <div className="flex flex-col min-w-0 pl-3">
-              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Starting Date</span>
+              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Start Date</span>
               <input
                 type="date"
                 value={startDate}
@@ -648,49 +648,6 @@ export default function PackagesPage() {
 
           {/* ─── RESULTS AREA ───────────────────────────────────────── */}
           <div className="flex-1 min-w-0">
-
-            {/* Mobile Search Card - visible only on mobile/tablet */}
-            <div className="block md:hidden bg-[#0B1E42] rounded-xl p-3 text-white mb-4 shadow-md">
-              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                <div>
-                  <span className="text-[8px] uppercase tracking-wider text-slate-400 block mb-0.5 font-bold">Going To</span>
-                  <MultiSelectDropdown
-                    options={availableDestinations}
-                    selected={selectedDestinations}
-                    onChange={setSelectedDestinations}
-                    placeholder="Any Destination"
-                    darkTheme={true}
-                  />
-                </div>
-                <div>
-                  <span className="text-[8px] uppercase tracking-wider text-slate-400 block mb-0.5 font-bold">Theme</span>
-                  <select
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                    className="bg-white/10 text-white rounded-md px-1.5 py-1 w-full outline-none text-[11px] font-semibold cursor-pointer border border-white/10"
-                  >
-                    {dynamicCategories.map(cat => (
-                      <option key={cat} value={cat} className="text-slate-800">{cat}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="relative text-xs">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={q}
-                  onChange={e => setQ(e.target.value)}
-                  placeholder="Search package name..."
-                  className="w-full bg-white/10 text-white rounded-md py-1.5 pl-8 pr-7 outline-none text-[11px] font-medium placeholder:text-slate-400 border border-white/10 focus:border-[#1E73BE] transition"
-                />
-                {q && (
-                  <button onClick={() => setQ("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">

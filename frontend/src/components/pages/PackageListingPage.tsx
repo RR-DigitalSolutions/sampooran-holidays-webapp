@@ -4,13 +4,126 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Calendar, MapPin, Loader2, Star, Clock, Filter, SlidersHorizontal, Search, Info, X, Mountain, Activity, Sparkles, ShieldCheck, Utensils, Compass, LayoutGrid, List as ListIcon, BookOpen, Globe, CloudSun, Bus, CreditCard, MessageCircle, Heart, PhoneCall, ShoppingBag, Briefcase, ChevronDown, HelpCircle, ChevronLeft, Quote, Hotel, Car, Bed, Binoculars, ArrowDown, Camera, User, Headset } from "lucide-react";
+import { ChevronRight, Calendar, MapPin, Loader2, Star, Clock, Filter, SlidersHorizontal, Search, Info, X, Mountain, Activity, Sparkles, ShieldCheck, Utensils, Compass, LayoutGrid, List as ListIcon, BookOpen, Globe, CloudSun, Bus, CreditCard, MessageCircle, Heart, PhoneCall, ShoppingBag, Briefcase, ChevronDown, HelpCircle, ChevronLeft, Quote, Hotel, Car, Bed, Binoculars, ArrowDown, Camera, User, Headset, IndianRupee, Check, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PackageCard } from "@/components/PackageCard";
 import { Youtube } from "lucide-react";
 import { cn, validateImageUrl, getYouTubeId } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+
+interface MultiSelectDropdownProps {
+  options: { name: string; count: number }[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder: string;
+  darkTheme?: boolean;
+}
+
+function MultiSelectDropdown({
+  options,
+  selected,
+  onChange,
+  placeholder,
+  darkTheme = false,
+}: MultiSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleOption = (name: string) => {
+    if (selected.includes(name)) {
+      onChange(selected.filter(item => item !== name));
+    } else {
+      onChange([...selected, name]);
+    }
+  };
+
+  const isAllSelected = selected.length === 0;
+
+  const displayValue = isAllSelected
+    ? placeholder
+    : selected.join(", ");
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-full flex items-center justify-between gap-1 transition-all duration-200 text-left cursor-pointer",
+          darkTheme
+            ? "bg-transparent text-white font-bold text-xs border-0 py-0.5"
+            : "bg-white border border-slate-205 text-slate-700 text-xs px-2.5 py-1.5 rounded-lg hover:border-primary/40 focus:ring-2 focus:ring-accent/40 font-medium"
+        )}
+      >
+        <span className={cn("truncate", darkTheme ? "max-w-[120px] md:max-w-[150px]" : "max-w-[200px]")}>
+          {displayValue}
+        </span>
+        <ChevronDown className={cn("w-3 h-3 shrink-0 opacity-60 transition-transform duration-200", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <div
+          className={cn(
+            "absolute z-50 mt-1.5 w-full max-h-60 overflow-y-auto rounded-lg border shadow-xl bg-white p-1.5 space-y-0.5 border-slate-200"
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              onChange([]);
+              setIsOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-2 py-1.5 text-left text-xs font-semibold rounded-md hover:bg-slate-50 transition-colors text-slate-700"
+          >
+            <span>All Places</span>
+            {isAllSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+          </button>
+          
+          <div className="border-t border-slate-100 my-1" />
+
+          {options.map(opt => {
+            const isChecked = selected.includes(opt.name);
+            return (
+              <button
+                key={opt.name}
+                type="button"
+                onClick={() => toggleOption(opt.name)}
+                className={cn(
+                  "w-full flex items-center justify-between px-2 py-1.5 text-left text-xs rounded-md hover:bg-slate-50 transition-colors font-medium text-slate-700",
+                  isChecked && "bg-primary/5 text-primary"
+                )}
+              >
+                <span className="truncate pr-2">{opt.name} ({opt.count})</span>
+                {isChecked && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-slate-100 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 mb-1">{title}</p>
+      {children}
+    </div>
+  );
+}
+
 
 export function PackageListingPage({ entityType, entityData, searchParams }: { entityType: string, entityData: any, searchParams: any }) {
   const router = useRouter();
@@ -37,43 +150,15 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
   const [showDetails, setShowDetails] = useState(false);
 
   // Dynamic filter states
-  const [selectedBudgets, setSelectedBudgets] = useState<string[]>([]);
-  const [selectedDurations, setSelectedDurations] = useState<string[]>([]);
-  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [maxBudget, setMaxBudget] = useState(100000);
+  const [maxDuration, setMaxDuration] = useState(15);
+  const [selectedTheme, setSelectedTheme] = useState("All");
+  const [minRating, setMinRating] = useState(0);
   const [citySearch, setCitySearch] = useState("");
   const [showAllCities, setShowAllCities] = useState(false);
   const [sortBy, setSortBy] = useState("Popularity");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    pricing: true,
-    duration: true,
-    themes: true,
-    cities: true
-  });
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const toggleBudget = (label: string) => {
-    setSelectedBudgets(prev =>
-      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
-    );
-  };
-
-  const toggleDuration = (label: string) => {
-    setSelectedDurations(prev =>
-      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
-    );
-  };
-
-  const toggleTheme = (label: string) => {
-    setSelectedThemes(prev =>
-      prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]
-    );
-  };
 
   const toggleCity = (city: string) => {
     setSelectedCities(prev =>
@@ -82,13 +167,24 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
   };
 
   const resetFilters = () => {
-    setSelectedBudgets([]);
-    setSelectedDurations([]);
-    setSelectedThemes([]);
     setSelectedCities([]);
+    setMaxBudget(100000);
+    setMaxDuration(15);
+    setSelectedTheme("All");
+    setMinRating(0);
     setCitySearch("");
     setShowAllCities(false);
   };
+
+  const hasFilters = selectedCities.length > 0 || maxBudget !== 100000 || maxDuration !== 15 || selectedTheme !== "All" || minRating > 0;
+
+  const activeFilterCount = [
+    selectedCities.length > 0,
+    maxBudget !== 100000,
+    maxDuration !== 15,
+    selectedTheme !== "All",
+    minRating > 0,
+  ].filter(Boolean).length;
 
   // Extract all available cities from the packages loaded on the page
   const availableCities = useMemo(() => {
@@ -131,6 +227,141 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
     return displayedCities.slice(0, 5);
   }, [displayedCities, showAllCities, citySearch]);
 
+  const availableDestinations = useMemo(() => {
+    return availableCities.map(name => ({
+      name,
+      count: cityCounts[name] || 0
+    }));
+  }, [availableCities, cityCounts]);
+
+  const FilterContent = (
+    <div className="space-y-0">
+      {availableCities.length > 0 && (
+        <FilterSection title="Cities / Places">
+          <MultiSelectDropdown
+            options={availableDestinations}
+            selected={selectedCities}
+            onChange={setSelectedCities}
+            placeholder="All Places"
+          />
+        </FilterSection>
+      )}
+
+      <FilterSection title="Theme / Category">
+        <select
+          value={selectedTheme}
+          onChange={e => setSelectedTheme(e.target.value)}
+          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-white font-medium cursor-pointer"
+        >
+          {["All", "Honeymoon", "Family", "Adventure", "Wildlife", "Luxury"].map(theme => (
+            <option key={theme} value={theme}>{theme}</option>
+          ))}
+        </select>
+      </FilterSection>
+
+      <FilterSection title="Duration">
+        <div className="space-y-1 py-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-primary opacity-80" />
+              {maxDuration === 15 ? "Any Duration" : `Up to ${maxDuration} Days`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="15"
+            step="1"
+            value={maxDuration}
+            onChange={e => setMaxDuration(Number(e.target.value))}
+            className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5A623]"
+          />
+          <div className="flex justify-between text-[9px] text-slate-450 font-semibold px-0.5">
+            <span>1 Day</span>
+            <span>7d</span>
+            <span>15d+</span>
+          </div>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Budget per Person">
+        <div className="space-y-1 py-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1.5">
+              <IndianRupee className="w-3.5 h-3.5 text-primary opacity-80" />
+              {maxBudget === 100000 ? "Any Budget" : `Up to ₹${maxBudget.toLocaleString("en-IN")}`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="5000"
+            max="100000"
+            step="5000"
+            value={maxBudget}
+            onChange={e => setMaxBudget(Number(e.target.value))}
+            className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5A623]"
+          />
+          <div className="flex justify-between text-[9px] text-slate-450 font-semibold px-0.5">
+            <span>₹5K</span>
+            <span>₹50K</span>
+            <span>₹1L+</span>
+          </div>
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Guest Rating">
+        <div className="space-y-1 py-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 text-primary opacity-80" />
+              {minRating === 0 ? "Any Rating" : `${minRating}★ & Above`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="5"
+            step="0.5"
+            value={minRating}
+            onChange={e => setMinRating(Number(e.target.value))}
+            className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5A623]"
+          />
+          <div className="flex justify-between text-[9px] text-slate-455 font-semibold px-0.5">
+            <span>Any</span>
+            <span>3★</span>
+            <span>4★</span>
+            <span>5★</span>
+          </div>
+        </div>
+      </FilterSection>
+
+      <div className="rounded-xl bg-gradient-to-br from-primary via-[#0D1B3E] to-[#0B1528] p-3 text-white mt-2">
+        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-[#F5A623] mb-1.5">Why Book With Us</p>
+        <div className="space-y-2">
+          {[
+            { icon: ShieldCheck, text: "Verified stays & verified transfers" },
+            { icon: Zap, text: "Instant booking confirmation" },
+            { icon: Headset, text: "24/7 dedicated travel support" },
+            { icon: CreditCard, text: "Best price guaranteed — always" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <div className="w-5 h-5 rounded bg-white/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                <item.icon className="w-3 h-3 text-[#F5A623]" />
+              </div>
+              <p className="text-white/80 text-[10px] leading-tight font-medium">{item.text}</p>
+            </div>
+          ))}
+        </div>
+        <Link
+          href="/customized-holidays"
+          className="mt-3 flex items-center justify-center gap-1.5 w-full bg-[#F5A623] text-primary font-extrabold text-[10px] py-1.5 rounded-md hover:brightness-110 transition-all shadow-sm"
+        >
+          Get Custom Itinerary <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  );
+
   const filteredPackages = useMemo(() => {
     let result = [...packages];
 
@@ -142,44 +373,34 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
       });
     }
 
-    // Filter by Budgets
-    if (selectedBudgets.length > 0) {
+    // Filter by Budget slider
+    if (maxBudget < 100000) {
       result = result.filter(p => {
         const price = Number(p.pricePerPerson || p.price || 0);
-        return selectedBudgets.some(b => {
-          if (b === "Under ₹10,000") return price < 10000;
-          if (b === "₹10,000 - ₹20,000") return price >= 10000 && price <= 20000;
-          if (b === "₹20,000 - ₹40,000") return price >= 20000 && price <= 40000;
-          if (b === "Above ₹40,000") return price > 40000;
-          return false;
-        });
+        return price <= maxBudget;
       });
     }
 
-    // Filter by Durations
-    if (selectedDurations.length > 0) {
+    // Filter by Duration slider
+    if (maxDuration < 15) {
       result = result.filter(p => {
         const dur = p.duration || 0;
-        return selectedDurations.some(d => {
-          if (d === "1 to 3 Days") return dur >= 1 && dur <= 3;
-          if (d === "4 to 6 Days") return dur >= 4 && dur <= 6;
-          if (d === "7 to 9 Days") return dur >= 7 && dur <= 9;
-          if (d === "10+ Days") return dur >= 10;
-          return false;
-        });
+        return dur <= maxDuration;
       });
     }
 
-    // Filter by Themes
-    if (selectedThemes.length > 0) {
+    // Filter by Theme select
+    if (selectedTheme !== "All") {
       result = result.filter(p => {
-        const cat = (p.category || "").toLowerCase();
-        const tags = (p.tags || []).map((t: string) => t.toLowerCase());
-        return selectedThemes.some(t => {
-          const themeLower = t.toLowerCase();
-          return cat.includes(themeLower) || tags.some((tag: string) => tag.includes(themeLower));
-        });
+        const cat = (p.category || "").toLowerCase().trim();
+        const sc = selectedTheme.toLowerCase().trim();
+        return cat.includes(sc) || sc.includes(cat);
       });
+    }
+
+    // Filter by Guest Rating slider
+    if (minRating > 0) {
+      result = result.filter(p => (p.rating || 4.8) >= minRating);
     }
 
     // Sort packages
@@ -194,7 +415,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
     }
 
     return result;
-  }, [packages, selectedCities, selectedBudgets, selectedDurations, selectedThemes, sortBy]);
+  }, [packages, selectedCities, maxBudget, maxDuration, selectedTheme, minRating, sortBy]);
 
 
   useEffect(() => {
@@ -256,7 +477,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 
   // Scroll to results when filter state changes to prevent losing focus to bottom elements
   useEffect(() => {
-    if (selectedBudgets.length > 0 || selectedDurations.length > 0 || selectedThemes.length > 0 || selectedCities.length > 0) {
+    if (hasFilters) {
       const el = document.getElementById('packages-section');
       if (el) {
         setTimeout(() => {
@@ -264,7 +485,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         }, 100);
       }
     }
-  }, [selectedBudgets, selectedDurations, selectedThemes, selectedCities]);
+  }, [selectedCities, maxBudget, maxDuration, selectedTheme, minRating]);
 
   return (
     <div className="w-full flex flex-col font-sans overflow-x-hidden">
@@ -476,58 +697,99 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
             <span className="text-slate-700 font-medium">Packages</span>
           </div>
 
-          {/* Mobile Filter Chips — horizontal scroll, replaces sidebar on mobile */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-2 md:hidden no-scrollbar">
-            <button
-              onClick={() => setMobileFilterOpen(true)}
-              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all touch-manipulation"
-            >
-              <Filter className="w-3.5 h-3.5" /> Filters {(selectedBudgets.length + selectedDurations.length + selectedThemes.length + selectedCities.length) > 0 && `(${selectedBudgets.length + selectedDurations.length + selectedThemes.length + selectedCities.length})`}
-            </button>
-            {[
-              { label: "Honeymoon", type: "theme", value: "Honeymoon" },
-              { label: "Family", type: "theme", value: "Family" },
-              { label: "Adventure", type: "theme", value: "Adventure" },
-              { label: "Luxury", type: "theme", value: "Luxury" },
-              { label: "Under ₹10k", type: "budget", value: "Under ₹10,000" },
-              { label: "4-6 Days", type: "duration", value: "4 to 6 Days" }
-            ].map((chip) => {
-              const isActive = chip.type === "theme"
-                ? selectedThemes.includes(chip.value)
-                : chip.type === "budget"
-                  ? selectedBudgets.includes(chip.value)
-                  : selectedDurations.includes(chip.value);
-
-              const toggleFunc = chip.type === "theme"
-                ? () => toggleTheme(chip.value)
-                : chip.type === "budget"
-                  ? () => toggleBudget(chip.value)
-                  : () => toggleDuration(chip.value);
-
-              return (
-                <button
-                  key={chip.label}
-                  onClick={toggleFunc}
-                  className={cn(
-                    "shrink-0 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all touch-manipulation active:scale-95",
-                    isActive
-                      ? "bg-primary text-white border-primary shadow-sm"
-                      : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {chip.label}
-                </button>
-              );
-            })}
-            {(selectedBudgets.length + selectedDurations.length + selectedThemes.length + selectedCities.length) > 0 && (
+          {/* Mobile filter button and Active chips */}
+          <div className="space-y-3 mb-4 md:hidden">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
               <button
-                onClick={resetFilters}
-                className="shrink-0 px-3 py-1.5 text-xs font-bold text-red-500 bg-red-50 border border-red-200 rounded-lg active:scale-95 transition-all touch-manipulation"
+                onClick={() => setMobileFilterOpen(true)}
+                className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all touch-manipulation animate-in fade-in"
               >
-                Reset
+                <Filter className="w-3.5 h-3.5" /> Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
               </button>
+              {hasFilters && (
+                <button
+                  onClick={resetFilters}
+                  className="shrink-0 px-3 py-1.5 text-xs font-bold text-red-500 bg-red-50 border border-red-200 rounded-lg active:scale-95 transition-all touch-manipulation"
+                >
+                  Reset All
+                </button>
+              )}
+            </div>
+
+            {hasFilters && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {selectedCities.map(city => (
+                  <span key={city} className="inline-flex items-center gap-1 bg-primary/8 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-full border border-primary/10">
+                    <MapPin className="w-2.5 h-2.5 text-primary/80" /> {city}
+                    <button onClick={() => toggleCity(city)} className="hover:text-red-500 ml-0.5"><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                ))}
+                {maxBudget !== 100000 && (
+                  <span className="inline-flex items-center gap-1 bg-primary/8 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-full border border-primary/10">
+                    Up to ₹{maxBudget.toLocaleString("en-IN")}
+                    <button onClick={() => setMaxBudget(100000)} className="hover:text-red-500 ml-0.5"><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                )}
+                {maxDuration !== 15 && (
+                  <span className="inline-flex items-center gap-1 bg-primary/8 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-full border border-primary/10">
+                    Up to {maxDuration} Days
+                    <button onClick={() => setMaxDuration(15)} className="hover:text-red-500 ml-0.5"><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                )}
+                {selectedTheme !== "All" && (
+                  <span className="inline-flex items-center gap-1 bg-primary/8 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-full border border-primary/10">
+                    {selectedTheme}
+                    <button onClick={() => setSelectedTheme("All")} className="hover:text-red-500 ml-0.5"><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                )}
+                {minRating > 0 && (
+                  <span className="inline-flex items-center gap-1 bg-primary/8 text-primary text-[10px] font-semibold px-2.5 py-1 rounded-full border border-primary/10">
+                    <Star className="w-2.5 h-2.5 text-primary/80" /> {minRating}+ Stars
+                    <button onClick={() => setMinRating(0)} className="hover:text-red-500 ml-0.5"><X className="w-2.5 h-2.5" /></button>
+                  </span>
+                )}
+              </div>
             )}
           </div>
+
+          {/* Desktop Active Chips */}
+          {hasFilters && (
+            <div className="hidden md:flex flex-wrap gap-2 mb-4 items-center">
+              {selectedCities.map(city => (
+                <span key={city} className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                  <MapPin className="w-3 h-3 text-primary/80" /> {city}
+                  <button onClick={() => toggleCity(city)} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+              {maxBudget !== 100000 && (
+                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                  Up to ₹{maxBudget.toLocaleString("en-IN")}
+                  <button onClick={() => setMaxBudget(100000)}><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {maxDuration !== 15 && (
+                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                  Up to {maxDuration} Days
+                  <button onClick={() => setMaxDuration(15)}><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {selectedTheme !== "All" && (
+                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                  {selectedTheme}
+                  <button onClick={() => setSelectedTheme("All")}><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {minRating > 0 && (
+                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                  <Star className="w-3 h-3 text-primary/80" /> {minRating}+ Stars
+                  <button onClick={() => setMinRating(0)}><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              <button onClick={resetFilters} className="text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors px-2">
+                Clear all
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
 
@@ -538,209 +800,18 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   <h3 className="font-bold text-sm tracking-wide text-slate-800 uppercase">
                     Filters
                   </h3>
-                  <button
-                    onClick={resetFilters}
-                    className="text-xs font-bold text-primary hover:text-primary-dark transition-colors cursor-pointer uppercase tracking-wider"
-                  >
-                    Clear All
-                  </button>
-                </div>
-
-                {/* Pricing Accordion */}
-                <div className="py-3.5 px-4 border-b border-slate-100">
-                  <div
-                    onClick={() => toggleSection('pricing')}
-                    className="flex items-center justify-between cursor-pointer group select-none"
-                  >
-                    <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Pricing (Per Person)</h4>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.pricing && "rotate-180")} />
-                  </div>
-                  <AnimatePresence initial={false}>
-                    {expandedSections.pricing && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-2 mt-2.5">
-                          {["Under ₹10,000", "₹10,000 - ₹20,000", "₹20,000 - ₹40,000", "Above ₹40,000"].map((label) => (
-                            <label key={label} className="flex items-center gap-3 cursor-pointer group/item touch-manipulation">
-                              <input
-                                type="checkbox"
-                                checked={selectedBudgets.includes(label)}
-                                onChange={() => toggleBudget(label)}
-                                className="w-4 h-4 rounded border-slate-350 accent-primary cursor-pointer"
-                              />
-                              <span className="text-sm text-slate-600 group-hover/item:text-slate-900 font-medium transition-colors">{label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Duration Accordion */}
-                <div className="py-3.5 px-4 border-b border-slate-100">
-                  <div
-                    onClick={() => toggleSection('duration')}
-                    className="flex items-center justify-between cursor-pointer group select-none"
-                  >
-                    <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Duration</h4>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.duration && "rotate-180")} />
-                  </div>
-                  <AnimatePresence initial={false}>
-                    {expandedSections.duration && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-2 mt-2.5">
-                          {["1 to 3 Days", "4 to 6 Days", "7 to 9 Days", "10+ Days"].map((label) => (
-                            <label key={label} className="flex items-center gap-3 cursor-pointer group/item touch-manipulation">
-                              <input
-                                type="checkbox"
-                                checked={selectedDurations.includes(label)}
-                                onChange={() => toggleDuration(label)}
-                                className="w-4 h-4 rounded border-slate-350 accent-primary cursor-pointer"
-                              />
-                              <span className="text-sm text-slate-650 group-hover/item:text-slate-900 font-medium transition-colors">{label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Themes Accordion */}
-                <div className="py-3.5 px-4 border-b border-slate-100">
-                  <div
-                    onClick={() => toggleSection('themes')}
-                    className="flex items-center justify-between cursor-pointer group select-none"
-                  >
-                    <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Themes</h4>
-                    <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.themes && "rotate-180")} />
-                  </div>
-                  <AnimatePresence initial={false}>
-                    {expandedSections.themes && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-2 mt-2.5">
-                          {["Honeymoon", "Family", "Adventure", "Wildlife", "Luxury"].map((label) => (
-                            <label key={label} className="flex items-center gap-3 cursor-pointer group/item touch-manipulation">
-                              <input
-                                type="checkbox"
-                                checked={selectedThemes.includes(label)}
-                                onChange={() => toggleTheme(label)}
-                                className="w-4 h-4 rounded border-slate-350 accent-primary cursor-pointer"
-                              />
-                              <span className="text-sm text-slate-655 group-hover/item:text-slate-900 font-medium transition-colors">{label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Cities / Places Accordion (Dynamic) */}
-                {availableCities.length > 0 && (
-                  <div className="py-3.5 px-4">
-                    <div
-                      onClick={() => toggleSection('cities')}
-                      className="flex items-center justify-between cursor-pointer group select-none"
+                  {hasFilters && (
+                    <button
+                      onClick={resetFilters}
+                      className="text-xs font-bold text-primary hover:text-primary-dark transition-colors cursor-pointer uppercase tracking-wider"
                     >
-                      <h4 className="font-bold text-sm text-slate-805 group-hover:text-primary transition-colors">Cities / Places</h4>
-                      <ChevronDown className={cn("w-4 h-4 text-slate-500 transition-transform duration-200", expandedSections.cities && "rotate-180")} />
-                    </div>
-                    <AnimatePresence initial={false}>
-                      {expandedSections.cities && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-2.5">
-                            {/* Search Input */}
-                            {availableCities.length > 5 && (
-                              <div className="relative mb-2.5 flex items-center bg-white border border-slate-200 rounded-md focus-within:border-primary/45 transition-colors">
-                                <input
-                                  type="text"
-                                  placeholder="Search city/place..."
-                                  value={citySearch}
-                                  onChange={(e) => setCitySearch(e.target.value)}
-                                  className="w-full pl-3 pr-8 py-1.5 text-xs text-slate-700 placeholder-slate-400 bg-transparent outline-none focus:ring-0 font-medium"
-                                />
-                                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
-                                {citySearch && (
-                                  <button
-                                    onClick={() => setCitySearch("")}
-                                    className="absolute right-8 text-slate-400 hover:text-slate-650 p-1"
-                                    title="Clear search"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Scrollable Checklist */}
-                            <div className={cn(
-                              "space-y-0.5 pr-1 custom-scrollbar",
-                              (showAllCities || citySearch.trim()) && "max-h-48 overflow-y-auto"
-                            )}>
-                              {displayedCities.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic py-2 text-center font-medium">No matching places</p>
-                              ) : (
-                                visibleCitiesList.map((city) => (
-                                  <label key={city} className="flex items-center justify-between cursor-pointer group py-1 touch-manipulation transition-all">
-                                    <div className="flex items-center gap-3">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedCities.includes(city)}
-                                        onChange={() => toggleCity(city)}
-                                        className="w-4 h-4 rounded border-slate-305 accent-primary cursor-pointer"
-                                      />
-                                      <span className="text-sm text-slate-600 group-hover:text-slate-900 font-medium transition-colors">
-                                        {city}
-                                      </span>
-                                    </div>
-                                    <span className="text-xs text-slate-400 font-medium font-sans">
-                                      ({cityCounts[city] || 0})
-                                    </span>
-                                  </label>
-                                ))
-                              )}
-                            </div>
-
-                            {/* Show More / Show Less Link */}
-                            {displayedCities.length > 5 && !citySearch.trim() && (
-                              <button
-                                onClick={() => setShowAllCities(!showAllCities)}
-                                className="mt-2 text-xs text-primary font-bold hover:underline py-0.5 block text-left"
-                              >
-                                {showAllCities ? "Show Less" : `Show More (${displayedCities.length - 5} more)`}
-                              </button>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
+                      Clear All
+                    </button>
+                  )}
+                </div>
+                <div className="p-3.5">
+                  {FilterContent}
+                </div>
               </div>
             </div>
 
@@ -1270,141 +1341,8 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
               </div>
 
               {/* Scrollable Filters Content */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-6 pb-24">
-                {/* Cities / Places */}
-                {availableCities.length > 0 && (
-                  <div className="border-b border-slate-100 pb-5">
-                    <h4 className="font-bold text-sm text-slate-800 mb-3">Cities / Places</h4>
-
-                    {/* Search Input for Mobile */}
-                    {availableCities.length > 4 && (
-                      <div className="relative mb-3 flex items-center bg-slate-50 border border-slate-200 rounded-lg focus-within:border-primary/45 transition-colors">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Search city/place..."
-                          value={citySearch}
-                          onChange={(e) => setCitySearch(e.target.value)}
-                          className="w-full pl-9 pr-8 py-2 text-xs text-slate-700 placeholder-slate-400 bg-transparent outline-none focus:ring-0 font-medium"
-                        />
-                        {citySearch && (
-                          <button
-                            onClick={() => setCitySearch("")}
-                            className="absolute right-2 text-slate-400 hover:text-slate-650 p-1"
-                            title="Clear search"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Scrollable Container with checkbox pills for Mobile */}
-                    <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
-                      {displayedCities.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic py-2 text-center font-medium">No matching places</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {displayedCities.map((city) => {
-                            const isSelected = selectedCities.includes(city);
-                            return (
-                              <button
-                                key={city}
-                                onClick={() => toggleCity(city)}
-                                className={cn(
-                                  "py-2 px-3 text-xs font-bold rounded-lg border transition-all text-center touch-manipulation active:scale-95 flex items-center gap-1.5",
-                                  isSelected
-                                    ? "bg-primary text-white border-primary shadow-sm"
-                                    : "bg-slate-50 text-slate-600 border-slate-200"
-                                )}
-                              >
-                                <span>{city}</span>
-                                <span className={cn(
-                                  "text-[9px] font-black px-1.5 py-0.5 rounded-md",
-                                  isSelected ? "bg-white/20 text-white" : "bg-slate-200/60 text-slate-500"
-                                )}>
-                                  {cityCounts[city] || 0}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Budget */}
-                <div className="border-b border-slate-100 pb-5">
-                  <h4 className="font-bold text-sm text-slate-800 mb-3">Pricing (Per Person)</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["Under ₹10,000", "₹10,000 - ₹20,000", "₹20,000 - ₹40,000", "Above ₹40,000"].map((label) => {
-                      const isSelected = selectedBudgets.includes(label);
-                      return (
-                        <button
-                          key={label}
-                          onClick={() => toggleBudget(label)}
-                          className={cn(
-                            "py-2.5 px-3 text-xs font-bold rounded-lg border transition-all text-center touch-manipulation active:scale-95",
-                            isSelected
-                              ? "bg-primary text-white border-primary shadow-sm"
-                              : "bg-slate-50 text-slate-600 border-slate-200"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Duration */}
-                <div className="border-b border-slate-100 pb-5">
-                  <h4 className="font-bold text-sm text-slate-800 mb-3">Duration</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {["1 to 3 Days", "4 to 6 Days", "7 to 9 Days", "10+ Days"].map((label) => {
-                      const isSelected = selectedDurations.includes(label);
-                      return (
-                        <button
-                          key={label}
-                          onClick={() => toggleDuration(label)}
-                          className={cn(
-                            "py-2.5 px-3 text-xs font-bold rounded-lg border transition-all text-center touch-manipulation active:scale-95",
-                            isSelected
-                              ? "bg-primary text-white border-primary shadow-sm"
-                              : "bg-slate-50 text-slate-600 border-slate-200"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Themes */}
-                <div>
-                  <h4 className="font-bold text-sm text-slate-800 mb-3">Themes</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {["Honeymoon", "Family", "Adventure", "Wildlife", "Luxury"].map((label) => {
-                      const isSelected = selectedThemes.includes(label);
-                      return (
-                        <button
-                          key={label}
-                          onClick={() => toggleTheme(label)}
-                          className={cn(
-                            "py-2.5 px-4 text-xs font-bold rounded-lg border transition-all touch-manipulation active:scale-95",
-                            isSelected
-                              ? "bg-primary text-white border-primary shadow-sm"
-                              : "bg-slate-50 text-slate-600 border-slate-200"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              <div className="flex-1 overflow-y-auto p-5 pb-24">
+                {FilterContent}
               </div>
 
               {/* Bottom Sticky Action Bar */}
