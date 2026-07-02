@@ -225,7 +225,7 @@ function PackageCardComponent({
         </div>
 
         {/* Mobile-only: compact price + CTA row pinned at the bottom */}
-        <div className="flex md:hidden items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50">
+        <div className="flex md:hidden items-center justify-between gap-3 px-3 py-2 md:px-4 md:py-3 border-t border-slate-100 bg-slate-50">
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 mb-0.5">
               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
@@ -456,7 +456,7 @@ function PackageCardComponent({
         </div>
 
         {/* Content Section */}
-        <div className="p-4 flex flex-col flex-1">
+        <div className="p-3 md:p-4 flex flex-col flex-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1">
               <div className="flex gap-0.5">
@@ -471,27 +471,27 @@ function PackageCardComponent({
             </div>
           </div>
 
-          <h3 className="text-[15px] font-bold text-primary leading-tight mb-3 group-hover:text-accent transition-colors line-clamp-1">
+          <h3 className="text-sm font-semibold md:text-[15px] md:font-bold text-primary leading-tight mb-2 md:mb-3 group-hover:text-accent transition-colors line-clamp-1">
             {pkg.name}
           </h3>
 
-          <div className="flex items-center gap-3 mb-3 py-1.5 border-y border-slate-50">
+          <div className="flex items-center gap-1.5 md:gap-3 mb-2.5 md:mb-3 py-1.5 border-y border-slate-50">
             {inclusionList.map((inc, i) => (
               <div key={i} className="flex flex-col items-center gap-0.5 group/inc">
-                <div className="w-7 h-7 rounded-full bg-[#ebf3fc] border border-[#dbe7f6] flex items-center justify-center transition-colors">
-                  <inc.Icon className="w-3.5 h-3.5 text-accent" />
+                <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-[#ebf3fc] border border-[#dbe7f6] flex items-center justify-center transition-colors">
+                  <inc.Icon className="w-3 md:w-3.5 h-3 md:h-3.5 text-accent" />
                 </div>
-                <span className="text-[7px] font-bold text-slate-600">{inc.label}</span>
+                <span className="text-[6.5px] md:text-[7px] font-bold text-slate-600">{inc.label}</span>
               </div>
             ))}
           </div>
 
           {/* Tour Highlights */}
-          <div className="space-y-1.5 mb-3">
+          <div className="space-y-1 md:space-y-1.5 mb-2.5 md:mb-3">
             <p className="text-[9px] font-bold text-slate-500 px-1 mb-0.5">Tour Highlights</p>
             <div className="grid grid-cols-1 gap-1">
               {displayHighlights.map((h, i) => (
-                <div key={i} className="flex items-start gap-2 text-[10px] text-slate-600 font-semibold">
+                <div key={i} className="flex items-start gap-1.5 md:gap-2 text-[9px] md:text-[10px] text-slate-600 font-medium md:font-semibold">
                   <div className="w-1 h-1 rounded-full bg-accent mt-1.5 shrink-0" />
                   <span className="line-clamp-1 leading-tight">{h}</span>
                 </div>

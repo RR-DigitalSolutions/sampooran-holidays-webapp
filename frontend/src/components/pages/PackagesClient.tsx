@@ -10,7 +10,7 @@ import {
   ChevronDown, MapPin, Clock, IndianRupee, Star,
   Plane, Shield, Headphones, Zap, TrendingUp, Filter,
   CheckCircle2, ArrowRight, Sparkles, Mountain, Heart,
-  Users, Briefcase, Trees, Camera, Globe, BookOpen,
+  Users, Briefcase, Trees, Camera, Globe, BookOpen, Check,
 } from "lucide-react";
 import { getApiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,112 @@ const TRUST_BADGES = [
   { icon: TrendingUp, label: "Best Price Guarantee", shortLabel: "Best Price", color: "text-rose-600 bg-rose-50" },
 ];
 
+// ─── MultiSelect Dropdown ───────────────────────────────────────────────────
+
+interface MultiSelectDropdownProps {
+  options: { name: string; count: number }[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder: string;
+  darkTheme?: boolean;
+}
+
+function MultiSelectDropdown({
+  options,
+  selected,
+  onChange,
+  placeholder,
+  darkTheme = false,
+}: MultiSelectDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleOption = (name: string) => {
+    if (selected.includes(name)) {
+      onChange(selected.filter(item => item !== name));
+    } else {
+      onChange([...selected, name]);
+    }
+  };
+
+  const isAllSelected = selected.length === 0;
+
+  const displayValue = isAllSelected
+    ? placeholder
+    : selected.join(", ");
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "w-full flex items-center justify-between gap-1 transition-all duration-200 text-left cursor-pointer",
+          darkTheme
+            ? "bg-transparent text-white font-bold text-xs border-0 py-0.5"
+            : "bg-white border border-slate-200 text-slate-700 text-xs px-2.5 py-1.5 rounded-lg hover:border-primary/40 focus:ring-2 focus:ring-accent/40 font-medium"
+        )}
+      >
+        <span className={cn("truncate", darkTheme ? "max-w-[120px] md:max-w-[150px]" : "max-w-[200px]")}>
+          {displayValue}
+        </span>
+        <ChevronDown className={cn("w-3 h-3 shrink-0 opacity-60 transition-transform duration-200", isOpen && "rotate-180")} />
+      </button>
+
+      {isOpen && (
+        <div
+          className={cn(
+            "absolute z-50 mt-1.5 w-full max-h-60 overflow-y-auto rounded-lg border shadow-xl bg-white p-1.5 space-y-0.5 border-slate-200"
+          )}
+        >
+          {/* "All Destinations" option */}
+          <button
+            type="button"
+            onClick={() => {
+              onChange([]);
+              setIsOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-2 py-1.5 text-left text-xs font-semibold rounded-md hover:bg-slate-50 transition-colors text-slate-700"
+          >
+            <span>All Destinations</span>
+            {isAllSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+          </button>
+          
+          <div className="border-t border-slate-100 my-1" />
+
+          {options.map(opt => {
+            const isChecked = selected.includes(opt.name);
+            return (
+              <button
+                key={opt.name}
+                type="button"
+                onClick={() => toggleOption(opt.name)}
+                className={cn(
+                  "w-full flex items-center justify-between px-2 py-1.5 text-left text-xs rounded-md hover:bg-slate-50 transition-colors font-medium text-slate-700",
+                  isChecked && "bg-primary/5 text-primary"
+                )}
+              >
+                <span className="truncate pr-2">{opt.name} ({opt.count})</span>
+                {isChecked && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Skeleton Card ────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
@@ -137,8 +243,8 @@ function FilterPill({
 
 function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-slate-100 pb-5 mb-5 last:border-0 last:mb-0 last:pb-0">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400 mb-3">{title}</p>
+    <div className="border-b border-slate-100 pb-2 mb-2 last:border-0 last:mb-0 last:pb-0">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 mb-1">{title}</p>
       {children}
     </div>
   );
@@ -152,17 +258,22 @@ export default function PackagesPage() {
   const searchQuery = searchParams.get("q") ?? "";
   const initSort = searchParams.get("sort") ?? searchParams.get("sortBy") ?? "popular";
   const initDestinationParam = searchParams.get("country") ?? searchParams.get("destination") ?? searchParams.get("destinationSlug") ?? "";
-  const initDestination = normaliseDestination(initDestinationParam);
 
   const [category, setCategory] = useState(initCategory);
-  const [durationIdx, setDurationIdx] = useState(0);
-  const [budgetIdx, setBudgetIdx] = useState(0);
-  const [destination, setDestination] = useState(initDestination);
+  const [maxDuration, setMaxDuration] = useState(15);
+  const [maxBudget, setMaxBudget] = useState(100000);
+  const [selectedDestinations, setSelectedDestinations] = useState<string[]>(() => {
+    if (!initDestinationParam) return [];
+    return initDestinationParam.split(",").map(d => normaliseDestination(d)).filter(d => d !== "All Destinations");
+  });
   const [sortBy, setSortBy] = useState(initSort);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [q, setQ] = useState(searchQuery);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [minRating, setMinRating] = useState(0);
+  const [startingFrom, setStartingFrom] = useState("New Delhi");
+  const [startDate, setStartDate] = useState("2026-08-10");
+  const [roomsGuests, setRoomsGuests] = useState("2 Adults");
   const [dynamicCategories, setDynamicCategories] = useState<string[]>([
     "All", "Adventure", "Honeymoon", "Family", "Cultural", "Luxury", "Budget", "Wildlife", "Religious", "Group",
   ]);
@@ -171,7 +282,7 @@ export default function PackagesPage() {
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const onScroll = () => setHeaderScrolled(window.scrollY > 320);
+    const onScroll = () => setHeaderScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -209,12 +320,38 @@ export default function PackagesPage() {
     }
 
     setQ(searchParam);
-    setDestination(normaliseDestination(destParam));
     setSortBy(sortParam);
+    if (destParam) {
+      const parsed = destParam.split(",").map(d => normaliseDestination(d)).filter(d => d !== "All Destinations");
+      setSelectedDestinations(parsed);
+    } else {
+      setSelectedDestinations([]);
+    }
   }, [searchParams, dynamicCategories]);
 
   const { data, isLoading } = useListPackages({ limit: 500 } as any);
   const allPackages = data?.packages || [];
+
+  // Dynamically compute destinations that actually exist in packages
+  const availableDestinations = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allPackages.forEach(p => {
+      const places = new Set<string>();
+      if (p.destinationName) places.add(p.destinationName.trim());
+      if (p.stateName) places.add(p.stateName.trim());
+      if (p.cities && Array.isArray(p.cities)) {
+        p.cities.forEach((c: string) => {
+          if (c) places.add(c.trim());
+        });
+      }
+      places.forEach(place => {
+        counts[place] = (counts[place] || 0) + 1;
+      });
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [allPackages]);
 
   const filtered = useMemo(() => {
     let result = [...allPackages];
@@ -235,17 +372,23 @@ export default function PackagesPage() {
         return pc.includes(sc) || sc.includes(pc);
       });
     }
-    if (destination !== "All Destinations") {
+    if (selectedDestinations.length > 0) {
       result = result.filter(p =>
-        p.destinationName?.includes(destination) ||
-        p.stateName?.includes(destination) ||
-        (p as any).cities?.some((c: string) => c.includes(destination))
+        selectedDestinations.some(dest =>
+          p.destinationName?.toLowerCase().includes(dest.toLowerCase()) ||
+          p.stateName?.toLowerCase().includes(dest.toLowerCase()) ||
+          (p as any).cities?.some((c: string) => c.toLowerCase().includes(dest.toLowerCase()))
+        )
       );
     }
-    const dur = DURATIONS[durationIdx];
-    result = result.filter(p => p.duration >= dur.min && p.duration <= dur.max);
-    const bud = BUDGETS[budgetIdx];
-    result = result.filter(p => p.pricePerPerson >= bud.min && p.pricePerPerson <= bud.max);
+    // Filter by max duration slider
+    if (maxDuration < 15) {
+      result = result.filter(p => p.duration <= maxDuration);
+    }
+    // Filter by max budget slider
+    if (maxBudget < 100000) {
+      result = result.filter(p => p.pricePerPerson <= maxBudget);
+    }
     if (minRating > 0) result = result.filter(p => (p.rating ?? 0) >= minRating);
     if (sortBy === "price_asc") result.sort((a, b) => a.pricePerPerson - b.pricePerPerson);
     else if (sortBy === "price_desc") result.sort((a, b) => b.pricePerPerson - a.pricePerPerson);
@@ -253,26 +396,29 @@ export default function PackagesPage() {
     else if (sortBy === "trending") result.sort((a, b) => ((b as any).isTrending ? 1 : 0) - ((a as any).isTrending ? 1 : 0));
     else result.sort((a, b) => ((b as any).isFeatured ? 1 : 0) - ((a as any).isFeatured ? 1 : 0));
     return result;
-  }, [allPackages, q, category, destination, durationIdx, budgetIdx, minRating, sortBy]);
+  }, [allPackages, q, category, selectedDestinations, maxDuration, maxBudget, minRating, sortBy]);
 
-  const hasFilters = category !== "All" || durationIdx !== 0 || budgetIdx !== 0 ||
-    destination !== "All Destinations" || !!q || minRating > 0;
+  const hasFilters = category !== "All" || maxDuration !== 15 || maxBudget !== 100000 ||
+    selectedDestinations.length > 0 || !!q || minRating > 0;
 
   const activeFilterCount = [
     category !== "All",
-    durationIdx !== 0,
-    budgetIdx !== 0,
-    destination !== "All Destinations",
+    maxDuration !== 15,
+    maxBudget !== 100000,
+    selectedDestinations.length > 0,
     minRating > 0,
   ].filter(Boolean).length;
 
   const resetFilters = useCallback(() => {
     setCategory("All");
-    setDurationIdx(0);
-    setBudgetIdx(0);
-    setDestination("All Destinations");
+    setMaxDuration(15);
+    setMaxBudget(100000);
+    setSelectedDestinations([]);
     setQ("");
     setMinRating(0);
+    setStartingFrom("New Delhi");
+    setStartDate("2026-08-10");
+    setRoomsGuests("2 Adults");
   }, []);
 
   // ─── Sidebar Filter Content ────────────────────────────────────────────────
@@ -280,246 +426,210 @@ export default function PackagesPage() {
   const FilterContent = (
     <div className="space-y-0">
       <FilterSection title="Destination">
+        <MultiSelectDropdown
+          options={availableDestinations}
+          selected={selectedDestinations}
+          onChange={setSelectedDestinations}
+          placeholder="All Destinations"
+        />
+      </FilterSection>
+
+      <FilterSection title="Theme / Category">
         <select
-          value={destination}
-          onChange={e => setDestination(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-accent/40 bg-white font-medium cursor-pointer"
         >
-          {DESTINATIONS.map(d => <option key={d} value={d}>{d}</option>)}
+          {dynamicCategories.map(cat => {
+            const count = allPackages.filter(p => {
+              if (cat === "All") return true;
+              if (!p.category) return false;
+              const pc = p.category.toLowerCase().trim();
+              const sc = cat.toLowerCase().trim();
+              return pc.includes(sc) || sc.includes(pc);
+            }).length;
+            return (
+              <option key={cat} value={cat}>
+                {cat} ({count})
+              </option>
+            );
+          })}
         </select>
       </FilterSection>
 
       <FilterSection title="Duration">
-        <div className="space-y-1.5">
-          {DURATIONS.map((d, i) => (
-            <button
-              key={d.label}
-              onClick={() => setDurationIdx(i)}
-              className={cn(
-                "w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium flex items-center justify-between transition-all",
-                durationIdx === i
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-              )}
-            >
-              <span className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 opacity-70" />
-                {d.label}
-              </span>
-              {durationIdx === i && <CheckCircle2 className="w-3.5 h-3.5" />}
-            </button>
-          ))}
+        <div className="space-y-1 py-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-primary opacity-80" />
+              {maxDuration === 15 ? "Any Duration" : `Up to ${maxDuration} Days`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="15"
+            step="1"
+            value={maxDuration}
+            onChange={e => setMaxDuration(Number(e.target.value))}
+            className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5A623]"
+          />
+          <div className="flex justify-between text-[9px] text-slate-400 font-semibold px-0.5">
+            <span>1 Day</span>
+            <span>7d</span>
+            <span>15d+</span>
+          </div>
         </div>
       </FilterSection>
 
       <FilterSection title="Budget per Person">
-        <div className="space-y-1.5">
-          {BUDGETS.map((b, i) => (
-            <button
-              key={b.label}
-              onClick={() => setBudgetIdx(i)}
-              className={cn(
-                "w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium flex items-center justify-between transition-all",
-                budgetIdx === i
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-              )}
-            >
-              <span className="flex items-center gap-2">
-                <IndianRupee className="w-3.5 h-3.5 opacity-70" />
-                {b.label}
-              </span>
-              {budgetIdx === i && <CheckCircle2 className="w-3.5 h-3.5" />}
-            </button>
-          ))}
+        <div className="space-y-1 py-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1.5">
+              <IndianRupee className="w-3.5 h-3.5 text-primary opacity-80" />
+              {maxBudget === 100000 ? "Any Budget" : `Up to ₹${maxBudget.toLocaleString("en-IN")}`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="5000"
+            max="100000"
+            step="5000"
+            value={maxBudget}
+            onChange={e => setMaxBudget(Number(e.target.value))}
+            className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5A623]"
+          />
+          <div className="flex justify-between text-[9px] text-slate-400 font-semibold px-0.5">
+            <span>₹5K</span>
+            <span>₹50K</span>
+            <span>₹1L+</span>
+          </div>
         </div>
       </FilterSection>
 
       <FilterSection title="Guest Rating">
-        <div className="space-y-1.5">
-          {RATINGS.map(r => (
-            <button
-              key={r.label}
-              onClick={() => setMinRating(r.val)}
-              className={cn(
-                "w-full text-left rounded-lg px-3 py-2.5 text-sm font-medium flex items-center justify-between transition-all",
-                minRating === r.val
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-              )}
-            >
-              <span className="flex items-center gap-2">
-                <Star className="w-3.5 h-3.5 opacity-70" />
-                {r.label}
-              </span>
-              {minRating === r.val && <CheckCircle2 className="w-3.5 h-3.5" />}
-            </button>
-          ))}
+        <div className="space-y-1 py-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-700 font-bold">
+            <span className="flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 text-primary opacity-80" />
+              {minRating === 0 ? "Any Rating" : `${minRating}★ & Above`}
+            </span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="5"
+            step="0.5"
+            value={minRating}
+            onChange={e => setMinRating(Number(e.target.value))}
+            className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#F5A623]"
+          />
+          <div className="flex justify-between text-[9px] text-slate-400 font-semibold px-0.5">
+            <span>Any</span>
+            <span>3★</span>
+            <span>4★</span>
+            <span>5★</span>
+          </div>
         </div>
       </FilterSection>
 
-      {/* Why Sampooran - sidebar widget */}
-      <div className="rounded-xl bg-gradient-to-br from-primary via-[#0D1B3E] to-[#0B1528] p-5 text-white mt-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623] mb-2">Why Book With Us</p>
-        <div className="space-y-3">
+      {/* Why Choose Us - sidebar widget */}
+      <div className="rounded-xl bg-gradient-to-br from-primary via-[#0D1B3E] to-[#0B1528] p-3 text-white mt-2">
+        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-[#F5A623] mb-1.5">Why Book With Us</p>
+        <div className="space-y-2">
           {[
             { icon: Shield, text: "Verified stays & verified transfers" },
             { icon: Zap, text: "Instant booking confirmation" },
             { icon: Headphones, text: "24/7 dedicated travel support" },
             { icon: TrendingUp, text: "Best price guaranteed — always" },
           ].map((item, i) => (
-            <div key={i} className="flex items-start gap-2.5">
-              <div className="w-6 h-6 rounded-md bg-white/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
-                <item.icon className="w-3.5 h-3.5 text-[#F5A623]" />
+            <div key={i} className="flex items-start gap-2">
+              <div className="w-5 h-5 rounded bg-white/10 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                <item.icon className="w-3 h-3 text-[#F5A623]" />
               </div>
-              <p className="text-white/80 text-xs leading-snug">{item.text}</p>
+              <p className="text-white/80 text-[10px] leading-tight font-medium">{item.text}</p>
             </div>
           ))}
         </div>
         <Link
           href="/customized-holidays"
-          className="mt-4 flex items-center justify-center gap-2 w-full bg-[#F5A623] text-primary font-bold text-xs py-2.5 rounded-lg hover:brightness-110 transition-all"
+          className="mt-3 flex items-center justify-center gap-1.5 w-full bg-[#F5A623] text-primary font-extrabold text-[10px] py-1.5 rounded-md hover:brightness-110 transition-all shadow-sm"
         >
-          Get Custom Itinerary <ArrowRight className="w-3.5 h-3.5" />
+          Get Custom Itinerary <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA]">
+    <div className={cn("min-h-screen bg-[#F5F7FA] transition-all duration-300", headerScrolled ? "pt-[55px]" : "pt-[61px]")}>
 
-      {/* ─── HERO SECTION ───────────────────────────────────────────── */}
-      <section className="relative bg-gradient-to-br from-[#061226] via-[#0D1B3E] to-[#0B2050] pt-20 pb-10 md:pt-36 md:pb-20 overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "32px 32px" }}
-        />
-        {/* Glow orbs */}
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#F5A623]/10 rounded-full blur-[80px] pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center max-w-3xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.28em] text-[#F5A623] mb-4">
-                <Sparkles className="w-3 h-3" /> Explore & Discover
-              </span>
-              <h1 className="text-2xl xs:text-3xl md:text-5xl lg:text-6xl font-serif font-black text-white leading-[1.1] mb-4">
-                Find Your Perfect{" "}
-                <span className="text-[#F5A623] font-light">Holiday.</span>
-              </h1>
-              <p className="text-slate-400 text-xs xs:text-sm md:text-base leading-relaxed mb-4 md:mb-6 max-w-xl mx-auto">
-                Curated itineraries, verified stays & flexible pricing — across India and the world.
-              </p>
-            </motion.div>
-
-            {/* ─── Search Box ───────────────────────────────────────── */}
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] border border-white/10 p-2 md:p-3 flex flex-col sm:flex-row items-stretch gap-2 max-w-2xl mx-auto"
-            >
-              <div className="flex-1 flex items-center gap-2.5 px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  value={q}
-                  onChange={e => setQ(e.target.value)}
-                  placeholder="Destination, package name..."
-                  className="w-full bg-transparent text-slate-800 placeholder:text-slate-400 font-medium outline-none text-sm"
-                />
-                {q && (
-                  <button onClick={() => setQ("")} className="text-slate-400 hover:text-slate-600 transition-colors">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <div className="relative shrink-0">
-                <select
-                  value={destination}
-                  onChange={e => setDestination(e.target.value)}
-                  className="appearance-none w-full sm:w-40 bg-slate-50 border border-slate-100 rounded-xl px-4 pr-8 py-2.5 text-sm text-slate-700 font-medium outline-none cursor-pointer"
-                >
-                  {DESTINATIONS.map(d => <option key={d} value={d}>{d === "All Destinations" ? "Any Destination" : d}</option>)}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              </div>
-              <button
-                onClick={() => { if (hasFilters) resetFilters(); }}
-                className="shrink-0 bg-primary hover:bg-[#1B3A6B] text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors shadow-lg shadow-primary/30"
+      {/* ─── STICKY SEARCH BAR (Fixed with Navbar, permanently visible) ──────────────────────────── */}
+      <div className={cn("sticky z-30 bg-[#0B1E42] border-b border-white/10 text-white w-full py-1.5 shadow-md transition-all duration-300", headerScrolled ? "top-[55px]" : "top-[61px]")}>
+        <div className="container mx-auto px-4 flex items-center justify-between gap-3 text-xs">
+          <div className="flex-1 grid grid-cols-4 gap-4 divide-x divide-white/10">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Starting From</span>
+              <select
+                value={startingFrom}
+                onChange={e => setStartingFrom(e.target.value)}
+                className="bg-transparent text-white font-bold outline-none w-full cursor-pointer text-xs"
               >
-                {hasFilters ? "Reset" : "Search"}
-              </button>
-            </motion.div>
-
-            {/* Trust badges */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35 }}
-              className="mt-4 md:mt-6 flex flex-nowrap items-center justify-center gap-1 px-1 xs:gap-2 md:gap-6 overflow-hidden w-full"
-            >
-              {TRUST_BADGES.map(b => (
-                <div key={b.label} className="flex items-center gap-1 text-[7.5px] xs:text-[9px] md:text-[11px] font-semibold text-slate-400 shrink-0">
-                  <b.icon className="w-2.5 h-2.5 xs:w-3 xs:h-3 md:w-3.5 md:h-3.5 text-[#F5A623] shrink-0" />
-                  <span>
-                    <span className="hidden sm:inline">{b.label}</span>
-                    <span className="inline sm:hidden">{b.shortLabel}</span>
-                  </span>
-                </div>
-              ))}
-            </motion.div>
+                {["New Delhi", "Mumbai", "Bangalore", "Kolkata", "Chennai", "Hyderabad", "Ahmedabad"].map(city => (
+                  <option key={city} value={city} className="text-slate-800">{city}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col min-w-0 pl-3">
+              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Going To</span>
+              <MultiSelectDropdown
+                options={availableDestinations}
+                selected={selectedDestinations}
+                onChange={setSelectedDestinations}
+                placeholder="Any Destination"
+                darkTheme={true}
+              />
+            </div>
+            <div className="flex flex-col min-w-0 pl-3">
+              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Starting Date</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="bg-transparent text-white font-bold outline-none w-full cursor-pointer text-xs [color-scheme:dark]"
+              />
+            </div>
+            <div className="flex flex-col min-w-0 pl-3">
+              <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Guests</span>
+              <select
+                value={roomsGuests}
+                onChange={e => setRoomsGuests(e.target.value)}
+                className="bg-transparent text-white font-bold outline-none w-full cursor-pointer text-xs"
+              >
+                {["1 Adult", "2 Adults", "3 Adults", "4 Adults", "2 Adults, 1 Room", "4 Adults, 2 Rooms"].map(opt => (
+                  <option key={opt} value={opt} className="text-slate-800">{opt}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* ─── STICKY CATEGORY STRIP ──────────────────────────────────── */}
-      <div className={cn(
-        "sticky top-[64px] z-30 bg-white border-b border-slate-200 transition-shadow duration-300",
-        headerScrolled ? "shadow-md" : "shadow-none"
-      )}>
-        <div className="container mx-auto px-4">
-          <div
-            ref={catScrollRef}
-            className="flex items-center gap-2 py-3 overflow-x-auto no-scrollbar"
+          <button
+            onClick={() => { if (hasFilters) resetFilters(); }}
+            className="bg-[#1E73BE] hover:bg-[#155a96] text-white font-bold text-[10px] px-4 py-1.5 rounded-lg transition-colors shrink-0"
           >
-            {dynamicCategories.map(cat => {
-              const Icon = CATEGORY_ICONS[cat] || Globe;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={cn(
-                    "shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all duration-200 whitespace-nowrap",
-                    category === cat
-                      ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-primary/40 hover:text-primary"
-                  )}
-                >
-                  <Icon className="w-3 h-3" />
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
+            {hasFilters ? "Reset" : "SEARCH"}
+          </button>
         </div>
       </div>
 
+
       {/* ─── MAIN CONTENT AREA ──────────────────────────────────────── */}
-      <div className="container mx-auto px-4 py-6 lg:py-8">
-        <div className="flex gap-6 lg:gap-8 relative items-start">
+      <div className="container mx-auto px-4 py-4 lg:py-5">
+        <div className="flex gap-4 lg:gap-5 relative items-start">
 
           {/* ─── DESKTOP SIDEBAR ────────────────────────────────────── */}
-          <aside className="hidden lg:block w-[268px] shrink-0 sticky top-[124px] self-start">
+          <aside className={cn("hidden lg:block w-[295px] shrink-0 sticky transition-all duration-300 self-start", headerScrolled ? "top-[99px]" : "top-[107px]")}>
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div className="flex items-center justify-between p-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-primary" />
                   <h2 className="text-sm font-bold text-slate-900">Filter Packages</h2>
@@ -530,7 +640,7 @@ export default function PackagesPage() {
                   </button>
                 )}
               </div>
-              <div className="p-5">
+              <div className="p-3.5">
                 {FilterContent}
               </div>
             </div>
@@ -539,8 +649,51 @@ export default function PackagesPage() {
           {/* ─── RESULTS AREA ───────────────────────────────────────── */}
           <div className="flex-1 min-w-0">
 
+            {/* Mobile Search Card - visible only on mobile/tablet */}
+            <div className="block md:hidden bg-[#0B1E42] rounded-xl p-3 text-white mb-4 shadow-md">
+              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                <div>
+                  <span className="text-[8px] uppercase tracking-wider text-slate-400 block mb-0.5 font-bold">Going To</span>
+                  <MultiSelectDropdown
+                    options={availableDestinations}
+                    selected={selectedDestinations}
+                    onChange={setSelectedDestinations}
+                    placeholder="Any Destination"
+                    darkTheme={true}
+                  />
+                </div>
+                <div>
+                  <span className="text-[8px] uppercase tracking-wider text-slate-400 block mb-0.5 font-bold">Theme</span>
+                  <select
+                    value={category}
+                    onChange={e => setCategory(e.target.value)}
+                    className="bg-white/10 text-white rounded-md px-1.5 py-1 w-full outline-none text-[11px] font-semibold cursor-pointer border border-white/10"
+                  >
+                    {dynamicCategories.map(cat => (
+                      <option key={cat} value={cat} className="text-slate-800">{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="relative text-xs">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={q}
+                  onChange={e => setQ(e.target.value)}
+                  placeholder="Search package name..."
+                  className="w-full bg-white/10 text-white rounded-md py-1.5 pl-8 pr-7 outline-none text-[11px] font-medium placeholder:text-slate-400 border border-white/10 focus:border-[#1E73BE] transition"
+                />
+                {q && (
+                  <button onClick={() => setQ("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div>
                 {isLoading ? (
                   <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
@@ -631,22 +784,24 @@ export default function PackagesPage() {
                     <button onClick={() => setCategory("All")}><X className="w-3 h-3" /></button>
                   </span>
                 )}
-                {destination !== "All Destinations" && (
+                {selectedDestinations.map(dest => (
+                  <span key={dest} className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                    <MapPin className="w-3 h-3 text-primary/80" /> {dest}
+                    <button onClick={() => setSelectedDestinations(selectedDestinations.filter(d => d !== dest))} className="hover:text-red-500 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                {maxDuration !== 15 && (
                   <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15">
-                    <MapPin className="w-3 h-3" /> {destination}
-                    <button onClick={() => setDestination("All Destinations")}><X className="w-3 h-3" /></button>
+                    <Clock className="w-3 h-3" /> Up to {maxDuration} Days
+                    <button onClick={() => setMaxDuration(15)}><X className="w-3 h-3" /></button>
                   </span>
                 )}
-                {durationIdx !== 0 && (
+                {maxBudget !== 100000 && (
                   <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15">
-                    <Clock className="w-3 h-3" /> {DURATIONS[durationIdx].label}
-                    <button onClick={() => setDurationIdx(0)}><X className="w-3 h-3" /></button>
-                  </span>
-                )}
-                {budgetIdx !== 0 && (
-                  <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15">
-                    {BUDGETS[budgetIdx].label}
-                    <button onClick={() => setBudgetIdx(0)}><X className="w-3 h-3" /></button>
+                    Up to ₹{maxBudget.toLocaleString("en-IN")}
+                    <button onClick={() => setMaxBudget(100000)}><X className="w-3 h-3" /></button>
                   </span>
                 )}
                 {minRating > 0 && (
@@ -665,8 +820,8 @@ export default function PackagesPage() {
             {isLoading ? (
               <div className={cn(
                 viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5"
-                  : "space-y-4"
+                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 max-w-[960px] gap-4 md:gap-5"
+                  : "space-y-5 md:space-y-6"
               )}>
                 {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
@@ -694,7 +849,7 @@ export default function PackagesPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5"
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 max-w-[960px] gap-4 md:gap-5"
               >
                 {filtered.map((pkg, i) => (
                   <motion.div
@@ -708,7 +863,7 @@ export default function PackagesPage() {
                 ))}
               </motion.div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5 md:space-y-6">
                 {filtered.map(pkg => <PackageCard key={pkg.id} pkg={pkg} variant="horizontal" />)}
               </div>
             )}

@@ -1029,7 +1029,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                   <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Key attractions and experiences included in this day.</p>
                                 </div>
                                 <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 show-horizontal-scrollbar">
-                                  {attractions.map((item, attrIdx) => (
+                                  {attractions.map((item: any, attrIdx: number) => (
                                     <button
                                       key={attrIdx}
                                       onClick={() => handleAttractionClick(item.name, item)}
@@ -1073,11 +1073,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                   <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Curated experiences and adventures for this day.</p>
                                 </div>
                                 <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 show-horizontal-scrollbar">
-                                  {activities.map((item, activityIdx) => (
+                                  {activities.map((item: any, activityIdx: number) => (
                                     <button
                                       key={activityIdx}
                                       onClick={() => handleActivityClick(item.name, item)}
-                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-green-300 hover:shadow-md active:scale-95 transition-all text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
+                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-green-100 hover:border-green-300 hover:shadow-md active:scale-95 transition-all text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
                                       disabled={loadingDetail}
                                     >
                                       {item.coverImage ? (
@@ -1117,7 +1117,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                   <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Best recommended food stops during travel journey.</p>
                                 </div>
                                 <div className="flex flex-nowrap gap-2 overflow-x-auto pb-2 show-horizontal-scrollbar">
-                                  {enrouteStops.map((item, diningIdx) => (
+                                  {enrouteStops.map((item: any, diningIdx: number) => (
                                     <button
                                       key={diningIdx}
                                       onClick={() => handleDiningClick(item.name, item)}
