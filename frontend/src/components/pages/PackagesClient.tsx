@@ -627,7 +627,7 @@ export default function PackagesPage() {
         <div className="flex gap-4 lg:gap-5 relative items-start">
 
           {/* ─── DESKTOP SIDEBAR ────────────────────────────────────── */}
-          <aside className={cn("hidden lg:block w-[295px] shrink-0 sticky transition-all duration-300 self-start", headerScrolled ? "top-[99px]" : "top-[107px]")}>
+          <aside className="hidden lg:block w-[295px] shrink-0 sticky top-[calc(50vh-270px)] transition-all duration-300 self-start">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between p-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">

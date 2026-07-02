@@ -89,7 +89,7 @@ function MultiSelectDropdown({
             <span>All Places</span>
             {isAllSelected && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
           </button>
-          
+
           <div className="border-t border-slate-100 my-1" />
 
           {options.map(opt => {
@@ -159,6 +159,13 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
   const [showAllCities, setShowAllCities] = useState(false);
   const [sortBy, setSortBy] = useState("Popularity");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setHeaderScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const toggleCity = (city: string) => {
     setSelectedCities(prev =>
@@ -488,7 +495,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
   }, [selectedCities, maxBudget, maxDuration, selectedTheme, minRating]);
 
   return (
-    <div className="w-full flex flex-col font-sans overflow-x-hidden">
+    <div className="w-full flex flex-col font-sans">
       {/* Dynamic Destination Hero */}
       <div className="bg-primary text-white pt-16 md:pt-18 pb-0 md:pb-0 relative overflow-hidden">
         {/* Background Image with theme overlay */}
@@ -579,6 +586,15 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                 );
               })()}
 
+              {/* Breadcrumbs */}
+              <div className="flex items-center gap-1.5 text-white/70 text-[9px] md:text-xs mt-3 justify-center lg:justify-start">
+                <Link href="/" className="hover:text-accent transition-colors">Home</Link>
+                <ChevronRight className="w-3 h-3 text-white/50" />
+                <Link href={`/${entityData.slug}-tourism`} className="hover:text-accent transition-colors capitalize">{entityData.name}</Link>
+                <ChevronRight className="w-3 h-3 text-white/50" />
+                <span className="text-white font-medium">Packages</span>
+              </div>
+
             </div>
 
             {/* Right Media — compact on mobile, full on desktop */}
@@ -615,87 +631,74 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
             </div>
           </div>
         </div>
-
-        {/* Places to Cover Swipeable & Button-scrollable List */}
-        {childPlaces.length > 0 && (
-          <div className="w-full bg-black/20 backdrop-blur-md border-t border-white/10 overflow-hidden mt-3.5 md:mt-6">
-            <div className="flex items-center">
-              <div className="px-4 py-2.5 shrink-0 border-r border-white/20 hidden md:flex flex-col">
-                <p className="text-[11px] font-bold text-accent">Top Places</p>
-                <p className="text-xs font-bold text-white">To Cover</p>
-              </div>
-              {/* Mobile label */}
-              <div className="px-2 py-2 shrink-0 border-r border-white/20 md:hidden">
-                <p className="text-[7.5px] font-black text-accent uppercase tracking-wider">Places</p>
-                <p className="text-[8.5px] font-black text-white uppercase tracking-wider">Covered</p>
-              </div>
-
-              {/* Swipeable Flex Row Container */}
-              <div
-                ref={placesContainerRef}
-                className="flex-1 overflow-x-auto flex gap-2 px-4 py-2.5 no-scrollbar scroll-smooth snap-x snap-mandatory select-none"
-              >
-                {childPlaces.map((place, idx) => (
-                  <Link
-                    key={idx}
-                    href={`/${place.slug}-tour-packages`}
-                    onTouchStart={() => router.prefetch(`/${place.slug}-tour-packages`)}
-                    onMouseEnter={() => router.prefetch(`/${place.slug}-tour-packages`)}
-                    className="inline-flex items-center gap-1.5 bg-white/10 active:bg-white/20 p-1 pr-2.5 rounded-md border border-white/10 transition-colors group shrink-0 snap-start"
-                  >
-                    <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-sm overflow-hidden shrink-0 border border-white/20">
-                      <Image src={validateImageUrl(place.thumbnailUrl || place.imageUrl, 150, 150, "1:1")} alt="" fill className="object-cover" sizes="36px" />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] md:text-xs font-medium text-white group-hover:text-accent transition-colors">{place.name} Trip</span>
-                      <span className="text-[8px] md:text-[9px] font-medium text-primary bg-accent rounded-[2px] px-1 w-fit">Starts Only ₹{place.lowestPrice || "9,999"}/-</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              {/* Desktop Nav Chevrons for Mouse Users */}
-              {childPlaces.length > 4 && (
-                <div className="hidden md:flex gap-1 px-4 border-l border-white/20 shrink-0">
-                  <button
-                    onClick={scrollPlacesLeft}
-                    className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white flex items-center justify-center cursor-pointer border border-white/10"
-                    aria-label="Scroll left"
-                    title="Previous Places"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={scrollPlacesRight}
-                    className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white flex items-center justify-center cursor-pointer border border-white/10"
-                    aria-label="Scroll right"
-                    title="Next Places"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
+      {/* Places to Cover Swipeable & Button-scrollable List — Sticky below Navbar */}
+      {childPlaces.length > 0 && (
+        <div className={cn("w-full z-40 bg-[#0B1E42]/95 backdrop-blur-md border-b border-white/10 overflow-hidden sticky transition-all duration-300 shadow-md", headerScrolled ? "top-[55px]" : "top-[61px]")}>
+          <div className="flex items-center">
+            <div className="px-4 py-2.5 shrink-0 border-r border-white/20 hidden md:flex flex-col">
+              <p className="text-[11px] font-bold text-accent">Top Places</p>
+              <p className="text-xs font-bold text-white">To Cover</p>
+            </div>
+            {/* Mobile label */}
+            <div className="px-2 py-2 shrink-0 border-r border-white/20 md:hidden">
+              <p className="text-[7.5px] font-black text-accent uppercase tracking-wider">Places</p>
+              <p className="text-[8.5px] font-black text-white uppercase tracking-wider">Covered</p>
+            </div>
 
+            {/* Swipeable Flex Row Container */}
+            <div
+              ref={placesContainerRef}
+              className="flex-1 overflow-x-auto flex gap-2 px-4 py-2.5 no-scrollbar scroll-smooth snap-x snap-mandatory select-none"
+            >
+              {childPlaces.map((place, idx) => (
+                <Link
+                  key={idx}
+                  href={`/${place.slug}-tour-packages`}
+                  onTouchStart={() => router.prefetch(`/${place.slug}-tour-packages`)}
+                  onMouseEnter={() => router.prefetch(`/${place.slug}-tour-packages`)}
+                  className="inline-flex items-center gap-1.5 bg-white/10 active:bg-white/20 p-1 pr-2.5 rounded-md border border-white/10 transition-colors group shrink-0 snap-start"
+                >
+                  <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-sm overflow-hidden shrink-0 border border-white/20">
+                    <Image src={validateImageUrl(place.thumbnailUrl || place.imageUrl, 150, 150, "1:1")} alt="" fill className="object-cover" sizes="36px" />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] md:text-xs font-medium text-white group-hover:text-accent transition-colors">{place.name} Trip</span>
+                    <span className="text-[8px] md:text-[9px] font-medium text-primary bg-accent rounded-[2px] px-1 w-fit">Starts Only ₹{place.lowestPrice || "9,999"}/-</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
 
-
+            {/* Desktop Nav Chevrons for Mouse Users */}
+            {childPlaces.length > 4 && (
+              <div className="hidden md:flex gap-1 px-4 border-l border-white/20 shrink-0">
+                <button
+                  onClick={scrollPlacesLeft}
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white flex items-center justify-center cursor-pointer border border-white/10"
+                  aria-label="Scroll left"
+                  title="Previous Places"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={scrollPlacesRight}
+                  className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white flex items-center justify-center cursor-pointer border border-white/10"
+                  aria-label="Scroll right"
+                  title="Next Places"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Listing Section */}
-      <section id="packages-section" className="py-2.5 md:py-4 bg-[#f4f4f4]">
+      <section id="packages-section" className="pt-2.5 md:pt-3 pb-3 md:pb-6 bg-[#f4f4f4]">
         <div className="container mx-auto px-3 md:px-4">
-
-          {/* Breadcrumbs */}
-          <div className="flex items-center gap-1.5 text-slate-500 text-[10px] md:text-xs mb-3">
-            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3 text-slate-400" />
-            <Link href={`/${entityData.slug}-tourism`} className="hover:text-primary transition-colors capitalize">{entityData.name}</Link>
-            <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-slate-700 font-medium">Packages</span>
-          </div>
 
           {/* Mobile filter button and Active chips */}
           <div className="space-y-3 mb-4 md:hidden">
@@ -752,50 +755,16 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
             )}
           </div>
 
-          {/* Desktop Active Chips */}
-          {hasFilters && (
-            <div className="hidden md:flex flex-wrap gap-2 mb-4 items-center">
-              {selectedCities.map(city => (
-                <span key={city} className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
-                  <MapPin className="w-3 h-3 text-primary/80" /> {city}
-                  <button onClick={() => toggleCity(city)} className="hover:text-red-500"><X className="w-3 h-3" /></button>
-                </span>
-              ))}
-              {maxBudget !== 100000 && (
-                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
-                  Up to ₹{maxBudget.toLocaleString("en-IN")}
-                  <button onClick={() => setMaxBudget(100000)}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {maxDuration !== 15 && (
-                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
-                  Up to {maxDuration} Days
-                  <button onClick={() => setMaxDuration(15)}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {selectedTheme !== "All" && (
-                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
-                  {selectedTheme}
-                  <button onClick={() => setSelectedTheme("All")}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {minRating > 0 && (
-                <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
-                  <Star className="w-3 h-3 text-primary/80" /> {minRating}+ Stars
-                  <button onClick={() => setMinRating(0)}><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              <button onClick={resetFilters} className="text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors px-2">
-                Clear all
-              </button>
-            </div>
-          )}
-
           <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
 
             {/* Left Sidebar (Filters) — desktop only */}
             <div className="hidden lg:block w-full lg:w-1/4 shrink-0">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 sticky top-[84px] max-h-[calc(100vh-110px)] overflow-y-auto custom-scrollbar">
+              <div className={cn(
+                "bg-white rounded-lg shadow-sm border border-slate-200 sticky transition-all duration-300 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar",
+                childPlaces.length > 0
+                  ? (headerScrolled ? "top-[130px]" : "top-[138px]")
+                  : (headerScrolled ? "top-[75px]" : "top-[83px]")
+              )}>
                 <div className="py-2.5 px-4 border-b border-slate-100 bg-white flex items-center justify-between">
                   <h3 className="font-bold text-sm tracking-wide text-slate-800 uppercase">
                     Filters
@@ -858,6 +827,45 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                 </div>
               </div>
 
+              {/* Desktop Active Chips */}
+              {hasFilters && (
+                <div className="hidden md:flex flex-wrap gap-2 mb-2 items-center">
+                  {selectedCities.map(city => (
+                    <span key={city} className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                      <MapPin className="w-3 h-3 text-primary/80" /> {city}
+                      <button onClick={() => toggleCity(city)} className="hover:text-red-500"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                  {maxBudget !== 100000 && (
+                    <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                      Up to ₹{maxBudget.toLocaleString("en-IN")}
+                      <button onClick={() => setMaxBudget(100000)}><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {maxDuration !== 15 && (
+                    <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                      Up to {maxDuration} Days
+                      <button onClick={() => setMaxDuration(15)}><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {selectedTheme !== "All" && (
+                    <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                      {selectedTheme}
+                      <button onClick={() => setSelectedTheme("All")}><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  {minRating > 0 && (
+                    <span className="inline-flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/15 animate-in fade-in slide-in-from-top-1">
+                      <Star className="w-3 h-3 text-primary/80" /> {minRating}+ Stars
+                      <button onClick={() => setMinRating(0)}><X className="w-3 h-3" /></button>
+                    </span>
+                  )}
+                  <button onClick={resetFilters} className="text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors px-2">
+                    Clear all
+                  </button>
+                </div>
+              )}
+
               {/* Packages List */}
               {loading ? (
                 <div className="flex justify-center items-center py-20 bg-white rounded-lg shadow-sm border border-slate-200">
@@ -889,17 +897,17 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   )}
                 </div>
               )}
+
             </div>
 
           </div>
         </div>
       </section>
 
-      {/* Popular City Packages Section — Exact Design Match */}
+      {/* Popular City Packages Section — Exact Design Match (Full width layout so sidebar filters remain sticky just above it) */}
       {childPlaces.length > 0 && (
-        <section className="py-6 md:py-8 bg-white border-t border-slate-100">
+        <section className="py-8 md:py-12 bg-white border-t border-slate-100">
           <div className="container mx-auto px-4 max-w-6xl">
-
             {/* Tab Switcher — matches screenshot exactly */}
             <div className="flex justify-center mb-6">
               <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden shadow-sm">
@@ -1010,7 +1018,6 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                 <p className="text-slate-600 text-sm mt-2">We're curating similar packages based on your interests.</p>
               </div>
             )}
-
           </div>
         </section>
       )}
