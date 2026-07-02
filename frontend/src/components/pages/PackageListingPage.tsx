@@ -1573,14 +1573,14 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
 
           {/* Embla Carousel — exact same structure as /customized-holidays */}
           <div className="relative">
-            <div className="overflow-hidden px-4 -mx-4 py-4 -my-4" ref={emblaRef}>
+            <div className="overflow-hidden px-8 -mx-4 py-4 -my-4" ref={emblaRef}>
               <div className="flex -ml-6">
                 {reviews.map((rev, i) => (
                   <div key={rev.id || i} className="flex-[0_0_90%] sm:flex-[0_0_45%] lg:flex-[0_0_31%] min-w-0 pl-6 py-4">
                     <div className="relative bg-white rounded-lg p-5 md:p-8 shadow-xl shadow-slate-200/50 border border-slate-50 h-full flex flex-col">
 
                       {/* Avatar badge — overlapping top-left corner */}
-                      <div className="absolute -top-3.5 -left-3.5 w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-br from-primary to-[#1D4ED8] flex items-center justify-center text-white font-bold text-xs tracking-wider select-none shrink-0">
+                      <div className="absolute -top-3.5 -left-3.5 w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-br from-primary to-[#1D4ED8] flex items-center justify-center text-accent font-bold text-xs tracking-wider select-none shrink-0">
                         {rev.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
                         <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border border-white flex items-center justify-center shadow-sm">
                           <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />
