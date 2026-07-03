@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { cacheMiddleware } from "../lib/cache";
-import { db, hotelsTable, transportServicesTable, settingsTable } from "@workspace/db";
+import { db, hotelsTable, transportServicesTable, transportVehiclesTable, settingsTable } from "@workspace/db";
 import { eq, and, sql, asc, desc } from "drizzle-orm";
 
 const router = Router();
@@ -110,7 +110,7 @@ router.get("/hotels/:slug", cacheMiddleware(300), async (req, res) => {
 // GET /api/ota/transport
 router.get("/transport", cacheMiddleware(300), async (req, res) => {
   try {
-    const list = await db.select().from(transportServicesTable).where(eq(transportServicesTable.status, "APPROVED"));
+    const list = await db.select().from(transportVehiclesTable).where(eq(transportVehiclesTable.status, "APPROVED"));
     res.json(list);
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch transport" });

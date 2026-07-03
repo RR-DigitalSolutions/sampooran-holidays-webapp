@@ -126,6 +126,7 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
       showInMenu: false, navMenuOrder: 0,
       showInHotelsMenu: false, hotelsMenuOrder: 0,
+      showInTransportMenu: false, transportMenuOrder: 0,
       howToReach: "", highlights: "", thingsToDo: "", localAttractions: "", famousFor: "", activities: "", localCuisine: "", travelTips: "", safetyInfo: "", festivals: "",
       historyAndCulture: "", geography: "", weatherAndClimate: "", transportation: "", currencyAndPayments: "", languageAndCommunication: "", localEtiquette: "", healthTips: "", emergencyNumbers: "", packingList: "", shopping: ""
     };
@@ -145,6 +146,8 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
       navMenuOrder: Number(item.navMenuOrder || 0),
       showInHotelsMenu: !!item.showInHotelsMenu,
       hotelsMenuOrder: Number(item.hotelsMenuOrder || 0),
+      showInTransportMenu: !!item.showInTransportMenu,
+      transportMenuOrder: Number(item.transportMenuOrder || 0),
     };
   };
 
@@ -181,6 +184,8 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
         navMenuOrder: Number(form.navMenuOrder || 0),
         showInHotelsMenu: Boolean(form.showInHotelsMenu),
         hotelsMenuOrder: Number(form.hotelsMenuOrder || 0),
+        showInTransportMenu: Boolean(form.showInTransportMenu),
+        transportMenuOrder: Number(form.transportMenuOrder || 0),
         regionId: form.regionId ? Number(form.regionId) : null,
       };
       if (!payload.slug && payload.name) payload.slug = payload.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
@@ -292,6 +297,20 @@ function CountryModal({ item, countries, regions, onClose, onSave }: { item?: an
                 </div>
               )}
             </div>
+
+            <div className="w-px h-8 bg-gray-200" />
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInTransportMenu} onChange={e => setForm({ ...form, showInTransportMenu: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+                <span className="text-sm font-bold text-slate-700">🚗 Show in Transport Dropdown</span>
+              </label>
+              {form.showInTransportMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.transportMenuOrder || 0)} onChange={v => setForm({ ...form, transportMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -324,6 +343,7 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
       isFeatured: false, displayOrder: 0, faqs: [] as FaqItem[],
       showInMenu: false, navMenuOrder: 0,
       showInHotelsMenu: false, hotelsMenuOrder: 0,
+      showInTransportMenu: false, transportMenuOrder: 0,
       highlights: "", thingsToDo: "", localAttractions: "", famousFor: "", activities: "", localCuisine: "", travelTips: "", safetyInfo: "", festivals: "",
       historyAndCulture: "", geography: "", weatherAndClimate: "", transportation: "", currencyAndPayments: "", languageAndCommunication: "", localEtiquette: "", healthTips: "", emergencyNumbers: "", packingList: "", shopping: ""
     };
@@ -343,6 +363,8 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
       navMenuOrder: Number(item.navMenuOrder || 0),
       showInHotelsMenu: !!item.showInHotelsMenu,
       hotelsMenuOrder: Number(item.hotelsMenuOrder || 0),
+      showInTransportMenu: !!item.showInTransportMenu,
+      transportMenuOrder: Number(item.transportMenuOrder || 0),
     };
   };
 
@@ -379,6 +401,8 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
         navMenuOrder: Number(form.navMenuOrder || 0),
         showInHotelsMenu: Boolean(form.showInHotelsMenu),
         hotelsMenuOrder: Number(form.hotelsMenuOrder || 0),
+        showInTransportMenu: Boolean(form.showInTransportMenu),
+        transportMenuOrder: Number(form.transportMenuOrder || 0),
       };
       if (!payload.slug && payload.name) payload.slug = String(payload.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
       if (isEdit) {
@@ -533,6 +557,20 @@ function StateModal({ item, countries, states, onClose, onSave }: { item?: any; 
                 </div>
               )}
             </div>
+
+            <div className="w-px h-8 bg-gray-200" />
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInTransportMenu} onChange={e => setForm({ ...form, showInTransportMenu: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+                <span className="text-sm font-bold text-gray-700">🚗 Show in Transport Dropdown</span>
+              </label>
+              {form.showInTransportMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.transportMenuOrder || 0)} onChange={v => setForm({ ...form, transportMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -570,6 +608,7 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
       metaTitle: "", metaDescription: "", metaKeywords: "",
       latitude: "", longitude: "", isFeatured: false, isActive: true, showInMenu: false, displayOrder: 0,
       showInHotelsMenu: false, hotelsMenuOrder: 0,
+      showInTransportMenu: false, transportMenuOrder: 0,
       faqs: [] as FaqItem[],
     };
     if (!item) return base;
@@ -579,6 +618,8 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
       showInMenu: !!item.showInMenu,
       showInHotelsMenu: !!item.showInHotelsMenu,
       hotelsMenuOrder: Number(item.hotelsMenuOrder || 0),
+      showInTransportMenu: !!item.showInTransportMenu,
+      transportMenuOrder: Number(item.transportMenuOrder || 0),
       highlights: arr(item.highlights),
       thingsToDo: arr(item.thingsToDo),
       localAttractions: arr(item.localAttractions),
@@ -611,6 +652,8 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
         faqs: cleanFaqs,
         showInHotelsMenu: Boolean(form.showInHotelsMenu),
         hotelsMenuOrder: Number(form.hotelsMenuOrder || 0),
+        showInTransportMenu: Boolean(form.showInTransportMenu),
+        transportMenuOrder: Number(form.transportMenuOrder || 0),
       };
       const p = payload as Record<string, any>;
       if (!p.slug && p.name) p.slug = String(p.name).toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
@@ -714,6 +757,20 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
               {form.showInHotelsMenu && (
                 <div className="w-24 ml-2">
                   <FieldInput label="Order" value={String(form.hotelsMenuOrder || 0)} onChange={v => setForm({ ...form, hotelsMenuOrder: Number(v) })} />
+                </div>
+              )}
+            </div>
+
+            <div className="w-px h-8 bg-gray-200" />
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.showInTransportMenu} onChange={e => setForm({ ...form, showInTransportMenu: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+                <span className="text-sm font-bold text-gray-700">🚗 Show in Transport Dropdown</span>
+              </label>
+              {form.showInTransportMenu && (
+                <div className="w-24 ml-2">
+                  <FieldInput label="Order" value={String(form.transportMenuOrder || 0)} onChange={v => setForm({ ...form, transportMenuOrder: Number(v) })} />
                 </div>
               )}
             </div>

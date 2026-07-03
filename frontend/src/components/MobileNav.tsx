@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, Variants } from "framer-motion";
-import { X, ChevronRight, ChevronLeft, MapPin, Globe, Sparkles, Building2, User, Phone, Briefcase, Compass, ChevronDown, GraduationCap, Plane, Handshake, BookOpen } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, MapPin, Globe, Sparkles, Building2, User, Phone, Briefcase, Compass, ChevronDown, GraduationCap, Plane, Handshake, BookOpen, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -10,12 +10,13 @@ type DynamicData = {
   worldRegions?: any[];
 };
 
-type ViewState = 'main' | 'india' | 'world' | 'services' | 'hotels';
+type ViewState = 'main' | 'india' | 'world' | 'services' | 'hotels' | 'transport';
 
 export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [view, setView] = useState<ViewState>('main');
   const [data, setData] = useState<DynamicData | null>(null);
   const [hotelsData, setHotelsData] = useState<any>(null);
+  const [transportData, setTransportData] = useState<any>(null);
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,6 +39,17 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       })
       .then(data => { if (data) setHotelsData(data); })
       .catch(err => console.warn("Failed to load hotels mega menu:", err));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/transport/mega-menu")
+      .then(async res => {
+        if (!res.ok) return null;
+        const text = await res.text();
+        try { return JSON.parse(text); } catch { return null; }
+      })
+      .then(data => { if (data) setTransportData(data); })
+      .catch(err => console.warn("Failed to load transport mega menu:", err));
   }, []);
 
   // Reset view when closed
@@ -161,6 +173,19 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                           <Building2 className="w-5 h-5 text-accent" />
                         </div>
                         <span className="font-semibold text-slate-800 text-[14px]">Hotels</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                    </button>
+
+                    <button 
+                      onClick={() => setView('transport')}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
+                          <Car className="w-5 h-5 text-accent" />
+                        </div>
+                        <span className="font-semibold text-slate-800 text-[14px]">Transport</span>
                       </div>
                       <ChevronRight className="w-5 h-5 text-slate-400" />
                     </button>
@@ -395,6 +420,166 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       <div className="pt-4">
                         <Link href="/world-tour-packages" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-[13px]">
                           View All World Packages
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {view === 'transport' && (
+                  <motion.div
+                    key="transport"
+                    custom={1}
+                    variants={slideVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="absolute inset-0 w-full h-fit bg-white"
+                  >
+                    <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 p-4 border-b border-slate-100 flex items-center gap-3">
+                      <button onClick={() => setView('main')} aria-label="Back to menu" className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100">
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <span className="font-semibold text-slate-900 text-base">Transport Directory</span>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {/* India Zones */}
+                      {(() => {
+                        const regionsToRender = (transportData?.indiaZones && transportData.indiaZones.length > 0) || (transportData?.worldRegions && transportData.worldRegions.length > 0)
+                          ? transportData
+                          : hotelsData;
+
+                        if (!regionsToRender) {
+                          return <div className="p-8 text-center text-slate-400 text-sm">Loading transport regions...</div>;
+                        }
+
+                        return (
+                          <>
+                            {regionsToRender.indiaZones && regionsToRender.indiaZones.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 pb-1">🇮🇳 India</p>
+                                {regionsToRender.indiaZones.map((zone: any) => (
+                                  <div key={zone.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                    <button
+                                      onClick={() => setExpandedRegion(expandedRegion === zone.name ? null : zone.name)}
+                                      className="w-full flex items-center justify-between p-4 bg-white"
+                                    >
+                                      <span className="font-bold text-slate-700">{zone.name} Transport</span>
+                                      <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedRegion === zone.name && "rotate-180")} />
+                                    </button>
+                                    <AnimatePresence>
+                                      {expandedRegion === zone.name && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: "auto", opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          className="overflow-hidden"
+                                        >
+                                          <div className="p-4 pt-2 space-y-4">
+                                            {zone.states && zone.states.map((state: any) => (
+                                              <div key={state.title}>
+                                                <Link
+                                                  href={`/transport?state=${state.slug}&country=india`}
+                                                  onClick={onClose}
+                                                  className="text-[13px] font-semibold text-slate-900 hover:text-primary block mb-2"
+                                                >
+                                                  🚗 {state.title} Transport
+                                                </Link>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {state.items && state.items.map((item: any) => {
+                                                    const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/[^a-z0-9]+/g, '-') : item?.slug;
+                                                    const itemName = typeof item === 'string' ? item : item?.name;
+                                                    return (
+                                                      <Link
+                                                        key={itemSlug || itemName}
+                                                        href={`/transport?city=${itemSlug}&state=${state.slug}&country=india`}
+                                                        onClick={onClose}
+                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      >
+                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                        <span>{itemName} Transport</span>
+                                                      </Link>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                ))}
+                              </>
+                            )}
+
+                            {regionsToRender.worldRegions && regionsToRender.worldRegions.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 pt-2 pb-1">🌍 World</p>
+                                {regionsToRender.worldRegions.map((region: any) => (
+                                  <div key={region.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                    <button
+                                      onClick={() => setExpandedRegion(expandedRegion === region.name ? null : region.name)}
+                                      className="w-full flex items-center justify-between p-4 bg-white"
+                                    >
+                                      <span className="font-semibold text-slate-900">{region.name} Transport</span>
+                                      <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedRegion === region.name && "rotate-180")} />
+                                    </button>
+                                    <AnimatePresence>
+                                      {expandedRegion === region.name && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: "auto", opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          className="overflow-hidden"
+                                        >
+                                          <div className="p-4 pt-2 space-y-4">
+                                            {region.countries && region.countries.map((country: any) => (
+                                              <div key={country.name}>
+                                                <Link
+                                                  href={`/transport?country=${country.slug}`}
+                                                  onClick={onClose}
+                                                  className="text-[13px] font-bold text-primary block mb-2"
+                                                >
+                                                  🚗 {country.name} Transport
+                                                </Link>
+                                                {country.destinations && country.destinations.length > 0 && (
+                                                  <div className="flex flex-wrap gap-2">
+                                                    {country.destinations.map((dest: any) => (
+                                                      <Link
+                                                        key={dest.slug || dest.name}
+                                                        href={`/transport?city=${dest.slug}&country=${country.slug}`}
+                                                        onClick={onClose}
+                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      >
+                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                        <span>{dest.name} Transport</span>
+                                                      </Link>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                ))}
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
+
+                      <div className="pt-4">
+                        <Link href="/transport" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-primary/10 text-primary font-bold text-[13px]">
+                          View All Transport
+                        </Link>
+                      </div>
+                      <div className="pt-1">
+                        <Link href="/transport-partner" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-accent/10 text-accent font-bold text-[13px]">
+                          Become a Transport Partner
                         </Link>
                       </div>
                     </div>

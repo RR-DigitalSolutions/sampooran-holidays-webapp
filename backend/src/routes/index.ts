@@ -19,6 +19,7 @@ import diningRouter from "./dining";
 import travelGuidesRouter from "./travel-guides";
 import hotelsRouter from "./hotels";
 import searchRouter from "./search";
+import vendorTransportRouter from "./vendor-transport";
 
 // Inline public chat-history route
 import { db, messagesTable, conversationsTable } from "@workspace/db";
@@ -53,6 +54,7 @@ router.use("/auth", authRouter);
 router.use("/bookings", bookingsRouter);
 router.use("/admin", adminRouter);
 router.use("/vendor", vendorRouter);
+router.use("/vendor/transport", vendorTransportRouter);
 router.use("/ota", otaRouter);
 router.use("/ota/home", otaHomeRouter);
 router.use(attractionsRouter);

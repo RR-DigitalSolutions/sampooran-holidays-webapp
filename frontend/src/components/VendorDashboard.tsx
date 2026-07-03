@@ -42,7 +42,15 @@ export default function VendorDashboard() {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const listData = await listRes.json();
-      setListings(listData);
+      if (Array.isArray(listData)) {
+        setListings(listData);
+      } else if (listData && Array.isArray(listData.listings)) {
+        setListings(listData.listings);
+      } else if (listData && Array.isArray(listData.data)) {
+        setListings(listData.data);
+      } else {
+        setListings([]);
+      }
 
     } catch (error) {
       console.error("Dashboard sync error:", error);

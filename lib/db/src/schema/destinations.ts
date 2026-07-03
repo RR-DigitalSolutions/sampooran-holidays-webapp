@@ -80,6 +80,8 @@ export const countriesTable = pgTable("countries", {
   navMenuOrder: integer("nav_menu_order").notNull().default(0),
   showInHotelsMenu: boolean("show_in_hotels_menu").notNull().default(false),
   hotelsMenuOrder: integer("hotels_menu_order").notNull().default(0),
+  showInTransportMenu: boolean("show_in_transport_menu").notNull().default(false),
+  transportMenuOrder: integer("transport_menu_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -150,6 +152,8 @@ export const statesTable = pgTable("states", {
   navMenuOrder: integer("nav_menu_order").notNull().default(0),
   showInHotelsMenu: boolean("show_in_hotels_menu").notNull().default(false),
   hotelsMenuOrder: integer("hotels_menu_order").notNull().default(0),
+  showInTransportMenu: boolean("show_in_transport_menu").notNull().default(false),
+  transportMenuOrder: integer("transport_menu_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -215,6 +219,8 @@ export const destinationsTable = pgTable("destinations", {
   displayOrder: integer("display_order").notNull().default(0),
   showInHotelsMenu: boolean("show_in_hotels_menu").notNull().default(false),
   hotelsMenuOrder: integer("hotels_menu_order").notNull().default(0),
+  showInTransportMenu: boolean("show_in_transport_menu").notNull().default(false),
+  transportMenuOrder: integer("transport_menu_order").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

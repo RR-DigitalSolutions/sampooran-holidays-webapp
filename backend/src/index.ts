@@ -406,6 +406,291 @@ io.on("connection", (socket) => {
   });
 });
 
+/**
+ * OTA Transport System Migrations — idempotent, safe on every restart.
+ * Creates all transport tables if they don't exist.
+ */
+async function runTransportMigrations() {
+  try {
+    // ── Transport Vendors (KYC + Business Profile) ─────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_vendors (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE,
+        business_name TEXT NOT NULL,
+        business_type TEXT NOT NULL DEFAULT 'PROPRIETORSHIP',
+        phone TEXT NOT NULL,
+        alternate_phone TEXT,
+        email TEXT NOT NULL,
+        website TEXT,
+        address TEXT NOT NULL,
+        city TEXT NOT NULL,
+        state TEXT NOT NULL,
+        pincode TEXT NOT NULL,
+        gst_number TEXT,
+        pan_number TEXT,
+        gst_certificate_url TEXT,
+        pan_card_url TEXT,
+        business_registration_url TEXT,
+        address_proof_url TEXT,
+        operating_since INTEGER,
+        operating_cities TEXT[],
+        vehicle_types TEXT[],
+        bank_account_name TEXT,
+        bank_account_number TEXT,
+        bank_ifsc_code TEXT,
+        bank_name TEXT,
+        logo_url TEXT,
+        description TEXT,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        admin_note TEXT,
+        approved_at TIMESTAMP,
+        commission_pct REAL DEFAULT 15.0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // ── Transport Vehicles (core listing entity with SEO geo slugs) ─────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_vehicles (
+        id SERIAL PRIMARY KEY,
+        vendor_id INTEGER NOT NULL,
+        owner_id INTEGER NOT NULL,
+        destination_id INTEGER,
+        state_id INTEGER,
+        country_id INTEGER,
+        destination_slug TEXT,
+        state_slug TEXT,
+        country_slug TEXT,
+        custom_city TEXT,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        type TEXT NOT NULL,
+        sub_type TEXT,
+        description TEXT,
+        make TEXT NOT NULL,
+        model TEXT NOT NULL,
+        year INTEGER,
+        color TEXT,
+        registration_number TEXT,
+        seating_capacity INTEGER NOT NULL,
+        luggage_capacity INTEGER,
+        fuel_type TEXT DEFAULT 'DIESEL',
+        transmission TEXT DEFAULT 'MANUAL',
+        is_ac BOOLEAN DEFAULT true,
+        features TEXT[],
+        documents JSONB DEFAULT '{}',
+        condition_report JSONB DEFAULT '{}',
+        last_inspection_date TIMESTAMP,
+        images TEXT[],
+        booking_type TEXT NOT NULL DEFAULT 'INSTANT',
+        base_price_per_km REAL,
+        base_price_per_day REAL,
+        minimum_km INTEGER DEFAULT 0,
+        waiting_charge_per_hour REAL,
+        driver_allowance_per_day REAL,
+        night_charge_percent REAL DEFAULT 0,
+        min_price REAL DEFAULT 0,
+        advance_booking_hours INTEGER DEFAULT 24,
+        max_passengers INTEGER DEFAULT 4,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        is_featured BOOLEAN DEFAULT false,
+        display_order INTEGER NOT NULL DEFAULT 0,
+        admin_note TEXT,
+        meta_title TEXT,
+        meta_description TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tv_owner ON transport_vehicles(owner_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tv_vendor ON transport_vehicles(vendor_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tv_geo ON transport_vehicles(country_slug, state_slug, destination_slug)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tv_status ON transport_vehicles(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tv_type ON transport_vehicles(type)`);
+
+    // ── Transport Drivers ──────────────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_drivers (
+        id SERIAL PRIMARY KEY,
+        vehicle_id INTEGER NOT NULL,
+        vendor_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        alternate_phone TEXT,
+        photo_url TEXT,
+        license_number TEXT NOT NULL,
+        license_expiry TEXT,
+        license_url TEXT,
+        experience_years INTEGER,
+        languages_known TEXT[],
+        is_available BOOLEAN DEFAULT true,
+        is_verified BOOLEAN DEFAULT false,
+        rating REAL DEFAULT 0,
+        total_trips INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // ── Transport Availability (date-range blocks) ─────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_availability (
+        id SERIAL PRIMARY KEY,
+        vehicle_id INTEGER NOT NULL,
+        vendor_id INTEGER NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'BLOCKED',
+        reason TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ta_vehicle_date ON transport_availability(vehicle_id, start_date, end_date)`);
+
+    // ── Transport Pricing Rules ────────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_pricing_rules (
+        id SERIAL PRIMARY KEY,
+        vehicle_id INTEGER NOT NULL,
+        vendor_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        rule_type TEXT NOT NULL,
+        from_city TEXT,
+        to_city TEXT,
+        estimated_distance_km INTEGER,
+        start_date TEXT,
+        end_date TEXT,
+        price REAL NOT NULL,
+        price_type TEXT NOT NULL DEFAULT 'FIXED',
+        is_round_trip BOOLEAN DEFAULT false,
+        round_trip_price REAL,
+        includes TEXT[],
+        excludes TEXT[],
+        is_active BOOLEAN DEFAULT true,
+        display_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // ── Transport Bookings ─────────────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_bookings (
+        id SERIAL PRIMARY KEY,
+        booking_ref TEXT NOT NULL UNIQUE,
+        user_id INTEGER NOT NULL,
+        vehicle_id INTEGER NOT NULL,
+        vendor_id INTEGER NOT NULL,
+        driver_id INTEGER,
+        journey_type TEXT NOT NULL DEFAULT 'ONE_WAY',
+        pickup_date TEXT NOT NULL,
+        pickup_time TEXT NOT NULL,
+        return_date TEXT,
+        return_time TEXT,
+        pickup_address TEXT NOT NULL,
+        drop_address TEXT NOT NULL,
+        pickup_lat REAL,
+        pickup_lng REAL,
+        drop_lat REAL,
+        drop_lng REAL,
+        estimated_distance_km INTEGER,
+        estimated_duration TEXT,
+        adults INTEGER NOT NULL DEFAULT 1,
+        children INTEGER DEFAULT 0,
+        luggage INTEGER DEFAULT 0,
+        base_amount REAL NOT NULL,
+        extra_charges JSONB DEFAULT '{}',
+        discount_amount REAL DEFAULT 0,
+        total_amount REAL NOT NULL,
+        platform_fee REAL DEFAULT 0,
+        vendor_earning REAL DEFAULT 0,
+        payment_status TEXT DEFAULT 'PENDING',
+        payment_details JSONB,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        special_requests TEXT,
+        flight_number TEXT,
+        vendor_note TEXT,
+        cancelled_reason TEXT,
+        rating_given BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tb_user ON transport_bookings(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tb_vendor ON transport_bookings(vendor_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tb_vehicle ON transport_bookings(vehicle_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tb_status ON transport_bookings(status)`);
+
+    // ── Transport Reviews ──────────────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS transport_reviews (
+        id SERIAL PRIMARY KEY,
+        vehicle_id INTEGER NOT NULL,
+        vendor_id INTEGER NOT NULL,
+        booking_id INTEGER,
+        user_id INTEGER NOT NULL,
+        rating INTEGER NOT NULL,
+        title TEXT,
+        comment TEXT,
+        driver_rating INTEGER,
+        cleanliness_rating INTEGER,
+        punctuality_rating INTEGER,
+        value_rating INTEGER,
+        is_verified BOOLEAN DEFAULT false,
+        admin_approved BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // ── Extend transport_routes table with new fields ──────────────────────
+    const routeCols: [string, string][] = [
+      ["from_slug", "TEXT"],
+      ["to_slug", "TEXT"],
+      ["description", "TEXT"],
+      ["highlights", "TEXT[]"],
+      ["image_url", "TEXT"],
+      ["display_order", "INTEGER DEFAULT 0"],
+    ];
+    for (const [col, def] of routeCols) {
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='transport_routes' AND column_name=${col}
+      `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE transport_routes ADD COLUMN IF NOT EXISTS ${col} ${def}`));
+      }
+    }
+
+    // ── Extend destination tables with Transport Menu settings ────────────────
+    const destTables = ["countries", "states", "destinations"];
+    for (const table of destTables) {
+      // show_in_transport_menu
+      const checkBool = await db.execute(sql.raw(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='${table}' AND column_name='show_in_transport_menu'
+      `));
+      if (checkBool.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE ${table} ADD COLUMN show_in_transport_menu BOOLEAN NOT NULL DEFAULT false`));
+      }
+
+      // transport_menu_order
+      const checkOrder = await db.execute(sql.raw(`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='${table}' AND column_name='transport_menu_order'
+      `));
+      if (checkOrder.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE ${table} ADD COLUMN transport_menu_order INTEGER NOT NULL DEFAULT 0`));
+      }
+    }
+
+    logger.info("✅ Transport migration: all transport tables and destination settings ready");
+  } catch (err: any) {
+    logger.warn({ err: err.message }, "Transport migration warning (non-fatal)");
+  }
+}
+
 server.listen(port, () => {
   logger.info({ port }, "Server listening (HTTP & WebSocket) on all interfaces");
   if (process.env.NODE_ENV !== "production" || process.env.FORCE_SEED_ADMIN === "true") {
@@ -415,6 +700,8 @@ server.listen(port, () => {
   runStartupMigrations();
   // OTA Hotel system — create new tables and extend existing ones (idempotent).
   runHotelMigrations();
+  // OTA Transport system — create transport tables (idempotent).
+  runTransportMigrations();
   // ⚡ Pre-warm Redis cache for the top public routes after startup
   // Runs async in background — never blocks server from accepting requests
   const baseUrl = `http://127.0.0.1:${port}`;

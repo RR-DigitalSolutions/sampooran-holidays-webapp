@@ -130,12 +130,14 @@ router.post("/vendor/register", authLimiter, async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const referralCode = "VND" + Math.random().toString(36).substring(2, 7).toUpperCase();
 
+    const registrationRole = req.body.role === "TRANSPORTER" ? "TRANSPORTER" : "HOTEL_OWNER";
+
     const [vendor] = await db.insert(usersTable).values({
       name,
       email,
       phoneNumber,
       passwordHash,
-      role: "HOTEL_OWNER",
+      role: registrationRole,
       vendorBusinessName,
       vendorBusinessAddress,
       companyName,

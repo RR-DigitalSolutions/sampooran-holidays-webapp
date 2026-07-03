@@ -1,17 +1,49 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Car, Search, ShieldCheck, MapPin, PhoneCall, Filter, LayoutGrid, List } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Car, Search, ShieldCheck, MapPin, PhoneCall, LayoutGrid, List,
+  Star, ArrowRight, ChevronRight, SlidersHorizontal, X, Zap, Users, Clock
+} from "lucide-react";
 import { VehicleCard } from "@/components/VehicleCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { API_BASE } from "@/context/AuthContext";
+import { DEMO_FLEET, DEMO_ROUTES } from "@/lib/demo-fleet";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
-export default function TransportClient() {
+interface TransportClientProps {
+  geoFilter?: { country: string; state: string; city: string };
+  pageTitle?: string;
+}
+
+const CATEGORIES = ["Cab", "Tempo", "Coach"] as const;
+type Category = typeof CATEGORIES[number] | null;
+
+const SORT_OPTIONS = [
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "rating", label: "Top Rated" },
+  { value: "capacity", label: "Capacity: High to Low" },
+];
+
+const STATS = [
+  { icon: Car, value: "200+", label: "Verified Vehicles" },
+  { icon: ShieldCheck, value: "100%", label: "Safety Checked" },
+  { icon: Star, value: "4.8★", label: "Average Rating" },
+  { icon: Users, value: "15,000+", label: "Happy Travellers" },
+];
+
+export default function TransportClient({ geoFilter, pageTitle }: TransportClientProps) {
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [routes, setRoutes] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<any[]>(DEMO_ROUTES);
   const [loading, setLoading] = useState(true);
-  const [type, setType] = useState<string | null>(null);
+  const [type, setType] = useState<Category>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("rating");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchTransport();
@@ -19,180 +51,328 @@ export default function TransportClient() {
 
   const fetchTransport = async () => {
     try {
-      const res = await fetch(`${API_BASE}/ota/transport`);
+      const url = geoFilter
+        ? `${API_BASE}/ota/transport?country=${geoFilter.country}&state=${geoFilter.state}&city=${geoFilter.city}`
+        : `${API_BASE}/ota/transport`;
+      const res = await fetch(url);
       const data = await res.json();
-      setVehicles(data);
+      // Use demo fleet if backend is empty or errored
+      setVehicles(Array.isArray(data) && data.length > 0 ? data : DEMO_FLEET);
 
       try {
         const routesRes = await fetch(`${API_BASE}/ota/routes`);
         if (routesRes.ok) {
-           const routesData = await routesRes.json();
-           setRoutes(routesData);
-        } else {
-           // Fallback to static routes if API not present
-           setRoutes([
-             { id: 1, from: "Chandigarh", to: "Manali", distance: 310, estimatedTime: "8-9 hrs", startingPrice: 8000, isPopular: true },
-             { id: 2, from: "Delhi", to: "Manali", distance: 540, estimatedTime: "14-15 hrs", startingPrice: 14000, isPopular: true },
-             { id: 3, from: "Chandigarh", to: "Shimla", distance: 118, estimatedTime: "3-4 hrs", startingPrice: 3500, isPopular: true },
-             { id: 4, from: "Manali", to: "Leh", distance: 480, estimatedTime: "14-16 hrs", startingPrice: 16000, isPopular: true }
-           ]);
+          const routesData = await routesRes.json();
+          if (Array.isArray(routesData) && routesData.length > 0) {
+            setRoutes(routesData);
+          }
         }
-      } catch (e) {
-         console.warn("Routes fetch failed, using fallback");
-      }
-    } catch (e) {
-      console.error("Transport sync error:", e);
+      } catch { /* keep DEMO_ROUTES */ }
+    } catch {
+      setVehicles(DEMO_FLEET);
     } finally {
       setLoading(false);
     }
   };
 
-  const categories = ["Cab", "Tempo", "Coach", "Bike"];
-  const filtered = type ? vehicles.filter(v => v.type === type) : vehicles;
+  // Filter + sort
+  const filtered = useMemo(() => {
+    let list = [...vehicles];
+    if (type) list = list.filter(v => v.type === type);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(v =>
+        v.name?.toLowerCase().includes(q) ||
+        v.make?.toLowerCase().includes(q) ||
+        v.model?.toLowerCase().includes(q) ||
+        v.type?.toLowerCase().includes(q)
+      );
+    }
+    switch (sortBy) {
+      case "price_asc": return list.sort((a, b) => (a.pricePerDay || a.base_price_per_day || 0) - (b.pricePerDay || b.base_price_per_day || 0));
+      case "price_desc": return list.sort((a, b) => (b.pricePerDay || b.base_price_per_day || 0) - (a.pricePerDay || a.base_price_per_day || 0));
+      case "capacity": return list.sort((a, b) => (b.capacity || b.seating_capacity || 0) - (a.capacity || a.seating_capacity || 0));
+      case "rating": return list.sort((a, b) => (b.rating || b.avgRating || 4) - (a.rating || a.avgRating || 4));
+      default: return list;
+    }
+  }, [vehicles, type, searchQuery, sortBy]);
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    vehicles.forEach(v => { counts[v.type] = (counts[v.type] || 0) + 1; });
+    return counts;
+  }, [vehicles]);
 
   return (
     <div className="bg-background min-h-screen">
-      {/* Dynamic Header */}
-      <div className="bg-[#0A0A0B] text-white py-24 relative overflow-hidden">
-         <div className="absolute top-0 right-0 w-1/2 h-full bg-linear-to-l from-primary/20 to-transparent pointer-events-none" />
-         <div className="container mx-auto px-4 relative z-10">
-            <div className="max-w-3xl space-y-6">
-               <Badge className="bg-primary/20 text-primary border-primary/30 rounded-full px-4 py-1 font-bold text-xs uppercase tracking-widest">Premium Transport Network</Badge>
-               <h1 className="text-5xl md:text-7xl font-serif font-black tracking-tighter leading-tight italic">
-                 Explore the Himalayas with <span className="text-primary not-italic text-shadow-glow">Absolute Comfort.</span>
-               </h1>
-               <p className="text-white/50 text-xl font-medium max-w-xl">From adventure-ready 4x4s to luxury tempo travellers for your entire group.</p>
-               
-               <div className="flex flex-wrap gap-4 pt-4">
-                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-5 py-3 rounded-2xl backdrop-blur-md">
-                     <ShieldCheck className="text-primary h-5 w-5" />
-                     <span className="text-sm font-bold">Verified Professional Drivers</span>
-                  </div>
-                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-5 py-3 rounded-2xl backdrop-blur-md">
-                     <Car className="text-primary h-5 w-5" />
-                     <span className="text-sm font-bold">200+ Premium Fleet</span>
-                  </div>
-               </div>
+
+      {/* ── Hero / Header ── */}
+      <div className="bg-[#0A0A0B] text-white relative overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary rounded-full blur-[120px] -translate-y-1/2 translate-x-1/4" />
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent rounded-full blur-[80px] translate-y-1/2 -translate-x-1/4" />
+        </div>
+
+        <div className="container mx-auto px-4 pt-14 pb-12 md:pt-20 md:pb-16 relative z-10">
+          {/* Breadcrumb */}
+          {geoFilter && (
+            <nav className="flex items-center gap-1.5 text-[10px] text-white/40 uppercase tracking-widest font-bold mb-6">
+              <Link href="/transport" className="hover:text-white/70 transition-colors">Transport</Link>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-white/70">{geoFilter.city.replace(/-/g, " ")}</span>
+            </nav>
+          )}
+
+          <div className="max-w-3xl space-y-4 md:space-y-6">
+            <div className="inline-flex items-center gap-2 bg-primary/20 border border-primary/30 rounded-full px-3 py-1">
+              <Zap className="w-3 h-3 text-primary" />
+              <span className="text-primary font-bold text-[10px] uppercase tracking-widest">Premium Transport Network</span>
             </div>
-         </div>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-black tracking-tighter leading-tight">
+              {pageTitle || (
+                <>
+                  Explore the Himalayas with{" "}
+                  <span className="text-primary italic">Absolute Comfort.</span>
+                </>
+              )}
+            </h1>
+
+            <p className="text-white/50 text-sm md:text-base font-medium max-w-xl leading-relaxed">
+              From adventure-ready 4×4 SUVs to luxury tempo travellers and Volvo coaches — professional drivers, verified fleet.
+            </p>
+
+            {/* Trust pills */}
+            <div className="flex flex-wrap gap-2 md:gap-3 pt-2">
+              {STATS.map((stat, i) => (
+                <div key={i} className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 md:px-4 md:py-2.5 rounded-xl backdrop-blur-sm">
+                  <stat.icon className="text-primary h-3.5 w-3.5 md:h-4 md:w-4 shrink-0" />
+                  <span className="text-[10px] md:text-xs font-bold">
+                    <span className="text-white">{stat.value}</span>
+                    <span className="text-white/40 ml-1">{stat.label}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Interactive Filter Bar */}
-      <div className="bg-white border-b sticky top-16 z-30 shadow-sm">
-         <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-20 gap-8">
-               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                  <Button 
-                    variant={!type ? "default" : "ghost"}
-                    className={`rounded-2xl font-black uppercase tracking-widest text-[10px] h-11 px-8 ${!type ? '' : 'text-muted-foreground'}`}
-                    onClick={() => setType(null)}
+      {/* ── Sticky Filter Bar ── */}
+      <div className="bg-white border-b sticky top-14 md:top-[74px] z-30 shadow-sm">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between gap-2 md:gap-6 py-3 md:h-20">
+
+            {/* Category tabs — scrollable on mobile */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
+              <button
+                onClick={() => setType(null)}
+                className={`whitespace-nowrap rounded-lg font-bold text-[10px] md:text-[11px] uppercase tracking-widest px-3 md:px-5 py-2 transition-all ${!type ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+              >
+                All ({vehicles.length})
+              </button>
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setType(type === cat ? null : cat)}
+                  className={`whitespace-nowrap rounded-lg font-bold text-[10px] md:text-[11px] uppercase tracking-widest px-3 md:px-5 py-2 transition-all ${type === cat ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                  {cat}s {typeCounts[cat] ? `(${typeCounts[cat]})` : ""}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Desktop search */}
+              <div className="hidden md:flex flex-1 min-w-[200px] max-w-xs relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search model, make..."
+                  className="rounded-lg pl-9 h-9 bg-muted/40 border-none text-sm font-medium placeholder:text-muted-foreground/50 focus-visible:ring-1"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+
+              {/* Sort */}
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="hidden sm:block text-[11px] font-bold uppercase text-muted-foreground bg-muted/30 border border-muted rounded-lg px-3 py-2 cursor-pointer focus:outline-none hover:bg-muted transition-colors"
+              >
+                {SORT_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+
+              {/* Filter toggle (mobile) */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="md:hidden flex items-center gap-1.5 bg-muted/40 rounded-lg px-3 py-2 text-[11px] font-bold uppercase text-muted-foreground"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Filter
+              </button>
+
+              {/* View toggle */}
+              <div className="hidden md:flex items-center gap-1 border border-muted rounded-lg p-1">
+                <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded ${viewMode === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"} transition-all`}>
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => setViewMode("list")} className={`p-1.5 rounded ${viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"} transition-all`}>
+                  <List className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile filter panel */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden border-t border-muted"
+              >
+                <div className="py-3 flex flex-col gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search by vehicle name or make..."
+                      className="pl-9 h-10 rounded-lg bg-muted/30 border-muted text-sm font-medium"
+                    />
+                  </div>
+                  <select
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value)}
+                    className="w-full text-sm font-medium bg-muted/30 border border-muted rounded-lg px-3 py-2.5 focus:outline-none"
                   >
-                    All Fleet
-                  </Button>
-                  {categories.map(cat => (
-                    <Button 
-                      key={cat}
-                      variant={type === cat ? "default" : "ghost"}
-                      className={`rounded-2xl font-black uppercase tracking-widest text-[10px] h-11 px-8 ${type === cat ? '' : 'text-muted-foreground hover:bg-primary/5'}`}
-                      onClick={() => setType(cat)}
-                    >
-                      {cat}s
-                    </Button>
-                  ))}
-               </div>
-
-               <div className="hidden md:flex flex-1 max-w-md relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search vehicle model or feature..." className="rounded-2xl pl-11 h-11 bg-muted/30 border-none font-medium placeholder:text-muted-foreground/50" />
-               </div>
-
-               <div className="flex items-center gap-2 border-l pl-8 border-black/5">
-                  <Button variant="outline" size="icon" className="rounded-xl border-black/5"><LayoutGrid className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" className="rounded-xl text-muted-foreground"><List className="h-4 w-4" /></Button>
-               </div>
-            </div>
-         </div>
+                    {SORT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Results Section */}
-      <div className="container mx-auto px-4 py-16">
+      {/* ── Fleet Grid ── */}
+      <div className="container mx-auto px-4 py-8 md:py-14">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {[1,2,3,4,5,6].map(i => <div key={i} className="h-96 bg-muted rounded-3xl animate-pulse" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+            {[1,2,3,4,5,6,7,8].map(i => (
+              <div key={i} className="h-64 md:h-80 bg-muted rounded-2xl animate-pulse" />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-40 bg-muted/10 rounded-[4rem] border border-dashed border-primary/10">
-             <div className="w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Car className="h-10 w-10 text-primary opacity-20" />
-             </div>
-             <h3 className="text-3xl font-serif font-bold mb-2 tracking-tight">No vehicles found in this category</h3>
-             <p className="text-muted-foreground font-medium mb-8">We're expanding our fleet. Please check other categories or contact support.</p>
-             <Button onClick={() => setType(null)} className="rounded-2xl font-black uppercase tracking-widest">Back to fleet</Button>
+          <div className="text-center py-24 md:py-40 bg-muted/10 rounded-3xl border border-dashed border-primary/10">
+            <div className="w-16 h-16 md:w-24 md:h-24 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6">
+              <Car className="h-8 w-8 md:h-10 md:w-10 text-primary opacity-20" />
+            </div>
+            <h3 className="text-lg md:text-xl font-serif font-bold mb-2 tracking-tight">No vehicles match your search</h3>
+            <p className="text-muted-foreground text-sm font-medium mb-6">Try adjusting your filters or search terms.</p>
+            <Button onClick={() => { setType(null); setSearchQuery(""); }} className="rounded-xl font-bold uppercase tracking-wider text-xs px-6">
+              Clear Filters
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {filtered.map(vehicle => <VehicleCard key={vehicle.id} vehicle={vehicle} />)}
-          </div>
+          <>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-4 md:mb-6">
+              Showing {filtered.length} vehicle{filtered.length !== 1 ? "s" : ""}
+              {type ? ` in ${type}s` : ""}
+              {searchQuery ? ` matching "${searchQuery}"` : ""}
+            </p>
+            <div className={`grid gap-3 md:gap-6 ${
+              viewMode === "grid"
+                ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                : "grid-cols-1 sm:grid-cols-2"
+            }`}>
+              {filtered.map(vehicle => <VehicleCard key={vehicle.id || vehicle.slug} vehicle={vehicle} />)}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Popular Routes Section (Ported from Legacy) */}
+      {/* ── Popular Routes Section ── */}
       {routes.length > 0 && (
-        <div className="container mx-auto px-4 py-16 bg-slate-50/50 rounded-[3rem] mb-24">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-4">
-            <div className="space-y-2">
-              <Badge className="bg-primary/10 text-primary border-none rounded-full px-4 py-1 font-bold text-[10px] uppercase tracking-wider">Himalayan Circuits</Badge>
-              <h2 className="text-4xl md:text-5xl font-serif font-black tracking-tight italic">Popular Road <span className="text-primary not-italic">Routes.</span></h2>
-            </div>
-            <p className="text-muted-foreground font-medium max-w-sm">Fair pricing based on distance and terrain. No hidden charges.</p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {routes.map(route => (
-              <div key={route.id} className="bg-white border border-black/5 rounded-3xl p-6 flex items-center justify-between hover:shadow-xl transition-all group">
-                <div className="flex items-center gap-5">
-                   <div className="w-12 h-12 bg-primary/5 rounded-2xl flex items-center justify-center group-hover:bg-primary transition-colors">
-                      <MapPin className="h-5 w-5 text-primary group-hover:text-white" />
-                   </div>
-                   <div>
-                      <div className="flex items-center gap-2">
-                         <p className="font-bold text-lg">{route.from} <span className="text-muted-foreground font-medium text-sm">to</span> {route.to}</p>
-                         {route.isPopular && <span className="bg-accent text-accent-foreground text-[10px] font-black uppercase px-2 py-0.5 rounded-full">Hot</span>}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{route.distance} KM • {route.estimatedTime}</p>
-                   </div>
-                </div>
-                <div className="text-right">
-                   <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Starting From</p>
-                   <p className="text-2xl font-black text-primary">₹{route.startingPrice?.toLocaleString("en-IN")}</p>
-                </div>
+        <section id="routes" className="container mx-auto px-4 pb-10 md:pb-16">
+          <div className="bg-slate-50 rounded-2xl md:rounded-3xl p-6 md:p-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 md:mb-10 gap-3">
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
+                  <MapPin className="w-3 h-3" /> Himalayan Circuits
+                </span>
+                <h2 className="text-2xl md:text-3xl font-serif font-black tracking-tight">
+                  Popular Road <span className="text-primary italic">Routes.</span>
+                </h2>
               </div>
-            ))}
+              <p className="text-muted-foreground text-sm font-medium max-w-xs">Fair pricing based on distance and terrain. No hidden charges.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              {routes.map(route => (
+                <div key={route.id} className="bg-white border border-black/5 rounded-xl md:rounded-2xl p-4 md:p-5 flex items-center justify-between hover:shadow-lg transition-all group cursor-pointer">
+                  <div className="flex items-center gap-3 md:gap-4">
+                    <div className="w-9 h-9 md:w-11 md:h-11 bg-primary/5 rounded-xl flex items-center justify-center group-hover:bg-primary transition-colors shrink-0">
+                      <MapPin className="h-4 w-4 md:h-5 md:w-5 text-primary group-hover:text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-sm md:text-base">{route.from} <span className="text-muted-foreground font-normal text-xs">to</span> {route.to}</p>
+                        {route.isPopular && <span className="bg-orange-100 text-orange-600 text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full">Hot</span>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5">
+                        <span>{route.distance} KM</span>
+                        <span className="text-muted-foreground/40">•</span>
+                        <Clock className="w-3 h-3" />
+                        <span>{route.estimatedTime}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[9px] md:text-[10px] text-muted-foreground font-bold uppercase tracking-wider">From</p>
+                    <p className="text-base md:text-xl font-black text-primary">₹{route.startingPrice?.toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Support Section */}
-      <div className="container mx-auto px-4 pb-24">
-         <div className="bg-white border-2 border-primary/5 rounded-[3rem] p-12 flex flex-col md:flex-row items-center justify-between gap-10 shadow-2xl">
-            <div className="space-y-4 text-center md:text-left">
-               <h3 className="text-3xl font-serif font-black tracking-tight leading-tight italic">Need a customized transport <br />plan for a group?</h3>
-               <p className="text-muted-foreground font-medium max-w-md">Our transport experts are online 24/7 to provide you with the best rates for bulk group bookings and custom Himalayan circuits.</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4">
-               <Button className="h-16 px-10 rounded-2xl bg-black text-white hover:bg-primary font-black uppercase tracking-widest text-xs flex items-center gap-3 active:scale-95 transition-all">
-                  <PhoneCall className="h-4 w-4" /> Call Transport Desk
-               </Button>
-               <Button variant="outline" className="h-16 px-10 rounded-2xl border-black/10 font-bold hover:bg-black/5 active:scale-95 transition-all">
-                  WhatsApp Queries
-               </Button>
-            </div>
-         </div>
-      </div>
+      {/* ── CTA / Support Section ── */}
+      <section className="container mx-auto px-4 pb-14 md:pb-24">
+        <div className="bg-gradient-to-br from-[#0A0A0B] to-[#1a1a2e] rounded-2xl md:rounded-3xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="space-y-3 text-center md:text-left relative z-10">
+            <h3 className="text-xl md:text-2xl font-serif font-black text-white tracking-tight">
+              Need a customized transport <br className="hidden md:block" />plan for your group?
+            </h3>
+            <p className="text-white/50 text-sm font-medium max-w-md leading-relaxed">
+              Our transport experts are online 24/7. Best rates for bulk bookings, custom Himalayan circuits & corporate logistics.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 relative z-10 w-full md:w-auto">
+            <a href="tel:+919805001916" className="flex items-center justify-center gap-2 h-12 md:h-14 px-6 md:px-8 rounded-xl bg-primary text-white font-bold text-xs uppercase tracking-widest hover:bg-primary/90 active:scale-95 transition-all shadow-lg shadow-primary/20">
+              <PhoneCall className="h-4 w-4" /> Call Transport Desk
+            </a>
+            <a href="https://wa.me/919805001916" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 h-12 md:h-14 px-6 md:px-8 rounded-xl border border-white/20 text-white font-bold text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all">
+              WhatsApp Query
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
-}
-
-function Badge({ children, className = "" }: { children: React.ReactNode, className?: string }) {
-  return <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${className}`}>{children}</span>;
 }
