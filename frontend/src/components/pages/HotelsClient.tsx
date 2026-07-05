@@ -81,9 +81,9 @@ function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boole
   const hotelUrl = buildHotelUrl(hotel);
 
   return (
-    <Link href={hotelUrl} className="group block bg-white rounded-3xl border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1">
+    <Link href={hotelUrl} className="group block bg-primary rounded-3xl border border-primary/30 overflow-hidden hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] transition-all duration-300 hover:-translate-y-1">
       {/* Image — using next/image for lazy loading + WebP optimization */}
-      <div className="relative h-52 bg-slate-100 overflow-hidden">
+      <div className="relative h-52 bg-slate-950 overflow-hidden">
         {img ? (
           <Image
             src={img}
@@ -96,55 +96,55 @@ function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boole
             priority={priority}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-            <Building2 className="w-12 h-12 text-slate-300" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
+            <Building2 className="w-12 h-12 text-white/20" />
           </div>
         )}
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {hotel.isFeatured && (
-            <span className="bg-accent text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow">
+            <span className="bg-accent text-primary text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow border border-white/15">
               ★ Featured
             </span>
           )}
           {hotel.breakfastIncluded && (
-            <span className="bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow">
+            <span className="bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow border border-emerald-400/20">
               Breakfast Incl.
             </span>
           )}
         </div>
         {hotel.bookingType === "INSTANT" && (
           <div className="absolute top-3 right-3">
-            <span className="bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow">
+            <span className="bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow border border-blue-500/20">
               <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Instant Book
             </span>
           </div>
         )}
         {/* Rating overlay */}
         {hotel.avgRating && (
-          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-xl px-2.5 py-1.5 flex items-center gap-1 shadow-lg">
+          <div className="absolute bottom-3 right-3 bg-primary/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 flex items-center gap-1 shadow-lg border border-white/10">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-black text-slate-800">{hotel.avgRating}</span>
-            {hotel.reviewCount ? <span className="text-[10px] text-slate-400">({hotel.reviewCount})</span> : null}
+            <span className="text-xs font-black text-white">{hotel.avgRating}</span>
+            {hotel.reviewCount ? <span className="text-[10px] text-white/40">({hotel.reviewCount})</span> : null}
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-5">
+      <div className="p-5 bg-primary text-white">
         <div className="flex items-center gap-1 mb-2">
           {[...Array(5)].map((_, i) => (
-            <Star key={i} className={`w-3 h-3 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />
+            <Star key={i} className={`w-3 h-3 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-white/20"}`} />
           ))}
-          <span className="text-[10px] text-slate-400 ml-1 font-semibold">{hotel.type}</span>
+          <span className="text-[10px] text-white/50 ml-1 font-semibold">{hotel.type}</span>
         </div>
 
-        <h3 className="font-black text-slate-900 text-base leading-tight mb-1.5 group-hover:text-primary transition-colors line-clamp-1">
+        <h3 className="font-black text-white text-base leading-tight mb-1.5 group-hover:text-accent transition-colors line-clamp-1">
           {hotel.name}
         </h3>
 
-        <div className="flex items-center gap-1 text-slate-400 mb-3">
-          <MapPin className="w-3.5 h-3.5 shrink-0" />
+        <div className="flex items-center gap-1 text-white/50 mb-3">
+          <MapPin className="w-3.5 h-3.5 shrink-0 text-accent" />
           <span className="text-xs font-medium truncate">
             {hotel.city || hotel.destinationName || hotel.address.slice(0, 30)}
           </span>
@@ -156,33 +156,33 @@ function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boole
             {hotel.amenities.slice(0, 4).map(ame => {
               const Icon = AMENITY_ICONS[ame.toUpperCase()] || null;
               return (
-                <span key={ame} className="flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
-                  {Icon && <Icon className="w-2.5 h-2.5" />}
+                <span key={ame} className="flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10">
+                  {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
                   {ame.charAt(0) + ame.slice(1).toLowerCase()}
                 </span>
               );
             })}
             {hotel.amenities.length > 4 && (
-              <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
+              <span className="text-[10px] text-white/50 bg-white/5 px-2 py-1 rounded-full border border-white/10">
                 +{hotel.amenities.length - 4}
               </span>
             )}
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+        <div className="flex items-center justify-between pt-3 border-t border-white/10">
           <div>
             {hotel.minPrice ? (
               <>
-                <span className="text-xs text-slate-400">From </span>
-                <span className="text-lg font-black text-primary">₹{hotel.minPrice.toLocaleString()}</span>
-                <span className="text-[10px] text-slate-400 font-medium">/night</span>
+                <span className="text-xs text-white/50">From </span>
+                <span className="text-lg font-black text-white">₹{hotel.minPrice.toLocaleString()}</span>
+                <span className="text-[10px] text-white/50 font-medium">/night</span>
               </>
             ) : (
-              <span className="text-sm text-slate-400 font-medium">Price on request</span>
+              <span className="text-sm text-white/50 font-medium">Price on request</span>
             )}
           </div>
-          <span className="flex items-center gap-1 text-xs font-bold text-primary bg-primary/5 px-3 py-1.5 rounded-full group-hover:bg-primary group-hover:text-white transition-all">
+          <span className="flex items-center gap-1 text-xs font-bold text-primary bg-accent px-3 py-1.5 rounded-full group-hover:bg-white group-hover:text-primary transition-all">
             View <ChevronRight className="w-3.5 h-3.5" />
           </span>
         </div>
