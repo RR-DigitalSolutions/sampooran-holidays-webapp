@@ -40,7 +40,25 @@ interface Vehicle {
   city_name?: string;
   owner_name?: string;
   owner_email?: string;
-  vendor_business_name?: string;
+  vendor_business_name_full?: string;
+}
+
+interface Vendor {
+  id: number;
+  userId: number;
+  businessName: string;
+  businessType: string;
+  phone: string;
+  email: string;
+  city: string;
+  state: string;
+  status: string;
+  commissionPct: number;
+  adminNote?: string;
+  approvedAt?: string;
+  createdAt: string;
+  ownerName?: string;
+  ownerEmail?: string;
 }
 
 interface Booking {
@@ -78,7 +96,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 };
 
 export default function Transport() {
-  const [activeTab, setActiveTab] = useState<"vehicles" | "bookings" | "routes" | "dashboard">("dashboard");
+  const [activeTab, setActiveTab] = useState<"vendors" | "vehicles" | "bookings" | "routes" | "dashboard">("dashboard");
   const [stats, setStats] = useState<any>({
     totalVehicles: 0,
     approvedVehicles: 0,
@@ -89,10 +107,13 @@ export default function Transport() {
   });
   
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   
   const [loading, setLoading] = useState(false);
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [seedResult, setSeedResult] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
@@ -124,10 +145,26 @@ export default function Transport() {
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/vendor/transport/vehicles`, { headers: authHeaders() });
+      // Use admin endpoint so we get ALL vehicles (not just own vendor's)
+      const res = await fetch(`${API_URL}/admin/transport-vehicles`, { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
         setVehicles(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchVendors = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/transport-vendors`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setVendors(data);
       }
     } catch (e) {
       console.error(e);
@@ -162,17 +199,20 @@ export default function Transport() {
 
   useEffect(() => {
     fetchStats();
+    if (activeTab === "vendors")  fetchVendors();
     if (activeTab === "vehicles") fetchVehicles();
     if (activeTab === "bookings") fetchBookings();
-    if (activeTab === "routes") fetchRoutes();
-  }, [activeTab, fetchStats, fetchVehicles, fetchBookings, fetchRoutes]);
+    if (activeTab === "routes")   fetchRoutes();
+  }, [activeTab, fetchStats, fetchVendors, fetchVehicles, fetchBookings, fetchRoutes]);
 
-  const updateVehicleStatus = async (id: number, status: string) => {
+  const updateVehicleStatus = async (id: number, status: string, isFeatured?: boolean) => {
     try {
-      const res = await fetch(`${API_URL}/vendor/transport/vehicles/${id}`, {
+      const body: any = { status };
+      if (isFeatured !== undefined) body.isFeatured = isFeatured;
+      const res = await fetch(`${API_URL}/admin/transport-vehicles/${id}`, {
         method: "PATCH",
         headers: authHeaders(),
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         fetchVehicles();
@@ -181,6 +221,40 @@ export default function Transport() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const updateVendorStatus = async (id: number, status: string, adminNote?: string) => {
+    try {
+      const body: any = { status };
+      if (adminNote) body.adminNote = adminNote;
+      const res = await fetch(`${API_URL}/admin/transport-vendors/${id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+      if (res.ok) fetchVendors();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const runHimachalSeed = async () => {
+    if (!confirm("Seed 2 demo Himachal transport vendors (Shimla + Manali) with 5 vehicles each? This is safe to run multiple times.")) return;
+    setSeedLoading(true);
+    setSeedResult(null);
+    try {
+      const res = await fetch(`${API_URL}/admin/seed-himachal-transport`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      setSeedResult(data);
+      fetchStats();
+    } catch (e: any) {
+      setSeedResult({ error: e.message });
+    } finally {
+      setSeedLoading(false);
     }
   };
 
@@ -222,14 +296,14 @@ export default function Transport() {
     const matchSearch = v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         v.make.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         v.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (v.vendor_business_name && v.vendor_business_name.toLowerCase().includes(searchQuery.toLowerCase()));
+                        (v.vendor_business_name_full && v.vendor_business_name_full.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchType = filterType === "ALL" || v.type === filterType;
     const matchStatus = filterStatus === "ALL" || v.status === filterStatus;
     return matchSearch && matchType && matchStatus;
   });
 
   return (
-    <AdminLayout title="Transport Fleet Manager" subtitle="Approve listings, audit vehicle condition reports, & manage routes">
+    <AdminLayout title="Transport Fleet Manager" subtitle="Approve vendors, fleets, audit vehicle condition reports & manage routes">
       {/* ── Tabs ── */}
       <div className="flex gap-1 border-b border-gray-100 mb-6 pb-px overflow-x-auto">
         <button onClick={() => setActiveTab("dashboard")}
@@ -237,6 +311,12 @@ export default function Transport() {
             activeTab === "dashboard" ? "border-[#1B3A6B] text-[#1B3A6B]" : "border-transparent text-gray-400 hover:text-gray-600"
           }`}>
           Overview
+        </button>
+        <button onClick={() => setActiveTab("vendors")}
+          className={`px-4 py-2 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+            activeTab === "vendors" ? "border-[#1B3A6B] text-[#1B3A6B]" : "border-transparent text-gray-400 hover:text-gray-600"
+          }`}>
+          Vendors
         </button>
         <button onClick={() => setActiveTab("vehicles")}
           className={`px-4 py-2 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
@@ -285,7 +365,7 @@ export default function Transport() {
                 <Wallet className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-2xl font-black text-gray-900">₹{stats.totalRevenue.toLocaleString()}</p>
+                <p className="text-2xl font-black text-gray-900">₹{stats.totalRevenue?.toLocaleString()}</p>
                 <p className="text-xs text-gray-400 font-medium">Lifetime Sales</p>
               </div>
             </div>
@@ -294,18 +374,140 @@ export default function Transport() {
                 <TrendingUp className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-2xl font-black text-gray-900">₹{stats.monthRevenue.toLocaleString()}</p>
+                <p className="text-2xl font-black text-gray-900">₹{stats.monthRevenue?.toLocaleString()}</p>
                 <p className="text-xs text-gray-400 font-medium">This Month</p>
               </div>
             </div>
           </div>
 
+          {/* Seed Demo Vendors */}
           <div className="bg-white border border-gray-100 rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-gray-900 mb-4">Enterprise Insights</h3>
-            <p className="text-xs text-gray-500 leading-relaxed max-w-2xl">
-              Monitor active logistics, audit safety certifications, verify transporter commercial driver permits, and adjust platform commission policies globally or per transporter.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Demo Data: Himachal Transport Vendors</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Seeds 2 verified transport vendors (Shimla + Manali) with 5 vehicles each and pricing rules. Safe to re-run.</p>
+              </div>
+              <button
+                onClick={runHimachalSeed}
+                disabled={seedLoading}
+                className="px-4 py-2 bg-[#1B3A6B] hover:bg-[#16305a] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+              >
+                {seedLoading ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Seeding...</> : <><Plus className="w-3.5 h-3.5" /> Seed Himachal Demo</>}
+              </button>
+            </div>
+            {seedResult && (
+              <div className={`mt-3 p-4 rounded-xl text-xs font-mono ${seedResult.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-800'}`}>
+                {seedResult.error ? `Error: ${seedResult.error}` : (
+                  <div className="space-y-2">
+                    <p className="font-bold text-emerald-700">✅ {seedResult.message}</p>
+                    {seedResult.credentials?.map((c: any, i: number) => (
+                      <div key={i} className="bg-white/60 rounded-lg p-3 border border-emerald-200">
+                        <p className="font-bold text-gray-800">{c.city} Vendor ({c.vehicleCount} vehicles)</p>
+                        <p>📧 Email: <span className="font-bold">{c.email}</span></p>
+                        <p>🔑 Password: <span className="font-bold">{c.password}</span></p>
+                        <p>🔗 Login: <a href={c.loginUrl} className="underline" target="_blank">{c.loginUrl}</a></p>
+                        <p className="mt-1 text-gray-500">Vehicles: {c.vehicles?.join(" • ")}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          <div className="bg-white border border-gray-100 rounded-2xl p-6">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">Quick Actions</h3>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setActiveTab("vendors")} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50">Manage Vendors →</button>
+              <button onClick={() => setActiveTab("vehicles")} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50">Approve Vehicles →</button>
+              <button onClick={() => setActiveTab("routes")} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50">Manage Routes →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Vendors Tab ── */}
+      {activeTab === "vendors" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{vendors.length} Transport Vendors</p>
+            <button onClick={fetchVendors} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50">
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-50 rounded-2xl animate-pulse" />)}</div>
+          ) : vendors.length === 0 ? (
+            <div className="text-center py-16 bg-gray-50 rounded-2xl">
+              <Truck className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+              <p className="text-sm font-bold text-gray-400">No vendors yet</p>
+              <p className="text-xs text-gray-300 mt-1">Use the "Seed Himachal Demo" button on Overview to add demo vendors</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {vendors.map(v => {
+                const statusCfg: Record<string, {label:string;color:string;bg:string}> = {
+                  APPROVED: {label:"Approved",color:"text-emerald-700",bg:"bg-emerald-50"},
+                  PENDING:  {label:"Pending",color:"text-amber-700",bg:"bg-amber-50"},
+                  REJECTED: {label:"Rejected",color:"text-red-700",bg:"bg-red-50"},
+                  SUSPENDED:{label:"Suspended",color:"text-gray-600",bg:"bg-gray-100"},
+                };
+                const cfg = statusCfg[v.status] || statusCfg.PENDING;
+                return (
+                  <div key={v.id} className="bg-white border border-gray-100 rounded-2xl p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h3 className="font-bold text-gray-900 text-sm">{v.businessName}</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
+                          <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full text-[10px] font-bold">{v.businessType}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{v.city}, {v.state}</span>
+                          <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{v.email}</span>
+                          <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{v.phone}</span>
+                          <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />Commission: {v.commissionPct}%</span>
+                        </div>
+                        {v.ownerName && (
+                          <p className="text-[10px] text-gray-300 mt-1.5">Owner: {v.ownerName} ({v.ownerEmail})</p>
+                        )}
+                        {v.approvedAt && (
+                          <p className="text-[10px] text-emerald-500 mt-0.5">Approved: {new Date(v.approvedAt).toLocaleDateString("en-IN")}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        {v.status !== "APPROVED" && (
+                          <button
+                            onClick={() => updateVendorStatus(v.id, "APPROVED")}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" /> Approve
+                          </button>
+                        )}
+                        {v.status === "APPROVED" && (
+                          <button
+                            onClick={() => updateVendorStatus(v.id, "SUSPENDED")}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg text-xs font-bold transition-all"
+                          >
+                            <Ban className="w-3.5 h-3.5" /> Suspend
+                          </button>
+                        )}
+                        {v.status !== "REJECTED" && v.status !== "APPROVED" && (
+                          <button
+                            onClick={() => updateVendorStatus(v.id, "REJECTED")}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold transition-all"
+                          >
+                            <XCircle className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -361,7 +563,7 @@ export default function Transport() {
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Transporter: <span className="font-semibold text-gray-700">{v.vendor_business_name || v.owner_name}</span></span>
+                        <span>Transporter: <span className="font-semibold text-gray-700">{v.vendor_business_name_full || v.owner_name}</span></span>
                       </div>
                     </div>
                   </div>
@@ -519,7 +721,7 @@ export default function Transport() {
                 </div>
                 <div>
                   <p className="font-bold text-gray-900">Owner/Transporter</p>
-                  <p>{selectedVehicle.vendor_business_name || selectedVehicle.owner_name}</p>
+                  <p>{selectedVehicle.vendor_business_name_full || selectedVehicle.owner_name}</p>
                 </div>
                 <div>
                   <p className="font-bold text-gray-900">Pricing Base (KM / Day)</p>
@@ -605,3 +807,4 @@ export default function Transport() {
     </AdminLayout>
   );
 }
+

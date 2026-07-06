@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Car, Search, ShieldCheck, MapPin, PhoneCall, LayoutGrid, List,
-  Star, ArrowRight, ChevronRight, SlidersHorizontal, X, Zap, Users, Clock
+  Star, ArrowRight, ChevronRight, SlidersHorizontal, X, Zap, Users, Clock,
+  Calculator, ArrowLeftRight, Tag, CheckCircle2
 } from "lucide-react";
 import { VehicleCard } from "@/components/VehicleCard";
 import { Button } from "@/components/ui/button";
@@ -45,9 +46,48 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
 
+  // Route Price Calculator state
+  const [calcFrom, setCalcFrom] = useState("");
+  const [calcTo, setCalcTo] = useState("");
+  const [calcVehicleType, setCalcVehicleType] = useState("ALL");
+  const [calcResults, setCalcResults] = useState<any[]>([]);
+  const [calcSearched, setCalcSearched] = useState(false);
+  const [calcLoading, setCalcLoading] = useState(false);
+
   useEffect(() => {
     fetchTransport();
   }, []);
+
+  const searchRoutePrices = async () => {
+    if (!calcFrom.trim() || !calcTo.trim()) return;
+    setCalcLoading(true);
+    setCalcSearched(true);
+    try {
+      const params = new URLSearchParams({
+        from: calcFrom.trim(),
+        to: calcTo.trim(),
+        ...(calcVehicleType !== "ALL" ? { vehicleType: calcVehicleType } : {})
+      });
+      const res = await fetch(`${API_BASE}/ota/route-prices?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCalcResults(Array.isArray(data) ? data : []);
+      } else {
+        setCalcResults([]);
+      }
+    } catch {
+      setCalcResults([]);
+    } finally {
+      setCalcLoading(false);
+    }
+  };
+
+  const swapFromTo = () => {
+    setCalcFrom(calcTo);
+    setCalcTo(calcFrom);
+    setCalcResults([]);
+    setCalcSearched(false);
+  };
 
   const fetchTransport = async () => {
     try {
@@ -303,6 +343,168 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
           </>
         )}
       </div>
+
+      {/* ── Route Price Calculator ── */}
+      <section className="container mx-auto px-4 pb-8 md:pb-12">
+        <div className="bg-gradient-to-br from-[#0e1b3d] to-[#122456] rounded-2xl md:rounded-3xl p-6 md:p-10 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary rounded-full blur-3xl" />
+          </div>
+
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+              <div className="space-y-1.5">
+                <span className="inline-flex items-center gap-1.5 bg-white/10 text-white/80 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
+                  <Calculator className="w-3 h-3" /> Instant Fare Estimate
+                </span>
+                <h2 className="text-2xl md:text-3xl font-serif font-black text-white tracking-tight">
+                  Check Route <span className="text-primary italic">Prices.</span>
+                </h2>
+                <p className="text-white/50 text-sm font-medium">Enter any two locations to see available vehicles with exact pricing.</p>
+              </div>
+            </div>
+
+            {/* Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+              {/* From */}
+              <div className="md:col-span-1 relative">
+                <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5">From</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/70" />
+                  <input
+                    list="from-city-list"
+                    value={calcFrom}
+                    onChange={e => setCalcFrom(e.target.value)}
+                    placeholder="e.g. Shimla"
+                    className="w-full pl-10 pr-4 h-12 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:border-primary focus:bg-white/15 transition-all"
+                  />
+                  <datalist id="from-city-list">
+                    {["Shimla","Manali","Dharamsala","Chandigarh","Delhi","Kufri","Solang Valley","Rohtang Pass","Leh","Kaza (Spiti)","Naggar","Narkanda","Chail"].map(c => <option key={c} value={c}>{c}</option>)}
+                  </datalist>
+                </div>
+              </div>
+
+              {/* Swap button */}
+              <div className="hidden md:flex items-end justify-center pb-0.5">
+                <button
+                  onClick={swapFromTo}
+                  className="h-12 w-12 rounded-xl bg-white/10 border border-white/20 hover:bg-primary/30 hover:border-primary transition-all flex items-center justify-center text-white/60 hover:text-primary"
+                  title="Swap"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* To */}
+              <div className="md:col-span-1 relative">
+                <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5">To</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+                  <input
+                    list="to-city-list"
+                    value={calcTo}
+                    onChange={e => setCalcTo(e.target.value)}
+                    placeholder="e.g. Manali"
+                    className="w-full pl-10 pr-4 h-12 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/30 text-sm font-medium focus:outline-none focus:border-primary focus:bg-white/15 transition-all"
+                  />
+                  <datalist id="to-city-list">
+                    {["Manali","Shimla","Dharamsala","Leh","Kaza (Spiti)","Rohtang Pass","Solang Valley","Chandigarh","Delhi","Kufri","Naggar","Narkanda","Chail"].map(c => <option key={c} value={c}>{c}</option>)}
+                  </datalist>
+                </div>
+              </div>
+
+              {/* Vehicle type filter */}
+              <div>
+                <label className="block text-[10px] text-white/40 font-bold uppercase tracking-widest mb-1.5">Vehicle Type</label>
+                <select
+                  value={calcVehicleType}
+                  onChange={e => setCalcVehicleType(e.target.value)}
+                  className="w-full h-12 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-medium px-4 focus:outline-none focus:border-primary transition-all"
+                >
+                  <option value="ALL" className="bg-[#122456]">All Vehicles</option>
+                  <option value="CAB" className="bg-[#122456]">Cab / Sedan / SUV</option>
+                  <option value="TEMPO_TRAVELLER" className="bg-[#122456]">Tempo Traveller</option>
+                  <option value="BUS" className="bg-[#122456]">Bus / Coach</option>
+                  <option value="LUXURY" className="bg-[#122456]">Luxury</option>
+                </select>
+              </div>
+
+              {/* Search button — full width on mobile */}
+              <button
+                onClick={searchRoutePrices}
+                disabled={!calcFrom.trim() || !calcTo.trim() || calcLoading}
+                className="md:col-start-4 md:col-span-1 h-12 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/30 active:scale-95"
+              >
+                {calcLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search className="h-4 w-4" />}
+                Get Prices
+              </button>
+            </div>
+
+            {/* Swap on mobile */}
+            <div className="flex md:hidden justify-center -mt-1 mb-3">
+              <button onClick={swapFromTo} className="text-white/40 hover:text-primary flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors">
+                <ArrowLeftRight className="h-3 w-3" /> Swap Locations
+              </button>
+            </div>
+
+            {/* Results */}
+            {calcSearched && (
+              <div className="mt-4 border-t border-white/10 pt-5">
+                {calcLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[1,2,3].map(i => <div key={i} className="h-24 bg-white/5 rounded-xl animate-pulse" />)}
+                  </div>
+                ) : calcResults.length === 0 ? (
+                  <div className="text-center py-8 text-white/30">
+                    <Car className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm font-medium">No fixed routes found for this combination.</p>
+                    <p className="text-xs mt-1">Try different cities or contact us for a custom quote.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-3">
+                      {calcResults.length} option{calcResults.length !== 1 ? "s" : ""} found for {calcFrom} → {calcTo}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {calcResults.map((r: any, idx: number) => (
+                        <div key={idx} className="bg-white/8 border border-white/15 hover:border-primary/40 rounded-xl p-4 transition-all group">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <p className="font-bold text-white text-sm leading-tight">{r.vehicleName || r.name}</p>
+                              <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mt-0.5">{r.vehicleType || r.type} • {r.seatingCapacity || r.capacity} Pax</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-[9px] text-white/30 font-bold uppercase">One-way</p>
+                              <p className="text-lg font-black text-primary">₹{Number(r.price).toLocaleString("en-IN")}</p>
+                            </div>
+                          </div>
+                          {r.roundTripPrice && (
+                            <div className="flex items-center justify-between border-t border-white/10 pt-2 mt-2">
+                              <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider">Round Trip</span>
+                              <span className="text-sm font-bold text-white/70">₹{Number(r.roundTripPrice).toLocaleString("en-IN")}</span>
+                            </div>
+                          )}
+                          {r.estimatedDistanceKm && (
+                            <p className="text-[10px] text-white/30 font-medium mt-1.5 flex items-center gap-1">
+                              <Tag className="w-2.5 h-2.5" />
+                              {r.estimatedDistanceKm} km • {r.includes?.includes("FUEL") ? "Fuel incl." : ""}{r.includes?.includes("DRIVER_ALLOWANCE") ? " Driver incl." : ""}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-white/25 font-medium mt-4 text-center">
+                      Prices are indicative. Final fare confirmed at booking. Tolls & parking may be extra.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* ── Popular Routes Section ── */}
       {routes.length > 0 && (

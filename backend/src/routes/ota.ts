@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { cacheMiddleware } from "../lib/cache";
-import { db, hotelsTable, transportServicesTable, transportVehiclesTable, settingsTable } from "@workspace/db";
-import { eq, and, sql, asc, desc } from "drizzle-orm";
+import { db, hotelsTable, transportServicesTable, transportVehiclesTable, transportPricingRulesTable, settingsTable } from "@workspace/db";
+import { eq, and, ilike, or, sql, asc, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -107,13 +107,78 @@ router.get("/hotels/:slug", cacheMiddleware(300), async (req, res) => {
   }
 });
 
-// GET /api/ota/transport
-router.get("/transport", cacheMiddleware(300), async (req, res) => {
+// GET /api/ota/transport — supports ?country=&state=&city= geo filtering
+router.get("/transport", cacheMiddleware(120), async (req, res) => {
   try {
-    const list = await db.select().from(transportVehiclesTable).where(eq(transportVehiclesTable.status, "APPROVED"));
+    const { country, state, city, type, limit = 100 } = req.query;
+    let query = db.select().from(transportVehiclesTable).$dynamic();
+    const conditions: any[] = [eq(transportVehiclesTable.status, "APPROVED")];
+    if (country) conditions.push(eq(transportVehiclesTable.countrySlug, country as string));
+    if (state)   conditions.push(eq(transportVehiclesTable.stateSlug,   state   as string));
+    if (city)    conditions.push(or(
+      eq(transportVehiclesTable.destinationSlug, city as string),
+      ilike(transportVehiclesTable.customCity, city as string)
+    ));
+    if (type)    conditions.push(eq(transportVehiclesTable.type, (type as string).toUpperCase()));
+    const list = await db
+      .select()
+      .from(transportVehiclesTable)
+      .where(and(...conditions))
+      .orderBy(desc(transportVehiclesTable.isFeatured), asc(transportVehiclesTable.displayOrder))
+      .limit(Number(limit));
     res.json(list);
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch transport" });
+  }
+});
+
+// GET /api/ota/route-prices — fare calculator: from + to + optional vehicleType
+router.get("/route-prices", async (req, res) => {
+  try {
+    const { from, to, vehicleType } = req.query;
+    if (!from || !to) return res.status(400).json({ error: "from and to are required" });
+
+    // Fuzzy match on fromCity / toCity using ILIKE; also try reversed direction
+    const priceRows = await db.execute(sql`
+      SELECT
+        pr.id,
+        pr.name,
+        pr.from_city   AS "fromCity",
+        pr.to_city     AS "toCity",
+        pr.price,
+        pr.round_trip_price AS "roundTripPrice",
+        pr.estimated_distance_km AS "estimatedDistanceKm",
+        pr.price_type  AS "priceType",
+        pr.includes,
+        pr.excludes,
+        tv.name        AS "vehicleName",
+        tv.type        AS "vehicleType",
+        tv.sub_type    AS "subType",
+        tv.make,
+        tv.model,
+        tv.seating_capacity AS "seatingCapacity",
+        tv.is_ac       AS "isAC",
+        tv.features,
+        tv.slug        AS "vehicleSlug",
+        tv.min_price   AS "minPrice"
+      FROM transport_pricing_rules pr
+      JOIN transport_vehicles tv ON pr.vehicle_id = tv.id
+      WHERE pr.is_active = true
+        AND tv.status = 'APPROVED'
+        AND pr.rule_type = 'FIXED_ROUTE'
+        AND (
+          (pr.from_city ILIKE ${'%' + (from as string) + '%'} AND pr.to_city ILIKE ${'%' + (to as string) + '%'})
+          OR
+          (pr.from_city ILIKE ${'%' + (to as string) + '%'} AND pr.to_city ILIKE ${'%' + (from as string) + '%'})
+        )
+        ${vehicleType && vehicleType !== 'ALL' ? sql`AND tv.type = ${vehicleType}` : sql``}
+      ORDER BY pr.price ASC
+    `);
+
+    res.json(priceRows.rows);
+  } catch (e: any) {
+    console.error("Route prices error:", e);
+    res.status(500).json({ error: "Failed to fetch route prices" });
   }
 });
 

@@ -116,16 +116,16 @@ router.get("/dashboard", async (req: AuthenticatedRequest, res: Response) => {
     const vendorCondition = isAdmin ? sql`1=1` : sql`vendor_id = (SELECT id FROM transport_vendors WHERE user_id = ${ownerId} LIMIT 1)`;
     const ownerCondition = isAdmin ? sql`1=1` : sql`owner_id = ${ownerId}`;
 
-    const [totalVehicles] = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_vehicles WHERE ${ownerCondition}`) as any[];
-    const [approvedVehicles] = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_vehicles WHERE ${ownerCondition} AND status = 'APPROVED'`) as any[];
-    const [totalBookings] = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_bookings WHERE ${vendorCondition}`) as any[];
-    const [pendingBookings] = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_bookings WHERE ${vendorCondition} AND status = 'PENDING'`) as any[];
-    const [totalRevenue] = await db.execute(sql`SELECT COALESCE(SUM(vendor_earning), 0) AS sum FROM transport_bookings WHERE ${vendorCondition} AND status = 'CONFIRMED'`) as any[];
-    const [monthRevenue] = await db.execute(sql`
+    const totalVehicles = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_vehicles WHERE ${ownerCondition}`) as any;
+    const approvedVehicles = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_vehicles WHERE ${ownerCondition} AND status = 'APPROVED'`) as any;
+    const totalBookings = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_bookings WHERE ${vendorCondition}`) as any;
+    const pendingBookings = await db.execute(sql`SELECT COUNT(*) AS count FROM transport_bookings WHERE ${vendorCondition} AND status = 'PENDING'`) as any;
+    const totalRevenue = await db.execute(sql`SELECT COALESCE(SUM(vendor_earning), 0) AS sum FROM transport_bookings WHERE ${vendorCondition} AND status = 'CONFIRMED'`) as any;
+    const monthRevenue = await db.execute(sql`
       SELECT COALESCE(SUM(vendor_earning), 0) AS sum FROM transport_bookings 
       WHERE ${vendorCondition} AND status = 'CONFIRMED' 
       AND created_at >= date_trunc('month', CURRENT_DATE)
-    `) as any[];
+    `) as any;
 
     const recentBookings = await db.execute(sql`
       SELECT tb.*, tv.name AS vehicle_name, tv.type AS vehicle_type,
@@ -655,13 +655,13 @@ router.patch("/bookings/:id", async (req: AuthenticatedRequest, res: Response) =
     const bookingId = Number(req.params.id);
     const { status, driverId, vendorNote, cancelledReason } = req.body;
 
-    const [booking] = await db.execute(sql`
+    const bookingResult = await db.execute(sql`
       SELECT tb.*, tv.owner_id FROM transport_bookings tb
       LEFT JOIN transport_vehicles tv ON tb.vehicle_id = tv.id
       WHERE tb.id = ${bookingId} LIMIT 1
     `) as any;
 
-    const b = booking?.rows?.[0];
+    const b = bookingResult?.rows?.[0];
     if (!b) return res.status(404).json({ error: "Booking not found" });
     if (!isAdmin && b.owner_id !== ownerId) return res.status(403).json({ error: "Forbidden" });
 
@@ -680,13 +680,13 @@ router.patch("/bookings/:id", async (req: AuthenticatedRequest, res: Response) =
       `);
     }
 
-    const [updated] = await db.execute(sql`
+    const updatedResult = await db.execute(sql`
       UPDATE transport_bookings SET ${sql.raw(
         Object.entries(updateData).map(([k, v]) => `${k.replace(/([A-Z])/g, '_$1').toLowerCase()} = '${v}'`).join(', ')
       )} WHERE id = ${bookingId} RETURNING *
-    `);
+    `) as any;
 
-    res.json(updated.rows[0]);
+    res.json(updatedResult.rows[0]);
   } catch (error: any) {
     logger.error({ error: error.message }, "Booking update error");
     res.status(500).json({ error: "Failed to update booking" });

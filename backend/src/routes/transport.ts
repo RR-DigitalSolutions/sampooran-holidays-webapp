@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import {
   db, transportVehiclesTable, transportVendorsTable, transportRoutesTable,
   transportPricingRulesTable, transportReviewsTable, transportAvailabilityTable,
-  transportDriversTable, usersTable, destinationsTable, statesTable, countriesTable,
+  transportDriversTable, usersTable, destinationsTable, statesTable, countriesTable, regionsTable,
 } from "@workspace/db";
 import { eq, and, desc, asc, sql, ilike, or, inArray } from "drizzle-orm";
 import { authenticate, AuthenticatedRequest } from "../middleware/auth";
@@ -77,12 +77,20 @@ router.get("/transport", cacheMiddleware(30), async (req: Request, res: Response
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `);
 
-    const [{ total }] = await db.execute(sql`
+    const countResult = await db.execute(sql`
       SELECT COUNT(*) AS total FROM transport_vehicles tv WHERE ${whereClause}
-    `) as any[];
+    `) as any;
+    const total = countResult.rows?.[0]?.total || 0;
+
+    const formatted = (vehicles.rows || []).map((v: any) => ({
+      ...v,
+      imageUrl: v.images?.[0] || v.image_url || null,
+      capacity: v.seating_capacity || v.capacity || 0,
+    }));
 
     res.json({
-      vehicles: vehicles.rows,
+      vehicles: formatted,
+      services: formatted,
       total: Number(total),
       limit: Number(limit),
       offset: Number(offset),
@@ -101,7 +109,7 @@ router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Re
   try {
     const { slug } = req.params;
 
-    const [vehicle] = await db.execute(sql`
+    const vehicleResult = await db.execute(sql`
       SELECT
         tv.*,
         u.name AS owner_name, u.vendor_business_name,
@@ -121,8 +129,8 @@ router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Re
       LIMIT 1
     `) as any;
 
-    if (!vehicle?.rows?.[0]) return res.status(404).json({ error: "Vehicle not found" });
-    const v = vehicle.rows[0];
+    if (!vehicleResult?.rows?.[0]) return res.status(404).json({ error: "Vehicle not found" });
+    const v = vehicleResult.rows[0];
 
     // Fetch pricing rules
     const pricing = await db
@@ -197,6 +205,20 @@ router.get("/transport/routes/popular", cacheMiddleware(300), async (_req: Reque
     res.json(routes);
   } catch (error: any) {
     res.status(500).json({ error: "Failed to fetch routes" });
+  }
+});
+
+// GET /api/transport/routes — Public/Admin fetch all intercity transfer routes
+router.get("/transport/routes", cacheMiddleware(60), async (_req: Request, res: Response) => {
+  try {
+    const routesList = await db
+      .select()
+      .from(transportRoutesTable)
+      .orderBy(asc(transportRoutesTable.displayOrder || transportRoutesTable.id));
+    res.json({ routes: routesList });
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Get routes error");
+    res.status(500).json({ error: "Failed to fetch all routes" });
   }
 });
 
@@ -287,7 +309,7 @@ router.post("/transport/:vehicleId/book", authenticate, async (req: Authenticate
     const platformFee = Math.round((totalAmount * commissionPct) / 100);
     const vendorEarning = totalAmount - platformFee;
 
-    const [booking] = await db.execute(sql`
+    const bookingResult = await db.execute(sql`
       INSERT INTO transport_bookings (
         booking_ref, user_id, vehicle_id, vendor_id,
         journey_type, pickup_date, pickup_time, return_date, return_time,
@@ -311,7 +333,7 @@ router.post("/transport/:vehicleId/book", authenticate, async (req: Authenticate
     `);
 
     res.status(201).json({
-      booking: booking.rows[0],
+      booking: bookingResult.rows[0],
       message: vehicle.bookingType === "INSTANT"
         ? "Booking confirmed! Driver details will be shared shortly."
         : "Booking request sent! Vendor will confirm within 2 hours.",
@@ -484,7 +506,7 @@ router.get("/transport/mega-menu", async (_req: Request, res: Response): Promise
       const responseWorldRegions = worldRegions.map(region => ({
         name: region.name,
         slug: region.slug,
-        countries: region.countries.map(country => ({
+        countries: region.countries.map((country: any) => ({
           name: country.name,
           slug: country.slug,
           destinations: worldDestinations.filter(d => d.countryId === country.id)

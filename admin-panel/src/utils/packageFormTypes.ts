@@ -46,6 +46,7 @@ export interface ItineraryDay {
   attractionIds: number[];
   diningStops: DiningStop[];
   activities: string[];
+  transport?: string;
 }
 
 export interface HotelInfo {

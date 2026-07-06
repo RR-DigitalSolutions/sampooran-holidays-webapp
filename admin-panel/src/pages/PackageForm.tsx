@@ -105,6 +105,7 @@ export default function PackageForm() {
   const [allCmsActivities, setAllCmsActivities] = useState<any[]>([]);
   const [allDining, setAllDining] = useState<any[]>([]);
   const [allGlobalHotels, setAllGlobalHotels] = useState<any[]>([]);
+  const [allGlobalTransports, setAllGlobalTransports] = useState<any[]>([]);
   const [approvedActivities, setApprovedActivities] = useState<string[]>([]);
   const [hiddenActivities, setHiddenActivities] = useState<string[]>([]);
   const [activityInputs, setActivityInputs] = useState<Record<number, string>>({});
@@ -143,8 +144,9 @@ export default function PackageForm() {
       customFetch("/api/admin/attractions"),
       customFetch("/api/admin/activities"),
       customFetch("/api/admin/dining"),
-      customFetch("/api/admin/hotels")
-    ]).then(([dests, states, countries, attrs, activities, dinings, globalHotels]) => {
+      customFetch("/api/admin/hotels"),
+      customFetch("/api/transport?limit=500")
+    ]).then(([dests, states, countries, attrs, activities, dinings, globalHotels, transports]) => {
       setAllDests(Array.isArray(dests) ? dests : []);
       setAllStates(Array.isArray(states) ? states : []);
       setAllCountries(Array.isArray(countries) ? countries : []);
@@ -152,6 +154,7 @@ export default function PackageForm() {
       setAllCmsActivities(Array.isArray(activities) ? activities : []);
       setAllDining(Array.isArray(dinings) ? dinings : []);
       setAllGlobalHotels(Array.isArray(globalHotels) ? globalHotels : []);
+      setAllGlobalTransports(Array.isArray(transports?.vehicles) ? transports.vehicles : []);
     });
 
     customFetch("/api/admin/settings").then((settings) => {
@@ -450,30 +453,53 @@ export default function PackageForm() {
                       <input value={day.title} onChange={e => { const ni=[...itinerary]; ni[idx].title=e.target.value; setItinerary(ni); }} placeholder="Day Title (e.g. Arrival in Manali)" className="col-span-2 px-3 py-2 rounded-lg border outline-none font-bold" />
                       <textarea value={day.description} onChange={e => { const ni=[...itinerary]; ni[idx].description=e.target.value; setItinerary(ni); }} placeholder="Detailed description..." rows={2} className="col-span-2 px-3 py-2 rounded-lg border outline-none text-sm" />
                       
-                      {/* Location & Accommodation */}
-                      <div>
-                        <input list={`locations-${idx}`} value={day.location} onChange={e => { const ni=[...itinerary]; ni[idx].location=e.target.value; setItinerary(ni); }} placeholder="Location (City)" className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
-                        <datalist id={`locations-${idx}`}>
-                          {allDests.map(d => <option key={d.id} value={d.name} />)}
-                        </datalist>
-                      </div>
-                      
-                      <div>
-                        <input list={`hotels-${idx}`} value={day.accommodation} onChange={e => { const ni=[...itinerary]; ni[idx].accommodation=e.target.value; setItinerary(ni); }} placeholder="Search or type Accommodation..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
-                        <datalist id={`hotels-${idx}`}>
-                          <option value="No Accommodation" />
-                          <option value="Overnight Journey" />
-                          {(() => {
-                            const filteredHotels = activeDestIds.length > 0
-                              ? allGlobalHotels.filter(h => activeDestIds.includes(h.destinationId))
-                              : allGlobalHotels;
-                            return filteredHotels.map((h, hidx) => (
-                              <option key={hidx} value={h.name}>
-                                {h.name} ({allDests.find(d => d.id === h.destinationId)?.name || 'Unknown'})
-                              </option>
-                            ));
-                          })()}
-                        </datalist>
+                      {/* Location & Accommodation & Transport */}
+                      <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Location</label>
+                          <input list={`locations-${idx}`} value={day.location} onChange={e => { const ni=[...itinerary]; ni[idx].location=e.target.value; setItinerary(ni); }} placeholder="Location (City)" className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
+                          <datalist id={`locations-${idx}`}>
+                            {allDests.map(d => <option key={d.id} value={d.name} />)}
+                          </datalist>
+                        </div>
+                        
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Accommodation</label>
+                          <input list={`hotels-${idx}`} value={day.accommodation} onChange={e => { const ni=[...itinerary]; ni[idx].accommodation=e.target.value; setItinerary(ni); }} placeholder="Search or type Accommodation..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
+                          <datalist id={`hotels-${idx}`}>
+                            <option value="No Accommodation" />
+                            <option value="Overnight Journey" />
+                            {(() => {
+                              const filteredHotels = activeDestIds.length > 0
+                                ? allGlobalHotels.filter(h => activeDestIds.includes(h.destinationId))
+                                : allGlobalHotels;
+                              return filteredHotels.map((h, hidx) => (
+                                <option key={hidx} value={h.name}>
+                                  {h.name} ({allDests.find(d => d.id === h.destinationId)?.name || 'Unknown'})
+                                </option>
+                              ));
+                            })()}
+                          </datalist>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Transport / Vehicle</label>
+                          <input list={`transports-${idx}`} value={day.transport || ""} onChange={e => { const ni=[...itinerary]; ni[idx].transport=e.target.value; setItinerary(ni); }} placeholder="Search or type Transport..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white" />
+                          <datalist id={`transports-${idx}`}>
+                            <option value="No Transport" />
+                            <option value="Self Drive" />
+                            {(() => {
+                              const filteredTransports = activeDestIds.length > 0
+                                ? allGlobalTransports.filter(t => activeDestIds.includes(t.destinationId))
+                                : allGlobalTransports;
+                              return filteredTransports.map((t, tidx) => (
+                                <option key={tidx} value={t.name}>
+                                  {t.name} ({t.type} • {t.seatingCapacity} Pax)
+                                </option>
+                              ));
+                            })()}
+                          </datalist>
+                        </div>
                       </div>
                     
                     {/* Meals Selection */}

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { clearCachePattern } from "../lib/cache";
 import { syncPackage, deleteMongoPackage, syncDestination, deleteMongoDestination, syncHomeConfig } from "../lib/mongoSync";
+import { seedHimachalTransport } from "../lib/seedHimachalTransport";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -368,6 +369,180 @@ router.patch("/approvals/transport/:id", requirePermission("TRANSPORT"), async (
     res.json(updated);
   } catch (e) {
     res.status(500).json({ error: "Failed to update transport status" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// TRANSPORT VENDORS — List, Approve, Reject
+// ─────────────────────────────────────────────────────────────
+
+// GET /admin/transport-vendors
+router.get("/transport-vendors", requirePermission("TRANSPORT"), async (req, res) => {
+  try {
+    const list = await db
+      .select({
+        id: transportVendorsTable.id,
+        userId: transportVendorsTable.userId,
+        businessName: transportVendorsTable.businessName,
+        businessType: transportVendorsTable.businessType,
+        phone: transportVendorsTable.phone,
+        email: transportVendorsTable.email,
+        city: transportVendorsTable.city,
+        state: transportVendorsTable.state,
+        status: transportVendorsTable.status,
+        commissionPct: transportVendorsTable.commissionPct,
+        adminNote: transportVendorsTable.adminNote,
+        approvedAt: transportVendorsTable.approvedAt,
+        createdAt: transportVendorsTable.createdAt,
+        ownerName: usersTable.name,
+        ownerEmail: usersTable.email,
+      })
+      .from(transportVendorsTable)
+      .leftJoin(usersTable, eq(transportVendorsTable.userId, usersTable.id))
+      .orderBy(desc(transportVendorsTable.createdAt));
+    res.json(list);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch transport vendors");
+    res.status(500).json({ error: "Failed to fetch transport vendors" });
+  }
+});
+
+// PATCH /admin/transport-vendors/:id  — approve / reject / suspend
+router.patch("/transport-vendors/:id", requirePermission("TRANSPORT"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNote, commissionPct } = req.body;
+    const updateData: any = { status, updatedAt: new Date() };
+    if (adminNote !== undefined) updateData.adminNote = adminNote;
+    if (commissionPct !== undefined) updateData.commissionPct = commissionPct;
+    if (status === "APPROVED") updateData.approvedAt = new Date();
+    const [updated] = await db
+      .update(transportVendorsTable)
+      .set(updateData)
+      .where(eq(transportVendorsTable.id, Number(id)))
+      .returning();
+    // Also update vendorVerified on the user record
+    if (status === "APPROVED") {
+      await db.update(usersTable).set({ vendorVerified: true }).where(eq(usersTable.id, updated.userId));
+    } else if (status === "REJECTED" || status === "SUSPENDED") {
+      await db.update(usersTable).set({ vendorVerified: false }).where(eq(usersTable.id, updated.userId));
+    }
+    await clearCachePattern("cache:/api/transport*");
+    res.json(updated);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to update transport vendor");
+    res.status(500).json({ error: "Failed to update transport vendor" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// TRANSPORT VEHICLES — List, Approve, Reject (new OTA system)
+// ─────────────────────────────────────────────────────────────
+
+// GET /admin/transport-vehicles
+router.get("/transport-vehicles", requirePermission("TRANSPORT"), async (req, res) => {
+  try {
+    const status = req.query.status as string | undefined;
+    const list = await db.execute(sql`
+      SELECT tv.*, u.name AS owner_name, u.email AS owner_email,
+             u.vendor_business_name, tv2.business_name AS vendor_business_name_full,
+             COALESCE(d.name, tv.custom_city) AS city_name
+      FROM transport_vehicles tv
+      LEFT JOIN users u ON tv.owner_id = u.id
+      LEFT JOIN transport_vendors tv2 ON tv.vendor_id = tv2.id
+      LEFT JOIN destinations d ON tv.destination_id = d.id
+      ${status ? sql`WHERE tv.status = ${status}` : sql``}
+      ORDER BY tv.created_at DESC
+    `);
+    res.json(list.rows);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch transport vehicles");
+    res.status(500).json({ error: "Failed to fetch transport vehicles" });
+  }
+});
+
+// PATCH /admin/transport-vehicles/:id  — approve / reject
+router.patch("/transport-vehicles/:id", requirePermission("TRANSPORT"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNote, isFeatured } = req.body;
+    const updateData: any = { status, updatedAt: new Date() };
+    if (adminNote !== undefined) updateData.adminNote = adminNote;
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+    const [updated] = await db
+      .update(transportVehiclesTable)
+      .set(updateData)
+      .where(eq(transportVehiclesTable.id, Number(id)))
+      .returning();
+    await clearCachePattern("cache:/api/transport*");
+    res.json(updated);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to update transport vehicle");
+    res.status(500).json({ error: "Failed to update transport vehicle" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// SEED: Demo Himachal Transport Vendors
+// POST /admin/seed-himachal-transport
+// ─────────────────────────────────────────────────────────────
+router.post("/seed-himachal-transport", async (req: any, res: any) => {
+  const seedSecret = process.env.SEED_ADMIN_SECRET;
+  if (seedSecret && req.headers["x-seed-secret"] !== seedSecret) {
+    return res.status(403).json({ error: "Forbidden: invalid seed secret" });
+  }
+  try {
+    logger.info("Starting Himachal transport demo seed...");
+    const results = await seedHimachalTransport();
+    await clearCachePattern("cache:/api/transport*");
+    res.json({
+      success: true,
+      message: "Demo transport vendors and vehicles seeded for Himachal Pradesh.",
+      credentials: results.map(r => ({
+        city: r.city,
+        email: r.email,
+        password: r.password,
+        loginUrl: "/transport-partner",
+        vehicleCount: r.vehicles.length,
+        vehicles: r.vehicles.map((v: any) => v.name),
+      }))
+    });
+  } catch (err: any) {
+    logger.error({ err: err.message }, "Himachal transport seed failed");
+    res.status(500).json({ error: "Seed failed: " + err.message });
+  }
+});
+
+// POST /admin/transport/routes — create a standard fixed route
+router.post("/transport/routes", requirePermission("TRANSPORT"), async (req, res) => {
+  try {
+    const { from, to, distance, estimatedTime, startingPrice, isPopular } = req.body;
+    if (!from || !to || !startingPrice) {
+      return res.status(400).json({ error: "From, To, and Starting Price are required" });
+    }
+
+    const fromSlug = from.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const toSlug = to.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+    const [inserted] = await db
+      .insert(transportRoutesTable)
+      .values({
+        from,
+        to,
+        fromSlug,
+        toSlug,
+        distance: Number(distance || 0),
+        estimatedTime: estimatedTime || "1h",
+        startingPrice: Number(startingPrice),
+        isPopular: !!isPopular,
+      })
+      .returning();
+
+    await clearCachePattern("cache:/api/transport*");
+    res.json(inserted);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to create transport route");
+    res.status(500).json({ error: "Failed to create transport route" });
   }
 });
 
