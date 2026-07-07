@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Star, MapPin, Heart, ArrowRight, ShieldCheck } from "lucide-react";
@@ -48,7 +48,7 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="h-full flex w-full"
     >
-      <div className="group w-full bg-primary rounded-lg overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
+      <div className="group w-full bg-primary rounded-2xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
 
         {/* Image Area */}
         <div className="relative h-28 xs:h-32 sm:h-52 overflow-hidden shrink-0 w-full">
@@ -103,27 +103,73 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
         </div>
 
         {/* Info Area */}
-        <div className="p-2 sm:p-4 flex flex-col flex-1 bg-primary text-white">
-          <h3 className="font-sans font-bold text-[10px] sm:text-sm text-white group-hover:text-accent transition-colors line-clamp-1 leading-tight mb-1.5 sm:mb-3">
+        <div className="p-3 sm:p-4 flex flex-col flex-1 bg-primary text-white">
+          <h3 className="font-sans font-bold text-[10px] sm:text-sm text-white group-hover:text-accent transition-colors line-clamp-1 leading-tight mb-1">
             {hotel.name}
           </h3>
 
-          {/* Dynamic Inclusions: icon above label */}
-          <div className="flex gap-2 sm:gap-4 mb-2 sm:mb-4 mt-0.5 font-sans">
-            {displayAmenities.map((item, i) => (
-              <div key={i} className="flex flex-col items-center gap-0.5 text-white/70 group-hover:text-white transition-colors" title={item.label}>
-                <div className="flex items-center justify-center w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white/5 border border-white/10 text-accent shrink-0">
-                  <item.icon className="h-2 w-2 sm:h-3 sm:w-3" />
-                </div>
-                <span className="text-[5.5px] sm:text-[6.5px] font-medium uppercase tracking-wide leading-none text-center max-w-[36px] truncate">
-                  {item.label.split(" ")[0]}
-                </span>
-              </div>
-            ))}
-          </div>
+          {/* Amenities — horizontal scroll nero bar */}
+          {hotel.amenities && hotel.amenities.length > 0 && (
+            <div
+              className="flex gap-1 overflow-x-auto no-scrollbar mb-2.5 pb-0.5 whitespace-nowrap select-none w-full scroll-smooth cursor-grab active:cursor-grabbing"
+              onMouseDown={(e) => {
+                const el = e.currentTarget;
+                el.dataset.isDown = "true";
+                el.dataset.startX = String(e.pageX - el.offsetLeft);
+                el.dataset.scrollLeft = String(el.scrollLeft);
+              }}
+              onMouseLeave={(e) => {
+                delete e.currentTarget.dataset.isDown;
+              }}
+              onMouseUp={(e) => {
+                delete e.currentTarget.dataset.isDown;
+              }}
+              onMouseMove={(e) => {
+                const el = e.currentTarget;
+                if (el.dataset.isDown !== "true") return;
+                e.preventDefault();
+                e.stopPropagation();
+                const x = e.pageX - el.offsetLeft;
+                const startX = Number(el.dataset.startX || 0);
+                const walk = (x - startX) * 1.5;
+                if (Math.abs(x - startX) > 5) {
+                  el.dataset.wasDragged = "true";
+                }
+                el.scrollLeft = Number(el.dataset.scrollLeft || 0) - walk;
+              }}
+              onClick={(e) => {
+                const el = e.currentTarget;
+                if (el.dataset.wasDragged === "true") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  delete el.dataset.wasDragged;
+                }
+              }}
+            >
+              {hotel.amenities.map((ame, index) => {
+                if (!ame) return null;
+                let nameVal = "";
+                if (typeof ame === "object") {
+                  nameVal = (ame as any).code || (ame as any).key || (ame as any).name || String(ame);
+                } else {
+                  nameVal = String(ame);
+                }
+                const keyVal = nameVal === "[object Object]" ? `amenity-${index}` : nameVal;
+                const info = getAmenityInfo(keyVal.toUpperCase());
+                if (!info) return null;
+                const Icon = info.icon;
+                return (
+                  <span key={`${keyVal}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
+                    {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
+                    {info.label}
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
           {/* Footer */}
-          <div className="mt-auto pt-2 sm:pt-3 border-t border-white/10 flex items-center justify-between w-full">
+          <div className="mt-auto pt-2.5 border-t border-white/10 flex items-center justify-between w-full">
             <div className="font-sans">
               <p className="text-[6px] sm:text-[7px] text-white/50 uppercase font-black tracking-widest mb-0.5">Best Rate From</p>
               <div className="flex items-baseline gap-0.5">

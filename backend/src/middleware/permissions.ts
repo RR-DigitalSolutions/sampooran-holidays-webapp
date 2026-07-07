@@ -11,6 +11,7 @@ type PermissionModule =
   | "FINANCE"
   | "BOOKINGS"
   | "TRANSPORT"
+  | "HOTELS"
   | "SETTINGS"
   | "USERS";
 

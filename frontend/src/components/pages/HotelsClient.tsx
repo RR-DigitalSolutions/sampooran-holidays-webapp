@@ -81,7 +81,7 @@ function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boole
   const hotelUrl = buildHotelUrl(hotel);
 
   return (
-    <Link href={hotelUrl} className="group block bg-primary rounded-3xl border border-primary/30 overflow-hidden hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] transition-all duration-300 hover:-translate-y-1">
+    <Link href={hotelUrl} className="group block bg-primary rounded-2xl border border-primary/30 overflow-hidden hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] transition-all duration-300 hover:-translate-y-1">
       {/* Image — using next/image for lazy loading + WebP optimization */}
       <div className="relative h-52 bg-slate-950 overflow-hidden">
         {img ? (
@@ -131,46 +131,87 @@ function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boole
       </div>
 
       {/* Content */}
-      <div className="p-5 bg-primary text-white">
-        <div className="flex items-center gap-1 mb-2">
+      <div className="p-3.5 sm:p-4 bg-primary text-white">
+        <div className="flex items-center gap-1 mb-1">
           {[...Array(5)].map((_, i) => (
             <Star key={i} className={`w-3 h-3 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-white/20"}`} />
           ))}
           <span className="text-[10px] text-white/50 ml-1 font-semibold">{hotel.type}</span>
         </div>
 
-        <h3 className="font-black text-white text-base leading-tight mb-1.5 group-hover:text-accent transition-colors line-clamp-1">
+        <h3 className="font-black text-white text-base leading-tight mb-1 group-hover:text-accent transition-colors line-clamp-1">
           {hotel.name}
         </h3>
 
-        <div className="flex items-center gap-1 text-white/50 mb-3">
+        <div className="flex items-center gap-1 text-white/50 mb-2">
           <MapPin className="w-3.5 h-3.5 shrink-0 text-accent" />
           <span className="text-xs font-medium truncate">
             {hotel.city || hotel.destinationName || hotel.address.slice(0, 30)}
           </span>
         </div>
 
-        {/* Amenities */}
+        {/* Amenities — horizontal scroll nero bar */}
         {hotel.amenities && hotel.amenities.length > 0 && (
-          <div className="flex gap-1.5 mb-3 flex-wrap">
-            {hotel.amenities.slice(0, 4).map(ame => {
-              const Icon = AMENITY_ICONS[ame.toUpperCase()] || null;
+          <div
+            className="flex gap-1 overflow-x-auto no-scrollbar mb-2.5 pb-0.5 whitespace-nowrap select-none w-full scroll-smooth cursor-grab active:cursor-grabbing"
+            onMouseDown={(e) => {
+              const el = e.currentTarget;
+              el.dataset.isDown = "true";
+              el.dataset.startX = String(e.pageX - el.offsetLeft);
+              el.dataset.scrollLeft = String(el.scrollLeft);
+            }}
+            onMouseLeave={(e) => {
+              delete e.currentTarget.dataset.isDown;
+            }}
+            onMouseUp={(e) => {
+              delete e.currentTarget.dataset.isDown;
+            }}
+            onMouseMove={(e) => {
+              const el = e.currentTarget;
+              if (el.dataset.isDown !== "true") return;
+              e.preventDefault();
+              e.stopPropagation();
+              const x = e.pageX - el.offsetLeft;
+              const startX = Number(el.dataset.startX || 0);
+              const walk = (x - startX) * 1.5;
+              if (Math.abs(x - startX) > 5) {
+                el.dataset.wasDragged = "true";
+              }
+              el.scrollLeft = Number(el.dataset.scrollLeft || 0) - walk;
+            }}
+            onClick={(e) => {
+              const el = e.currentTarget;
+              if (el.dataset.wasDragged === "true") {
+                e.preventDefault();
+                e.stopPropagation();
+                delete el.dataset.wasDragged;
+              }
+            }}
+          >
+            {hotel.amenities.map((ame, index) => {
+              if (!ame) return null;
+              let nameVal = "";
+              if (typeof ame === "object") {
+                nameVal = (ame as any).code || (ame as any).key || (ame as any).name || String(ame);
+              } else {
+                nameVal = String(ame);
+              }
+              const keyVal = nameVal === "[object Object]" ? `amenity-${index}` : nameVal;
+              const upperKey = keyVal.toUpperCase();
+              const Icon = AMENITY_ICONS[upperKey] || null;
+              const displayLabel = keyVal.charAt(0).toUpperCase() + keyVal.slice(1).toLowerCase();
+
               return (
-                <span key={ame} className="flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10">
+                <span key={`${keyVal}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
                   {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
-                  {ame.charAt(0) + ame.slice(1).toLowerCase()}
+                  {displayLabel}
                 </span>
               );
             })}
-            {hotel.amenities.length > 4 && (
-              <span className="text-[10px] text-white/50 bg-white/5 px-2 py-1 rounded-full border border-white/10">
-                +{hotel.amenities.length - 4}
-              </span>
-            )}
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-3 border-t border-white/10">
+        <div className="flex items-center justify-between pt-2.5 border-t border-white/10">
           <div>
             {hotel.minPrice ? (
               <>
@@ -370,34 +411,30 @@ export default function HotelsClient({
 
   return (
     <div className="bg-slate-50 min-h-screen pb-32">
-      {/* ── Breadcrumbs (geo pages) ── */}
-      {breadcrumbs && breadcrumbs.length > 0 && (
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="container mx-auto px-4 py-3">
-            <nav className="flex items-center gap-2 text-xs text-slate-500">
-              {breadcrumbs.map((crumb, i) => (
-                <span key={crumb.href} className="flex items-center gap-2">
-                  {i > 0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-                  {i === breadcrumbs.length - 1 ? (
-                    <span className="font-bold text-slate-700">{crumb.label}</span>
-                  ) : (
-                    <Link href={crumb.href} className="hover:text-primary transition-colors">{crumb.label}</Link>
-                  )}
-                </span>
-              ))}
-            </nav>
-          </div>
-        </div>
-      )}
-
       {/* ── Hero ── */}
-      <div className="relative bg-[#0A0D17] pt-20 pb-20 md:pt-36 md:pb-24 overflow-hidden">
+      <div className="relative bg-[#0A0D17] pt-24 pb-20 md:pt-36 md:pb-24 overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img src={cityInfo?.imageUrl || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600"}
             className="w-full h-full object-cover opacity-30 grayscale-[0.3]" alt={pageTitle || "Himalayan stays"} />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A0D17] via-transparent to-[#0A0D17]" />
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center">
+          {/* Breadcrumbs inside Hero to fix the white space behind transparent navbar */}
+          {breadcrumbs && breadcrumbs.length > 0 && (
+            <nav className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest font-black mb-6">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={crumb.href} className="flex items-center gap-1.5">
+                  {i > 0 && <ChevronRight className="w-3 h-3 text-white/20" />}
+                  {i === breadcrumbs.length - 1 ? (
+                    <span className="text-white/70">{crumb.label}</span>
+                  ) : (
+                    <Link href={crumb.href} className="hover:text-white/70 transition-colors">{crumb.label}</Link>
+                  )}
+                </span>
+              ))}
+            </nav>
+          )}
+
           <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 animate-fade-in">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/10">
               <Sparkles className="h-4 w-4 text-accent" />
@@ -427,9 +464,9 @@ export default function HotelsClient({
                 className="w-full"
               />
             </div>
-            </div>
           </div>
         </div>
+      </div>
 
       {/* ── Filters Toolbar ── */}
       <div className="container mx-auto px-4 -mt-10 relative z-20">
@@ -524,8 +561,8 @@ export default function HotelsClient({
                 </button>
               </div>
             ) : loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
                   <div key={i} className="bg-white rounded-3xl border border-slate-100 overflow-hidden">
                     <div className="h-52 bg-slate-100 animate-pulse" />
                     <div className="p-5 space-y-3">
@@ -550,7 +587,7 @@ export default function HotelsClient({
               <div>
                 <div className={cn(
                   viewMode === "grid"
-                    ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+                    ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
                     : "flex flex-col gap-4"
                 )}>
                   {hotels.map((hotel, idx) =>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, Users, Gauge, Luggage, ShieldCheck, Heart, ArrowRight, Star, Fuel } from "lucide-react";
+import { Car, Users, Gauge, Heart, ArrowRight, Star, Fuel } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";

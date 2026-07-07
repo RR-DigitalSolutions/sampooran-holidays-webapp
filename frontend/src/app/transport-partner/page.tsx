@@ -1,6 +1,9 @@
 "use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Truck, TrendingUp, Shield, Headphones, Star, ChevronRight, Users, MapPin, Wallet, ArrowRight, CheckCircle2 } from "lucide-react";
+import { useVendorAuth } from "@/context/VendorAuthContext";
+import { Truck, TrendingUp, Shield, Headphones, Star, ChevronRight, Users, MapPin, Wallet, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 const BENEFITS = [
   {
@@ -44,6 +47,32 @@ const STEPS = [
 ];
 
 export default function TransportPartnerLandingPage() {
+  const { login } = useVendorAuth();
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await login(email, password);
+      router.push("/transport-partner/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-amber-500 selection:text-slate-900">
       {/* ── Header / Navigation ── */}
@@ -88,26 +117,58 @@ export default function TransportPartnerLandingPage() {
               </Link>
             </div>
           </div>
+
+          {/* ── Login Form ── */}
           <div className="flex-1 w-full max-w-md bg-slate-950/80 border border-slate-800 p-8 rounded-3xl backdrop-blur">
-            <h3 className="text-lg font-bold mb-4">Transporter Console Login</h3>
+            <h3 className="text-lg font-bold mb-1">Transporter Console Login</h3>
             <p className="text-xs text-slate-400 mb-6">Manage bookings, schedule fleet availability, and verify logs.</p>
-            
-            <div className="space-y-4">
+
+            <form onSubmit={handleLogin} className="space-y-4" noValidate>
+              {error && (
+                <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl px-4 py-3">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1">Registered Email</label>
-                <input type="email" placeholder="partner@agency.com" className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="partner@agency.com"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-400 transition-colors"
+                  autoComplete="email"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-400 mb-1">Password</label>
-                <input type="password" placeholder="••••••••" className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-400" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-400 transition-colors"
+                  autoComplete="current-password"
+                  required
+                />
               </div>
-              <button className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold py-3.5 rounded-xl transition-all shadow-md">
-                Authenticate Console
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 text-xs font-bold py-3.5 rounded-xl transition-all shadow-md"
+              >
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Authenticating...</>
+                ) : (
+                  "Authenticate Console"
+                )}
               </button>
               <div className="text-center pt-2">
-                <span className="text-[11px] text-slate-500">Don't have an account? <Link href="/transport-partner/register" className="text-amber-400 font-bold hover:underline">Register Fleet</Link></span>
+                <span className="text-[11px] text-slate-500">Don&apos;t have an account? <Link href="/transport-partner/register" className="text-amber-400 font-bold hover:underline">Register Fleet</Link></span>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </section>

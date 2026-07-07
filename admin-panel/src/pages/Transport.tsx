@@ -130,6 +130,30 @@ export default function Transport() {
     isPopular: false,
   });
 
+  // Add Vehicle Modal (Admin CRM direct entry)
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [addVehicleSaving, setAddVehicleSaving] = useState(false);
+  const [newVehicle, setNewVehicle] = useState({
+    name: "",
+    type: "CAB",
+    subType: "",
+    make: "",
+    model: "",
+    year: new Date().getFullYear(),
+    seatingCapacity: 4,
+    luggageCapacity: 2,
+    isAC: true,
+    minPrice: 0,
+    basePricePerKm: 0,
+    basePricePerDay: 0,
+    features: "",
+    images: "",
+    description: "",
+    isFeatured: false,
+    status: "PENDING",
+    customCity: "",
+  });
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/vendor/transport/dashboard`, { headers: authHeaders() });
@@ -271,6 +295,40 @@ export default function Transport() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleAddVehicle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVehicle.name || !newVehicle.make || !newVehicle.model) {
+      alert("Name, Make, and Model are required.");
+      return;
+    }
+    setAddVehicleSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/transport-vehicles`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(newVehicle),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create vehicle");
+      }
+      setShowAddVehicle(false);
+      setNewVehicle({
+        name: "", type: "CAB", subType: "", make: "", model: "",
+        year: new Date().getFullYear(), seatingCapacity: 4, luggageCapacity: 2,
+        isAC: true, minPrice: 0, basePricePerKm: 0, basePricePerDay: 0,
+        features: "", images: "", description: "", isFeatured: false,
+        status: "PENDING", customCity: "",
+      });
+      fetchVehicles();
+      fetchStats();
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setAddVehicleSaving(false);
     }
   };
 
@@ -511,6 +569,103 @@ export default function Transport() {
         </div>
       )}
 
+      {/* ── Add Vehicle Modal ── */}
+      {showAddVehicle && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Add Vehicle (Admin CRM)</h2>
+                <p className="text-xs text-gray-400">Directly add a vehicle to the fleet — auto-approved, usable in packages</p>
+              </div>
+              <button onClick={() => setShowAddVehicle(false)} className="p-2 hover:bg-gray-100 rounded-xl"><X className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleAddVehicle} className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Display Name *</label>
+                  <input required value={newVehicle.name} onChange={e => setNewVehicle(v => ({ ...v, name: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="e.g. Toyota Innova Crysta 7-Seater Manali" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Type *</label>
+                  <select value={newVehicle.type} onChange={e => setNewVehicle(v => ({ ...v, type: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] bg-white text-sm">
+                    {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sub-Type</label>
+                  <input value={newVehicle.subType} onChange={e => setNewVehicle(v => ({ ...v, subType: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="e.g. SUV, Sedan, Volvo" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Make (Brand) *</label>
+                  <input required value={newVehicle.make} onChange={e => setNewVehicle(v => ({ ...v, make: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="Toyota, Volvo, Tata" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Model *</label>
+                  <input required value={newVehicle.model} onChange={e => setNewVehicle(v => ({ ...v, model: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="Innova Crysta, Volvo B11R" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Seating Capacity *</label>
+                  <input type="number" min={1} max={60} value={newVehicle.seatingCapacity} onChange={e => setNewVehicle(v => ({ ...v, seatingCapacity: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Luggage Capacity (bags)</label>
+                  <input type="number" min={0} value={newVehicle.luggageCapacity} onChange={e => setNewVehicle(v => ({ ...v, luggageCapacity: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Min Price / Day (₹)</label>
+                  <input type="number" min={0} value={newVehicle.minPrice || ""} onChange={e => setNewVehicle(v => ({ ...v, minPrice: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="e.g. 3500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Price Per Km (₹)</label>
+                  <input type="number" min={0} value={newVehicle.basePricePerKm || ""} onChange={e => setNewVehicle(v => ({ ...v, basePricePerKm: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="e.g. 12" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">City / Region</label>
+                  <input value={newVehicle.customCity} onChange={e => setNewVehicle(v => ({ ...v, customCity: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="Manali, Shimla, Delhi" />
+                </div>
+                <div className="flex items-center gap-3 pt-5">
+                  <input type="checkbox" id="isAC" checked={newVehicle.isAC} onChange={e => setNewVehicle(v => ({ ...v, isAC: e.target.checked }))} className="w-5 h-5" />
+                  <label htmlFor="isAC" className="text-sm font-medium text-gray-700">AC Vehicle</label>
+                  <input type="checkbox" id="vFeatured" checked={newVehicle.isFeatured} onChange={e => setNewVehicle(v => ({ ...v, isFeatured: e.target.checked }))} className="w-5 h-5 ml-4" />
+                  <label htmlFor="vFeatured" className="text-sm font-medium text-gray-700">Featured</label>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Features (comma-separated)</label>
+                  <input value={newVehicle.features} onChange={e => setNewVehicle(v => ({ ...v, features: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="WIFI, CHARGING_PORT, GPS, MUSIC, RECLINER" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
+                  <textarea value={newVehicle.description} onChange={e => setNewVehicle(v => ({ ...v, description: e.target.value }))}
+                    rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] text-sm" placeholder="Describe the vehicle experience..." />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Image URLs (one per line)</label>
+                  <textarea value={newVehicle.images} onChange={e => setNewVehicle(v => ({ ...v, images: e.target.value }))}
+                    rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] font-mono text-xs" placeholder="https://..." />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowAddVehicle(false)} className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl">Cancel</button>
+                <button type="submit" disabled={addVehicleSaving} className="px-6 py-2.5 bg-[#1B3A6B] text-white text-sm font-bold rounded-xl hover:bg-[#0f2548] transition-colors disabled:opacity-60 flex items-center gap-2">
+                  <Save className="w-4 h-4" />{addVehicleSaving ? "Saving..." : "Add Vehicle"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── Vehicles Tab ── */}
       {activeTab === "vehicles" && (
         <div className="space-y-4">
@@ -534,6 +689,10 @@ export default function Transport() {
                 <option value="PENDING">Pending</option>
                 <option value="DRAFT">Draft</option>
               </select>
+              <button onClick={() => setShowAddVehicle(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#1B3A6B] text-white text-xs font-bold rounded-xl hover:bg-[#0f2548] transition-colors whitespace-nowrap">
+                <Plus className="w-3.5 h-3.5" /> Add Vehicle
+              </button>
             </div>
           </div>
 

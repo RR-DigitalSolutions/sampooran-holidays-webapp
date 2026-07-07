@@ -1124,9 +1124,334 @@ router.delete("/home/offers/:id", requirePermission("SETTINGS"), async (req, res
 });
 
 // ─────────────────────────────────────────────────────────────
-// HOTEL MANAGEMENT
+// HOTEL MANAGEMENT  (HOTELS permission)
+// Admin can create, view, edit, approve/reject, and delete hotels.
+// Admin-created hotels use the admin's own userId as ownerId.
 // ─────────────────────────────────────────────────────────────
 
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+// GET /admin/hotels — list all hotels with owner info and destination name
+router.get("/hotels", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const hotels = await db.execute(sql`
+      SELECT
+        h.*,
+        u.name   AS owner_name,
+        u.email  AS owner_email,
+        d.name   AS destination_name
+      FROM hotels h
+      LEFT JOIN users u ON h.owner_id = u.id
+      LEFT JOIN destinations d ON h.destination_id = d.id
+      ORDER BY h.created_at DESC
+    `);
+    res.json(hotels.rows);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch admin hotels");
+    res.status(500).json({ error: "Failed to fetch hotels" });
+  }
+});
+
+// POST /admin/hotels — admin directly creates a hotel (ownerId = admin user)
+router.post("/hotels", requirePermission("HOTELS"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.createdAt; delete data.updatedAt;
+    delete data.owner_name; delete data.owner_email; delete data.destination_name;
+
+    if (!data.name) return res.status(400).json({ error: "Hotel name is required" });
+
+    // Auto-generate slug if missing, ensure uniqueness
+    if (!data.slug) {
+      data.slug = slugify(data.name) + "-" + Math.random().toString(36).slice(2, 6);
+    }
+
+    // Admin is the owner for directly-created hotels
+    data.ownerId = req.user!.id;
+    // Admin-created hotels start as PENDING — must be explicitly approved after verification
+    data.status = data.status || "PENDING";
+
+    if (data.amenities && typeof data.amenities === "string") {
+      data.amenities = data.amenities.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (data.images && typeof data.images === "string") {
+      data.images = data.images.split("\n").map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (data.starRating) data.starRating = Number(data.starRating);
+    if (data.totalRooms) data.totalRooms = Number(data.totalRooms);
+    if (data.minPrice) data.minPrice = Number(data.minPrice);
+    if (data.vendorCommissionPct) data.vendorCommissionPct = Number(data.vendorCommissionPct);
+    if (data.displayOrder !== undefined) data.displayOrder = Number(data.displayOrder);
+    if (data.destinationId) data.destinationId = Number(data.destinationId);
+    if (data.stateId) data.stateId = Number(data.stateId);
+    if (data.countryId) data.countryId = Number(data.countryId);
+    if (data.latitude) data.latitude = parseFloat(data.latitude);
+    if (data.longitude) data.longitude = parseFloat(data.longitude);
+
+    const [inserted] = await db.insert(hotelsTable).values(data).returning();
+    await clearCachePattern("cache:/api/hotels*");
+    res.status(201).json(inserted);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin hotel create error");
+    res.status(500).json({ error: "Failed to create hotel: " + e.message });
+  }
+});
+
+// GET /admin/hotels/:id — single hotel detail
+router.get("/hotels/:id", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const [hotel] = await db.select().from(hotelsTable)
+      .where(eq(hotelsTable.id, Number(req.params.id))).limit(1);
+    if (!hotel) return res.status(404).json({ error: "Hotel not found" });
+    res.json(hotel);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch hotel" });
+  }
+});
+
+// PATCH /admin/hotels/:id — update any hotel field (status, featured, etc.)
+router.patch("/hotels/:id", requirePermission("HOTELS"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.createdAt; delete data.ownerId;
+    delete data.owner_name; delete data.owner_email; delete data.destination_name;
+
+    if (data.amenities && typeof data.amenities === "string") {
+      data.amenities = data.amenities.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (data.images && typeof data.images === "string") {
+      data.images = data.images.split("\n").map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (data.starRating !== undefined) data.starRating = Number(data.starRating);
+    if (data.totalRooms !== undefined) data.totalRooms = Number(data.totalRooms);
+    if (data.minPrice !== undefined) data.minPrice = Number(data.minPrice);
+    if (data.destinationId) data.destinationId = Number(data.destinationId);
+    if (data.stateId) data.stateId = Number(data.stateId);
+    if (data.countryId) data.countryId = Number(data.countryId);
+    if (data.latitude) data.latitude = parseFloat(data.latitude);
+    if (data.longitude) data.longitude = parseFloat(data.longitude);
+
+    data.updatedAt = new Date();
+
+    const [updated] = await db.update(hotelsTable)
+      .set(data)
+      .where(eq(hotelsTable.id, Number(req.params.id)))
+      .returning();
+    if (!updated) return res.status(404).json({ error: "Hotel not found" });
+    await clearCachePattern("cache:/api/hotels*");
+    res.json(updated);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin hotel update error");
+    res.status(500).json({ error: "Failed to update hotel: " + e.message });
+  }
+});
+
+// DELETE /admin/hotels/:id — hard delete hotel (removes rooms cascade)
+router.delete("/hotels/:id", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    // Delete rooms first to avoid FK violation
+    await db.delete(hotelRoomsTable).where(eq(hotelRoomsTable.hotelId, Number(req.params.id)));
+    await db.delete(hotelsTable).where(eq(hotelsTable.id, Number(req.params.id)));
+    await clearCachePattern("cache:/api/hotels*");
+    res.json({ message: "Hotel deleted successfully" });
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin hotel delete error");
+    res.status(500).json({ error: "Failed to delete hotel: " + e.message });
+  }
+});
+
+// ─── Hotel Rooms ─────────────────────────────────────────────
+
+// GET /admin/hotels/:id/rooms
+router.get("/hotels/:id/rooms", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const rooms = await db.select().from(hotelRoomsTable)
+      .where(eq(hotelRoomsTable.hotelId, Number(req.params.id)))
+      .orderBy(asc(hotelRoomsTable.id));
+    res.json(rooms);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch rooms" });
+  }
+});
+
+// POST /admin/hotels/:id/rooms
+router.post("/hotels/:id/rooms", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    const data = { ...req.body };
+    delete data.id; delete data.createdAt; delete data.updatedAt;
+
+    data.hotelId = hotelId;
+    if (data.basePrice) data.basePrice = Number(data.basePrice);
+    if (data.maxOccupancy) data.maxOccupancy = Number(data.maxOccupancy);
+    if (data.totalRooms) data.totalRooms = Number(data.totalRooms);
+    if (data.discountPercent !== undefined) data.discountPercent = Number(data.discountPercent);
+    if (data.discountFlat !== undefined) data.discountFlat = Number(data.discountFlat);
+
+    if (!data.slug && data.name) {
+      data.slug = slugify(data.name) + "-" + hotelId;
+    }
+    if (data.amenities && typeof data.amenities === "string") {
+      data.amenities = data.amenities.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+
+    const [inserted] = await db.insert(hotelRoomsTable).values(data).returning();
+
+    // Update hotel minPrice cache if this room is cheaper
+    const allRooms = await db.select({ basePrice: hotelRoomsTable.basePrice })
+      .from(hotelRoomsTable).where(eq(hotelRoomsTable.hotelId, hotelId));
+    const minPrice = Math.min(...allRooms.map(r => r.basePrice || 0).filter(p => p > 0));
+    if (isFinite(minPrice)) {
+      await db.update(hotelsTable).set({ minPrice }).where(eq(hotelsTable.id, hotelId));
+    }
+
+    await clearCachePattern("cache:/api/hotels*");
+    res.status(201).json(inserted);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin room create error");
+    res.status(500).json({ error: "Failed to create room: " + e.message });
+  }
+});
+
+// PATCH /admin/hotels/:id/rooms/:roomId
+router.patch("/hotels/:id/rooms/:roomId", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    const roomId = Number(req.params.roomId);
+    const data = { ...req.body };
+    delete data.id; delete data.hotelId; delete data.createdAt;
+
+    if (data.basePrice !== undefined) data.basePrice = Number(data.basePrice);
+    if (data.maxOccupancy !== undefined) data.maxOccupancy = Number(data.maxOccupancy);
+    if (data.totalRooms !== undefined) data.totalRooms = Number(data.totalRooms);
+    if (data.discountPercent !== undefined) data.discountPercent = Number(data.discountPercent);
+    if (data.discountFlat !== undefined) data.discountFlat = Number(data.discountFlat);
+    if (data.amenities && typeof data.amenities === "string") {
+      data.amenities = data.amenities.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+
+    const [updated] = await db.update(hotelRoomsTable)
+      .set(data).where(eq(hotelRoomsTable.id, roomId)).returning();
+
+    // Recalculate hotel minPrice
+    const allRooms = await db.select({ basePrice: hotelRoomsTable.basePrice })
+      .from(hotelRoomsTable).where(and(eq(hotelRoomsTable.hotelId, hotelId), eq(hotelRoomsTable.isActive, true)));
+    const minPrice = Math.min(...allRooms.map(r => r.basePrice || 0).filter(p => p > 0));
+    if (isFinite(minPrice)) {
+      await db.update(hotelsTable).set({ minPrice }).where(eq(hotelsTable.id, hotelId));
+    }
+
+    await clearCachePattern("cache:/api/hotels*");
+    res.json(updated);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update room" });
+  }
+});
+
+// DELETE /admin/hotels/:id/rooms/:roomId
+router.delete("/hotels/:id/rooms/:roomId", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    await db.delete(hotelRoomsTable).where(eq(hotelRoomsTable.id, Number(req.params.roomId)));
+    // Recalculate minPrice
+    const allRooms = await db.select({ basePrice: hotelRoomsTable.basePrice })
+      .from(hotelRoomsTable).where(and(eq(hotelRoomsTable.hotelId, hotelId), eq(hotelRoomsTable.isActive, true)));
+    if (allRooms.length > 0) {
+      const minPrice = Math.min(...allRooms.map(r => r.basePrice || 0).filter(p => p > 0));
+      if (isFinite(minPrice)) await db.update(hotelsTable).set({ minPrice }).where(eq(hotelsTable.id, hotelId));
+    }
+    await clearCachePattern("cache:/api/hotels*");
+    res.json({ message: "Room deleted" });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete room" });
+  }
+});
+
+// POST /admin/transport-vehicles — admin directly creates a vehicle (CRM entry)
+// Uses or creates a system "Admin Direct Fleet" vendor for ownerId assignment.
+router.post("/transport-vehicles", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const data = { ...req.body };
+    delete data.id; delete data.createdAt; delete data.updatedAt;
+    delete data.owner_name; delete data.owner_email; delete data.city_name;
+
+    if (!data.name || !data.make || !data.model || !data.type) {
+      return res.status(400).json({ error: "name, make, model, and type are required" });
+    }
+
+    // Auto-generate slug
+    if (!data.slug) {
+      data.slug = slugify(`${data.name}-${data.make}-${data.model}`) + "-" + Math.random().toString(36).slice(2, 6);
+    }
+
+    data.ownerId = req.user!.id;
+    data.status = data.status || "PENDING"; // Admin-created vehicles start as PENDING — approve after verification
+    data.seatingCapacity = Number(data.seatingCapacity) || 4;
+    if (data.minPrice) data.minPrice = Number(data.minPrice);
+    if (data.basePricePerKm) data.basePricePerKm = Number(data.basePricePerKm);
+    if (data.basePricePerDay) data.basePricePerDay = Number(data.basePricePerDay);
+    if (data.year) data.year = Number(data.year);
+    if (data.luggageCapacity) data.luggageCapacity = Number(data.luggageCapacity);
+    if (data.features && typeof data.features === "string") {
+      data.features = data.features.split(",").map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (data.images && typeof data.images === "string") {
+      data.images = data.images.split("\n").map((s: string) => s.trim()).filter(Boolean);
+    }
+    if (data.destinationId) data.destinationId = Number(data.destinationId);
+    if (data.stateId) data.stateId = Number(data.stateId);
+    if (data.countryId) data.countryId = Number(data.countryId);
+
+    // Resolve or create a system transport vendor for admin-direct vehicles
+    let vendorId = data.vendorId ? Number(data.vendorId) : null;
+    if (!vendorId) {
+      const [existingVendor] = await db
+        .select({ id: transportVendorsTable.id })
+        .from(transportVendorsTable)
+        .where(eq(transportVendorsTable.userId, req.user!.id))
+        .limit(1);
+
+      if (existingVendor) {
+        vendorId = existingVendor.id;
+      } else {
+        // Create a system vendor profile for the admin
+        const adminUser = await db.select().from(usersTable)
+          .where(eq(usersTable.id, req.user!.id)).limit(1);
+        const admin = adminUser[0];
+        const [newVendor] = await db.insert(transportVendorsTable).values({
+          userId: req.user!.id,
+          businessName: "Admin Direct Fleet",
+          businessType: "PROPRIETORSHIP",
+          phone: admin?.phoneNumber || "0000000000",
+          email: admin?.email || "admin@sampooran.com",
+          address: "Head Office",
+          city: "Delhi",
+          state: "Delhi",
+          pincode: "110001",
+          status: "APPROVED",
+          commissionPct: 0,
+          adminNote: "System vendor for admin-created vehicles",
+        }).returning();
+        vendorId = newVendor.id;
+      }
+    }
+    data.vendorId = vendorId;
+    delete data.vendorId; // avoid double assignment below
+
+    const [inserted] = await db.insert(transportVehiclesTable).values({
+      ...data,
+      vendorId,
+    }).returning();
+
+    await clearCachePattern("cache:/api/transport*");
+    res.status(201).json(inserted);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin vehicle create error");
+    res.status(500).json({ error: "Failed to create vehicle: " + e.message });
+  }
+});
 
 // ─────────────────────────────────────────────────────────────
 // LIVE CHAT MANAGEMENT

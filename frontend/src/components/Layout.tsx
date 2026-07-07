@@ -161,7 +161,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [openFooterCol, setOpenFooterCol] = useState<number | null>(null);
 
   const isHome = pathname === "/";
-  const isDashboardRoute = pathname?.startsWith("/partner") || pathname?.startsWith("/admin");
+  const isDashboardRoute = pathname?.startsWith("/partner") || pathname?.startsWith("/admin") || pathname?.startsWith("/transport-partner");
 
   const headerClass = cn(
     "fixed top-0 z-50 w-full transition-all duration-500",
