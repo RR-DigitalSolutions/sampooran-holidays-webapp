@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Car, Search, ShieldCheck, MapPin, PhoneCall, LayoutGrid, List,
   Star, ArrowRight, ChevronRight, SlidersHorizontal, X, Zap, Users, Clock,
-  Calculator, ArrowLeftRight, Tag, CheckCircle2, Shield, Info, Navigation
+  Calculator, ArrowLeftRight, Check, Tag, Shield, Clock4
 } from "lucide-react";
 import { VehicleCard } from "@/components/VehicleCard";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { API_BASE } from "@/context/AuthContext";
 import { DEMO_FLEET, DEMO_ROUTES } from "@/lib/demo-fleet";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface TransportClientProps {
   geoFilter?: { country: string; state: string; city: string };
@@ -46,6 +47,11 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
 
+  // New Sidebar filters
+  const [minSeats, setMinSeats] = useState(0);
+  const [acFilter, setAcFilter] = useState("ALL");
+  const [maxPrice, setMaxPrice] = useState(25000);
+
   // Route Price Calculator state
   const [calcFrom, setCalcFrom] = useState("");
   const [calcTo, setCalcTo] = useState("");
@@ -53,9 +59,13 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
   const [calcResults, setCalcResults] = useState<any[]>([]);
   const [calcSearched, setCalcSearched] = useState(false);
   const [calcLoading, setCalcLoading] = useState(false);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
 
   useEffect(() => {
     fetchTransport();
+    const onScroll = () => setHeaderScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const searchRoutePrices = async () => {
@@ -96,7 +106,6 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
         : `${API_BASE}/ota/transport`;
       const res = await fetch(url);
       const data = await res.json();
-      // Use demo fleet if backend is empty or errored
       setVehicles(Array.isArray(data) && data.length > 0 ? data : DEMO_FLEET);
 
       try {
@@ -115,6 +124,16 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
     }
   };
 
+  const resetAllFilters = () => {
+    setType(null);
+    setSearchQuery("");
+    setMinSeats(0);
+    setAcFilter("ALL");
+    setMaxPrice(25000);
+  };
+
+  const hasActiveFilters = type !== null || searchQuery !== "" || minSeats > 0 || acFilter !== "ALL" || maxPrice < 25000;
+
   // Filter + sort
   const filtered = useMemo(() => {
     let list = [...vehicles];
@@ -128,6 +147,17 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
         v.type?.toLowerCase().includes(q)
       );
     }
+    // Sidebar filters
+    if (minSeats > 0) {
+      list = list.filter(v => (v.capacity || v.seating_capacity || 0) >= minSeats);
+    }
+    if (acFilter === "AC") {
+      list = list.filter(v => v.isAc !== false);
+    } else if (acFilter === "NON_AC") {
+      list = list.filter(v => v.isAc === false);
+    }
+    list = list.filter(v => (v.pricePerDay || v.base_price_per_day || 0) <= maxPrice);
+
     switch (sortBy) {
       case "price_asc": return list.sort((a, b) => (a.pricePerDay || a.base_price_per_day || 0) - (b.pricePerDay || b.base_price_per_day || 0));
       case "price_desc": return list.sort((a, b) => (b.pricePerDay || b.base_price_per_day || 0) - (a.pricePerDay || a.base_price_per_day || 0));
@@ -135,13 +165,93 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
       case "rating": return list.sort((a, b) => (b.rating || b.avgRating || 4) - (a.rating || a.avgRating || 4));
       default: return list;
     }
-  }, [vehicles, type, searchQuery, sortBy]);
+  }, [vehicles, type, searchQuery, sortBy, minSeats, acFilter, maxPrice]);
 
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     vehicles.forEach(v => { counts[v.type] = (counts[v.type] || 0) + 1; });
     return counts;
   }, [vehicles]);
+
+  const FilterContent = (
+    <div className="space-y-5">
+      {/* Vehicle Type */}
+      <div>
+        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Vehicle Class</h3>
+        <div className="space-y-2">
+          {["Cab", "Tempo", "Coach"].map(cat => (
+            <label key={cat} className="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700 hover:text-primary transition-colors">
+              <input
+                type="checkbox"
+                checked={type === cat}
+                onChange={() => setType(type === cat ? null : cat as Category)}
+                className="rounded border-slate-300 text-primary focus:ring-primary h-3.5 w-3.5 cursor-pointer"
+              />
+              {cat}s
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* AC / Climate */}
+      <div>
+        <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Air Conditioning</h3>
+        <select
+          value={acFilter}
+          onChange={e => setAcFilter(e.target.value)}
+          className="w-full h-9 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold px-2.5 focus:outline-none focus:border-primary cursor-pointer"
+        >
+          <option value="ALL">AC & Non-AC</option>
+          <option value="AC">AC Only</option>
+          <option value="NON_AC">Non-AC Only</option>
+        </select>
+      </div>
+
+      {/* Seating Capacity */}
+      <div>
+        <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+          <span>Min Seating Capacity</span>
+          <span className="text-primary font-bold">{minSeats > 0 ? `${minSeats} Seats` : "Any"}</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="20"
+          step="1"
+          value={minSeats}
+          onChange={e => setMinSeats(Number(e.target.value))}
+          className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+        />
+        <div className="flex justify-between text-[8px] text-slate-400 font-semibold px-0.5 mt-1">
+          <span>Any</span>
+          <span>10 seats</span>
+          <span>20+</span>
+        </div>
+      </div>
+
+      {/* Daily Price */}
+      <div>
+        <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+          <span>Max Daily Budget</span>
+          <span className="text-primary font-bold">₹{maxPrice.toLocaleString("en-IN")}</span>
+        </div>
+        <input
+          type="range"
+          min="3000"
+          max="25000"
+          step="1000"
+          value={maxPrice}
+          onChange={e => setMaxPrice(Number(e.target.value))}
+          className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+        />
+        <div className="flex justify-between text-[8px] text-slate-400 font-semibold px-0.5 mt-1">
+          <span>₹3,000</span>
+          <span>₹14K</span>
+          <span>₹25K+</span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -204,7 +314,7 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
               </div>
             </div>
 
-            {/* Right side Instant Calculator (Lifted from bottom for catchy interaction) */}
+            {/* Right side Instant Calculator */}
             <div className="lg:col-span-5">
               <div className="bg-white/10 border border-white/20 backdrop-blur-xl p-5 md:p-6 rounded-3xl shadow-2xl relative overflow-hidden">
                 <div className="space-y-1 mb-4">
@@ -295,7 +405,7 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
                   </button>
                 </div>
 
-                {/* Inline Results Container (inside the card to avoid layout shift) */}
+                {/* Inline Results Container */}
                 {calcSearched && (
                   <div className="mt-4 pt-4 border-t border-white/10 max-h-40 overflow-y-auto space-y-2 no-scrollbar">
                     {calcLoading ? (
@@ -328,16 +438,16 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
         </div>
       </div>
 
-      {/* ── Filters Section ── */}
-      <div className="bg-white border-b sticky top-14 md:top-[74px] z-30 shadow-sm">
+      {/* ── Filters Toolbar ── */}
+      <div className={cn("bg-white border-b sticky z-30 shadow-sm transition-all duration-300", headerScrolled ? "top-[55px]" : "top-[61px]")}>
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between gap-2 md:gap-6 py-3 md:h-16">
+          <div className="flex items-center justify-between gap-2 md:gap-6 py-1.5 md:h-11">
 
             {/* Category tabs */}
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
               <button
                 onClick={() => setType(null)}
-                className={`whitespace-nowrap rounded-xl font-bold text-[10px] uppercase tracking-widest px-4 py-2 transition-all ${!type ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                className={`whitespace-nowrap rounded-xl font-bold text-[9px] uppercase tracking-wider px-3.5 py-1.5 transition-all ${!type ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
               >
                 All ({vehicles.length})
               </button>
@@ -345,26 +455,26 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
                 <button
                   key={cat}
                   onClick={() => setType(type === cat ? null : cat)}
-                  className={`whitespace-nowrap rounded-xl font-bold text-[10px] uppercase tracking-widest px-4 py-2 transition-all ${type === cat ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
+                  className={`whitespace-nowrap rounded-xl font-bold text-[9px] uppercase tracking-wider px-3.5 py-1.5 transition-all ${type === cat ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                   {cat}s {typeCounts[cat] ? `(${typeCounts[cat]})` : ""}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-1.5 ml-auto">
               {/* Desktop search */}
-              <div className="hidden md:flex flex-1 min-w-[200px] max-w-xs relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <div className="hidden md:flex flex-1 min-w-[180px] max-w-xs relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search model, make..."
-                  className="rounded-xl pl-9 h-9 bg-muted/40 border-none text-xs font-semibold placeholder:text-muted-foreground/50 focus-visible:ring-1"
+                  className="rounded-xl pl-8 h-8 bg-muted/40 border-none text-[11px] font-semibold placeholder:text-muted-foreground/50 focus-visible:ring-1"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                    <X className="h-3 w-3 text-muted-foreground" />
                   </button>
                 )}
               </div>
@@ -373,7 +483,7 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="hidden sm:block text-[10px] font-black uppercase text-muted-foreground bg-muted/30 border border-muted rounded-xl px-3.5 py-2 cursor-pointer focus:outline-none hover:bg-muted transition-colors"
+                className="hidden sm:block text-[9px] font-black uppercase text-muted-foreground bg-muted/30 border border-muted rounded-xl px-3 py-1.5 cursor-pointer focus:outline-none hover:bg-muted transition-colors"
               >
                 {SORT_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -383,19 +493,19 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
               {/* Filter toggle (mobile) */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="md:hidden flex items-center gap-1.5 bg-muted/40 rounded-xl px-3 py-2 text-[10px] font-black uppercase text-muted-foreground"
+                className="lg:hidden flex items-center gap-1 bg-muted/40 rounded-xl px-2.5 py-1.5 text-[9px] font-black uppercase text-muted-foreground"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 Filter
               </button>
 
               {/* View toggle */}
-              <div className="hidden md:flex items-center gap-1 border border-muted rounded-xl p-1">
-                <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded ${viewMode === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"} transition-all`}>
-                  <LayoutGrid className="h-3.5 w-3.5" />
+              <div className="hidden md:flex items-center gap-0.5 border border-muted rounded-xl p-0.5">
+                <button onClick={() => setViewMode("grid")} className={`p-1 rounded ${viewMode === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"} transition-all`}>
+                  <LayoutGrid className="h-3 w-3" />
                 </button>
-                <button onClick={() => setViewMode("list")} className={`p-1.5 rounded ${viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"} transition-all`}>
-                  <List className="h-3.5 w-3.5" />
+                <button onClick={() => setViewMode("list")} className={`p-1 rounded ${viewMode === "list" ? "bg-primary text-white" : "text-muted-foreground hover:bg-muted"} transition-all`}>
+                  <List className="h-3 w-3" />
                 </button>
               </div>
             </div>
@@ -408,9 +518,9 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden border-t border-muted"
+                className="overflow-hidden border-t border-muted lg:hidden"
               >
-                <div className="py-3 flex flex-col gap-3">
+                <div className="py-4 space-y-4 px-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
@@ -429,6 +539,15 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
+                  {FilterContent}
+                  {hasActiveFilters && (
+                    <button
+                      onClick={resetAllFilters}
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black uppercase tracking-wider h-10 rounded-xl transition-colors"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -436,41 +555,88 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
         </div>
       </div>
 
-      {/* ── Fleet Grid ── */}
+      {/* ── Fleet Grid / Layout with Desktop Sidebar ── */}
       <div className="container mx-auto px-4 py-8 md:py-12">
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-            {[1,2,3,4,5,6,7,8].map(i => (
-              <div key={i} className="h-64 md:h-80 bg-muted rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed border-primary/10">
-            <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Car className="h-8 w-8 text-primary opacity-20" />
+        <div className="flex gap-6 items-start relative">
+
+          {/* ─── DESKTOP SIDEBAR ────────────────────────────────────── */}
+          <aside className="hidden lg:block w-[250px] shrink-0 sticky top-28 self-start">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-primary" />
+                  <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider">Filters</h2>
+                </div>
+                {hasActiveFilters && (
+                  <button onClick={resetAllFilters} className="text-[10px] font-black uppercase text-primary hover:underline">
+                    Clear All
+                  </button>
+                )}
+              </div>
+              <div className="p-4">
+                {FilterContent}
+              </div>
             </div>
-            <h3 className="text-base font-bold mb-1 tracking-tight">No vehicles match your search</h3>
-            <p className="text-muted-foreground text-xs font-medium mb-4">Try adjusting your filters or search terms.</p>
-            <Button onClick={() => { setType(null); setSearchQuery(""); }} className="rounded-xl font-bold uppercase tracking-wider text-[10px] px-6">
-              Clear Filters
-            </Button>
-          </div>
-        ) : (
-          <>
-            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-wider mb-4">
-              Showing {filtered.length} vehicle{filtered.length !== 1 ? "s" : ""}
-              {type ? ` in ${type}s` : ""}
-              {searchQuery ? ` matching "${searchQuery}"` : ""}
-            </p>
-            <div className={`grid gap-3 md:gap-6 ${
-              viewMode === "grid"
-                ? "grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-                : "grid-cols-1 sm:grid-cols-2"
-            }`}>
-              {filtered.map(vehicle => <VehicleCard key={vehicle.id || vehicle.slug} vehicle={vehicle} />)}
+
+            {/* Trust box on sidebar */}
+            <div className="bg-gradient-to-br from-primary to-[#0A1D3B] text-white p-4 rounded-2xl shadow-sm mt-4">
+              <span className="text-[8px] font-black uppercase tracking-widest text-[#F5A623] block mb-2">Sampooran Transfer Trust</span>
+              <div className="space-y-3">
+                {[
+                  { title: "Safe & Sanitized", desc: "Every fleet vehicle sanitized prior to boarding." },
+                  { title: "No Hidden Costs", desc: "Toll tax, fuel, state permit included in estimates." },
+                  { title: "Expert Drivers", desc: "Himalayan experts certified in mountain paths." }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-2.5 items-start">
+                    <ShieldCheck className="w-4 h-4 text-[#F5A623] shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-[10px] font-bold text-white">{item.title}</h4>
+                      <p className="text-[9px] text-white/50 leading-tight mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </>
-        )}
+          </aside>
+
+          {/* ─── RESULTS AREA ───────────────────────────────────────── */}
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="h-64 bg-muted rounded-2xl animate-pulse" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed border-primary/10">
+                <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Car className="h-8 w-8 text-primary opacity-20" />
+                </div>
+                <h3 className="text-base font-bold mb-1 tracking-tight">No vehicles match your filters</h3>
+                <p className="text-muted-foreground text-xs font-medium mb-4">Try widening your filters or price settings.</p>
+                <Button onClick={resetAllFilters} className="rounded-xl font-bold uppercase tracking-wider text-[10px] px-6">
+                  Clear Filters
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-wider mb-4">
+                  Showing {filtered.length} vehicle{filtered.length !== 1 ? "s" : ""}
+                  {type ? ` in ${type}s` : ""}
+                  {searchQuery ? ` matching "${searchQuery}"` : ""}
+                </p>
+                <div className={`grid gap-4 ${
+                  viewMode === "grid"
+                    ? "grid-cols-2 md:grid-cols-2 xl:grid-cols-3"
+                    : "grid-cols-1 md:grid-cols-2"
+                }`}>
+                  {filtered.map(vehicle => <VehicleCard key={vehicle.id || vehicle.slug} vehicle={vehicle} />)}
+                </div>
+              </>
+            )}
+          </div>
+
+        </div>
       </div>
 
       {/* ── Popular Routes Section ── */}

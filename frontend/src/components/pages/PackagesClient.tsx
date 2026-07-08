@@ -627,7 +627,7 @@ export default function PackagesPage() {
         <div className="flex gap-4 lg:gap-5 relative items-start">
 
           {/* ─── DESKTOP SIDEBAR ────────────────────────────────────── */}
-          <aside className="hidden lg:block w-[295px] shrink-0 sticky top-[calc(50vh-270px)] transition-all duration-300 self-start">
+          <aside className="hidden lg:block w-[250px] shrink-0 sticky top-[calc(50vh-270px)] transition-all duration-300 self-start">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="flex items-center justify-between p-3.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
@@ -777,7 +777,7 @@ export default function PackagesPage() {
             {isLoading ? (
               <div className={cn(
                 viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 max-w-[960px] gap-4 md:gap-5"
+                  ? "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 max-w-[1200px] gap-4 md:gap-5"
                   : "space-y-5 md:space-y-6"
               )}>
                 {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -806,7 +806,7 @@ export default function PackagesPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 max-w-[960px] gap-4 md:gap-5"
+                className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 max-w-[1200px] gap-4 md:gap-5"
               >
                 {filtered.map((pkg, i) => (
                   <motion.div

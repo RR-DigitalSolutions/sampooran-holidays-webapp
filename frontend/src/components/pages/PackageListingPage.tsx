@@ -637,20 +637,21 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
       {childPlaces.length > 0 && (
         <div className={cn("w-full z-40 bg-[#0B1E42]/95 backdrop-blur-md border-b border-white/10 overflow-hidden sticky transition-all duration-300 shadow-md", headerScrolled ? "top-[55px]" : "top-[61px]")}>
           <div className="flex items-center">
-            <div className="px-4 py-2.5 shrink-0 border-r border-white/20 hidden md:flex flex-col">
-              <p className="text-[11px] font-bold text-accent">Top Places</p>
-              <p className="text-xs font-bold text-white">To Cover</p>
+            <div className="px-4 py-1.5 shrink-0 border-r border-white/20 hidden md:flex flex-col">
+              <p className="text-[10px] font-bold text-accent leading-tight">Top Places</p>
+              <p className="text-[11px] font-bold text-white leading-tight">To Cover</p>
             </div>
             {/* Mobile label */}
-            <div className="px-2 py-2 shrink-0 border-r border-white/20 md:hidden">
-              <p className="text-[7.5px] font-black text-accent uppercase tracking-wider">Places</p>
-              <p className="text-[8.5px] font-black text-white uppercase tracking-wider">Covered</p>
+            <div className="px-2 py-1.5 shrink-0 border-r border-white/20 md:hidden">
+              <p className="text-[7px] font-black text-accent uppercase tracking-wider leading-tight">Places</p>
+              <p className="text-[8px] font-black text-white uppercase tracking-wider leading-tight">Covered</p>
             </div>
 
             {/* Swipeable Flex Row Container */}
             <div
               ref={placesContainerRef}
-              className="flex-1 overflow-x-auto flex gap-2 px-4 py-2.5 no-scrollbar scroll-smooth snap-x snap-mandatory select-none"
+              className="flex-1 overflow-x-auto flex gap-2 px-4 py-1.5 no-scrollbar scroll-smooth snap-x snap-mandatory select-none"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {childPlaces.map((place, idx) => (
                 <Link
@@ -758,7 +759,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
           <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
 
             {/* Left Sidebar (Filters) — desktop only */}
-            <div className="hidden lg:block w-full lg:w-1/4 shrink-0">
+            <div className="hidden lg:block w-[250px] shrink-0">
               <div className={cn(
                 "bg-white rounded-lg shadow-sm border border-slate-200 sticky transition-all duration-300 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar",
                 childPlaces.length > 0
@@ -785,7 +786,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
             </div>
 
             {/* Right Content Area */}
-            <div className="w-full lg:w-3/4 flex flex-col gap-3 md:gap-5">
+            <div className="flex-1 min-w-0 flex flex-col gap-3 md:gap-5">
               {/* Sort Bar — static on scroll */}
               <div className="bg-white rounded-lg shadow-sm border border-slate-200 px-3 py-2 md:p-1.5 md:px-3 flex items-center justify-between gap-2 transition-all mb-1">
                 <h2 className="text-xs md:text-sm font-bold text-slate-800 md:mx-2 flex-1">
@@ -880,13 +881,13 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   <p className="text-slate-600 max-w-md">We are currently updating our packages for {entityData.name}. Please try removing some filters or check back later.</p>
                 </div>
               ) : (
-                <div className={cn("gap-5", viewMode === "list" ? "flex flex-col" : "grid grid-cols-1 md:grid-cols-2")}>
+                <div className={cn("gap-5", viewMode === "list" ? "flex flex-col" : "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3")}>
                   {filteredPackages.slice(0, visibleCount).map((pkg) => (
                     <PackageCard key={pkg.id} pkg={pkg} variant={viewMode === "list" ? "horizontal" : "default"} />
                   ))}
 
                   {visibleCount < filteredPackages.length && (
-                    <div className={cn("flex justify-center mt-4 pb-4", viewMode === "grid" && "md:col-span-2")}>
+                    <div className={cn("flex justify-center mt-4 pb-4", viewMode === "grid" && "col-span-2 lg:col-span-3")}>
                       <button
                         onClick={() => setVisibleCount(prev => prev + 10)}
                         className="w-full md:w-auto bg-white active:bg-slate-50 text-primary font-bold px-6 md:px-10 py-3 rounded-lg border-2 border-primary/20 transition-all flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer touch-manipulation"
