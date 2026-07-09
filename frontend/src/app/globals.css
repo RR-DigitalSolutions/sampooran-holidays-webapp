@@ -346,3 +346,56 @@ button:active,
   transform: scale(0.96);
   transition: transform 0.05s ease-out;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* GPU ANTI-FLICKER: Prevent scroll rendering artifacts on Android WebView    */
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*
+ * When Framer Motion animates child elements (e.g. scale on images) inside a
+ * card with overflow:hidden, Android Chrome/WebView creates separate GPU tiles
+ * that can render out-of-sync during momentum scroll — causing the "scrambled
+ * lines" artifact seen in the screenshots.
+ *
+ * FIX: Force each card into its own GPU compositing layer with stable bounds.
+ * - isolation: isolate  → prevents layer bleeding to siblings
+ * - transform: translateZ(0) → promotes to its own compositor layer
+ * - backface-visibility: hidden → hint to the browser for optimized compositing
+ * - will-change: transform → pre-allocates a stable GPU tile for the card
+ * - contain: layout paint → tells the browser this element is self-contained
+ */
+.card-gpu-fix {
+  isolation: isolate;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: transform;
+  contain: layout paint;
+}
+
+/* Card image zoom: pure CSS only — no JS-driven motion during scroll */
+.card-img-zoom {
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.group:hover .card-img-zoom {
+  transform: scale(1.07);
+}
+
+/* Mobile card breathing room — gives cards proper margins on phones */
+@media (max-width: 640px) {
+  .card-mobile-margin {
+    margin-left: 0.25rem;
+    margin-right: 0.25rem;
+  }
+}
+
+/* Ensure backdrop-blur doesn't trigger on mobile to prevent GPU layer overload */
+@media (max-width: 640px) {
+  .mobile-no-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

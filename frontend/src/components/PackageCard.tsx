@@ -12,8 +12,6 @@ import { useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const MotionImage = motion.create(Image);
-
 interface Pkg {
   id: number;
   name: string;
@@ -117,19 +115,17 @@ function PackageCardComponent({
         onMouseEnter={() => router.prefetch(href)}
       >
         <div
-          className="group relative rounded-lg overflow-hidden bg-primary border border-primary/30 hover:border-accent/40 hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] transition-all duration-500 cursor-pointer flex flex-col md:flex-row h-full min-h-[220px]"
+          className="group relative rounded-xl overflow-hidden bg-primary border border-primary/30 hover:border-accent/40 hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] transition-all duration-500 cursor-pointer flex flex-col md:flex-row"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
           {/* Image Panel */}
-          <div className="relative w-full md:w-[32%] shrink-0 overflow-hidden h-52 md:h-auto">
-            <MotionImage
-              animate={{ scale: hovered ? 1.1 : 1 }}
-              transition={{ duration: 0.6 }}
+          <div className="relative w-full md:w-[32%] shrink-0 overflow-hidden h-44 md:h-auto">
+            <Image
               src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
               alt={pkg.name || "Package image"}
               fill
-              className="object-cover"
+              className="object-cover card-img-zoom"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
@@ -268,17 +264,15 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[210px] xs:h-[230px] sm:h-[310px] md:h-[365px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20"
+        className="block h-[210px] xs:h-[230px] sm:h-[310px] md:h-[365px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
       >
         {/* Top Image Section (58%) */}
         <div className="absolute top-0 left-0 right-0 h-[58%] w-full">
-          <MotionImage
+          <Image
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
             alt={pkg.name || "Package image"}
             fill
-            className="object-cover"
-            animate={{ scale: hovered ? 1.05 : 1 }}
-            transition={{ duration: 0.8 }}
+            className="object-cover card-img-zoom"
           />
           {/* Enhanced gradient for text readability and theme matching */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -392,16 +386,14 @@ function PackageCardComponent({
       href={href}
       onTouchStart={() => router.prefetch(href)}
       onMouseEnter={() => router.prefetch(href)}
-      className="h-full block group perspective-1000"
+      className="h-full block group card-mobile-margin card-gpu-fix"
     >
-      <motion.div
-        whileHover={{ y: -8, scale: 1.015 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      <div
         className={cn(
-          "relative h-full flex flex-col bg-primary rounded-lg overflow-hidden border transition-all duration-500 transform-gpu",
+          "relative h-full flex flex-col bg-primary rounded-lg overflow-hidden border transition-all duration-300",
           hovered
-            ? "shadow-[0_30px_60px_-15px_rgba(27,58,107,0.45)] border-accent/30"
-            : "shadow-[0_10px_40px_-10px_rgba(0,0,0,0.25)] border-primary/30"
+            ? "shadow-[0_20px_50px_-10px_rgba(27,58,107,0.45)] border-accent/30 -translate-y-1.5"
+            : "shadow-[0_8px_30px_-8px_rgba(0,0,0,0.25)] border-primary/30 translate-y-0"
         )}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -416,13 +408,11 @@ function PackageCardComponent({
 
         {/* Image Section */}
         <div className="relative h-40 md:h-44 overflow-hidden shrink-0">
-          <MotionImage
-            animate={{ scale: hovered ? 1.08 : 1 }}
-            transition={{ type: "tween", ease: "easeOut", duration: 0.7 }}
+          <Image
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
             alt={pkg.name || "Package image"}
             fill
-            className="object-cover"
+            className="object-cover card-img-zoom"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/5" />
           {/* Blue tint at bottom to blend into card body */}
@@ -543,7 +533,7 @@ function PackageCardComponent({
             </motion.div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </Link>
   );
 }

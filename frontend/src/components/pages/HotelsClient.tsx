@@ -1,26 +1,53 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Search, MapPin, Building2, SlidersHorizontal, Star, ChevronRight,
-  ShieldCheck, X, Filter, Wifi, Coffee, Car, UtensilsCrossed, Waves,
-  Dumbbell, ArrowUpDown, Grid3X3, LayoutList, Sparkles, ChevronDown, Check, AlertCircle
+  MapPin, Building2, SlidersHorizontal, Star, ChevronRight,
+  X, Filter, Wifi, Coffee, Car, UtensilsCrossed, Waves,
+  Dumbbell, ChevronDown, Check, AlertCircle, Sparkles, Zap,
+  IndianRupee, Shield, Flame, LayoutGrid, LayoutList
 } from "lucide-react";
-import { cn, validateImageUrl, getHotelImageUrl } from "@/lib/utils";
+import { cn, getHotelImageUrl } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
 import SmartSearchBar from "@/components/SmartSearchBar";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = getApiUrl();
 
-const PROPERTY_TYPES = ["Hotel", "Resort", "Cottage", "Homestay", "Villa", "Camp", "Hostel", "Apartment"];
-const STAR_OPTS = [5, 4, 3, 2, 1];
-const AMENITY_ICONS: Record<string, any> = {
-  WIFI: Wifi, POOL: Waves, RESTAURANT: UtensilsCrossed, PARKING: Car,
-  GYM: Dumbbell, SPA: Sparkles, CAFE: Coffee,
-};
+const PROPERTY_TYPES = [
+  { label: "All Types", val: "" },
+  { label: "Hotel", val: "Hotel" },
+  { label: "Resort", val: "Resort" },
+  { label: "Cottage", val: "Cottage" },
+  { label: "Homestay", val: "Homestay" },
+  { label: "Villa", val: "Villa" },
+  { label: "Camp", val: "Camp" },
+  { label: "Hostel", val: "Hostel" },
+  { label: "Apartment", val: "Apartment" },
+];
+
+const PRICE_PRESETS = [
+  { label: "Any Budget", val: "" },
+  { label: "Under ₹2K", val: "0-2000" },
+  { label: "₹2K - ₹5K", val: "2000-5000" },
+  { label: "₹5K - ₹10K", val: "5000-10000" },
+  { label: "₹10K - ₹20K", val: "10000-20000" },
+  { label: "₹20K+", val: "20000-999999" },
+];
+
+const AMENITY_OPTS = [
+  { key: "WIFI", label: "Free WiFi", Icon: Wifi },
+  { key: "POOL", label: "Swimming Pool", Icon: Waves },
+  { key: "RESTAURANT", label: "Restaurant", Icon: UtensilsCrossed },
+  { key: "PARKING", label: "Free Parking", Icon: Car },
+  { key: "GYM", label: "Fitness Centre", Icon: Dumbbell },
+  { key: "SPA", label: "Spa & Wellness", Icon: Sparkles },
+  { key: "CAFE", label: "Café / Bar", Icon: Coffee },
+];
+
 const SORT_OPTS = [
   { val: "recommended", label: "Recommended" },
   { val: "price_asc", label: "Price: Low to High" },
@@ -28,6 +55,8 @@ const SORT_OPTS = [
   { val: "rating", label: "Top Rated" },
   { val: "newest", label: "Newly Listed" },
 ];
+
+const STAR_OPTS = [5, 4, 3, 2, 1];
 
 interface Hotel {
   id: number;
@@ -38,7 +67,7 @@ interface Hotel {
   address: string;
   city?: string;
   images?: string[];
-  primaryImageUrl?: string;   // ⚡ From hotel_photos table (vendor Cloudinary uploads)
+  primaryImageUrl?: string;
   amenities?: string[];
   minPrice: number;
   isFeatured: boolean;
@@ -51,180 +80,144 @@ interface Hotel {
   customCity?: string;
   bookingType?: string;
   breakfastIncluded?: boolean;
-  checkInTime?: string;
-  checkOutTime?: string;
 }
 
-/** Build the canonical hotel URL from geo slugs */
-function buildHotelUrl(hotel: Hotel): string {
-  const country = hotel.countrySlug;
-  const state = hotel.stateSlug;
-  const dest = hotel.destinationSlug;
-  const custom = hotel.customCity;
+interface GeoFilter { country?: string; state?: string; city?: string; }
+interface Breadcrumb { label: string; href: string; }
 
-  if (country && state && (dest || custom)) {
-    const cityPart = dest
-      ? `hotels-in-${dest}`
-      : `hotels-in-${(custom || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-    return `/hotels/${country}/${state}/${cityPart}/${hotel.slug}`;
+function buildHotelUrl(hotel: Hotel): string {
+  const { countrySlug, stateSlug, destinationSlug, customCity } = hotel;
+  if (countrySlug && stateSlug && (destinationSlug || customCity)) {
+    const cityPart = destinationSlug
+      ? `hotels-in-${destinationSlug}`
+      : `hotels-in-${(customCity || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    return `/hotels/${countrySlug}/${stateSlug}/${cityPart}/${hotel.slug}`;
   }
-  // fallback to old URL (will redirect server-side)
   return `/hotels/${hotel.slug}`;
 }
 
-function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boolean }) {
+function SkeletonCard() {
+  return (
+    <div className="bg-primary rounded-2xl border border-primary/30 overflow-hidden animate-pulse">
+      <div className="h-48 bg-white/5" />
+      <div className="p-4 space-y-3">
+        <div className="h-3 bg-white/10 rounded w-1/3" />
+        <div className="h-5 bg-white/10 rounded w-3/4" />
+        <div className="h-3 bg-white/5 rounded w-1/2" />
+        <div className="flex gap-2 pt-2">
+          <div className="h-6 bg-white/5 rounded-full w-14" />
+          <div className="h-6 bg-white/5 rounded-full w-14" />
+        </div>
+        <div className="flex justify-between pt-2">
+          <div className="h-6 bg-white/10 rounded w-1/3" />
+          <div className="h-8 bg-white/10 rounded-full w-16" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HotelListingCard({ hotel, priority = false }: { hotel: Hotel; priority?: boolean }) {
   const [imgErr, setImgErr] = useState(false);
-  // ⚡ Priority: vendor-uploaded photo from hotel_photos table (Cloudinary)
-  // Fallback: legacy images[] array (may contain external URLs)
   const rawImg = !imgErr ? (hotel.primaryImageUrl || hotel.images?.[0]) : undefined;
   const img = getHotelImageUrl(rawImg, 400, 300, "4:3");
   const hotelUrl = buildHotelUrl(hotel);
 
   return (
-    <Link href={hotelUrl} className="group block bg-primary rounded-2xl border border-primary/30 overflow-hidden hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] transition-all duration-300 hover:-translate-y-1">
-      {/* Image — using next/image for lazy loading + WebP optimization */}
-      <div className="relative h-52 bg-slate-950 overflow-hidden">
+    <Link
+      href={hotelUrl}
+      className="group block bg-primary rounded-2xl border border-primary/30 overflow-hidden hover:shadow-[0_20px_50px_rgba(27,58,107,0.35)] hover:-translate-y-1 transition-all duration-300 card-gpu-fix"
+    >
+      <div className="relative h-48 bg-slate-950 overflow-hidden shrink-0">
         {img ? (
           <Image
             src={img}
             alt={hotel.name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            className="object-cover card-img-zoom"
             onError={() => setImgErr(true)}
             loading={priority ? "eager" : "lazy"}
             priority={priority}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
-            <Building2 className="w-12 h-12 text-white/20" />
+            <Building2 className="w-10 h-10 text-white/20" />
           </div>
         )}
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
           {hotel.isFeatured && (
-            <span className="bg-accent text-primary text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow border border-white/15">
-              ★ Featured
+            <span className="bg-accent text-primary text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow">
+              Featured
             </span>
           )}
           {hotel.breakfastIncluded && (
-            <span className="bg-emerald-500 text-white text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shadow border border-emerald-400/20">
+            <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow">
               Breakfast Incl.
             </span>
           )}
         </div>
         {hotel.bookingType === "INSTANT" && (
-          <div className="absolute top-3 right-3">
-            <span className="bg-blue-600 text-white text-[9px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow border border-blue-500/20">
+          <div className="absolute top-2.5 right-2.5 z-10">
+            <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow">
               <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> Instant Book
             </span>
           </div>
         )}
-        {/* Rating overlay */}
         {hotel.avgRating && (
-          <div className="absolute bottom-3 right-3 bg-primary/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 flex items-center gap-1 shadow-lg border border-white/10">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-xs font-black text-white">{hotel.avgRating}</span>
-            {hotel.reviewCount ? <span className="text-[10px] text-white/40">({hotel.reviewCount})</span> : null}
+          <div className="absolute bottom-2.5 right-2.5 bg-primary/90 rounded-xl px-2 py-1 flex items-center gap-1 shadow-lg border border-white/10 z-10">
+            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+            <span className="text-[11px] font-black text-white">{hotel.avgRating}</span>
+            {hotel.reviewCount ? <span className="text-[9px] text-white/40">({hotel.reviewCount})</span> : null}
           </div>
         )}
       </div>
-
-      {/* Content */}
-      <div className="p-3.5 sm:p-4 bg-primary text-white">
-        <div className="flex items-center gap-1 mb-1">
+      <div className="p-3 sm:p-3.5 bg-primary text-white">
+        <div className="flex items-center gap-0.5 mb-1">
           {[...Array(5)].map((_, i) => (
-            <Star key={i} className={`w-3 h-3 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-white/20"}`} />
+            <Star key={i} className={`w-2.5 h-2.5 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-white/20"}`} />
           ))}
-          <span className="text-[10px] text-white/50 ml-1 font-semibold">{hotel.type}</span>
+          <span className="text-[9px] text-white/40 ml-1 font-semibold">{hotel.type}</span>
         </div>
-
-        <h3 className="font-black text-white text-base leading-tight mb-1 group-hover:text-accent transition-colors line-clamp-1">
+        <h3 className="font-black text-white text-sm leading-tight mb-1 group-hover:text-accent transition-colors line-clamp-1">
           {hotel.name}
         </h3>
-
         <div className="flex items-center gap-1 text-white/50 mb-2">
-          <MapPin className="w-3.5 h-3.5 shrink-0 text-accent" />
-          <span className="text-xs font-medium truncate">
+          <MapPin className="w-3 h-3 shrink-0 text-accent" />
+          <span className="text-[11px] font-medium truncate">
             {hotel.city || hotel.destinationName || hotel.address.slice(0, 30)}
           </span>
         </div>
-
-        {/* Amenities — horizontal scroll nero bar */}
         {hotel.amenities && hotel.amenities.length > 0 && (
-          <div
-            className="flex gap-1 overflow-x-auto no-scrollbar mb-2.5 pb-0.5 whitespace-nowrap select-none w-full scroll-smooth cursor-grab active:cursor-grabbing"
-            onMouseDown={(e) => {
-              const el = e.currentTarget;
-              el.dataset.isDown = "true";
-              el.dataset.startX = String(e.pageX - el.offsetLeft);
-              el.dataset.scrollLeft = String(el.scrollLeft);
-            }}
-            onMouseLeave={(e) => {
-              delete e.currentTarget.dataset.isDown;
-            }}
-            onMouseUp={(e) => {
-              delete e.currentTarget.dataset.isDown;
-            }}
-            onMouseMove={(e) => {
-              const el = e.currentTarget;
-              if (el.dataset.isDown !== "true") return;
-              e.preventDefault();
-              e.stopPropagation();
-              const x = e.pageX - el.offsetLeft;
-              const startX = Number(el.dataset.startX || 0);
-              const walk = (x - startX) * 1.5;
-              if (Math.abs(x - startX) > 5) {
-                el.dataset.wasDragged = "true";
-              }
-              el.scrollLeft = Number(el.dataset.scrollLeft || 0) - walk;
-            }}
-            onClick={(e) => {
-              const el = e.currentTarget;
-              if (el.dataset.wasDragged === "true") {
-                e.preventDefault();
-                e.stopPropagation();
-                delete el.dataset.wasDragged;
-              }
-            }}
-          >
-            {hotel.amenities.map((ame, index) => {
+          <div className="flex gap-1 overflow-x-auto no-scrollbar mb-2 whitespace-nowrap">
+            {hotel.amenities.slice(0, 5).map((ame, idx) => {
               if (!ame) return null;
-              let nameVal = "";
-              if (typeof ame === "object") {
-                nameVal = (ame as any).code || (ame as any).key || (ame as any).name || String(ame);
-              } else {
-                nameVal = String(ame);
-              }
-              const keyVal = nameVal === "[object Object]" ? `amenity-${index}` : nameVal;
-              const upperKey = keyVal.toUpperCase();
-              const Icon = AMENITY_ICONS[upperKey] || null;
-              const displayLabel = keyVal.charAt(0).toUpperCase() + keyVal.slice(1).toLowerCase();
-
+              const nameVal = typeof ame === "object" ? ((ame as any).code || (ame as any).key || String(ame)) : String(ame);
+              const info = AMENITY_OPTS.find(a => a.key === nameVal.toUpperCase());
               return (
-                <span key={`${keyVal}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
-                  {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
-                  {displayLabel}
+                <span key={idx} className="inline-flex items-center gap-0.5 text-[9px] text-white/70 bg-white/5 px-1.5 py-0.5 rounded-full border border-white/10 shrink-0">
+                  {info?.Icon && <info.Icon className="w-2 h-2 text-accent" />}
+                  {info?.label || nameVal}
                 </span>
               );
             })}
           </div>
         )}
-
-        <div className="flex items-center justify-between pt-2.5 border-t border-white/10">
+        <div className="flex items-center justify-between pt-2 border-t border-white/10">
           <div>
             {hotel.minPrice ? (
               <>
-                <span className="text-xs text-white/50">From </span>
-                <span className="text-lg font-black text-white">₹{hotel.minPrice.toLocaleString()}</span>
-                <span className="text-[10px] text-white/50 font-medium">/night</span>
+                <span className="text-[10px] text-white/40">From </span>
+                <span className="text-base font-black text-white">₹{hotel.minPrice.toLocaleString()}</span>
+                <span className="text-[9px] text-white/40 font-medium">/night</span>
               </>
             ) : (
-              <span className="text-sm text-white/50 font-medium">Price on request</span>
+              <span className="text-xs text-white/40">Price on request</span>
             )}
           </div>
-          <span className="flex items-center gap-1 text-xs font-bold text-primary bg-accent px-3 py-1.5 rounded-full group-hover:bg-white group-hover:text-primary transition-all">
-            View <ChevronRight className="w-3.5 h-3.5" />
+          <span className="flex items-center gap-1 text-[10px] font-bold text-primary bg-accent px-2.5 py-1.5 rounded-full group-hover:bg-white transition-all">
+            View <ChevronRight className="w-3 h-3" />
           </span>
         </div>
       </div>
@@ -232,87 +225,208 @@ function HotelCard({ hotel, priority = false }: { hotel: Hotel; priority?: boole
   );
 }
 
-function FilterSidebar({
-  filters,
-  onChange,
-  onClose,
-}: {
-  filters: any;
-  onChange: (k: string, v: any) => void;
-  onClose?: () => void;
-}) {
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-6">
-      {onClose && (
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-black text-slate-900">Filters</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl"><X className="w-4 h-4" /></button>
-        </div>
-      )}
-
-      {/* Property Type */}
-      <div>
-        <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Property Type</h4>
-        <div className="space-y-2">
-          {PROPERTY_TYPES.map(t => (
-            <label key={t} className="flex items-center gap-2.5 cursor-pointer group">
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${filters.type === t ? "bg-primary border-primary" : "border-slate-200 group-hover:border-primary"}`}
-                onClick={() => onChange("type", filters.type === t ? "" : t)}>
-                {filters.type === t && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
-              </div>
-              <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">{t}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Star Rating */}
-      <div>
-        <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Star Rating</h4>
-        <div className="space-y-2">
-          {STAR_OPTS.map(s => (
-            <label key={s} className="flex items-center gap-2.5 cursor-pointer group">
-              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${filters.starRating === s ? "bg-primary border-primary" : "border-slate-200 group-hover:border-primary"}`}
-                onClick={() => onChange("starRating", filters.starRating === s ? "" : s)}>
-                {filters.starRating === s && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
-              </div>
-              <span className="flex items-center gap-1">
-                {[...Array(s)].map((_, i) => <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Price Range */}
-      <div>
-        <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">Budget Per Night</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "Under ₹2K", val: "0-2000" },
-            { label: "₹2K–5K", val: "2000-5000" },
-            { label: "₹5K–10K", val: "5000-10000" },
-            { label: "₹10K+", val: "10000-999999" },
-          ].map(p => (
-            <button key={p.val} onClick={() => onChange("priceRange", filters.priceRange === p.val ? "" : p.val)}
-              className={`text-xs font-semibold py-2 px-3 rounded-xl border transition-all ${filters.priceRange === p.val ? "bg-primary text-white border-primary" : "border-slate-200 text-slate-600 hover:border-primary hover:text-primary"}`}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Reset */}
-      <button onClick={() => { onChange("type", ""); onChange("starRating", ""); onChange("priceRange", ""); }}
-        className="w-full text-xs text-slate-500 hover:text-red-500 font-semibold py-2 border border-slate-100 rounded-xl hover:border-red-100 transition-colors">
-        Clear All Filters
-      </button>
+    <div className="border-b border-slate-100 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 mb-2">{title}</p>
+      {children}
     </div>
   );
 }
 
-interface GeoFilter { country?: string; state?: string; city?: string; }
-interface Breadcrumb { label: string; href: string; }
+interface FilterState {
+  type: string;
+  starRating: string | number;
+  priceRange: string;
+  amenities: string[];
+  bookingType: string;
+  breakfastIncluded: string | boolean;
+  isFeatured: string | boolean;
+}
+
+function FilterContent({
+  filters,
+  sort,
+  onFilter,
+  onSort,
+  onReset,
+  hasFilters,
+}: {
+  filters: FilterState;
+  sort: string;
+  onFilter: (k: string, v: any) => void;
+  onSort: (v: string) => void;
+  onReset: () => void;
+  hasFilters: boolean;
+}) {
+  return (
+    <div>
+      <FilterSection title="Sort By">
+        <div className="space-y-0.5">
+          {SORT_OPTS.map(o => (
+            <button
+              key={o.val}
+              onClick={() => onSort(o.val)}
+              className={cn(
+                "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                sort === o.val ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              )}
+            >
+              {o.label}
+              {sort === o.val && <Check className="w-3 h-3" />}
+            </button>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Property Type">
+        <div className="space-y-0.5">
+          {PROPERTY_TYPES.map(t => (
+            <button
+              key={t.val}
+              onClick={() => onFilter("type", filters.type === t.val ? "" : t.val)}
+              className={cn(
+                "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                filters.type === t.val ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              {t.label}
+              {filters.type === t.val && <Check className="w-3 h-3" />}
+            </button>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Star Rating">
+        <div className="space-y-0.5">
+          <button
+            onClick={() => onFilter("starRating", "")}
+            className={cn(
+              "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+              !filters.starRating ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            Any Rating {!filters.starRating && <Check className="w-3 h-3" />}
+          </button>
+          {STAR_OPTS.map(s => (
+            <button
+              key={s}
+              onClick={() => onFilter("starRating", filters.starRating === s ? "" : s)}
+              className={cn(
+                "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all",
+                filters.starRating === s ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              <span className="flex items-center gap-1">
+                {[...Array(s)].map((_, i) => (
+                  <Star key={i} className={`w-3 h-3 ${filters.starRating === s ? "fill-amber-300 text-amber-300" : "fill-amber-400 text-amber-400"}`} />
+                ))}
+                <span className="text-xs font-semibold ml-0.5">{s} Star{s > 1 ? "s" : ""}</span>
+              </span>
+              {filters.starRating === s && <Check className="w-3 h-3" />}
+            </button>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Budget Per Night">
+        <div className="space-y-0.5">
+          {PRICE_PRESETS.map(p => (
+            <button
+              key={p.val}
+              onClick={() => onFilter("priceRange", filters.priceRange === p.val ? "" : p.val)}
+              className={cn(
+                "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                filters.priceRange === p.val ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              {p.label}
+              {filters.priceRange === p.val && <Check className="w-3 h-3" />}
+            </button>
+          ))}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Amenities">
+        <div className="space-y-0.5">
+          {AMENITY_OPTS.map(({ key, label, Icon }) => {
+            const active = (filters.amenities as string[]).includes(key);
+            return (
+              <button
+                key={key}
+                onClick={() => {
+                  const cur = filters.amenities as string[];
+                  onFilter("amenities", active ? cur.filter((a: string) => a !== key) : [...cur, key]);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  active ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-accent" : "text-slate-400")} />
+                <span className="flex-1 text-left">{label}</span>
+                {active && <Check className="w-3 h-3 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </FilterSection>
+
+      <FilterSection title="Special Offers">
+        <div className="space-y-0.5">
+          {[
+            { key: "bookingType", val: "INSTANT", label: "Instant Booking", Icon: Zap },
+            { key: "breakfastIncluded", val: true, label: "Breakfast Included", Icon: Coffee },
+            { key: "isFeatured", val: true, label: "Featured Properties", Icon: Flame },
+          ].map(({ key, val, label, Icon }) => {
+            const active = filters[key as keyof FilterState] === val;
+            return (
+              <button
+                key={key}
+                onClick={() => onFilter(key, active ? "" : val)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                  active ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-accent" : "text-slate-400")} />
+                <span className="flex-1 text-left">{label}</span>
+                {active && <Check className="w-3 h-3 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </FilterSection>
+
+      <div className="rounded-xl bg-gradient-to-br from-primary via-[#0D1B3E] to-[#0B1528] p-3 text-white mt-2">
+        <p className="text-[9px] font-black uppercase tracking-[0.15em] text-accent mb-1.5">Why Book With Us</p>
+        <div className="space-y-1.5">
+          {[
+            { Icon: Shield, text: "Verified properties only" },
+            { Icon: Zap, text: "Instant booking confirmation" },
+            { Icon: IndianRupee, text: "Best price guaranteed" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                <item.Icon className="w-2.5 h-2.5 text-accent" />
+              </div>
+              <p className="text-white/80 text-[10px] font-medium leading-tight">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {hasFilters && (
+        <button
+          onClick={onReset}
+          className="w-full text-xs font-bold text-red-500 hover:text-red-600 py-2 mt-3 border border-red-100 rounded-lg hover:border-red-200 transition-colors"
+        >
+          Clear All Filters
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function HotelsClient({
   geoFilter: geoFilterProp,
@@ -328,38 +442,59 @@ export default function HotelsClient({
   cityInfo?: any;
 } = {}) {
   const searchParams = useSearchParams();
+
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [total, setTotal] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showFilters, setShowFilters] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sort, setSort] = useState("recommended");
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(search);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FilterState>({
     type: searchParams.get("type") || "",
     starRating: searchParams.get("starRating") ? Number(searchParams.get("starRating")) : "",
     priceRange: searchParams.get("priceRange") || "",
+    amenities: [],
+    bookingType: "",
+    breakfastIncluded: "",
+    isFeatured: "",
   });
   const [page, setPage] = useState(0);
   const LIMIT = 12;
 
-  // ⚡ Memoize geoFilter so its reference stays stable across re-renders
-  // (prevents infinite fetch loops since objects are always new refs in JSX)
   const geoFilter = useMemo(() => geoFilterProp, [
-    geoFilterProp?.country,
-    geoFilterProp?.state,
-    geoFilterProp?.city,
+    geoFilterProp?.country, geoFilterProp?.state, geoFilterProp?.city,
   ]);
 
-  // ⚡ Debounce search input — only fires API after 350ms of no typing
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(t);
   }, [search]);
 
-  const updateFilter = (k: string, v: any) => { setFilters(f => ({ ...f, [k]: v })); setPage(0); };
+  const updateFilter = useCallback((k: string, v: any) => {
+    setFilters(f => ({ ...f, [k]: v }));
+    setPage(0);
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setFilters({ type: "", starRating: "", priceRange: "", amenities: [], bookingType: "", breakfastIncluded: "", isFeatured: "" });
+    setSort("recommended");
+    setSearch("");
+    setPage(0);
+  }, []);
+
+  const hasFilters = !!(
+    filters.type || filters.starRating || filters.priceRange ||
+    filters.amenities.length > 0 || filters.bookingType ||
+    filters.breakfastIncluded || filters.isFeatured || debouncedSearch
+  );
+  const activeFilterCount = [
+    filters.type, filters.starRating, filters.priceRange,
+    filters.amenities.length > 0, filters.bookingType,
+    filters.breakfastIncluded, filters.isFeatured,
+  ].filter(Boolean).length;
 
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams();
@@ -371,7 +506,10 @@ export default function HotelsClient({
       params.set("minPrice", min);
       params.set("maxPrice", max);
     }
-    // Geo filters from props
+    if (filters.bookingType) params.set("bookingType", filters.bookingType as string);
+    if (filters.breakfastIncluded) params.set("breakfastIncluded", "true");
+    if (filters.isFeatured) params.set("isFeatured", "true");
+    if (filters.amenities.length > 0) params.set("amenities", filters.amenities.join(","));
     if (geoFilter?.country) params.set("country", geoFilter.country);
     if (geoFilter?.state && geoFilter.state !== "all") params.set("state", geoFilter.state);
     if (geoFilter?.city) params.set("city", geoFilter.city);
@@ -385,19 +523,11 @@ export default function HotelsClient({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    // Use by-location endpoint when geo filters are active
     const endpoint = geoFilter
       ? `${API_BASE}/hotels/by-location?${buildQuery()}`
       : `${API_BASE}/hotels?${buildQuery()}`;
-    fetch(endpoint, {
-      signal: controller.signal,
-      // ⚡ Bypass browser cache — prevents stale 304 responses returning empty hotel lists
-      cache: "no-store",
-    })
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+    fetch(endpoint, { signal: controller.signal, cache: "no-store" })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => { setHotels(d.hotels || []); setTotal(d.total || 0); })
       .catch(e => { if (e.name !== "AbortError") setError("Failed to load hotels. Please try again."); })
       .finally(() => setLoading(false));
@@ -405,21 +535,33 @@ export default function HotelsClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buildQuery]);
 
-
-  const destinations = Array.from(new Set(hotels.map(h => h.destinationName || h.city || "Himalayas").filter(Boolean)));
-  const activeFilterCount = [filters.type, filters.starRating, filters.priceRange].filter(Boolean).length;
+  const activeChips: { label: string; onRemove: () => void }[] = [
+    ...(filters.type ? [{ label: filters.type, onRemove: () => updateFilter("type", "") }] : []),
+    ...(filters.starRating ? [{ label: `${filters.starRating} Stars`, onRemove: () => updateFilter("starRating", "") }] : []),
+    ...(filters.priceRange ? [{ label: PRICE_PRESETS.find(p => p.val === filters.priceRange)?.label || (filters.priceRange as string), onRemove: () => updateFilter("priceRange", "") }] : []),
+    ...filters.amenities.map((a: string) => ({
+      label: AMENITY_OPTS.find(o => o.key === a)?.label || a,
+      onRemove: () => updateFilter("amenities", filters.amenities.filter((x: string) => x !== a)),
+    })),
+    ...(filters.bookingType ? [{ label: "Instant Book", onRemove: () => updateFilter("bookingType", "") }] : []),
+    ...(filters.breakfastIncluded ? [{ label: "Breakfast Incl.", onRemove: () => updateFilter("breakfastIncluded", "") }] : []),
+    ...(filters.isFeatured ? [{ label: "Featured", onRemove: () => updateFilter("isFeatured", "") }] : []),
+  ];
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-32">
-      {/* ── Hero ── */}
+    <div className="bg-slate-50 min-h-screen pb-28">
+
+      {/* Hero */}
       <div className="relative bg-[#0A0D17] pt-24 pb-20 md:pt-36 md:pb-24 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src={cityInfo?.imageUrl || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600"}
-            className="w-full h-full object-cover opacity-30 grayscale-[0.3]" alt={pageTitle || "Himalayan stays"} />
+          <img
+            src={cityInfo?.imageUrl || "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600"}
+            className="w-full h-full object-cover opacity-30 grayscale-[0.3]"
+            alt={pageTitle || "Himalayan stays"}
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0A0D17] via-transparent to-[#0A0D17]" />
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center">
-          {/* Breadcrumbs inside Hero to fix the white space behind transparent navbar */}
           {breadcrumbs && breadcrumbs.length > 0 && (
             <nav className="flex items-center justify-center gap-1.5 text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest font-black mb-6">
               {breadcrumbs.map((crumb, i) => (
@@ -434,8 +576,7 @@ export default function HotelsClient({
               ))}
             </nav>
           )}
-
-          <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 animate-fade-in">
+          <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/10">
               <Sparkles className="h-4 w-4 text-accent" />
               <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">
@@ -454,11 +595,9 @@ export default function HotelsClient({
                 ? cityInfo.description.slice(0, 180)
                 : "Hotels, Resorts, Cottages, Homestays & more — verified and curated across the Himalayas."}
             </p>
-
-            {/* ⚡ Smart Search Bar — Full-Text Search + Fuzzy Matching */}
             <div className="max-w-2xl mx-auto">
               <SmartSearchBar
-                placeholder="Search hotel, destination, resort…"
+                placeholder="Search hotel, destination, resort..."
                 geoFilter={geoFilter}
                 variant="hero"
                 className="w-full"
@@ -468,234 +607,328 @@ export default function HotelsClient({
         </div>
       </div>
 
-      {/* ── Filters Toolbar ── */}
-      <div className="container mx-auto px-4 -mt-10 relative z-20">
-        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-4">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-            {/* Destination quick-filters */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full lg:w-auto pb-1 lg:pb-0">
-              <button onClick={() => updateFilter("type", "")}
-                className={cn("px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                  !filters.type ? "bg-primary text-white shadow-lg" : "bg-slate-50 text-slate-500 hover:bg-slate-100")}>
-                All Types
-              </button>
-              {PROPERTY_TYPES.slice(0, 6).map(t => (
-                <button key={t} onClick={() => updateFilter("type", filters.type === t ? "" : t)}
-                  className={cn("px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                    filters.type === t ? "bg-primary text-white shadow-lg" : "bg-slate-50 text-slate-500 hover:bg-slate-100")}>
-                  {t}
-                </button>
-              ))}
-            </div>
+      {/* Main Layout */}
+      <div className="container mx-auto px-4 py-6 lg:py-8">
+        <div className="flex gap-5 items-start">
 
-            <div className="flex items-center gap-3 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-100 pt-3 lg:pt-0 lg:pl-4 w-full lg:w-auto">
-              {/* Sort */}
-              <div className="relative flex-1 lg:flex-none">
-                <select value={sort} onChange={e => setSort(e.target.value)}
-                  className="appearance-none pl-4 pr-8 py-2.5 rounded-2xl bg-slate-50 text-slate-600 text-xs font-bold border border-slate-100 focus:outline-none focus:border-primary cursor-pointer">
-                  {SORT_OPTS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
-                </select>
-                <ArrowUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              </div>
-
-              {/* Filter button */}
-              <button onClick={() => setShowFilters(!showFilters)}
-                className={cn("flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold border transition-all",
-                  showFilters ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-600 border-slate-100 hover:border-primary")}>
-                <Filter className="w-3.5 h-3.5" /> Filters
-                {activeFilterCount > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
+          {/* Desktop Sticky Sidebar */}
+          <aside className="hidden lg:block w-[248px] shrink-0 sticky top-28 self-start">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between p-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5 text-primary" />
+                  <h2 className="text-sm font-bold text-slate-900">Filter Hotels</h2>
+                  {activeFilterCount > 0 && (
+                    <span className="bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{activeFilterCount}</span>
+                  )}
+                </div>
+                {hasFilters && (
+                  <button onClick={resetFilters} className="text-xs font-semibold text-primary hover:underline">
+                    Reset
+                  </button>
                 )}
-              </button>
-
-              {/* View toggle */}
-              <div className="flex bg-slate-100 p-0.5 rounded-xl">
-                <button onClick={() => setViewMode("grid")} className={cn("p-2 rounded-lg transition-all", viewMode === "grid" ? "bg-white shadow text-primary" : "text-slate-400")}>
-                  <Grid3X3 className="w-4 h-4" />
-                </button>
-                <button onClick={() => setViewMode("list")} className={cn("p-2 rounded-lg transition-all", viewMode === "list" ? "bg-white shadow text-primary" : "text-slate-400")}>
-                  <LayoutList className="w-4 h-4" />
-                </button>
+              </div>
+              <div className="p-3.5 max-h-[calc(100vh-180px)] overflow-y-auto no-scrollbar">
+                <FilterContent
+                  filters={filters}
+                  sort={sort}
+                  onFilter={updateFilter}
+                  onSort={setSort}
+                  onReset={resetFilters}
+                  hasFilters={hasFilters}
+                />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </aside>
 
-      {/* ── Main Content ── */}
-      <div className="container mx-auto px-4 py-10">
-        <div className="flex gap-8">
-          {/* Filter Sidebar (desktop) */}
-          {showFilters && (
-            <div className="hidden lg:block shrink-0 bg-white rounded-3xl border border-slate-100 p-6 self-start sticky top-28" style={{ width: 280 }}>
-              <FilterSidebar filters={filters} onChange={updateFilter} />
-            </div>
-          )}
-
-          {/* Hotel Grid / List */}
+          {/* Results */}
           <div className="flex-1 min-w-0">
-            {/* Results header */}
-            <div className="flex items-center justify-between mb-6">
+
+            {/* Results toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div>
                 {loading ? (
-                  <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
+                  <div className="h-6 w-40 bg-slate-200 rounded animate-pulse" />
                 ) : (
-                  <p className="text-sm font-semibold text-slate-500">
-                    <span className="text-slate-900 font-black">{total}</span> properties found
-                    {search && <> for "<span className="text-primary">{search}</span>"</>}
-                  </p>
+                  <span className="text-lg font-bold text-slate-900">
+                    {total} <span className="text-slate-500 font-normal text-base">properties found</span>
+                  </span>
                 )}
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Mobile filter btn */}
+                <button
+                  onClick={() => setMobileFilterOpen(true)}
+                  className="lg:hidden flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="w-4 h-4 bg-primary text-white text-[9px] font-black rounded-full flex items-center justify-center">{activeFilterCount}</span>
+                  )}
+                </button>
+
+                {/* Sort desktop */}
+                <div className="hidden lg:block relative">
+                  <select
+                    value={sort}
+                    onChange={e => { setSort(e.target.value); setPage(0); }}
+                    className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                  >
+                    {SORT_OPTS.map(o => <option key={o.val} value={o.val}>{o.label}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                </div>
+
+                {/* View toggle */}
+                <div className="hidden sm:flex items-center rounded-lg border border-slate-200 overflow-hidden bg-white">
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={cn("p-2 transition-colors", viewMode === "grid" ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-50")}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={cn("p-2 transition-colors", viewMode === "list" ? "bg-primary text-white" : "text-slate-500 hover:bg-slate-50")}
+                  >
+                    <LayoutList className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
+            {/* Active filter chips */}
+            {activeChips.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {activeChips.map((chip, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/20">
+                    {chip.label}
+                    <button onClick={chip.onRemove} className="hover:text-red-500 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                <button onClick={resetFilters} className="text-xs font-semibold text-slate-400 hover:text-red-500 transition-colors px-2">
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            {/* Grid / List / Empty / Error */}
             {error ? (
               <div className="text-center py-20 bg-white rounded-3xl border border-red-100">
                 <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-300" />
                 <h3 className="text-lg font-black text-slate-700 mb-2">Something went wrong</h3>
                 <p className="text-slate-400 text-sm mb-4">{error}</p>
-                <button onClick={() => { setError(""); setPage(0); }}
-                  className="px-6 py-2 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors">
-                  Retry
-                </button>
+                <button onClick={() => { setError(""); setPage(0); }} className="px-6 py-2 bg-primary text-white rounded-2xl font-bold text-sm">Retry</button>
               </div>
             ) : loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-3xl border border-slate-100 overflow-hidden">
-                    <div className="h-52 bg-slate-100 animate-pulse" />
-                    <div className="p-5 space-y-3">
-                      <div className="h-5 bg-slate-100 rounded w-3/4 animate-pulse" />
-                      <div className="h-4 bg-slate-100 rounded w-1/2 animate-pulse" />
-                      <div className="h-10 bg-slate-50 rounded-xl animate-pulse" />
-                    </div>
-                  </div>
-                ))}
+              <div className={cn(viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4" : "flex flex-col gap-3")}>
+                {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : hotels.length === 0 ? (
               <div className="text-center py-32 bg-white rounded-3xl border border-dashed border-slate-200">
                 <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-200" />
-                <h3 className="text-2xl font-black text-slate-700 mb-2">No properties found</h3>
-                <p className="text-slate-400 text-sm mb-6">Try different search terms or clear your filters.</p>
-                <button onClick={() => { setSearch(""); setFilters({ type: "", starRating: "", priceRange: "" }); setPage(0); }}
-                  className="px-8 py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors">
+                <h3 className="text-xl font-black text-slate-700 mb-2">No properties found</h3>
+                <p className="text-slate-400 text-sm mb-6">Try different filters or broaden your search.</p>
+                <button onClick={resetFilters} className="px-8 py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors">
                   Reset Filters
                 </button>
               </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {hotels.map((hotel, idx) => (
+                  <HotelListingCard key={hotel.id} hotel={hotel} priority={idx < 3} />
+                ))}
+              </div>
             ) : (
-              <div>
-                <div className={cn(
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
-                    : "flex flex-col gap-4"
-                )}>
-                  {hotels.map((hotel, idx) =>
-                    viewMode === "grid" ? (
-                      <HotelCard key={hotel.id} hotel={hotel} priority={idx < 3} />
-                    ) : (
-                      <Link key={hotel.id} href={buildHotelUrl(hotel)}
-                        className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all flex gap-0">
-                        <div className="w-48 h-36 relative shrink-0 overflow-hidden">
-                          <Image
-                            src={getHotelImageUrl(hotel.primaryImageUrl || hotel.images?.[0], 400, 300, "4:3")}
-                            alt={hotel.name}
-                            fill
-                            sizes="192px"
-                            className="object-cover group-hover:scale-105 transition-transform"
-                            loading="lazy"
-                          />
+              <div className="flex flex-col gap-3">
+                {hotels.map(hotel => (
+                  <Link
+                    key={hotel.id}
+                    href={buildHotelUrl(hotel)}
+                    className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all flex"
+                  >
+                    <div className="w-36 sm:w-48 h-32 sm:h-36 relative shrink-0 overflow-hidden">
+                      <Image
+                        src={getHotelImageUrl(hotel.primaryImageUrl || hotel.images?.[0], 400, 300, "4:3")}
+                        alt={hotel.name}
+                        fill
+                        sizes="192px"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="flex-1 p-3 sm:p-4 flex justify-between items-start min-w-0">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-0.5 mb-1">
+                          {[...Array(5)].map((_, i) => <Star key={i} className={`w-2.5 h-2.5 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />)}
+                          <span className="text-[9px] text-slate-400 ml-1">{hotel.type}</span>
                         </div>
-                        <div className="flex-1 p-4 flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-1 mb-1">
-                              {[...Array(5)].map((_, i) => <Star key={i} className={`w-2.5 h-2.5 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />)}
-                              <span className="text-[10px] text-slate-400 ml-1">{hotel.type}</span>
-                            </div>
-                            <h3 className="font-black text-slate-900 group-hover:text-primary transition-colors">{hotel.name}</h3>
-                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
-                              <MapPin className="w-3 h-3" /> {hotel.city || hotel.destinationName}
-                            </p>
-                            {hotel.amenities && (
-                              <div className="flex gap-1 mt-2 flex-wrap">
-                                {hotel.amenities.slice(0, 5).map(a => (
-                                  <span key={a} className="text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{a}</span>
-                                ))}
-                              </div>
-                            )}
+                        <h3 className="font-black text-slate-900 group-hover:text-primary transition-colors text-sm leading-tight line-clamp-1">{hotel.name}</h3>
+                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
+                          <MapPin className="w-3 h-3 shrink-0 text-accent" /> {hotel.city || hotel.destinationName}
+                        </p>
+                        {hotel.amenities && (
+                          <div className="flex gap-1 mt-2 flex-wrap">
+                            {hotel.amenities.slice(0, 4).map((a, i) => (
+                              <span key={i} className="text-[9px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-full border border-slate-100">{a}</span>
+                            ))}
                           </div>
-                          <div className="text-right ml-4 shrink-0">
-                            {hotel.minPrice ? (
-                              <>
-                                <p className="text-xl font-black text-primary">₹{hotel.minPrice.toLocaleString()}</p>
-                                <p className="text-[10px] text-slate-400">/night onwards</p>
-                              </>
-                            ) : (
-                              <p className="text-sm text-slate-400">On request</p>
-                            )}
-                            {hotel.avgRating && (
-                              <div className="flex items-center justify-end gap-1 mt-2">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                <span className="text-xs font-bold">{hotel.avgRating}</span>
-                              </div>
-                            )}
-                            <span className="text-[10px] text-primary font-bold mt-2 inline-block">View Details →</span>
+                        )}
+                      </div>
+                      <div className="text-right ml-3 shrink-0">
+                        {hotel.minPrice ? (
+                          <>
+                            <p className="text-lg font-black text-primary">₹{hotel.minPrice.toLocaleString()}</p>
+                            <p className="text-[10px] text-slate-400">/night onwards</p>
+                          </>
+                        ) : <p className="text-sm text-slate-400">On request</p>}
+                        {hotel.avgRating && (
+                          <div className="flex items-center justify-end gap-1 mt-1">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            <span className="text-xs font-bold">{hotel.avgRating}</span>
                           </div>
-                        </div>
-                      </Link>
-                    )
-                  )}
-                </div>
+                        )}
+                        <span className="text-[10px] text-primary font-bold mt-1.5 inline-block">View Details</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
 
-                {/* Pagination */}
-                {total > LIMIT && (
-                  <div className="flex items-center justify-center gap-3 mt-10">
-                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                      className="px-5 py-2 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:border-primary hover:text-primary disabled:opacity-40 transition-all">
-                      ← Previous
-                    </button>
-                    <span className="text-sm text-slate-500 font-medium">
-                      Page {page + 1} of {Math.ceil(total / LIMIT)}
-                    </span>
-                    <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * LIMIT >= total}
-                      className="px-5 py-2 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:border-primary hover:text-primary disabled:opacity-40 transition-all">
-                      Next →
-                    </button>
-                  </div>
-                )}
+            {!loading && total > LIMIT && (
+              <div className="flex items-center justify-center gap-3 mt-8">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="px-5 py-2 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:border-primary hover:text-primary disabled:opacity-40 transition-all"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-slate-500 font-medium">Page {page + 1} of {Math.ceil(total / LIMIT)}</span>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={(page + 1) * LIMIT >= total}
+                  className="px-5 py-2 rounded-2xl border border-slate-200 text-sm font-bold text-slate-600 hover:border-primary hover:text-primary disabled:opacity-40 transition-all"
+                >
+                  Next
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Partner CTA ── */}
+      {/* Partner CTA */}
       <div className="container mx-auto px-4 mt-8">
-        <div className="bg-gradient-to-br from-[#0B1F4E] to-[#1B3A6B] rounded-lg p-12 text-white flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="bg-gradient-to-br from-[#0B1F4E] to-[#1B3A6B] rounded-lg p-8 sm:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-lg">
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 px-4 py-1.5 rounded-full mb-4 text-xs font-bold uppercase tracking-widest">
               <Building2 className="w-3.5 h-3.5 text-accent" /> Property Owners
             </div>
-            <h2 className="text-3xl font-black leading-tight mb-2">
+            <h2 className="text-2xl sm:text-3xl font-black leading-tight mb-2">
               List Your Property on <span className="text-accent">Sampooran Holidays</span>
             </h2>
             <p className="text-white/60 text-sm leading-relaxed">
-              Hotels, Resorts, Cottages, Homestays & more. Free to list, no upfront costs.
+              Hotels, Resorts, Cottages, Homestays and more. Free to list, no upfront costs.
               Reach 50,000+ monthly travellers planning Himalayan getaways.
             </p>
           </div>
           <div className="flex flex-col gap-3 shrink-0">
-            <Link href="/partner/register"
-              className="px-8 py-4 bg-accent text-white font-black rounded-2xl shadow-xl shadow-amber-500/20 hover:scale-105 transition-all text-center">
-              Start for Free →
+            <Link href="/partner/register" className="px-8 py-4 bg-accent text-white font-black rounded-2xl shadow-xl shadow-amber-500/20 hover:scale-105 transition-all text-center">
+              Start for Free
             </Link>
-            <Link href="/partner/login"
-              className="px-8 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/20 transition-all text-center text-sm">
+            <Link href="/partner/login" className="px-8 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/20 transition-all text-center text-sm">
               Partner Login
             </Link>
           </div>
         </div>
       </div>
+
+      {/* Mobile FAB */}
+      <div className="fixed bottom-20 right-4 z-40 lg:hidden">
+        {!mobileFilterOpen && (
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setMobileFilterOpen(true)}
+            className="flex items-center gap-2 bg-primary text-white text-sm font-bold px-4 py-3 rounded-full shadow-xl shadow-primary/30 border border-white/10"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-accent text-primary text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </motion.button>
+        )}
+      </div>
+
+      {/* Mobile Filter Drawer */}
+      <AnimatePresence>
+        {mobileFilterOpen && (
+          <>
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileFilterOpen(false)}
+              className="fixed inset-0 bg-black/50 z-[60] lg:hidden"
+            />
+            <motion.div
+              key="drawer"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl shadow-2xl lg:hidden max-h-[88vh] flex flex-col"
+            >
+              <div className="flex justify-center pt-3 pb-1 shrink-0">
+                <div className="w-10 h-1 bg-slate-200 rounded-full" />
+              </div>
+              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-primary" />
+                  <h2 className="text-sm font-bold text-slate-900">Filter Hotels</h2>
+                  {activeFilterCount > 0 && (
+                    <span className="bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{activeFilterCount}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {hasFilters && (
+                    <button onClick={resetFilters} className="text-xs font-semibold text-red-500">Clear All</button>
+                  )}
+                  <button onClick={() => setMobileFilterOpen(false)}>
+                    <X className="w-5 h-5 text-slate-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-y-auto flex-1 px-5 py-4">
+                <FilterContent
+                  filters={filters}
+                  sort={sort}
+                  onFilter={updateFilter}
+                  onSort={v => { setSort(v); setPage(0); }}
+                  onReset={resetFilters}
+                  hasFilters={hasFilters}
+                />
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-white shrink-0">
+                <button
+                  onClick={() => setMobileFilterOpen(false)}
+                  className="w-full bg-primary text-white font-bold text-sm py-3.5 rounded-xl shadow-lg shadow-primary/20"
+                >
+                  Show {total} Properties
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import { Car, Users, Gauge, Heart, ArrowRight, Star, Fuel } from "lucide-react";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import type { DemoVehicle } from "@/lib/demo-fleet";
 
@@ -55,22 +54,15 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const typeColor = TYPE_COLORS[vehicle.type] || "bg-primary";
 
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="h-full flex w-full"
-    >
-      <div className="group w-full bg-primary rounded-xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
+    <div className="h-full flex w-full card-mobile-margin card-gpu-fix group hover:-translate-y-1 transition-transform duration-250 ease-out">
+      <div className="w-full bg-primary rounded-xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
 
         {/* ── Image Area ── */}
         <div className="relative h-28 xs:h-32 sm:h-48 overflow-hidden shrink-0 w-full">
-          <motion.img
-            initial={{ scale: 1 }}
-            whileHover={{ scale: 1.06 }}
-            transition={{ duration: 0.5 }}
+          <img
             src={imageUrl}
             alt={vehicle.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover card-img-zoom"
             loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-80" />
@@ -90,7 +82,7 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           {/* Wishlist */}
           <button
             onClick={e => { e.preventDefault(); setWishlisted(!wishlisted); }}
-            className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 p-1 sm:p-1.5 rounded-md bg-white/20 backdrop-blur-sm hover:bg-white hover:text-red-500 transition-all z-10 border border-white/20 text-white"
+            className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 p-1 sm:p-1.5 rounded-md bg-white/20 hover:bg-white hover:text-red-500 transition-all z-10 border border-white/20 text-white"
           >
             <Heart className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${wishlisted ? "fill-red-500 text-red-500" : ""}`} />
           </button>
@@ -151,6 +143,6 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

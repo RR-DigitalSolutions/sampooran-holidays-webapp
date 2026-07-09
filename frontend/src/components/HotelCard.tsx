@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Star, MapPin, Heart, ArrowRight, ShieldCheck } from "lucide-react";
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { validateImageUrl } from "@/lib/utils";
 import { getAmenityInfo, COMPREHENSIVE_AMENITIES } from "@/lib/amenities-config";
 
@@ -43,28 +42,22 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
     .slice(0, 3) as { key: string; label: string; icon: any }[];
 
   return (
-    <motion.div
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="h-full flex w-full"
-    >
-      <div className="group w-full bg-primary rounded-2xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
+    <div className="h-full flex w-full card-mobile-margin card-gpu-fix group hover:-translate-y-1.5 transition-transform duration-300 ease-out">
+      <div className="w-full bg-primary rounded-2xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
 
         {/* Image Area */}
         <div className="relative h-28 xs:h-32 sm:h-52 overflow-hidden shrink-0 w-full">
-          <motion.img
-            initial={{ scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.6 }}
+          <img
             src={imageUrl}
             alt={hotel.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover card-img-zoom"
+            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-80" />
 
           {/* Badges */}
           <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 flex gap-0.5 sm:gap-1.5 flex-wrap z-10">
-            <span className="bg-white/90 backdrop-blur-md text-primary text-[6px] sm:text-[7px] font-semibold px-1 py-0.5 sm:px-2 sm:py-0.5 rounded-full uppercase tracking-wide shadow-xs font-sans leading-tight">
+            <span className="bg-white/90 text-primary text-[6px] sm:text-[7px] font-semibold px-1 py-0.5 sm:px-2 sm:py-0.5 rounded-full uppercase tracking-wide shadow-xs font-sans leading-tight">
               {hotel.type || "Hotel"}
             </span>
             {hotel.starRating >= 4 && (
@@ -193,6 +186,6 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

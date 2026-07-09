@@ -881,13 +881,13 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   <p className="text-slate-600 max-w-md">We are currently updating our packages for {entityData.name}. Please try removing some filters or check back later.</p>
                 </div>
               ) : (
-                <div className={cn("gap-5", viewMode === "list" ? "flex flex-col" : "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3")}>
+                <div className={cn("gap-4 md:gap-5", viewMode === "list" ? "flex flex-col gap-3 md:gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
                   {filteredPackages.slice(0, visibleCount).map((pkg) => (
                     <PackageCard key={pkg.id} pkg={pkg} variant={viewMode === "list" ? "horizontal" : "default"} />
                   ))}
 
                   {visibleCount < filteredPackages.length && (
-                    <div className={cn("flex justify-center mt-4 pb-4", viewMode === "grid" && "col-span-2 lg:col-span-3")}>
+                    <div className={cn("flex justify-center mt-4 pb-4", viewMode === "grid" && "col-span-1 sm:col-span-2 lg:col-span-3")}>
                       <button
                         onClick={() => setVisibleCount(prev => prev + 10)}
                         className="w-full md:w-auto bg-white active:bg-slate-50 text-primary font-bold px-6 md:px-10 py-3 rounded-lg border-2 border-primary/20 transition-all flex items-center justify-center gap-2 shadow-sm text-sm cursor-pointer touch-manipulation"

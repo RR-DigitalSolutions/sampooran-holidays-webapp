@@ -564,9 +564,34 @@ export default function PackagesPage() {
   return (
     <div className={cn("min-h-screen bg-[#F5F7FA] transition-all duration-300", headerScrolled ? "pt-[55px]" : "pt-[61px]")}>
 
-      {/* ─── STICKY SEARCH BAR (Fixed with Navbar, permanently visible) ──────────────────────────── */}
-      <div className={cn("sticky z-30 bg-[#0B1E42] border-b border-white/10 text-white w-full py-1.5 shadow-md transition-all duration-300", headerScrolled ? "top-[55px]" : "top-[61px]")}>
-        <div className="container mx-auto px-4 flex items-center justify-between gap-3 text-xs">
+      {/* ─── STICKY SEARCH BAR ──────────────────────────────────────────────── */}
+      <div className={cn("sticky z-30 bg-[#0B1E42] border-b border-white/10 text-white w-full shadow-md transition-all duration-300", headerScrolled ? "top-[55px]" : "top-[61px]")}>
+
+        {/* ── MOBILE: Full-width keyword search ── */}
+        <div className="lg:hidden px-3 py-2">
+          <div className="relative flex items-center">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none" />
+            <input
+              ref={searchRef}
+              type="search"
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Search packages, destinations…"
+              className="w-full bg-white/10 border border-white/15 text-white placeholder:text-white/40 text-sm font-medium pl-10 pr-10 py-2.5 rounded-xl focus:outline-none focus:border-accent/50 focus:bg-white/15 transition-all"
+            />
+            {q && (
+              <button
+                onClick={() => setQ("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── DESKTOP: 4-column bar ── */}
+        <div className="hidden lg:flex container mx-auto px-4 items-center justify-between gap-3 text-xs py-1.5">
           <div className="flex-1 grid grid-cols-4 gap-4 divide-x divide-white/10">
             <div className="flex flex-col min-w-0">
               <span className="text-[8px] uppercase tracking-wider text-slate-400 font-bold block mb-0.5">Start From</span>
@@ -614,7 +639,7 @@ export default function PackagesPage() {
           </div>
           <button
             onClick={() => { if (hasFilters) resetFilters(); }}
-            className="bg-[#1E73BE] hover:bg-[#155a96] text-white font-bold text-[10px] px-4 py-1.5 rounded-lg transition-colors shrink-0"
+            className="bg-accent hover:brightness-110 text-primary font-bold text-[10px] px-4 py-1.5 rounded-lg transition-colors shrink-0"
           >
             {hasFilters ? "Reset" : "SEARCH"}
           </button>
@@ -777,8 +802,8 @@ export default function PackagesPage() {
             {isLoading ? (
               <div className={cn(
                 viewMode === "grid"
-                  ? "grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 max-w-[1200px] gap-4 md:gap-5"
-                  : "space-y-5 md:space-y-6"
+                  ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 max-w-[1200px] gap-4 md:gap-5"
+                  : "flex flex-col gap-3 md:gap-4"
               )}>
                 {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
               </div>
@@ -806,7 +831,7 @@ export default function PackagesPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 max-w-[1200px] gap-4 md:gap-5"
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 max-w-[1200px] gap-4 md:gap-5"
               >
                 {filtered.map((pkg, i) => (
                   <motion.div
@@ -820,7 +845,7 @@ export default function PackagesPage() {
                 ))}
               </motion.div>
             ) : (
-              <div className="space-y-5 md:space-y-6">
+              <div className="flex flex-col gap-3 md:gap-4">
                 {filtered.map(pkg => <PackageCard key={pkg.id} pkg={pkg} variant="horizontal" />)}
               </div>
             )}
