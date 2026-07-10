@@ -568,17 +568,26 @@ export function Layout({ children }: { children: ReactNode }) {
                 </div>
               </div>
 
-              {/* Associations */}
-              <div className="space-y-2 pt-2">
-                <p className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Associated with</p>
-                <div className="flex flex-wrap gap-2 items-center opacity-60 hover:opacity-100 transition-all">
-                  {["IATA", "TAFI", "OTOAI", "ADTOI"].map((a) => (
-                    <div key={a} className="px-2.5 py-1 bg-white/8 rounded text-[9px] font-semibold tracking-tighter border border-white/10 text-white/80">
-                      {a}
-                    </div>
-                  ))}
+              {/* Associations — driven by Admin Settings */}
+              {siteSettings.associations && siteSettings.associations.filter(a => a.isActive).length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <p className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">Associated with</p>
+                  <div className="flex flex-wrap gap-2 items-center opacity-60 hover:opacity-100 transition-all">
+                    {siteSettings.associations.filter(a => a.isActive).map((a) => (
+                      a.url ? (
+                        <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+                          className="px-2.5 py-1 bg-white/8 rounded text-[9px] font-semibold tracking-tighter border border-white/10 text-white/80 hover:text-white hover:border-white/30 transition-colors">
+                          {a.name}
+                        </a>
+                      ) : (
+                        <div key={a.id} className="px-2.5 py-1 bg-white/8 rounded text-[9px] font-semibold tracking-tighter border border-white/10 text-white/80">
+                          {a.name}
+                        </div>
+                      )
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Links Grid — Desktop: 3 columns side by side; Mobile: accordion */}
@@ -665,7 +674,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
           {/* Bottom Bar */}
           <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-3 text-[10px] font-medium text-white/40 tracking-wider">
-            <p>© {new Date().getFullYear()} Sampooran Holidays Pvt Ltd. All Rights Reserved.</p>
+            <p>© {new Date().getFullYear()} {siteSettings.siteName}. All Rights Reserved.</p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms & Conditions</Link>

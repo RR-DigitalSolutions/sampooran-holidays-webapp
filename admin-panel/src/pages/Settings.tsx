@@ -6,13 +6,55 @@ import {
   Award, RefreshCw, Loader2, Image as ImageIcon,
   BookOpen, HeartHandshake, Laptop, Twitter,
   MessageCircle, Hash, Building, FileText, Clock,
-  CheckCircle2, X, AlertCircle, Info, ExternalLink
+  CheckCircle2, X, AlertCircle, Info, ExternalLink,
+  Building2, Link as LinkIcon, Plus, Trash2, GripVertical,
+  Star, Users, Plane, Edit3, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { useAuth, API_BASE } from "../context/AuthContext";
 
 interface Setting {
   key: string;
   value: string;
+}
+
+// ─── Partner / Association types ─────────────────────────────────────────────
+interface OtaPartner {
+  id: string;
+  name: string;
+  logoUrl: string;
+  websiteUrl: string;
+  category: "B2C_OTA" | "B2B_WHOLESALER" | "META_SEARCH" | "OFFLINE_AGENCY";
+  isActive: boolean;
+}
+
+interface Association {
+  id: string;
+  name: string;
+  url: string;
+  isActive: boolean;
+}
+
+interface WhyItem {
+  title: string;
+  description: string;
+}
+
+interface AboutContent {
+  foundingYear: string;
+  founderName: string;
+  missionStatement: string;
+  story: string;
+  whyChooseUs: WhyItem[];
+}
+
+// ─── helpers ─────────────────────────────────────────────────────────────────
+function uid() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+function safeJson<T>(raw: string | undefined, fallback: T): T {
+  if (!raw || raw.trim() === "") return fallback;
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
 }
 
 interface ConfirmModalProps {
@@ -132,7 +174,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [activeTab, setActiveTab] = useState<"general" | "social" | "seo" | "rewards">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "social" | "seo" | "rewards" | "partners">("general");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<{ label: string; key: string; oldVal: string; newVal: string }[]>([]);
 
@@ -187,6 +229,43 @@ export default function Settings() {
     AGENT_MARKUP_MAX: "25",
   });
 
+  // ── OTA Partners State
+  const DEFAULT_OTA: OtaPartner[] = [
+    { id: "mmt", name: "MakeMyTrip", logoUrl: "", websiteUrl: "https://makemytrip.com", category: "B2C_OTA", isActive: true },
+    { id: "goibibo", name: "Goibibo", logoUrl: "", websiteUrl: "https://goibibo.com", category: "B2C_OTA", isActive: true },
+    { id: "booking", name: "Booking.com", logoUrl: "", websiteUrl: "https://booking.com", category: "B2C_OTA", isActive: true },
+    { id: "agoda", name: "Agoda", logoUrl: "", websiteUrl: "https://agoda.com", category: "META_SEARCH", isActive: true },
+    { id: "cleartrip", name: "Cleartrip", logoUrl: "", websiteUrl: "https://cleartrip.com", category: "B2C_OTA", isActive: true },
+    { id: "easemytrip", name: "EaseMyTrip", logoUrl: "", websiteUrl: "https://easemytrip.com", category: "B2C_OTA", isActive: true },
+    { id: "thomascook", name: "Thomas Cook", logoUrl: "", websiteUrl: "https://thomascook.in", category: "OFFLINE_AGENCY", isActive: true },
+    { id: "sotc", name: "SOTC", logoUrl: "", websiteUrl: "https://sotc.in", category: "OFFLINE_AGENCY", isActive: true },
+  ];
+  const [otaPartners, setOtaPartners] = useState<OtaPartner[]>(DEFAULT_OTA);
+
+  // ── Associations State
+  const DEFAULT_ASSOC: Association[] = [
+    { id: "iata", name: "IATA", url: "", isActive: true },
+    { id: "tafi", name: "TAFI", url: "", isActive: true },
+    { id: "otoai", name: "OTOAI", url: "", isActive: true },
+    { id: "adtoi", name: "ADTOI", url: "", isActive: true },
+  ];
+  const [associations, setAssociations] = useState<Association[]>(DEFAULT_ASSOC);
+
+  // ── About Content State
+  const DEFAULT_ABOUT: AboutContent = {
+    foundingYear: "2014",
+    founderName: "",
+    missionStatement: "To share the authentic beauty of the Himalayas with the world through genuine, personalised travel experiences.",
+    story: "Founded in 2014 in Himachal Pradesh, Sampooran Holidays began with a simple mission: to share the authentic beauty of the Himalayas with the world.",
+    whyChooseUs: [
+      { title: "Local Expertise", description: "Being based in Himachal, we know the mountains better than anyone else." },
+      { title: "Customized Itineraries", description: "We tailor every trip to suit your preferences and budget." },
+      { title: "Reliable Transport", description: "Our fleet of well-maintained taxis, tempo travellers, and buses ensures a comfortable journey." },
+      { title: "24/7 Support", description: "Our dedicated team is always available to assist you during your trip." },
+    ],
+  };
+  const [aboutContent, setAboutContent] = useState<AboutContent>(DEFAULT_ABOUT);
+
   // ─── Fetch settings on mount ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -216,6 +295,9 @@ export default function Settings() {
             try { (newSeo as any)[pageName] = JSON.parse(item.value); } catch {}
           }
         }
+        if (item.key === "ota_partners") setOtaPartners(safeJson<OtaPartner[]>(item.value, DEFAULT_OTA));
+        if (item.key === "associations") setAssociations(safeJson<Association[]>(item.value, DEFAULT_ASSOC));
+        if (item.key === "about_content") setAboutContent(safeJson<AboutContent>(item.value, DEFAULT_ABOUT));
       });
 
       setGeneral(newGeneral);
@@ -269,20 +351,33 @@ export default function Settings() {
       }
     });
 
-    // Also check SEO
+    // SEO
     Object.entries(seo).forEach(([pageKey, val]) => {
       const dbKey = `meta_${pageKey}`;
       const oldVal = savedSnapshot.current[dbKey] ?? "{}";
       const newVal = JSON.stringify(val);
       if (oldVal !== newVal) {
-        changes.push({
-          key: dbKey,
-          label: `SEO – ${pageKey}`,
-          oldVal,
-          newVal,
-        });
+        changes.push({ key: dbKey, label: `SEO – ${pageKey}`, oldVal, newVal });
       }
     });
+
+    // OTA Partners
+    const otaKey = "ota_partners";
+    const oldOta = savedSnapshot.current[otaKey] ?? "[]";
+    const newOta = JSON.stringify(otaPartners);
+    if (oldOta !== newOta) changes.push({ key: otaKey, label: "OTA & Booking Partners", oldVal: oldOta, newVal: newOta });
+
+    // Associations
+    const assocKey = "associations";
+    const oldAssoc = savedSnapshot.current[assocKey] ?? "[]";
+    const newAssoc = JSON.stringify(associations);
+    if (oldAssoc !== newAssoc) changes.push({ key: assocKey, label: "Industry Associations", oldVal: oldAssoc, newVal: newAssoc });
+
+    // About Content
+    const aboutKey = "about_content";
+    const oldAbout = savedSnapshot.current[aboutKey] ?? "{}";
+    const newAbout = JSON.stringify(aboutContent);
+    if (oldAbout !== newAbout) changes.push({ key: aboutKey, label: "About Page Content", oldVal: oldAbout, newVal: newAbout });
 
     setPendingChanges(changes);
     setConfirmOpen(true);
@@ -301,6 +396,9 @@ export default function Settings() {
       Object.entries(seo).forEach(([key, value]) =>
         settingsPayload.push({ key: `meta_${key}`, value: JSON.stringify(value) })
       );
+      settingsPayload.push({ key: "ota_partners", value: JSON.stringify(otaPartners) });
+      settingsPayload.push({ key: "associations", value: JSON.stringify(associations) });
+      settingsPayload.push({ key: "about_content", value: JSON.stringify(aboutContent) });
 
       const res = await fetch(`${API_BASE}/api/admin/settings`, {
         method: "POST",
@@ -360,6 +458,7 @@ export default function Settings() {
           { id: "social", label: "Socials & OG Banner", icon: Share2 },
           { id: "seo", label: "SEO Page Metadata", icon: BookOpen },
           { id: "rewards", label: "Growth & Rewards", icon: Ticket },
+          { id: "partners", label: "OTA & Partners", icon: Building2 },
         ].map((t) => {
           const Icon = t.icon;
           return (
@@ -696,6 +795,301 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          {/* ── TAB 5: OTA & Partners ── */}
+          {activeTab === "partners" && (
+            <div className="space-y-6">
+
+              {/* ── OTA Booking Companies ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <div className="flex items-center gap-3">
+                    <Building2 className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <h3 className="font-bold text-gray-900">OTA & Booking Companies</h3>
+                      <p className="text-xs text-gray-500">Top platforms where your packages are listed</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setOtaPartners([...otaPartners, {
+                      id: uid(), name: "", logoUrl: "", websiteUrl: "",
+                      category: "B2C_OTA", isActive: true,
+                    }])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 rounded-xl hover:bg-[#1B3A6B]/15 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Partner
+                  </button>
+                </div>
+                <div className="p-4 space-y-3">
+                  {otaPartners.length === 0 && (
+                    <div className="text-center py-8 text-gray-400">
+                      <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No OTA partners added yet. Click "Add Partner" to start.</p>
+                    </div>
+                  )}
+                  {otaPartners.map((ota, idx) => (
+                    <div key={ota.id} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/30 hover:bg-white transition-all">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="w-4 h-4 text-gray-300" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Partner #{idx + 1}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setOtaPartners(otaPartners.map((o, i) => i === idx ? { ...o, isActive: !o.isActive } : o))}
+                            className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full transition-colors ${ota.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}
+                          >
+                            {ota.isActive ? <ToggleRight className="w-3 h-3" /> : <ToggleLeft className="w-3 h-3" />}
+                            {ota.isActive ? "Active" : "Hidden"}
+                          </button>
+                          <button
+                            onClick={() => setOtaPartners(otaPartners.filter((_, i) => i !== idx))}
+                            className="p-1 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Company Name *</label>
+                          <input
+                            value={ota.name}
+                            onChange={(e) => setOtaPartners(otaPartners.map((o, i) => i === idx ? { ...o, name: e.target.value } : o))}
+                            placeholder="e.g. MakeMyTrip"
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Category</label>
+                          <select
+                            value={ota.category}
+                            onChange={(e) => setOtaPartners(otaPartners.map((o, i) => i === idx ? { ...o, category: e.target.value as any } : o))}
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          >
+                            <option value="B2C_OTA">B2C OTA</option>
+                            <option value="B2B_WHOLESALER">B2B Wholesaler</option>
+                            <option value="META_SEARCH">Meta Search</option>
+                            <option value="OFFLINE_AGENCY">Offline Agency</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Website URL</label>
+                          <div className="relative">
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                            <input
+                              value={ota.websiteUrl}
+                              onChange={(e) => setOtaPartners(otaPartners.map((o, i) => i === idx ? { ...o, websiteUrl: e.target.value } : o))}
+                              placeholder="https://makemytrip.com"
+                              className="w-full pl-9 pr-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Logo URL (optional)</label>
+                          <div className="relative">
+                            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                            <input
+                              value={ota.logoUrl}
+                              onChange={(e) => setOtaPartners(otaPartners.map((o, i) => i === idx ? { ...o, logoUrl: e.target.value } : o))}
+                              placeholder="https://cdn.example.com/logo.png"
+                              className="w-full pl-9 pr-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {ota.logoUrl && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img src={ota.logoUrl} alt={ota.name} className="h-6 object-contain max-w-[80px] border border-gray-100 rounded p-0.5 bg-white"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          <span className="text-[9px] text-gray-400">Logo Preview</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Industry Associations ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <div className="flex items-center gap-3">
+                    <Award className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <h3 className="font-bold text-gray-900">Industry Associations</h3>
+                      <p className="text-xs text-gray-500">Shown in the footer "Associated with" badge row</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setAssociations([...associations, { id: uid(), name: "", url: "", isActive: true }])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Association
+                  </button>
+                </div>
+                <div className="p-4 space-y-3">
+                  {associations.map((assoc, idx) => (
+                    <div key={assoc.id} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/30 flex items-center gap-3">
+                      <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Association Name</label>
+                          <input
+                            value={assoc.name}
+                            onChange={(e) => setAssociations(associations.map((a, i) => i === idx ? { ...a, name: e.target.value } : a))}
+                            placeholder="e.g. IATA"
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Website URL (optional)</label>
+                          <input
+                            value={assoc.url}
+                            onChange={(e) => setAssociations(associations.map((a, i) => i === idx ? { ...a, url: e.target.value } : a))}
+                            placeholder="https://iata.org"
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setAssociations(associations.map((a, i) => i === idx ? { ...a, isActive: !a.isActive } : a))}
+                          className={`text-[10px] font-bold px-2 py-1 rounded-full transition-colors ${assoc.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}
+                        >
+                          {assoc.isActive ? "Visible" : "Hidden"}
+                        </button>
+                        <button
+                          onClick={() => setAssociations(associations.filter((_, i) => i !== idx))}
+                          className="p-1 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {associations.length === 0 && (
+                    <p className="text-center text-sm text-gray-400 py-4">No associations added yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* ── About Page Content ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <Edit3 className="w-5 h-5 text-violet-600" />
+                  <div>
+                    <h3 className="font-bold text-gray-900">About Page Content</h3>
+                    <p className="text-xs text-gray-500">Story, founding details, and "Why Choose Us" points</p>
+                  </div>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Founding Year</label>
+                      <input
+                        value={aboutContent.foundingYear}
+                        onChange={(e) => setAboutContent({ ...aboutContent, foundingYear: e.target.value })}
+                        placeholder="2014"
+                        className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-sm bg-gray-50/30 text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Founder Name (optional)</label>
+                      <input
+                        value={aboutContent.founderName}
+                        onChange={(e) => setAboutContent({ ...aboutContent, founderName: e.target.value })}
+                        placeholder="e.g. Raman Kumar"
+                        className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-sm bg-gray-50/30 text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Mission Statement (hero tagline)</label>
+                    <textarea
+                      rows={2}
+                      value={aboutContent.missionStatement}
+                      onChange={(e) => setAboutContent({ ...aboutContent, missionStatement: e.target.value })}
+                      placeholder="A short mission sentence shown below the page hero title."
+                      className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-sm bg-gray-50/30 text-slate-800 focus:outline-none focus:border-[#1B3A6B] resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1.5 ml-1">Our Story (full paragraph)</label>
+                    <textarea
+                      rows={5}
+                      value={aboutContent.story}
+                      onChange={(e) => setAboutContent({ ...aboutContent, story: e.target.value })}
+                      placeholder="Full company story paragraph shown on the About page..."
+                      className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-sm bg-gray-50/30 text-slate-800 focus:outline-none focus:border-[#1B3A6B] resize-none"
+                    />
+                  </div>
+
+                  {/* Why Choose Us items */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 ml-1">Why Choose Us Points</label>
+                      <button
+                        onClick={() => setAboutContent({
+                          ...aboutContent,
+                          whyChooseUs: [...aboutContent.whyChooseUs, { title: "", description: "" }]
+                        })}
+                        className="flex items-center gap-1.5 text-[10px] font-bold text-violet-700 bg-violet-50 px-2.5 py-1 rounded-xl hover:bg-violet-100 transition-colors"
+                      >
+                        <Plus className="w-3 h-3" /> Add Point
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {aboutContent.whyChooseUs.map((item, idx) => (
+                        <div key={idx} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/30">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Point #{idx + 1}</span>
+                            <button
+                              onClick={() => setAboutContent({
+                                ...aboutContent,
+                                whyChooseUs: aboutContent.whyChooseUs.filter((_, i) => i !== idx)
+                              })}
+                              className="p-1 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            <input
+                              value={item.title}
+                              onChange={(e) => setAboutContent({
+                                ...aboutContent,
+                                whyChooseUs: aboutContent.whyChooseUs.map((w, i) => i === idx ? { ...w, title: e.target.value } : w)
+                              })}
+                              placeholder="Title (e.g. Local Expertise)"
+                              className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 font-semibold focus:outline-none focus:border-[#1B3A6B]"
+                            />
+                            <textarea
+                              rows={2}
+                              value={item.description}
+                              onChange={(e) => setAboutContent({
+                                ...aboutContent,
+                                whyChooseUs: aboutContent.whyChooseUs.map((w, i) => i === idx ? { ...w, description: e.target.value } : w)
+                              })}
+                              placeholder="Short description..."
+                              className="w-full px-3 py-2 border border-gray-100 rounded-xl text-xs bg-white text-slate-600 focus:outline-none focus:border-[#1B3A6B] resize-none"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Banner */}
+              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-blue-700 leading-relaxed">
+                  All changes here update the <strong>About page</strong>, <strong>footer associations bar</strong>, and any section that shows OTA partner logos. Click <strong>Commit Changes</strong> (right panel) to publish.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Side Controls ── */}
@@ -743,8 +1137,12 @@ export default function Settings() {
                 { dot: "bg-emerald-500", text: "Footer social media icons & links" },
                 { dot: "bg-emerald-500", text: "Footer copyright site name" },
                 { dot: "bg-emerald-500", text: "WhatsApp click-to-chat button" },
+                { dot: "bg-emerald-500", text: "Contact page — all info dynamic" },
                 { dot: "bg-blue-500", text: "OG banner for social sharing" },
                 { dot: "bg-blue-500", text: "SEO titles & meta descriptions" },
+                { dot: "bg-violet-500", text: "About page content & story" },
+                { dot: "bg-violet-500", text: "Footer association badges" },
+                { dot: "bg-violet-500", text: "OTA partner grid on About page" },
                 { dot: "bg-amber-500", text: "Agent markup & referral rewards" },
               ].map(({ dot, text }, i) => (
                 <div key={i} className="flex items-center gap-2">
