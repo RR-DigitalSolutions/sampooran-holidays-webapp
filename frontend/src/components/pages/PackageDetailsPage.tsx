@@ -105,6 +105,12 @@ type PackageData = {
   id?: number;
   slug?: string;
   packageCode?: string;
+  minGuests?: number;
+  maxGuests?: number;
+  isGroupPricing?: boolean;
+  groupBaseCapacity?: number;
+  extraPersonPrice?: number;
+  extraChildPrice?: number;
 };
 
 type AttractionActivityData = Record<string, unknown>;
@@ -236,6 +242,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [calendarRates, setCalendarRates] = useState<any[]>([]);
   const [loadingCal, setLoadingCal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+
+  // ── Guest Segment Counts ──
+  const [adults, setAdults] = useState(2);
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [infantsCount, setInfantsCount] = useState(0);
+  const [showGuestsEdit, setShowGuestsEdit] = useState(false);
 
   // ── Inquiry Form States ──
   const [inquiryName, setInquiryName] = useState("");
@@ -435,7 +447,10 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           packageId: packageData.id,
           travelDate: travelDate,
           travelersCount: guestCount,
-          specialRequests: `Direct booking via package detail calendar for ${travelDate}. Rate Type: ${selectedDateOverride?.rateType || "Regular"}`
+          adultsCount: adults,
+          childrenCount: childrenCount,
+          infantsCount: infantsCount,
+          specialRequests: `Direct booking via package detail calendar for ${travelDate}. Occupancy: ${adults} Adults, ${childrenCount} Children, ${infantsCount} Infants. Rate Type: ${selectedDateOverride?.rateType || "Regular"}`
         })
       });
 
@@ -873,16 +888,66 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   // Build package detail rows only when CMS data is actually available (no wrong fallback values)
   const ratingLabel = packageData.rating !== undefined ? packageData.rating.toFixed(1) : "4.5";
-  const guestCount = Number(String(packageData.groupSize || "").match(/\d+/)?.[0]) || 2;
-  const guestCountLabel = packageData.groupSize
-    ? `${String(packageData.groupSize)} Guests`
-    : `${guestCount} Guests`;
-  const totalPackageCost = Math.round(pricePerPerson * guestCount);
-  const totalOriginalCost = Math.round(originalPrice * guestCount);
-  const totalSavings = Math.max(0, totalOriginalCost - totalPackageCost);
-  const priceAfterDiscount = totalPackageCost;
-  const gstAmount = Math.round(priceAfterDiscount * 0.05);
-  const grandTotal = priceAfterDiscount + gstAmount;
+
+  const minGuests = packageData.minGuests ?? 2;
+  const maxGuests = packageData.maxGuests ?? 10;
+
+  const { totalPackageCost, totalOriginalCost, totalSavings, priceAfterDiscount, gstAmount, grandTotal, guestCountLabel } = useMemo(() => {
+    const isGroup = !!packageData.isGroupPricing;
+    const baseCap = packageData.groupBaseCapacity ?? 2;
+    
+    let totalCost = 0;
+    let originalCost = 0;
+
+    if (isGroup) {
+      // Group Pricing Formula
+      const adultsInBase = Math.min(adults, baseCap);
+      const childrenInBase = Math.min(childrenCount, baseCap - adultsInBase);
+      const extraAdults = adults - adultsInBase;
+      const extraChildren = childrenCount - childrenInBase;
+
+      // Base capacity price
+      totalCost = baseCap * pricePerPerson;
+      originalCost = baseCap * originalPrice;
+
+      // Extra person pricing
+      totalCost += extraAdults * (packageData.extraPersonPrice ?? 0);
+      totalCost += extraChildren * (packageData.extraChildPrice ?? 0);
+
+      originalCost += extraAdults * (packageData.extraPersonPrice ?? 0);
+      originalCost += extraChildren * (packageData.extraChildPrice ?? 0);
+    } else {
+      // Standard dynamic pricing formula: children count as half, infants free
+      const adultsCost = adults * pricePerPerson;
+      const childrenCost = childrenCount * Math.round(pricePerPerson * 0.5);
+      totalCost = adultsCost + childrenCost;
+
+      const originalAdultsCost = adults * originalPrice;
+      const originalChildrenCost = childrenCount * Math.round(originalPrice * 0.5);
+      originalCost = originalAdultsCost + originalChildrenCost;
+    }
+
+    const savingsVal = Math.max(0, originalCost - totalCost);
+    const gstVal = Math.round(totalCost * 0.05);
+    const finalTotal = totalCost + gstVal;
+
+    let countLabel = `${adults} Ad`;
+    if (childrenCount > 0) countLabel += `, ${childrenCount} Ch`;
+    if (infantsCount > 0) countLabel += `, ${infantsCount} Inf`;
+
+    return {
+      totalPackageCost: totalCost,
+      totalOriginalCost: originalCost,
+      totalSavings: savingsVal,
+      priceAfterDiscount: totalCost,
+      gstAmount: gstVal,
+      grandTotal: finalTotal,
+      guestCountLabel: countLabel
+    };
+  }, [adults, childrenCount, infantsCount, pricePerPerson, originalPrice, packageData]);
+
+  const guestCount = adults + childrenCount;
+
   const discountLabel = packageData.discountPercent
     ? `${packageData.discountPercent}% OFF`
     : totalSavings > 0
@@ -1625,6 +1690,171 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           </main>
 
           <aside className="space-y-4 xl:sticky xl:top-20">
+            {/* ── Guest Occupancy & Fare Selector Widget ── */}
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
+              {/* Header with popover toggle and grand total */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Travelers &amp; Cost</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs font-bold text-slate-800">{guestCountLabel}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowGuestsEdit(!showGuestsEdit)}
+                      className="text-[10px] font-bold text-[#1B3A6B] hover:underline bg-slate-50 hover:bg-slate-100 px-1.5 py-0.5 rounded border border-slate-205"
+                    >
+                      {showGuestsEdit ? "Hide" : "Change"}
+                    </button>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Grand Total</p>
+                  <p className="text-lg font-black text-slate-900 leading-none mt-0.5">₹{grandTotal.toLocaleString('en-IN')}</p>
+                  {totalSavings > 0 && (
+                    <span className="text-[8px] font-extrabold text-emerald-600 block mt-0.5">Save ₹{totalSavings.toLocaleString('en-IN')}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Collapsible Occupancy Adjusters */}
+              {showGuestsEdit && (
+                <div className="space-y-2.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/60">
+                  {/* Adults counter */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Adults</p>
+                      <p className="text-[9px] text-slate-400">Age 12 or above</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAdults(prev => Math.max(1, prev - 1))}
+                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{adults}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adults + childrenCount >= maxGuests) {
+                            toast.error(`Maximum allowed guests is ${maxGuests}`);
+                            return;
+                          }
+                          setAdults(prev => prev + 1);
+                        }}
+                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Children counter */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Children</p>
+                      <p className="text-[9px] text-slate-400">Age 5 to 11 (50% Price)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
+                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{childrenCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adults < 2) {
+                            toast.warning("Minimum 2 adults are required to add children.");
+                            return;
+                          }
+                          if (adults + childrenCount >= maxGuests) {
+                            toast.error(`Maximum allowed guests is ${maxGuests}`);
+                            return;
+                          }
+                          setChildrenCount(prev => prev + 1);
+                        }}
+                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Infants counter */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Infants</p>
+                      <p className="text-[9px] text-slate-400">Under 5 years (Free)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))}
+                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{infantsCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adults < 2) {
+                            toast.warning("Minimum 2 adults are required to add infants.");
+                            return;
+                          }
+                          setInfantsCount(prev => prev + 1);
+                        }}
+                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Occupancy rules warnings */}
+                  {adults < 2 && (childrenCount > 0 || infantsCount > 0) && (
+                    <p className="text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 mt-1">
+                      ⚠️ Minimum 2 adults mandatory to include children or infants.
+                    </p>
+                  )}
+                  {adults + childrenCount < minGuests && (
+                    <p className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2 mt-1">
+                      ⚠️ Minimum {minGuests} guests are required to book this package.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Price Breakdown Details */}
+              <div className="text-[11px] space-y-1.5 bg-slate-50/50 p-3 rounded-xl border border-slate-100/60">
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Base Package Cost</span>
+                  <span className="font-semibold text-slate-850">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+                </div>
+                {totalSavings > 0 && (
+                  <div className="flex items-center justify-between text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded -mx-1">
+                    <span className="font-bold">{discountLabel} applied</span>
+                    <span className="font-bold">−₹{totalSavings.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-slate-500 pb-1.5 border-b border-dashed border-slate-200">
+                  <span>GST (5%)</span>
+                  <span className="font-semibold text-slate-850">₹{gstAmount.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* Compact EMI & No Cost tag */}
+                <div className="flex items-center justify-between pt-1 font-semibold text-slate-655">
+                  <span>No-Cost EMI from</span>
+                  <span className="text-[#1B3A6B]">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}/mo × 3</span>
+                </div>
+              </div>
+            </div>
+
             {/* ── Dynamic Rate Calendar Widget ── */}
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-4 hidden xl:block">
               <div className="flex items-center justify-between">
@@ -1679,10 +1909,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   const isSelected = travelDate === dateStr;
 
                   let finalPrice = basePricePerPerson;
+                  let originalPriceBeforeDiscount = originalPrice;
                   let isBlackout = false;
                   let isPriceOnReq = false;
+                  let rateType = "regular";
+                  let discountPercentVal = 0;
 
                   if (rule) {
+                    rateType = rule.rateType || "regular";
                     if (rule.rateType === "blackout") isBlackout = true;
                     else if (rule.rateType === "price-on-request") isPriceOnReq = true;
                     else {
@@ -1691,13 +1925,44 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
                       else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
 
+                      originalPriceBeforeDiscount = finalPrice;
+
                       const disc = Number(rule.discountValue) || 0;
-                      if (rule.discountType === "percentage") finalPrice = finalPrice * (1 - disc / 100);
-                      else if (rule.discountType === "flat") finalPrice = Math.max(0, finalPrice - disc);
+                      if (rule.discountType === "percentage") {
+                        finalPrice = finalPrice * (1 - disc / 100);
+                        discountPercentVal = disc;
+                      } else if (rule.discountType === "flat") {
+                        finalPrice = Math.max(0, finalPrice - disc);
+                        discountPercentVal = Math.round((disc / originalPriceBeforeDiscount) * 100);
+                      }
+                    }
+                  } else {
+                    const disc = packageData.discountPercent || 0;
+                    if (disc > 0) {
+                      finalPrice = basePricePerPerson;
+                      originalPriceBeforeDiscount = originalPrice;
+                      discountPercentVal = disc;
                     }
                   }
 
                   const isDisabled = isPast || !isCurrentMonth || isBlackout;
+                  const isPeak = rateType === "peak";
+                  const isOff = rateType === "off-season";
+
+                  let cellBgClass = "bg-white text-slate-800 border-slate-100 hover:bg-slate-50";
+                  if (isSelected) {
+                    cellBgClass = "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20 scale-[1.03]";
+                  } else if (isBlackout) {
+                    cellBgClass = "bg-slate-100 text-slate-450 line-through border-slate-200 pointer-events-none";
+                  } else if (isPriceOnReq) {
+                    cellBgClass = "bg-amber-50/70 text-amber-800 border-amber-250/70 hover:bg-amber-100";
+                  } else if (isPeak) {
+                    cellBgClass = "bg-rose-50/60 text-rose-800 border-rose-150/70 hover:bg-rose-100/70";
+                  } else if (isOff) {
+                    cellBgClass = "bg-sky-50/60 text-sky-850 border-sky-150/70 hover:bg-sky-100/70";
+                  } else if (rule && rateType === "regular") {
+                    cellBgClass = "bg-emerald-50/40 text-emerald-800 border-emerald-150/70 hover:bg-emerald-100/60";
+                  }
 
                   return (
                     <button
@@ -1707,134 +1972,69 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       onClick={() => {
                         setTravelDate(dateStr);
                       }}
-                      className={`h-11 rounded flex flex-col justify-between items-center p-1 transition-all ${
-                        isSelected
-                          ? "bg-[#1B3A6B] text-white font-extrabold shadow-sm scale-[1.03]"
-                          : !isCurrentMonth
-                          ? "text-slate-200 pointer-events-none"
-                          : isPast
-                          ? "text-slate-300 line-through cursor-not-allowed"
-                          : isBlackout
-                          ? "bg-red-50 text-red-400 line-through cursor-not-allowed border border-red-150"
-                          : isPriceOnReq
-                          ? "bg-amber-50 text-amber-850 hover:bg-amber-100 border border-amber-100"
-                          : "bg-slate-50 text-slate-800 hover:bg-slate-100 border border-slate-100/50"
-                      }`}
+                      className={`h-11 rounded flex flex-col justify-between items-center p-1 transition-all border ${cellBgClass}`}
                     >
-                      <span className="text-[10px] leading-none font-bold">{dayDate.getDate()}</span>
-                      {isCurrentMonth && !isPast && (
-                        <span className={`text-[7px] leading-none tracking-tighter ${isSelected ? "text-white/95" : "text-slate-500 font-medium"}`}>
-                          {isBlackout ? (
-                            "Sold"
-                          ) : isPriceOnReq ? (
-                            "Req"
-                          ) : (
-                            `₹${Math.round(finalPrice / 1000)}k`
+                      <span className="text-[9px] leading-none font-bold">{dayDate.getDate()}</span>
+                      {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
+                        <div className="flex flex-col items-center">
+                          {discountPercentVal > 0 && !isSelected && (
+                            <span className="text-[6px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded-sm border border-emerald-100 leading-none mb-0.5 scale-90">
+                              -{discountPercentVal}%
+                            </span>
                           )}
-                        </span>
+                          <div className="flex items-center gap-0.5 justify-center leading-none">
+                            {discountPercentVal > 0 && (
+                              <span className={`text-[6px] line-through ${isSelected ? "text-white/60" : "text-slate-400"}`}>
+                                ₹{Math.round(originalPriceBeforeDiscount / 1000)}k
+                              </span>
+                            )}
+                            <span className={`text-[8px] font-bold ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-600"}`}>
+                              ₹{Math.round(finalPrice / 1000)}k
+                            </span>
+                          </div>
+                        </div>
                       )}
+                      {isBlackout && <span className="text-[7px] font-bold text-slate-400">Sold</span>}
+                      {isPriceOnReq && <span className="text-[7px] font-bold text-amber-700">Request</span>}
                     </button>
                   );
                 })}
               </div>
+
+              {/* Dynamic Rates Color Legend */}
+              <div className="flex flex-wrap items-center justify-between gap-y-1.5 pt-2 border-t border-slate-100 text-[8px] font-bold text-slate-500">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-50 border border-rose-150"></span> Peak</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-sky-50 border border-sky-150"></span> Off-Season</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-50/40 border border-emerald-150"></span> Regular</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-50 border border-amber-200"></span> Request</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-slate-100 border border-slate-200"></span> Sold</span>
+              </div>
             </div>
 
-            {/* ── Compact Fare Summary Card ── */}
-            <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col hidden xl:flex">
-              {/* Header row */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/60">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fare Summary</p>
-                  <p className="text-base font-bold text-slate-900 mt-0.5 leading-tight">Book this package</p>
-                </div>
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm">
-                  <Users className="w-3 h-3 text-slate-500" />
-                  {guestCountLabel}
-                </span>
-              </div>
-
-              {/* Price rows — ultra compact */}
-              <div className="px-4 py-3 space-y-1.5 text-sm">
-                {/* Base cost */}
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500 text-xs">Package Cost</span>
-                  <span className="font-semibold text-slate-800 text-xs">₹{totalPackageCost.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Discount row */}
-                {totalSavings > 0 && (
-                  <div className="flex items-center justify-between py-1 rounded-lg bg-emerald-50 px-2 -mx-2">
-                    <span className="flex items-center gap-1.5 text-emerald-700 text-xs font-semibold">
-                      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white text-[9px]">✓</span>
-                      {discountLabel}
-                    </span>
-                    <span className="font-bold text-emerald-700 text-xs">−₹{totalSavings.toLocaleString('en-IN')}</span>
-                  </div>
-                )}
-
-                {/* After discount */}
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500 text-xs">After Discount</span>
-                  <span className="font-semibold text-slate-800 text-xs">₹{priceAfterDiscount.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* GST */}
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-500 text-xs">GST (5%)</span>
-                  <span className="font-semibold text-slate-800 text-xs">₹{gstAmount.toLocaleString('en-IN')}</span>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-dashed border-slate-200 my-1" />
-
-                {/* Grand Total */}
-                <div className="flex items-center justify-between py-1">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Grand Total</p>
-                    <p className="text-2xl font-extrabold text-slate-900 leading-tight">₹{grandTotal.toLocaleString('en-IN')}</p>
-                  </div>
-                  {totalSavings > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
-                      Save ₹{totalSavings.toLocaleString('en-IN')}
-                    </span>
-                  )}
-                </div>
-
-                {/* EMI chip */}
-                <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-800 to-[#1B3A6B] px-3 py-2.5 mt-1">
-                  <div>
-                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider">No-cost EMI</p>
-                    <p className="text-sm font-extrabold text-white">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}<span className="text-[10px] font-normal text-white/60"> /mo × 3</span></p>
-                  </div>
-                  <span className="rounded-lg bg-white/15 border border-white/20 px-2.5 py-1 text-[10px] font-bold text-white tracking-wide">EMI AVAILABLE</span>
-                </div>
-              </div>
-
-              {/* CTA buttons — pushed to bottom */}
-              <div className="px-4 pb-4 grid gap-2 mt-auto">
-                <button
-                  type="button"
-                  onClick={handleDirectBooking}
-                  disabled={isBooking}
-                  className="block w-full rounded-md bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
-                >
-                  {isBooking ? "Booking..." : travelDate ? "Book Now Direct ⚡" : "Select Travel Date Above"}
-                </button>
-                <Link
-                  href="#enquire"
-                  className="block w-full rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-center text-sm font-bold text-white hover:from-amber-600 hover:to-orange-600 transition-all hover:shadow-md active:scale-[0.98]"
-                >
-                  ✦ Customize &amp; Enquire
-                </Link>
-                <a
-                  href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')} (${packageData.packageCode || 'No Code'})`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-all"
-                >
-                  Chat on WhatsApp
-                </a>
-              </div>
+            {/* ── CTA Actions Card ── */}
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-2 hidden xl:block">
+              <button
+                type="button"
+                onClick={handleDirectBooking}
+                disabled={isBooking}
+                className="block w-full rounded-md bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
+              >
+                {isBooking ? "Booking..." : travelDate ? "Book Now Direct ⚡" : "Select Travel Date Above"}
+              </button>
+              <Link
+                href="#enquire"
+                className="block w-full rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-center text-sm font-bold text-white hover:from-amber-600 hover:to-orange-650 transition-all hover:shadow-md active:scale-[0.98]"
+              >
+                ✦ Customize &amp; Enquire
+              </Link>
+              <a
+                href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')} (${packageData.packageCode || 'No Code'})`}
+                target="_blank"
+                rel="noreferrer"
+                className="block w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-all"
+              >
+                Chat on WhatsApp
+              </a>
             </div>
 
             {/* ── Why book with us ── */}
@@ -1933,95 +2133,237 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 )}
               </div>
 
-              {/* Mobile Calendar Date-Picker Widget */}
-              <div className="rounded-md border border-slate-200 bg-white p-3.5 shadow-sm space-y-3 mt-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Travel Date</span>
-                  <div className="flex items-center gap-1">
+            {/* Configure Guests counter in mobile bottom sheet */}
+            <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm space-y-2.5 mt-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Configure Guests</span>
+                <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-500">
+                  Min: {minGuests} • Max: {maxGuests}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {/* Adults counter */}
+                <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
+                  <span className="text-[9px] font-bold text-slate-500">Adults</span>
+                  <div className="flex items-center gap-1.5 mt-1">
                     <button
                       type="button"
-                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                      className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                      onClick={() => setAdults(prev => Math.max(1, prev - 1))}
+                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
                     >
-                      &larr;
+                      −
                     </button>
-                    <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
-                      {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                    </span>
+                    <span className="text-xs font-bold font-mono">{adults}</span>
                     <button
                       type="button"
-                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                      className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                      onClick={() => {
+                        if (adults + childrenCount >= maxGuests) {
+                          toast.error(`Max ${maxGuests} guests`);
+                          return;
+                        }
+                        setAdults(prev => prev + 1);
+                      }}
+                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
                     >
-                      &rarr;
+                      +
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-0.5">
-                  {monthDays.map((dayDate, idx) => {
-                    const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    const isPast = dayDate < today;
+                {/* Children counter */}
+                <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
+                  <span className="text-[9px] font-bold text-slate-500">Children</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
+                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                    >
+                      −
+                    </button>
+                    <span className="text-xs font-bold font-mono">{childrenCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (adults < 2) {
+                          toast.warning("Needs 2 adults");
+                          return;
+                        }
+                        if (adults + childrenCount >= maxGuests) {
+                          toast.error(`Max ${maxGuests} guests`);
+                          return;
+                        }
+                        setChildrenCount(prev => prev + 1);
+                      }}
+                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
 
-                    const yyyy = dayDate.getFullYear();
-                    const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
-                    const dd = String(dayDate.getDate()).padStart(2, "0");
-                    const dateStr = `${yyyy}-${mm}-${dd}`;
-
-                    const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
-                    const isSelected = travelDate === dateStr;
-
-                    let finalPrice = basePricePerPerson;
-                    let isBlackout = false;
-                    let isPriceOnReq = false;
-
-                    if (rule) {
-                      if (rule.rateType === "blackout") isBlackout = true;
-                      else if (rule.rateType === "price-on-request") isPriceOnReq = true;
-                      else {
-                        const mod = Number(rule.priceModifierValue) || 0;
-                        if (rule.priceModifierType === "fixed") finalPrice = mod;
-                        else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
-                        else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
-
-                        const disc = Number(rule.discountValue) || 0;
-                        if (rule.discountType === "percentage") finalPrice = finalPrice * (1 - disc / 100);
-                        else if (rule.discountType === "flat") finalPrice = Math.max(0, finalPrice - disc);
-                      }
-                    }
-
-                    const isDisabled = isPast || !isCurrentMonth || isBlackout;
-
-                    return (
-                      <button
-                        type="button"
-                        key={idx}
-                        disabled={isDisabled}
-                        onClick={() => {
-                          setTravelDate(dateStr);
-                        }}
-                        className={`h-9 rounded flex flex-col justify-center items-center p-0.5 transition-all ${
-                          isSelected
-                            ? "bg-[#1B3A6B] text-white font-extrabold"
-                            : !isCurrentMonth
-                            ? "text-slate-100 pointer-events-none"
-                            : isPast
-                            ? "text-slate-305 line-through cursor-not-allowed"
-                            : isBlackout
-                            ? "bg-red-50 text-red-300 line-through cursor-not-allowed"
-                            : isPriceOnReq
-                            ? "bg-amber-50 text-amber-700 border border-amber-100"
-                            : "bg-slate-50 text-slate-700 border border-slate-100/50"
-                        }`}
-                      >
-                        <span className="text-[9px] font-bold">{dayDate.getDate()}</span>
-                      </button>
-                    );
-                  })}
+                {/* Infants counter */}
+                <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
+                  <span className="text-[9px] font-bold text-slate-500">Infants</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))}
+                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                    >
+                      −
+                    </button>
+                    <span className="text-xs font-bold font-mono">{infantsCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (adults < 2) {
+                          toast.warning("Needs 2 adults");
+                          return;
+                        }
+                        setInfantsCount(prev => prev + 1);
+                      }}
+                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {adults < 2 && (childrenCount > 0 || infantsCount > 0) && (
+                <p className="text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded px-2 py-1">
+                  ⚠️ Minimum 2 adults mandatory to include children or infants.
+                </p>
+              )}
+              {adults + childrenCount < minGuests && (
+                <p className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 rounded px-2 py-1">
+                  ⚠️ Minimum {minGuests} guests are required.
+                </p>
+              )}
+            </div>
+
+            {/* Mobile Calendar Date-Picker Widget */}
+            <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm space-y-3 mt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Travel Date</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                    className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                  >
+                    &larr;
+                  </button>
+                  <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
+                    {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                    className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                  >
+                    &rarr;
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-0.5">
+                {monthDays.map((dayDate, idx) => {
+                  const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const isPast = dayDate < today;
+
+                  const yyyy = dayDate.getFullYear();
+                  const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
+                  const dd = String(dayDate.getDate()).padStart(2, "0");
+                  const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                  const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
+                  const isSelected = travelDate === dateStr;
+
+                  let finalPrice = basePricePerPerson;
+                  let originalPriceBeforeDiscount = originalPrice;
+                  let isBlackout = false;
+                  let isPriceOnReq = false;
+                  let rateType = "regular";
+                  let discountPercentVal = 0;
+
+                  if (rule) {
+                    rateType = rule.rateType || "regular";
+                    if (rule.rateType === "blackout") isBlackout = true;
+                    else if (rule.rateType === "price-on-request") isPriceOnReq = true;
+                    else {
+                      const mod = Number(rule.priceModifierValue) || 0;
+                      if (rule.priceModifierType === "fixed") finalPrice = mod;
+                      else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
+                      else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
+
+                      originalPriceBeforeDiscount = finalPrice;
+
+                      const disc = Number(rule.discountValue) || 0;
+                      if (rule.discountType === "percentage") {
+                        finalPrice = finalPrice * (1 - disc / 100);
+                        discountPercentVal = disc;
+                      } else if (rule.discountType === "flat") {
+                        finalPrice = Math.max(0, finalPrice - disc);
+                        discountPercentVal = Math.round((disc / originalPriceBeforeDiscount) * 100);
+                      }
+                    }
+                  } else {
+                    const disc = packageData.discountPercent || 0;
+                    if (disc > 0) {
+                      finalPrice = basePricePerPerson;
+                      originalPriceBeforeDiscount = originalPrice;
+                      discountPercentVal = disc;
+                    }
+                  }
+
+                  const isDisabled = isPast || !isCurrentMonth || isBlackout;
+                  const isPeak = rateType === "peak";
+                  const isOff = rateType === "off-season";
+
+                  let cellBgClass = "bg-white text-slate-800 border-slate-100 hover:bg-slate-50";
+                  if (isSelected) {
+                    cellBgClass = "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20 scale-[1.03]";
+                  } else if (isBlackout) {
+                    cellBgClass = "bg-slate-100 text-slate-450 line-through border-slate-200 pointer-events-none";
+                  } else if (isPriceOnReq) {
+                    cellBgClass = "bg-amber-50/70 text-amber-800 border-amber-250/70 hover:bg-amber-100";
+                  } else if (isPeak) {
+                    cellBgClass = "bg-rose-50/60 text-rose-850 border-rose-150/70 hover:bg-rose-100/70";
+                  } else if (isOff) {
+                    cellBgClass = "bg-sky-50/60 text-sky-850 border-sky-150/70 hover:bg-sky-100/70";
+                  } else if (rule && rateType === "regular") {
+                    cellBgClass = "bg-emerald-50/40 text-emerald-800 border-emerald-150/70 hover:bg-emerald-100/60";
+                  }
+
+                  return (
+                    <button
+                      type="button"
+                      key={idx}
+                      disabled={isDisabled}
+                      onClick={() => {
+                        setTravelDate(dateStr);
+                      }}
+                      className={`h-9 rounded flex flex-col justify-center items-center p-0.5 transition-all border ${cellBgClass}`}
+                    >
+                      <span className="text-[9px] font-bold">{dayDate.getDate()}</span>
+                      {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
+                        <div className="flex items-center gap-0.5 justify-center leading-none mt-0.5 scale-90">
+                          <span className={`text-[7px] font-bold ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-500"}`}>
+                            ₹{Math.round(finalPrice / 1000)}k
+                          </span>
+                        </div>
+                      )}
+                      {isBlackout && <span className="text-[6px] text-slate-450">Sold</span>}
+                      {isPriceOnReq && <span className="text-[6px] text-amber-700">Req</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             </div>
 
             {/* CTA Actions */}

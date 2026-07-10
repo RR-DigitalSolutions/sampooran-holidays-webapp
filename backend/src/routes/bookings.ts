@@ -21,11 +21,32 @@ const bookingLimiter = rateLimit({
 router.post("/", bookingLimiter, authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const userId = req.user!.id;
-    const { packageId, travelDate, travelersCount, specialRequests } = req.body;
+    const { packageId, travelDate, travelersCount, adultsCount, childrenCount, infantsCount, specialRequests } = req.body;
 
     // 1. Fetch package details for pricing
     const [pkg] = await db.select().from(packagesTable).where(eq(packagesTable.id, packageId)).limit(1);
     if (!pkg) return res.status(404).json({ error: "Package not found" });
+
+    // Enforce travelers age details fallbacks
+    const adults = Number(adultsCount) || Number(travelersCount) || 2;
+    const children = Number(childrenCount) || 0;
+    const infants = Number(infantsCount) || 0;
+
+    // Enforce rule: minimum 2 adults required to add children or infants
+    if (adults < 2 && (children > 0 || infants > 0)) {
+      return res.status(400).json({ error: "A minimum of 2 adults is required to add children or infants to the booking." });
+    }
+
+    // Min/Max guest size validations
+    const totalGuests = adults + children;
+    const minGuests = pkg.minGuests ?? 2;
+    const maxGuests = pkg.maxGuests ?? 10;
+    if (totalGuests < minGuests) {
+      return res.status(400).json({ error: `This package requires a minimum of ${minGuests} travelers.` });
+    }
+    if (totalGuests > maxGuests) {
+      return res.status(400).json({ error: `This package allows a maximum of ${maxGuests} travelers.` });
+    }
 
     // ── Calculate dynamic pricing from calendar overrides ──
     const d = new Date(travelDate);
@@ -74,14 +95,35 @@ router.post("/", bookingLimiter, authenticate, async (req: AuthenticatedRequest,
       }
     }
 
-    const totalAmount = pricePerPerson * travelersCount;
+    // Calculate final cost based on group pricing or standard pricing
+    let totalAmount = 0;
+    if (pkg.isGroupPricing) {
+      const baseCap = pkg.groupBaseCapacity ?? 2;
+      const adultsInBase = Math.min(adults, baseCap);
+      const childrenInBase = Math.min(children, baseCap - adultsInBase);
+      const extraAdults = adults - adultsInBase;
+      const extraChildren = children - childrenInBase;
+
+      const baseCost = baseCap * pricePerPerson;
+      const extraAdultsCost = extraAdults * Number(pkg.extraPersonPrice || 0);
+      const extraChildrenCost = extraChildren * Number(pkg.extraChildPrice || 0);
+
+      totalAmount = baseCost + extraAdultsCost + extraChildrenCost;
+    } else {
+      const adultsCost = adults * pricePerPerson;
+      const childrenCost = children * Math.round(pricePerPerson * 0.5);
+      totalAmount = adultsCost + childrenCost;
+    }
 
     // 2. Create the booking record
     const [booking] = await db.insert(bookingsTable).values({
       userId,
       packageId,
       travelDate: new Date(travelDate),
-      travelersCount,
+      travelersCount: totalGuests,
+      adultsCount: adults,
+      childrenCount: children,
+      infantsCount: infants,
       totalAmount,
       finalPaidAmount: totalAmount, // For now, assume full payment
       status: "PENDING",

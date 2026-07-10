@@ -98,6 +98,25 @@ async function runStartupMigrations() {
       $$;
     `);
 
+    // ── Extend packages table with capacity and group pricing columns ──
+    const newPackageCols: [string, string][] = [
+      ["min_guests", "INTEGER NOT NULL DEFAULT 2"],
+      ["max_guests", "INTEGER NOT NULL DEFAULT 10"],
+      ["is_group_pricing", "BOOLEAN NOT NULL DEFAULT false"],
+      ["group_base_capacity", "INTEGER NOT NULL DEFAULT 2"],
+      ["extra_person_price", "REAL NOT NULL DEFAULT 0"],
+      ["extra_child_price", "REAL NOT NULL DEFAULT 0"],
+    ];
+    for (const [col, def] of newPackageCols) {
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='packages' AND column_name=${col}
+      `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE packages ADD COLUMN ${col} ${def}`));
+      }
+    }
+
     // Backfill package_code for existing packages
     await db.execute(sql`
       UPDATE packages 
@@ -136,6 +155,22 @@ async function runStartupMigrations() {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
+
+    // ── Extend bookings table with adults_count, children_count, infants_count ──
+    const newBookingCols: [string, string][] = [
+      ["adults_count", "INTEGER DEFAULT 2"],
+      ["children_count", "INTEGER DEFAULT 0"],
+      ["infants_count", "INTEGER DEFAULT 0"],
+    ];
+    for (const [col, def] of newBookingCols) {
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name='bookings' AND column_name=${col}
+      `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE bookings ADD COLUMN ${col} ${def}`));
+      }
+    }
 
     logger.info("✅ Startup migration: travel_guides, packages, and calendar tables ready");
   } catch (err: any) {

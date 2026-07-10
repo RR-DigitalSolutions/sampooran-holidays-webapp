@@ -15,6 +15,9 @@ export const bookingsTable = pgTable("bookings", {
   
   travelDate: timestamp("travel_date").notNull(),
   travelersCount: integer("travelers_count").notNull().default(1),
+  adultsCount: integer("adults_count").default(2),
+  childrenCount: integer("children_count").default(0),
+  infantsCount: integer("infants_count").default(0),
 
   // ── Hotel Booking: Advanced Occupancy Fields ────────────────────────────
   mealPlan: text("meal_plan"),                       // Selected meal plan code: EP/CP/MAP/AP

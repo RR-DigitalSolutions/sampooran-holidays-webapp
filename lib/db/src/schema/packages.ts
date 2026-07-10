@@ -46,6 +46,12 @@ export const packagesTable = pgTable("packages", {
   metaDescription: text("meta_description"),
   metaKeywords: text("meta_keywords"),
   monthsToTravel: text("months_to_travel").array().default([]),
+  minGuests: integer("min_guests").notNull().default(2),
+  maxGuests: integer("max_guests").notNull().default(10),
+  isGroupPricing: boolean("is_group_pricing").notNull().default(false),
+  groupBaseCapacity: integer("group_base_capacity").notNull().default(2),
+  extraPersonPrice: real("extra_person_price").notNull().default(0),
+  extraChildPrice: real("extra_child_price").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   // Standard B-Tree Indexes

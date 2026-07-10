@@ -54,6 +54,12 @@ export interface MongoPackage {
   pricePerPerson: number | null;
   originalPrice: number | null;
   discountPercent: number | null;
+  minGuests: number | null;
+  maxGuests: number | null;
+  isGroupPricing: boolean | null;
+  groupBaseCapacity: number | null;
+  extraPersonPrice: number | null;
+  extraChildPrice: number | null;
   category: string | null;
   packageType: string | null;
   isFeatured: boolean | null;
@@ -130,6 +136,12 @@ export async function syncPackage(pgId: number): Promise<void> {
         pricePerPerson: packagesTable.pricePerPerson,
         originalPrice: packagesTable.originalPrice,
         discountPercent: packagesTable.discountPercent,
+        minGuests: packagesTable.minGuests,
+        maxGuests: packagesTable.maxGuests,
+        isGroupPricing: packagesTable.isGroupPricing,
+        groupBaseCapacity: packagesTable.groupBaseCapacity,
+        extraPersonPrice: packagesTable.extraPersonPrice,
+        extraChildPrice: packagesTable.extraChildPrice,
         category: packagesTable.category,
         packageType: packagesTable.packageType,
         isFeatured: packagesTable.isFeatured,
@@ -177,6 +189,12 @@ export async function syncPackage(pgId: number): Promise<void> {
       pricePerPerson: row.pricePerPerson,
       originalPrice: row.originalPrice,
       discountPercent: row.discountPercent,
+      minGuests: row.minGuests,
+      maxGuests: row.maxGuests,
+      isGroupPricing: row.isGroupPricing,
+      groupBaseCapacity: row.groupBaseCapacity,
+      extraPersonPrice: row.extraPersonPrice,
+      extraChildPrice: row.extraChildPrice,
       category: row.category,
       packageType: row.packageType,
       isFeatured: row.isFeatured,

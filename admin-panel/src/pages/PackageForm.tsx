@@ -63,6 +63,12 @@ export default function PackageForm() {
   const [originalPrice, setOriginalPrice] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [monthsToTravel, setMonthsToTravel] = useState<string[]>([]);
+  const [minGuests, setMinGuests] = useState(2);
+  const [maxGuests, setMaxGuests] = useState(10);
+  const [isGroupPricing, setIsGroupPricing] = useState(false);
+  const [groupBaseCapacity, setGroupBaseCapacity] = useState(2);
+  const [extraPersonPrice, setExtraPersonPrice] = useState(0);
+  const [extraChildPrice, setExtraChildPrice] = useState(0);
   
   // Pricing Calendar States
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -379,6 +385,12 @@ export default function PackageForm() {
         setCancellationPolicy(pkg.cancellationPolicy || DEFAULT_CANCELLATION);
         setPaymentPolicy(pkg.paymentPolicy || DEFAULT_PAYMENT);
         setMonthsToTravel(pkg.monthsToTravel || []);
+        setMinGuests(pkg.minGuests ?? 2);
+        setMaxGuests(pkg.maxGuests ?? 10);
+        setIsGroupPricing(pkg.isGroupPricing ?? false);
+        setGroupBaseCapacity(pkg.groupBaseCapacity ?? 2);
+        setExtraPersonPrice(pkg.extraPersonPrice ?? 0);
+        setExtraChildPrice(pkg.extraChildPrice ?? 0);
         
         const bPrice = pkg.originalPrice || pkg.pricePerPerson || 0;
         setBasePrice(bPrice);
@@ -404,7 +416,8 @@ export default function PackageForm() {
       shortDescription, longDescription, destinationIds: selectedDestIds, destinationId: selectedDestIds[0] || null,
       stateId: stateId || null, countryId: countryId || null, duration, nights, pricePerPerson, originalPrice, discountPercent,
       inclusionIcons, inclusions, exclusions, importantNotes, highlights, cancellationPolicy, paymentPolicy, faqs, hotels: [], itinerary,
-      galleryImages, metaTitle, metaDescription, metaKeywords, monthsToTravel
+      galleryImages, metaTitle, metaDescription, metaKeywords, monthsToTravel,
+      minGuests, maxGuests, isGroupPricing, groupBaseCapacity, extraPersonPrice, extraChildPrice
     };
     try {
       if (isEdit) await customFetch(`/api/admin/packages/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -594,6 +607,56 @@ export default function PackageForm() {
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Original Strike Price</p>
                     <p className="text-xl font-bold text-gray-400 line-through">₹{originalPrice.toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+
+                <div className="col-span-2 border-t border-gray-150 pt-5 mt-5">
+                  <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600"/> Capacity &amp; Group Booking Rules
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Minimum Guests Required</label>
+                      <input type="number" min="1" value={minGuests} onChange={e=>setMinGuests(Number(e.target.value))} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B]" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Maximum Guests Allowed</label>
+                      <input type="number" min="1" value={maxGuests} onChange={e=>setMaxGuests(Number(e.target.value))} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B]" />
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50/30 border border-blue-100 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-gray-700 uppercase">Enable Group Package Pricing</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">Activate flat-rate pricing up to a base capacity with per-person extra charges.</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked={isGroupPricing} onChange={e=>setIsGroupPricing(e.target.checked)} className="sr-only peer" />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1B3A6B]"></div>
+                      </label>
+                    </div>
+
+                    {isGroupPricing && (
+                      <div className="grid grid-cols-3 gap-4 pt-3 border-t border-blue-100/50">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">Group Base Capacity</label>
+                          <input type="number" min="1" value={groupBaseCapacity} onChange={e=>setGroupBaseCapacity(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold" />
+                          <p className="text-[10px] text-gray-400 mt-1">Guests included in package price</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">Extra Adult Cost (₹)</label>
+                          <input type="number" min="0" value={extraPersonPrice} onChange={e=>setExtraPersonPrice(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold text-gray-800" />
+                          <p className="text-[10px] text-gray-400 mt-1">Charged per extra adult</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-600 mb-1">Extra Child Cost (₹)</label>
+                          <input type="number" min="0" value={extraChildPrice} onChange={e=>setExtraChildPrice(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold text-gray-800" />
+                          <p className="text-[10px] text-gray-400 mt-1">Charged per extra child</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
