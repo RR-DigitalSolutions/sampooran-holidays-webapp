@@ -27,6 +27,9 @@ import {
 import { validateImageUrl, cn } from "@/lib/utils";
 import { AttractionActivityModal } from "../modals/AttractionActivityModal";
 import { HeroImageSlider } from "../HeroImageSlider";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import { Sliders, Calendar } from "lucide-react";
 
 type PackageItineraryDay = {
   day?: number;
@@ -99,6 +102,9 @@ type PackageData = {
   tags?: string[];
   inclusionIcons?: string[];
   themes?: unknown[];
+  id?: number;
+  slug?: string;
+  packageCode?: string;
 };
 
 type AttractionActivityData = Record<string, unknown>;
@@ -223,6 +229,229 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [diningMap, setDiningMap] = useState<Map<string, any>>(new Map());
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
   const [showBookingDrawer, setShowBookingDrawer] = useState(false);
+
+  // ── Pricing Calendar States ──
+  const [travelDate, setTravelDate] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calendarRates, setCalendarRates] = useState<any[]>([]);
+  const [loadingCal, setLoadingCal] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+
+  // ── Inquiry Form States ──
+  const [inquiryName, setInquiryName] = useState("");
+  const [inquiryEmail, setInquiryEmail] = useState("");
+  const [inquiryPhone, setInquiryPhone] = useState("");
+  const [inquiryDate, setInquiryDate] = useState("");
+  const [inquiryGuests, setInquiryGuests] = useState(2);
+  const [inquiryBudget, setInquiryBudget] = useState("");
+  const [inquiryMessage, setInquiryMessage] = useState("");
+  const [honeypotWebsite, setHoneypotWebsite] = useState("");
+  const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
+
+  const { user, token } = useAuth();
+
+  const fetchCalendarRates = async () => {
+    if (!packageData.slug) return;
+    setLoadingCal(true);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month - 1, 1).toISOString().split("T")[0];
+      const lastDay = new Date(year, month + 2, 0).toISOString().split("T")[0];
+      
+      const res = await fetch(`/api/packages/${packageData.slug}/calendar-inventory?startDate=${firstDay}&endDate=${lastDay}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCalendarRates(data);
+      }
+    } catch (e) {
+      console.error("Failed to load public calendar", e);
+    } finally {
+      setLoadingCal(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCalendarRates();
+  }, [currentMonth, packageData.slug]);
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days: Date[] = [];
+    
+    const startPadding = firstDay.getDay();
+    for (let i = startPadding - 1; i >= 0; i--) {
+      days.push(new Date(year, month, -i));
+    }
+    
+    const totalDays = lastDay.getDate();
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(new Date(year, month, i));
+    }
+    return days;
+  };
+
+  const monthDays = useMemo(() => getDaysInMonth(currentMonth), [currentMonth]);
+
+  const selectedDateOverride = useMemo(() => {
+    if (!travelDate) return null;
+    return calendarRates.find(r => r.date === travelDate || (typeof r.date === "string" && r.date.split("T")[0] === travelDate));
+  }, [travelDate, calendarRates]);
+
+  const basePricePerPerson = Number(packageData.pricePerPerson || 0);
+
+  const {
+    dynamicPricePerPerson,
+    isBlackout,
+    isPriceOnReq,
+    activeDiscountText
+  } = useMemo(() => {
+    let price = basePricePerPerson;
+    let blackout = false;
+    let priceOnReq = false;
+    let discText = "";
+
+    if (selectedDateOverride) {
+      if (selectedDateOverride.rateType === "blackout") {
+        blackout = true;
+      } else if (selectedDateOverride.rateType === "price-on-request") {
+        priceOnReq = true;
+      } else {
+        const mod = Number(selectedDateOverride.priceModifierValue) || 0;
+        if (selectedDateOverride.priceModifierType === "fixed") {
+          price = mod;
+        } else if (selectedDateOverride.priceModifierType === "percentage") {
+          price = basePricePerPerson * (1 + mod / 100);
+        } else if (selectedDateOverride.priceModifierType === "value") {
+          price = basePricePerPerson + mod;
+        }
+
+        const disc = Number(selectedDateOverride.discountValue) || 0;
+        if (selectedDateOverride.discountType === "percentage") {
+          price = price * (1 - disc / 100);
+          discText = `${disc}% OFF`;
+        } else if (selectedDateOverride.discountType === "flat") {
+          price = Math.max(0, price - disc);
+          discText = `-₹${disc}`;
+        }
+      }
+    }
+
+    return {
+      dynamicPricePerPerson: Math.round(price),
+      isBlackout: blackout,
+      isPriceOnReq: priceOnReq,
+      activeDiscountText: discText
+    };
+  }, [selectedDateOverride, basePricePerPerson]);
+
+  // Synchronize inquiry default values
+  useEffect(() => {
+    if (travelDate) {
+      setInquiryDate(travelDate);
+    }
+  }, [travelDate]);
+
+  useEffect(() => {
+    if (packageData.name) {
+      setInquiryMessage(`I am interested in booking "${packageData.name}" (${packageData.packageCode || "N/A"}). Please share details.`);
+    }
+  }, [packageData.name, packageData.packageCode]);
+
+  const handleInquirySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (honeypotWebsite) {
+      toast.error("Spam detected");
+      return;
+    }
+    setIsSubmittingInquiry(true);
+    try {
+      const payload = {
+        name: inquiryName,
+        email: inquiryEmail,
+        phone: inquiryPhone,
+        travelDate: inquiryDate ? new Date(inquiryDate) : null,
+        guestsCount: Number(inquiryGuests) || 2,
+        budget: inquiryBudget ? Number(inquiryBudget) : null,
+        message: inquiryMessage,
+        source: "direct_inquiry",
+        packageId: packageData.id || null
+      };
+
+      const res = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        toast.success("Your inquiry has been submitted! Our expert will call you shortly.");
+        setInquiryName("");
+        setInquiryEmail("");
+        setInquiryPhone("");
+        setInquiryBudget("");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to submit inquiry");
+      }
+    } catch (err: any) {
+      toast.error("Submission failed: " + err.message);
+    } finally {
+      setIsSubmittingInquiry(false);
+    }
+  };
+
+  const handleDirectBooking = async () => {
+    if (!travelDate) {
+      toast.error("Please select a travel date from the calendar first.");
+      return;
+    }
+    if (isBlackout) {
+      toast.error("The selected date is sold out.");
+      return;
+    }
+    if (isPriceOnReq) {
+      toast.error("This package requires a custom quote for the selected date. Please submit an inquiry instead.");
+      return;
+    }
+    if (!user) {
+      toast.info("Please login to proceed with booking.");
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
+
+    setIsBooking(true);
+    try {
+      const res = await fetch(`/api/bookings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          packageId: packageData.id,
+          travelDate: travelDate,
+          travelersCount: guestCount,
+          specialRequests: `Direct booking via package detail calendar for ${travelDate}. Rate Type: ${selectedDateOverride?.rateType || "Regular"}`
+        })
+      });
+
+      if (res.ok) {
+        toast.success("Booking created successfully!");
+        window.location.href = "/my-hotel-bookings";
+      } else {
+        const errData = await res.json();
+        toast.error(errData.error || "Failed to create booking.");
+      }
+    } catch (e: any) {
+      toast.error("An error occurred: " + e.message);
+    } finally {
+      setIsBooking(false);
+    }
+  };
 
   const handleAttractionClick = async (name: string, rawData?: any) => {
     if (rawData && typeof rawData === 'object' && rawData.longDescription) {
@@ -623,8 +852,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     return Array.from(new Set([...heroImage, ...data])).slice(0, 6);
   }, [packageData.galleryImages, packageData.imageUrl]);
 
-  const pricePerPerson = Number(packageData.pricePerPerson || 0);
-  const originalPrice = Number(packageData.originalPrice || pricePerPerson);
+  const activePricePerPerson = travelDate ? dynamicPricePerPerson : basePricePerPerson;
+  const pricePerPerson = activePricePerPerson;
+  const originalPrice = Number(packageData.originalPrice || basePricePerPerson);
   const savings = Math.max(0, originalPrice - pricePerPerson);
   const packageHighlights = packageData.highlights || [];
   const packageThemes = Array.isArray(packageData.themes)
@@ -762,9 +992,16 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
               {/* Combined Title & Description with single background and reduced spacing */}
               <div className="bg-black/30 backdrop-blur-md rounded-md p-3 sm:p-4 border border-white/10 shadow-xl flex flex-col gap-2 w-full">
-                <h1 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight drop-shadow-lg text-white">
-                  {packageData.name}
-                </h1>
+                <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+                  <h1 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight drop-shadow-lg text-white">
+                    {packageData.name}
+                  </h1>
+                  {packageData.packageCode && (
+                    <span className="text-[10px] sm:text-xs font-mono font-bold bg-white/10 px-2.5 py-1 rounded border border-white/10 text-white shadow-sm shrink-0">
+                      Code: {packageData.packageCode}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] sm:text-xs text-white/80 leading-relaxed">
                   {packageData.shortDescription || packageData.longDescription?.slice(0, 200) || "A curated escape with premium stays and local experiences."}
                 </p>
@@ -1303,6 +1540,51 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </section>
             )}
 
+            {/* ── Custom Lead Capture Inquiry Form ── */}
+            <section id="enquire" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm scroll-mt-20">
+              <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Enquire &amp; Customize Your Trip</h2>
+              <p className="mt-2 text-sm text-slate-500 font-medium">Have special requirements or want a custom seasonal package quote? Fill out the details below and our destination expert will call you shortly.</p>
+              
+              <form onSubmit={handleInquirySubmit} className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Honeypot fields to prevent spam bots */}
+                <input type="text" name="website" className="hidden" value={honeypotWebsite} onChange={e=>setHoneypotWebsite(e.target.value)} />
+                
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Name *</label>
+                  <input required type="text" value={inquiryName} onChange={e=>setInquiryName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. John Doe" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Email *</label>
+                  <input required type="email" value={inquiryEmail} onChange={e=>setInquiryEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. john@example.com" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone Number *</label>
+                  <input required type="tel" value={inquiryPhone} onChange={e=>setInquiryPhone(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. +91 9000000000" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Travel Date</label>
+                  <input type="date" value={inquiryDate} onChange={e=>setInquiryDate(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Number of Persons</label>
+                  <input type="number" min="1" value={inquiryGuests} onChange={e=>setInquiryGuests(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Budget (INR)</label>
+                  <input type="number" value={inquiryBudget} onChange={e=>setInquiryBudget(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. 50000" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Message / Special Requests</label>
+                  <textarea value={inquiryMessage} onChange={e=>setInquiryMessage(e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="Tell us what you want to customize (e.g. hotel category, transport details)..." />
+                </div>
+                <div className="md:col-span-2">
+                  <button type="submit" disabled={isSubmittingInquiry} className="w-full bg-[#1B3A6B] text-white py-3 rounded-lg font-bold hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 text-sm">
+                    {isSubmittingInquiry ? "Submitting Inquiry..." : "Submit Inquiry"}
+                  </button>
+                </div>
+              </form>
+            </section>
+
             {packageHotels.length > 0 && (
               <section id="hotels" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
                 <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Hotels &amp; Stay</h2>
@@ -1343,6 +1625,120 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           </main>
 
           <aside className="space-y-4 xl:sticky xl:top-20">
+            {/* ── Dynamic Rate Calendar Widget ── */}
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-4 hidden xl:block">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Travel Date</p>
+                  <p className="text-sm font-black text-slate-900 mt-0.5">Choose departure date</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                    className="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
+                  >
+                    &larr;
+                  </button>
+                  <span className="text-xs font-bold text-slate-700 min-w-[70px] text-center font-mono">
+                    {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                    className="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
+                  >
+                    &rarr;
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1.5 uppercase tracking-wider">
+                <div>Su</div>
+                <div>Mo</div>
+                <div>Tu</div>
+                <div>We</div>
+                <div>Th</div>
+                <div>Fr</div>
+                <div>Sa</div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {monthDays.map((dayDate, idx) => {
+                  const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
+                  const today = new Date();
+                  today.setHours(0,0,0,0);
+                  const isPast = dayDate < today;
+
+                  const yyyy = dayDate.getFullYear();
+                  const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
+                  const dd = String(dayDate.getDate()).padStart(2, "0");
+                  const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                  const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
+                  const isSelected = travelDate === dateStr;
+
+                  let finalPrice = basePricePerPerson;
+                  let isBlackout = false;
+                  let isPriceOnReq = false;
+
+                  if (rule) {
+                    if (rule.rateType === "blackout") isBlackout = true;
+                    else if (rule.rateType === "price-on-request") isPriceOnReq = true;
+                    else {
+                      const mod = Number(rule.priceModifierValue) || 0;
+                      if (rule.priceModifierType === "fixed") finalPrice = mod;
+                      else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
+                      else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
+
+                      const disc = Number(rule.discountValue) || 0;
+                      if (rule.discountType === "percentage") finalPrice = finalPrice * (1 - disc / 100);
+                      else if (rule.discountType === "flat") finalPrice = Math.max(0, finalPrice - disc);
+                    }
+                  }
+
+                  const isDisabled = isPast || !isCurrentMonth || isBlackout;
+
+                  return (
+                    <button
+                      type="button"
+                      key={idx}
+                      disabled={isDisabled}
+                      onClick={() => {
+                        setTravelDate(dateStr);
+                      }}
+                      className={`h-11 rounded flex flex-col justify-between items-center p-1 transition-all ${
+                        isSelected
+                          ? "bg-[#1B3A6B] text-white font-extrabold shadow-sm scale-[1.03]"
+                          : !isCurrentMonth
+                          ? "text-slate-200 pointer-events-none"
+                          : isPast
+                          ? "text-slate-300 line-through cursor-not-allowed"
+                          : isBlackout
+                          ? "bg-red-50 text-red-400 line-through cursor-not-allowed border border-red-150"
+                          : isPriceOnReq
+                          ? "bg-amber-50 text-amber-850 hover:bg-amber-100 border border-amber-100"
+                          : "bg-slate-50 text-slate-800 hover:bg-slate-100 border border-slate-100/50"
+                      }`}
+                    >
+                      <span className="text-[10px] leading-none font-bold">{dayDate.getDate()}</span>
+                      {isCurrentMonth && !isPast && (
+                        <span className={`text-[7px] leading-none tracking-tighter ${isSelected ? "text-white/95" : "text-slate-500 font-medium"}`}>
+                          {isBlackout ? (
+                            "Sold"
+                          ) : isPriceOnReq ? (
+                            "Req"
+                          ) : (
+                            `₹${Math.round(finalPrice / 1000)}k`
+                          )}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* ── Compact Fare Summary Card ── */}
             <div className="rounded-md border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col hidden xl:flex">
               {/* Header row */}
@@ -1416,20 +1812,22 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
               {/* CTA buttons — pushed to bottom */}
               <div className="px-4 pb-4 grid gap-2 mt-auto">
-                <Link
-                  href="#enquire"
-                  className="block w-full rounded-md bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98]"
+                <button
+                  type="button"
+                  onClick={handleDirectBooking}
+                  disabled={isBooking}
+                  className="block w-full rounded-md bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
                 >
-                  Book Now
-                </Link>
+                  {isBooking ? "Booking..." : travelDate ? "Book Now Direct ⚡" : "Select Travel Date Above"}
+                </button>
                 <Link
                   href="#enquire"
                   className="block w-full rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-center text-sm font-bold text-white hover:from-amber-600 hover:to-orange-600 transition-all hover:shadow-md active:scale-[0.98]"
                 >
-                  ✦ Customize My Trip
+                  ✦ Customize &amp; Enquire
                 </Link>
                 <a
-                  href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')}`}
+                  href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')} (${packageData.packageCode || 'No Code'})`}
                   target="_blank"
                   rel="noreferrer"
                   className="block w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-all"
@@ -1535,25 +1933,107 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 )}
               </div>
 
-              {/* EMI chip */}
-              <div className="flex items-center justify-between rounded bg-slate-900 px-3 py-2 text-white">
-                <div>
-                  <p className="text-[9px] font-bold text-white/60 uppercase tracking-wider">No-cost EMI</p>
-                  <p className="text-xs font-black text-white">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}<span className="text-[9px] font-normal text-white/60"> /mo × 3</span></p>
+              {/* Mobile Calendar Date-Picker Widget */}
+              <div className="rounded-md border border-slate-200 bg-white p-3.5 shadow-sm space-y-3 mt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Travel Date</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                      className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                    >
+                      &larr;
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
+                      {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                      className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                    >
+                      &rarr;
+                    </button>
+                  </div>
                 </div>
-                <span className="rounded bg-white/15 border border-white/20 px-2 py-0.5 text-[9px] font-bold text-white tracking-wide">EMI AVAILABLE</span>
+
+                <div className="grid grid-cols-7 gap-0.5">
+                  {monthDays.map((dayDate, idx) => {
+                    const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const isPast = dayDate < today;
+
+                    const yyyy = dayDate.getFullYear();
+                    const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
+                    const dd = String(dayDate.getDate()).padStart(2, "0");
+                    const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                    const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
+                    const isSelected = travelDate === dateStr;
+
+                    let finalPrice = basePricePerPerson;
+                    let isBlackout = false;
+                    let isPriceOnReq = false;
+
+                    if (rule) {
+                      if (rule.rateType === "blackout") isBlackout = true;
+                      else if (rule.rateType === "price-on-request") isPriceOnReq = true;
+                      else {
+                        const mod = Number(rule.priceModifierValue) || 0;
+                        if (rule.priceModifierType === "fixed") finalPrice = mod;
+                        else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
+                        else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
+
+                        const disc = Number(rule.discountValue) || 0;
+                        if (rule.discountType === "percentage") finalPrice = finalPrice * (1 - disc / 100);
+                        else if (rule.discountType === "flat") finalPrice = Math.max(0, finalPrice - disc);
+                      }
+                    }
+
+                    const isDisabled = isPast || !isCurrentMonth || isBlackout;
+
+                    return (
+                      <button
+                        type="button"
+                        key={idx}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          setTravelDate(dateStr);
+                        }}
+                        className={`h-9 rounded flex flex-col justify-center items-center p-0.5 transition-all ${
+                          isSelected
+                            ? "bg-[#1B3A6B] text-white font-extrabold"
+                            : !isCurrentMonth
+                            ? "text-slate-100 pointer-events-none"
+                            : isPast
+                            ? "text-slate-305 line-through cursor-not-allowed"
+                            : isBlackout
+                            ? "bg-red-50 text-red-300 line-through cursor-not-allowed"
+                            : isPriceOnReq
+                            ? "bg-amber-50 text-amber-700 border border-amber-100"
+                            : "bg-slate-50 text-slate-700 border border-slate-100/50"
+                        }`}
+                      >
+                        <span className="text-[9px] font-bold">{dayDate.getDate()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             {/* CTA Actions */}
             <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100">
-              <Link
-                href="#enquire"
-                onClick={() => setShowBookingDrawer(false)}
-                className="block w-full rounded-md bg-[#1B3A6B] py-2.5 text-center text-xs font-bold text-white hover:bg-[#152e55]"
+              <button
+                type="button"
+                onClick={handleDirectBooking}
+                disabled={isBooking}
+                className="block w-full rounded-md bg-[#1B3A6B] py-2.5 text-center text-xs font-bold text-white hover:bg-[#152e55] disabled:opacity-50"
               >
-                Book Now
-              </Link>
+                {isBooking ? "Booking..." : travelDate ? "Book Direct ⚡" : "Select Date"}
+              </button>
               <button
                 onClick={() => {
                   setShowBookingDrawer(false);

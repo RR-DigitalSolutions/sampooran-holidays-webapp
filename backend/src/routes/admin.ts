@@ -8,8 +8,9 @@ import { notifyVendorOfApproval, notifyVendorOfVerification } from "../lib/notif
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { clearCachePattern } from "../lib/cache";
-import { syncPackage, deleteMongoPackage, syncDestination, deleteMongoDestination, syncHomeConfig } from "../lib/mongoSync";
+import { syncPackage, deleteMongoPackage, syncDestination, deleteMongoDestination, syncHomeConfig, syncPackageCalendar } from "../lib/mongoSync";
 import { seedHimachalTransport } from "../lib/seedHimachalTransport";
+import { packageCalendarInventoryTable, packagePriceHistoryTable } from "@workspace/db";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -569,12 +570,21 @@ router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
       data.slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
     }
     const [inserted] = await db.insert(packagesTable).values(data).returning();
+
+    // Generate unique package code using ID
+    const generatedCode = "SH-" + (inserted.category ? inserted.category.slice(0, 3).toUpperCase() : "PKG") + "-" + String(inserted.id).padStart(4, "0");
+    const [updatedWithCode] = await db
+      .update(packagesTable)
+      .set({ packageCode: data.packageCode || generatedCode })
+      .where(eq(packagesTable.id, inserted.id))
+      .returning();
+
     clearCachePattern("cache:/api/packages*");
     clearCachePattern("cache:/api/destinations/resolve-slug*");
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: sync to MongoDB in background (non-blocking)
-    syncPackage(inserted.id);
-    res.status(201).json(inserted);
+    syncPackage(updatedWithCode.id);
+    res.status(201).json(updatedWithCode);
   } catch (e: any) {
     logger.error({ error: e.message }, "Package creation error");
     res.status(500).json({ error: "Failed to create package: " + e.message });
@@ -625,6 +635,168 @@ router.delete("/packages/:id", requirePermission("PACKAGES"), async (req, res) =
     res.json({ message: "Package deleted successfully" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete package" });
+  }
+});
+
+// GET /admin/packages/:id/calendar-inventory
+router.get("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const packageId = Number(req.params.id);
+    const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
+    const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
+
+    let query = db
+      .select()
+      .from(packageCalendarInventoryTable)
+      .where(eq(packageCalendarInventoryTable.packageId, packageId));
+
+    if (startDate && endDate) {
+      query = db
+        .select()
+        .from(packageCalendarInventoryTable)
+        .where(
+          and(
+            eq(packageCalendarInventoryTable.packageId, packageId),
+            sql`${packageCalendarInventoryTable.date} >= ${startDate}`,
+            sql`${packageCalendarInventoryTable.date} <= ${endDate}`
+          )
+        );
+    }
+
+    const list = await query;
+    res.json(list);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch calendar inventory");
+    res.status(500).json({ error: "Failed to fetch calendar inventory" });
+  }
+});
+
+// POST /admin/packages/:id/calendar-inventory
+router.post("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const packageId = Number(req.params.id);
+    const { dates, rateType, priceModifierType, priceModifierValue, discountType, discountValue } = req.body;
+
+    if (!Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({ error: "Invalid dates list" });
+    }
+
+    const [pkg] = await db.select().from(packagesTable).where(eq(packagesTable.id, packageId)).limit(1);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+
+    const basePrice = pkg.pricePerPerson;
+
+    // Use a transaction for batch updates (highly performant / conflict-free)
+    await db.transaction(async (tx) => {
+      for (const dateStr of dates) {
+        // Upsert calendar rule
+        await tx
+          .insert(packageCalendarInventoryTable)
+          .values({
+            packageId,
+            date: dateStr,
+            rateType,
+            priceModifierType: priceModifierType || "fixed",
+            priceModifierValue: Number(priceModifierValue) || 0,
+            discountType: discountType || "none",
+            discountValue: Number(discountValue) || 0,
+            updatedAt: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: [packageCalendarInventoryTable.packageId, packageCalendarInventoryTable.date],
+            set: {
+              rateType,
+              priceModifierType: priceModifierType || "fixed",
+              priceModifierValue: Number(priceModifierValue) || 0,
+              discountType: discountType || "none",
+              discountValue: Number(discountValue) || 0,
+              updatedAt: new Date(),
+            },
+          });
+
+        // Compute price for history log
+        let finalPrice = basePrice;
+        if (rateType === "peak" || rateType === "off-season" || rateType === "regular") {
+          const modVal = Number(priceModifierValue) || 0;
+          if (priceModifierType === "fixed") finalPrice = modVal;
+          else if (priceModifierType === "percentage") finalPrice = basePrice * (1 + modVal / 100);
+          else if (priceModifierType === "value") finalPrice = basePrice + modVal;
+        } else if (rateType === "blackout" || rateType === "price-on-request") {
+          finalPrice = 0; // Blackout/on-request has no selling price
+        }
+
+        // Apply discount overlay
+        if (discountType === "percentage") {
+          finalPrice = finalPrice * (1 - (Number(discountValue) || 0) / 100);
+        } else if (discountType === "flat") {
+          finalPrice = Math.max(0, finalPrice - (Number(discountValue) || 0));
+        }
+
+        // Add history log entry
+        await tx.insert(packagePriceHistoryTable).values({
+          packageId,
+          date: dateStr,
+          rateType,
+          price: finalPrice,
+          action: "UPDATED",
+          changedBy: "admin",
+        });
+      }
+    });
+
+    clearCachePattern("cache:/api/packages*");
+    
+    // Sync calendar records to MongoDB
+    await syncPackageCalendar(packageId);
+
+    res.json({ message: "Rates updated successfully" });
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to update calendar inventory");
+    res.status(500).json({ error: "Failed to update calendar inventory: " + e.message });
+  }
+});
+
+// GET /admin/packages/:id/calendar-inventory/notifications
+router.get("/packages/:id/calendar-inventory/notifications", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const packageId = Number(req.params.id);
+    
+    // Check for any unpriced dates in the next 30 days
+    const upcomingDates: string[] = [];
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      upcomingDates.push(`${yyyy}-${mm}-${dd}`);
+    }
+
+    const startStr = upcomingDates[0];
+    const endStr = upcomingDates[upcomingDates.length - 1];
+
+    const pricedRows = await db
+      .select({ date: packageCalendarInventoryTable.date })
+      .from(packageCalendarInventoryTable)
+      .where(
+        and(
+          eq(packageCalendarInventoryTable.packageId, packageId),
+          sql`${packageCalendarInventoryTable.date} >= ${startStr}`,
+          sql`${packageCalendarInventoryTable.date} <= ${endStr}`
+        )
+      );
+
+    const pricedDates = new Set(pricedRows.map(r => r.date));
+    const unpricedDates = upcomingDates.filter(d => !pricedDates.has(d));
+
+    res.json({
+      hasUnpricedDates: unpricedDates.length > 0,
+      unpricedCount: unpricedDates.length,
+      unpricedDates: unpricedDates.slice(0, 10), // Return sample
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch notifications" });
   }
 });
 

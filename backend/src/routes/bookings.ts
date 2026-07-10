@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, bookingsTable, usersTable, packagesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, bookingsTable, usersTable, packagesTable, packageCalendarInventoryTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
 import { authenticate, AuthenticatedRequest } from "../middleware/auth";
 import { processReferralEarnings } from "../lib/rewards";
 import { logger } from "../lib/logger";
@@ -27,7 +27,54 @@ router.post("/", bookingLimiter, authenticate, async (req: AuthenticatedRequest,
     const [pkg] = await db.select().from(packagesTable).where(eq(packagesTable.id, packageId)).limit(1);
     if (!pkg) return res.status(404).json({ error: "Package not found" });
 
-    const totalAmount = pkg.pricePerPerson * travelersCount;
+    // ── Calculate dynamic pricing from calendar overrides ──
+    const d = new Date(travelDate);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+
+    const [override] = await db
+      .select()
+      .from(packageCalendarInventoryTable)
+      .where(
+        and(
+          eq(packageCalendarInventoryTable.packageId, packageId),
+          eq(packageCalendarInventoryTable.date, dateStr)
+        )
+      )
+      .limit(1);
+
+    let pricePerPerson = pkg.pricePerPerson;
+
+    if (override) {
+      if (override.rateType === "blackout") {
+        return res.status(400).json({ error: "The selected date is sold out (blackout date)." });
+      }
+      if (override.rateType === "price-on-request") {
+        return res.status(400).json({ error: "This package requires a custom quote for the selected date. Please use the inquiry form." });
+      }
+
+      // Calculate modified price
+      const modVal = Number(override.priceModifierValue) || 0;
+      if (override.priceModifierType === "fixed") {
+        pricePerPerson = modVal;
+      } else if (override.priceModifierType === "percentage") {
+        pricePerPerson = pkg.pricePerPerson * (1 + modVal / 100);
+      } else if (override.priceModifierType === "value") {
+        pricePerPerson = pkg.pricePerPerson + modVal;
+      }
+
+      // Apply discount
+      const discVal = Number(override.discountValue) || 0;
+      if (override.discountType === "percentage") {
+        pricePerPerson = pricePerPerson * (1 - discVal / 100);
+      } else if (override.discountType === "flat") {
+        pricePerPerson = Math.max(0, pricePerPerson - discVal);
+      }
+    }
+
+    const totalAmount = pricePerPerson * travelersCount;
 
     // 2. Create the booking record
     const [booking] = await db.insert(bookingsTable).values({

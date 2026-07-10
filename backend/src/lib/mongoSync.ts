@@ -31,6 +31,7 @@ import {
   homePageCategoriesTable,
   homePageSectionsTable,
   offersTable,
+  packageCalendarInventoryTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getCollection, COLLECTIONS } from "./mongodb";
@@ -44,6 +45,7 @@ export interface MongoPackage {
   pgId: number;
   slug: string;
   name: string;
+  packageCode: string | null;
   shortDescription: string | null;
   imageUrl: string | null;
   thumbnailUrl: string | null;
@@ -119,6 +121,7 @@ export async function syncPackage(pgId: number): Promise<void> {
         id: packagesTable.id,
         slug: packagesTable.slug,
         name: packagesTable.name,
+        packageCode: packagesTable.packageCode,
         shortDescription: packagesTable.shortDescription,
         imageUrl: packagesTable.imageUrl,
         thumbnailUrl: packagesTable.thumbnailUrl,
@@ -154,6 +157,8 @@ export async function syncPackage(pgId: number): Promise<void> {
     if (!rows[0]) {
       // Package was deleted — remove from Mongo too
       await col.deleteOne({ pgId });
+      const calendarCol = await getCollection(COLLECTIONS.PACKAGE_CALENDAR);
+      if (calendarCol) await calendarCol.deleteMany({ packageId: pgId });
       logger.debug({ pgId }, "MongoDB: package deleted (not found in PG)");
       return;
     }
@@ -163,6 +168,7 @@ export async function syncPackage(pgId: number): Promise<void> {
       pgId: row.id,
       slug: row.slug,
       name: row.name,
+      packageCode: row.packageCode,
       shortDescription: row.shortDescription,
       imageUrl: row.imageUrl,
       thumbnailUrl: row.thumbnailUrl,
@@ -205,9 +211,72 @@ export async function deleteMongoPackage(pgId: number): Promise<void> {
     const col = await getCollection<MongoPackage>(COLLECTIONS.PACKAGES);
     if (!col) return;
     await col.deleteOne({ pgId });
-    logger.debug({ pgId }, "MongoDB: package removed");
+    
+    // Also delete associated calendar entries
+    const calendarCol = await getCollection(COLLECTIONS.PACKAGE_CALENDAR);
+    if (calendarCol) {
+      await calendarCol.deleteMany({ packageId: pgId });
+    }
+    
+    logger.debug({ pgId }, "MongoDB: package and calendar removed");
   } catch (err) {
     logger.error({ err, pgId }, "MongoDB deleteMongoPackage failed — non-fatal");
+  }
+}
+
+export interface MongoPackageCalendar {
+  packageId: number;
+  date: string; // YYYY-MM-DD
+  rateType: string;
+  priceModifierType: string | null;
+  priceModifierValue: number | null;
+  discountType: string | null;
+  discountValue: number | null;
+  syncedAt: Date;
+}
+
+/**
+ * Sync all daily pricing rules for a package from PostgreSQL to MongoDB.
+ */
+export async function syncPackageCalendar(packageId: number): Promise<void> {
+  try {
+    const col = await getCollection<MongoPackageCalendar>(COLLECTIONS.PACKAGE_CALENDAR);
+    if (!col) return;
+
+    // Fetch all current custom pricing entries for this package from PG
+    const pgRows = await db
+      .select({
+        packageId: packageCalendarInventoryTable.packageId,
+        date: packageCalendarInventoryTable.date,
+        rateType: packageCalendarInventoryTable.rateType,
+        priceModifierType: packageCalendarInventoryTable.priceModifierType,
+        priceModifierValue: packageCalendarInventoryTable.priceModifierValue,
+        discountType: packageCalendarInventoryTable.discountType,
+        discountValue: packageCalendarInventoryTable.discountValue,
+      })
+      .from(packageCalendarInventoryTable)
+      .where(eq(packageCalendarInventoryTable.packageId, packageId));
+
+    // First delete existing records for this package in Mongo
+    await col.deleteMany({ packageId });
+
+    if (pgRows.length > 0) {
+      const docs: MongoPackageCalendar[] = pgRows.map((row) => ({
+        packageId: row.packageId,
+        date: row.date,
+        rateType: row.rateType,
+        priceModifierType: row.priceModifierType,
+        priceModifierValue: row.priceModifierValue,
+        discountType: row.discountType,
+        discountValue: row.discountValue,
+        syncedAt: new Date(),
+      }));
+
+      await col.insertMany(docs);
+    }
+    logger.debug({ packageId, count: pgRows.length }, "✅ MongoDB: package calendar synced");
+  } catch (err) {
+    logger.error({ err, packageId }, "MongoDB syncPackageCalendar failed — non-fatal");
   }
 }
 

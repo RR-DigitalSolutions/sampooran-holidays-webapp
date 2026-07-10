@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, real, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, real, timestamp, jsonb, index, date, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -6,6 +6,7 @@ export const packagesTable = pgTable("packages", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  packageCode: text("package_code").unique(),
   stateId: integer("state_id"),
   countryId: integer("country_id"),
   destinationId: integer("destination_id"),
@@ -54,6 +55,7 @@ export const packagesTable = pgTable("packages", {
   packagesCountryIdx: index("packages_country_idx").on(table.countryId),
   packagesDestinationIdx: index("packages_destination_idx").on(table.destinationId),
   packagesCategoryIdx: index("packages_category_idx").on(table.category),
+  packagesCodeIdx: index("packages_code_idx").on(table.packageCode),
   
   // Composite Indexes (For advanced filtering combinations)
   packagesStateCategoryIdx: index("packages_state_category_idx").on(table.stateId, table.category),
@@ -93,3 +95,43 @@ export const packageThemesTable = pgTable("package_themes", {
   packageId: integer("package_id").notNull().references(() => packagesTable.id, { onDelete: 'cascade' }),
   themeId: integer("theme_id").notNull().references(() => themesTable.id, { onDelete: 'cascade' }),
 });
+
+// ─── PACKAGE CALENDAR INVENTORY & PRICING ──────────────────────
+export const packageCalendarInventoryTable = pgTable("package_calendar_inventory", {
+  id: serial("id").primaryKey(),
+  packageId: integer("package_id").notNull().references(() => packagesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(), // Specific date (YYYY-MM-DD)
+  rateType: text("rate_type").notNull().default("regular"), // 'peak' | 'off-season' | 'regular' | 'blackout' | 'price-on-request'
+  priceModifierType: text("price_modifier_type").default("fixed"), // 'fixed' | 'percentage' | 'value'
+  priceModifierValue: real("price_modifier_value").default(0), // adjustment value
+  discountType: text("discount_type").default("none"), // 'none' | 'flat' | 'percentage'
+  discountValue: real("discount_value").default(0), // discount overlay value
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => {
+  return {
+    unqPackageDateIdx: unique("unq_package_date").on(t.packageId, t.date),
+    packageDateIdx: index("package_date_idx").on(t.packageId, t.date),
+  }
+});
+
+export const insertPackageCalendarInventorySchema = createInsertSchema(packageCalendarInventoryTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPackageCalendarInventory = z.infer<typeof insertPackageCalendarInventorySchema>;
+export type PackageCalendarInventory = typeof packageCalendarInventoryTable.$inferSelect;
+
+// ─── PACKAGE PRICE HISTORY & AUDIT LOG ─────────────────────────
+export const packagePriceHistoryTable = pgTable("package_price_history", {
+  id: serial("id").primaryKey(),
+  packageId: integer("package_id").notNull().references(() => packagesTable.id, { onDelete: "cascade" }),
+  date: date("date").notNull(), // Target date affected
+  rateType: text("rate_type").notNull(),
+  price: real("price").notNull(), // The calculated selling price per person for that date
+  action: text("action").notNull(), // 'CREATED' | 'UPDATED' | 'DELETED'
+  changedBy: text("changed_by").notNull().default("admin"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPackagePriceHistorySchema = createInsertSchema(packagePriceHistoryTable).omit({ id: true, createdAt: true });
+export type InsertPackagePriceHistory = z.infer<typeof insertPackagePriceHistorySchema>;
+export type PackagePriceHistory = typeof packagePriceHistoryTable.$inferSelect;
+

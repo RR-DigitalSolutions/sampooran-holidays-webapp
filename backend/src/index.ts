@@ -87,7 +87,57 @@ async function runStartupMigrations() {
       $$;
     `);
 
-    logger.info("✅ Startup migration: travel_guides table ready");
+    // ── Extend packages table with package_code ──
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='packages' AND column_name='package_code') THEN
+          ALTER TABLE packages ADD COLUMN package_code TEXT UNIQUE;
+        END IF;
+      END
+      $$;
+    `);
+
+    // Backfill package_code for existing packages
+    await db.execute(sql`
+      UPDATE packages 
+      SET package_code = 'SH-' || COALESCE(UPPER(SUBSTRING(category FROM 1 FOR 3)), 'PKG') || '-' || LPAD(id::text, 4, '0') 
+      WHERE package_code IS NULL
+    `);
+
+    // ── Create package_calendar_inventory table ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS package_calendar_inventory (
+        id SERIAL PRIMARY KEY,
+        package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        rate_type TEXT NOT NULL DEFAULT 'regular',
+        price_modifier_type TEXT DEFAULT 'fixed',
+        price_modifier_value REAL DEFAULT 0,
+        discount_type TEXT DEFAULT 'none',
+        discount_value REAL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        CONSTRAINT unq_package_date UNIQUE(package_id, date)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS package_date_idx ON package_calendar_inventory(package_id, date)`);
+
+    // ── Create package_price_history table ──
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS package_price_history (
+        id SERIAL PRIMARY KEY,
+        package_id INTEGER NOT NULL REFERENCES packages(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        rate_type TEXT NOT NULL,
+        price REAL NOT NULL,
+        action TEXT NOT NULL,
+        changed_by TEXT NOT NULL DEFAULT 'admin',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    logger.info("✅ Startup migration: travel_guides, packages, and calendar tables ready");
   } catch (err: any) {
     // Table already exists or non-critical — log but don't crash server
     logger.warn({ err: err.message }, "Startup migration warning (non-fatal)");
@@ -691,6 +741,55 @@ async function runTransportMigrations() {
   }
 }
 
+function startRateExpiryCheckScheduler() {
+  const checkRateExpirations = async () => {
+    try {
+      logger.info("Checking package calendar rate expirations...");
+      const { packagesTable, packageCalendarInventoryTable } = await import("@workspace/db");
+      
+      const today = new Date();
+      // Look ahead 30 days
+      const lookaheadDate = new Date();
+      lookaheadDate.setDate(today.getDate() + 30);
+      
+      const todayStr = today.toISOString().split("T")[0];
+      const lookaheadStr = lookaheadDate.toISOString().split("T")[0];
+
+      // Query packages
+      const packages = await db.select().from(packagesTable);
+
+      for (const pkg of packages) {
+        const pricedRows = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(packageCalendarInventoryTable)
+          .where(
+            and(
+              eq(packageCalendarInventoryTable.packageId, pkg.id),
+              sql`${packageCalendarInventoryTable.date} >= ${todayStr}`,
+              sql`${packageCalendarInventoryTable.date} <= ${lookaheadStr}`
+            )
+          );
+
+        const pricedCount = pricedRows[0]?.count ?? 0;
+        
+        if (pricedCount < 10) {
+          logger.warn(
+            { packageId: pkg.id, name: pkg.name, pricedCount },
+            `⚠️ Alert: Package "${pkg.name}" (${pkg.packageCode || "NO CODE"}) has upcoming unpriced dates (${30 - pricedCount} days missing in next 30 days). Please configure rates.`
+          );
+        }
+      }
+    } catch (err: any) {
+      logger.error({ err: err.message }, "Error during rate expiry check");
+    }
+  };
+
+  // Run 15 seconds after startup
+  setTimeout(checkRateExpirations, 15_000);
+  // Run every 24 hours
+  setInterval(checkRateExpirations, 24 * 60 * 60 * 1000);
+}
+
 server.listen(port, () => {
   logger.info({ port }, "Server listening (HTTP & WebSocket) on all interfaces");
   if (process.env.NODE_ENV !== "production" || process.env.FORCE_SEED_ADMIN === "true") {
@@ -702,6 +801,8 @@ server.listen(port, () => {
   runHotelMigrations();
   // OTA Transport system — create transport tables (idempotent).
   runTransportMigrations();
+  // Start the daily pricing calendar alert scheduler
+  startRateExpiryCheckScheduler();
   // ⚡ Pre-warm Redis cache for the top public routes after startup
   // Runs async in background — never blocks server from accepting requests
   const baseUrl = `http://127.0.0.1:${port}`;

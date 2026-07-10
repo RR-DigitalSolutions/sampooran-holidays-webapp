@@ -7,7 +7,7 @@ import {
   Save, X, Plus, Trash2, Mountain, MapPin, Clock, Calendar, 
   Tag, Info, List, Shield, CheckCircle, HelpCircle, AlertCircle,
   Image as ImageIcon, DollarSign, Users, Layout as LayoutIcon, FileText,
-  Plane, Hotel, Utensils, Camera, Car, Zap, ShieldCheck, Coffee, Loader2, Upload, Search
+  Plane, Hotel, Utensils, Camera, Car, Zap, ShieldCheck, Coffee, Loader2, Upload, Search, Sliders
 } from "lucide-react";
 import { ItineraryDay, HotelInfo, FaqEntry, uploadMedia, MealType, MEAL_TYPES, MEAL_ICONS } from "../utils/packageFormTypes";
 
@@ -25,7 +25,7 @@ const INCLUSION_OPTIONS = [
 ];
 
 const TABS = [
-  "Overview", "Destinations & Pricing", "Itinerary", "Gallery", "Inclusions", "Policies, FAQs & SEO"
+  "Overview", "Destinations & Pricing", "Pricing Calendar", "Itinerary", "Gallery", "Inclusions", "Policies, FAQs & SEO"
 ];
 
 export default function PackageForm() {
@@ -39,6 +39,7 @@ export default function PackageForm() {
   // Form State
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [packageCode, setPackageCode] = useState("");
   const [category, setCategory] = useState("Adventure");
   const [packageType, setPackageType] = useState("both");
   const [isFeatured, setIsFeatured] = useState(false);
@@ -62,6 +63,180 @@ export default function PackageForm() {
   const [originalPrice, setOriginalPrice] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [monthsToTravel, setMonthsToTravel] = useState<string[]>([]);
+  
+  // Pricing Calendar States
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [calendarRates, setCalendarRates] = useState<any[]>([]);
+  const [selectedCalendarDates, setSelectedCalendarDates] = useState<string[]>([]);
+  const [loadingCal, setLoadingCal] = useState(false);
+  const [calRateType, setCalRateType] = useState<"peak" | "off-season" | "regular" | "blackout" | "price-on-request">("peak");
+  const [calPriceModType, setCalPriceModType] = useState<"fixed" | "percentage" | "value">("fixed");
+  const [calPriceModVal, setCalPriceModVal] = useState(0);
+  const [calDiscountType, setCalDiscountType] = useState<"none" | "flat" | "percentage">("none");
+  const [calDiscountVal, setCalDiscountVal] = useState(0);
+  const [startDateInput, setStartDateInput] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
+  const [dragStart, setDragStart] = useState<string | null>(null);
+
+  const fetchCalendarRates = async () => {
+    if (!isEdit) return;
+    setLoadingCal(true);
+    try {
+      const startYear = currentMonth.getFullYear();
+      const startMonth = currentMonth.getMonth();
+      const firstDay = new Date(startYear, startMonth - 1, 1);
+      const lastDay = new Date(startYear, startMonth + 2, 0);
+      
+      const firstDayStr = firstDay.toISOString().split("T")[0];
+      const lastDayStr = lastDay.toISOString().split("T")[0];
+      
+      const res = await customFetch(`/api/admin/packages/${id}/calendar-inventory?startDate=${firstDayStr}&endDate=${lastDayStr}`);
+      if (Array.isArray(res)) {
+        setCalendarRates(res);
+      }
+    } catch (error) {
+      console.error("Failed to fetch calendar rates", error);
+    } finally {
+      setLoadingCal(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "Pricing Calendar" && isEdit) {
+      fetchCalendarRates();
+    }
+  }, [activeTab, currentMonth, isEdit]);
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days: Date[] = [];
+    
+    const startPadding = firstDay.getDay();
+    for (let i = startPadding - 1; i >= 0; i--) {
+      days.push(new Date(year, month, -i));
+    }
+    
+    const totalDays = lastDay.getDate();
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(new Date(year, month, i));
+    }
+    return days;
+  };
+
+  const monthDays = useMemo(() => getDaysInMonth(currentMonth), [currentMonth]);
+
+  const handleDayMouseDown = (dateStr: string) => {
+    setDragStart(dateStr);
+    setSelectedCalendarDates([dateStr]);
+    setStartDateInput(dateStr);
+    setEndDateInput(dateStr);
+  };
+
+  const handleDayMouseEnter = (dateStr: string) => {
+    if (!dragStart) return;
+    const start = new Date(dragStart);
+    const end = new Date(dateStr);
+    const minDate = start < end ? start : end;
+    const maxDate = start < end ? end : start;
+    const range: string[] = [];
+    const temp = new Date(minDate);
+    while (temp <= maxDate) {
+      range.push(temp.toISOString().split("T")[0]);
+      temp.setDate(temp.getDate() + 1);
+    }
+    setSelectedCalendarDates(range);
+    setStartDateInput(minDate.toISOString().split("T")[0]);
+    setEndDateInput(maxDate.toISOString().split("T")[0]);
+  };
+
+  const handleDayMouseUp = () => {
+    setDragStart(null);
+  };
+
+  useEffect(() => {
+    const handleMouseUp = () => setDragStart(null);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, []);
+
+  const generateDateRange = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) return [];
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const range: string[] = [];
+    const temp = new Date(start < end ? start : end);
+    const maxDate = start < end ? end : start;
+    while (temp <= maxDate) {
+      range.push(temp.toISOString().split("T")[0]);
+      temp.setDate(temp.getDate() + 1);
+    }
+    return range;
+  };
+
+  const applyBulkSelection = (type: "weekends" | "weekdays" | "all" | "clear") => {
+    if (selectedCalendarDates.length === 0) {
+      toast.error("Please select a date range first using click & drag or inputs");
+      return;
+    }
+    const dateObjects = selectedCalendarDates.map(d => new Date(d));
+    const minDate = new Date(Math.min(...dateObjects.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...dateObjects.map(d => d.getTime())));
+    
+    const filtered: string[] = [];
+    const temp = new Date(minDate);
+    while (temp <= maxDate) {
+      const day = temp.getDay();
+      const dateStr = temp.toISOString().split("T")[0];
+      if (type === "all") {
+        filtered.push(dateStr);
+      } else if (type === "weekends" && (day === 0 || day === 6)) {
+        filtered.push(dateStr);
+      } else if (type === "weekdays" && day !== 0 && day !== 6) {
+        filtered.push(dateStr);
+      }
+      temp.setDate(temp.getDate() + 1);
+    }
+    
+    if (type === "clear") {
+      setSelectedCalendarDates([]);
+      setStartDateInput("");
+      setEndDateInput("");
+    } else {
+      setSelectedCalendarDates(filtered);
+    }
+  };
+
+  const handleCalendarRateSubmit = async () => {
+    if (selectedCalendarDates.length === 0) {
+      toast.error("No dates selected");
+      return;
+    }
+    try {
+      const payload = {
+        dates: selectedCalendarDates,
+        rateType: calRateType,
+        priceModifierType: calRateType === "blackout" || calRateType === "price-on-request" ? "fixed" : calPriceModType,
+        priceModifierValue: calRateType === "blackout" || calRateType === "price-on-request" ? 0 : calPriceModVal,
+        discountType: calRateType === "blackout" || calRateType === "price-on-request" ? "none" : calDiscountType,
+        discountValue: calRateType === "blackout" || calRateType === "price-on-request" ? 0 : calDiscountVal,
+      };
+      
+      await customFetch(`/api/admin/packages/${id}/calendar-inventory`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      toast.success("Calendar rates updated successfully");
+      setSelectedCalendarDates([]);
+      setStartDateInput("");
+      setEndDateInput("");
+      fetchCalendarRates();
+    } catch (error: any) {
+      toast.error("Failed to update rates: " + error.message);
+    }
+  };
 
   useEffect(() => {
     if (discountType === "none") {
@@ -192,7 +367,7 @@ export default function PackageForm() {
   useEffect(() => {
     if (isEdit) {
       customFetch(`/api/admin/packages/${id}`).then(pkg => {
-        setName(pkg.name || ""); setSlug(pkg.slug || ""); setCategory(pkg.category || "Adventure");
+        setName(pkg.name || ""); setSlug(pkg.slug || ""); setPackageCode(pkg.packageCode || ""); setCategory(pkg.category || "Adventure");
         setPackageType(pkg.packageType || "both"); setIsFeatured(pkg.isFeatured || false); setIsTrending(pkg.isTrending || false);
         setImageUrl(pkg.imageUrl || ""); setThumbnailUrl(pkg.thumbnailUrl || "");
         setShortDescription(pkg.shortDescription || ""); setLongDescription(pkg.longDescription || "");
@@ -225,7 +400,7 @@ export default function PackageForm() {
     e.preventDefault();
     setLoading(true);
     const payload = {
-      name, slug, category, packageType, isFeatured, isTrending, imageUrl, thumbnailUrl,
+      name, slug, packageCode, category, packageType, isFeatured, isTrending, imageUrl, thumbnailUrl,
       shortDescription, longDescription, destinationIds: selectedDestIds, destinationId: selectedDestIds[0] || null,
       stateId: stateId || null, countryId: countryId || null, duration, nights, pricePerPerson, originalPrice, discountPercent,
       inclusionIcons, inclusions, exclusions, importantNotes, highlights, cancellationPolicy, paymentPolicy, faqs, hotels: [], itinerary,
@@ -273,6 +448,7 @@ export default function PackageForm() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Package Name</label><input required value={name} onChange={e=>setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1B3A6B] outline-none" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Package Code</label><input readOnly value={packageCode} placeholder="Auto-generated on save" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none bg-gray-50 text-gray-500 font-mono font-bold" /></div>
               <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Slug</label><input value={slug} onChange={e=>setSlug(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1B3A6B] outline-none bg-gray-50" /></div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
@@ -425,7 +601,334 @@ export default function PackageForm() {
           </div>
         )}
 
-        {/* TAB 3: Itinerary */}
+        {/* TAB 3: Pricing Calendar */}
+        {activeTab === "Pricing Calendar" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+            {!isEdit ? (
+              <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+                <AlertCircle className="w-12 h-12 text-[#1B3A6B] mb-2" />
+                <p className="font-bold text-base">Save the Package First</p>
+                <p className="text-sm mt-1 text-center max-w-md">You need to save this package overview and basic details first before you can configure dynamic rates and inventory on the calendar.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
+                
+                {/* Left Side: Calendar View */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-gray-950 text-base flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-[#1B3A6B]" /> Rate &amp; Inventory Calendar
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                        className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        &larr; Prev
+                      </button>
+                      <span className="font-bold text-gray-800 text-sm font-mono min-w-28 text-center uppercase tracking-wider">
+                        {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                        className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        Next &rarr;
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar grid */}
+                  <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+                    {/* Weekdays header */}
+                    <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-center py-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                      <div>Sun</div>
+                      <div>Mon</div>
+                      <div>Tue</div>
+                      <div>Wed</div>
+                      <div>Thu</div>
+                      <div>Fri</div>
+                      <div>Sat</div>
+                    </div>
+
+                    {/* Days grid */}
+                    <div className="grid grid-cols-7 divide-x divide-y divide-gray-150 bg-gray-50/20">
+                      {monthDays.map((dayDate, idx) => {
+                        const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
+                        const yyyy = dayDate.getFullYear();
+                        const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
+                        const dd = String(dayDate.getDate()).padStart(2, "0");
+                        const dateStr = `${yyyy}-${mm}-${dd}`;
+
+                        const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
+                        const isSelected = selectedCalendarDates.includes(dateStr);
+
+                        // Calculate price if rule is active
+                        let finalPrice = basePrice;
+                        let isBlackout = false;
+                        let isPriceOnReq = false;
+                        let priceModText = "";
+                        let discText = "";
+
+                        if (rule) {
+                          if (rule.rateType === "blackout") isBlackout = true;
+                          else if (rule.rateType === "price-on-request") isPriceOnReq = true;
+                          else {
+                            const mod = Number(rule.priceModifierValue) || 0;
+                            if (rule.priceModifierType === "fixed") {
+                              finalPrice = mod;
+                              priceModText = `₹${mod}`;
+                            } else if (rule.priceModifierType === "percentage") {
+                              finalPrice = basePrice * (1 + mod / 100);
+                              priceModText = `${mod >= 0 ? "+" : ""}${mod}%`;
+                            } else if (rule.priceModifierType === "value") {
+                              finalPrice = basePrice + mod;
+                              priceModText = `${mod >= 0 ? "+" : ""}₹${mod}`;
+                            }
+
+                            const disc = Number(rule.discountValue) || 0;
+                            if (rule.discountType === "percentage") {
+                              finalPrice = finalPrice * (1 - disc / 100);
+                              discText = `${disc}% OFF`;
+                            } else if (rule.discountType === "flat") {
+                              finalPrice = Math.max(0, finalPrice - disc);
+                              discText = `-₹${disc}`;
+                            }
+                          }
+                        }
+
+                        return (
+                          <div
+                            key={idx}
+                            onMouseDown={() => isCurrentMonth && handleDayMouseDown(dateStr)}
+                            onMouseEnter={() => isCurrentMonth && handleDayMouseEnter(dateStr)}
+                            onMouseUp={handleDayMouseUp}
+                            className={`min-h-[90px] p-2 flex flex-col justify-between transition-all select-none relative ${
+                              !isCurrentMonth 
+                                ? "bg-gray-150/40 text-gray-300 pointer-events-none cursor-default" 
+                                : "cursor-pointer hover:bg-slate-50"
+                            } ${
+                              isSelected 
+                                ? "bg-blue-50/70 border-2 border-blue-500/80 -m-0.5 z-10 rounded-lg shadow-sm" 
+                                : ""
+                            }`}
+                          >
+                            {/* Day number */}
+                            <div className="flex justify-between items-start">
+                              <span className={`text-xs font-bold ${
+                                isSelected 
+                                  ? "text-[#1B3A6B] bg-blue-100/80 rounded-full h-5 w-5 flex items-center justify-center" 
+                                  : isCurrentMonth ? "text-gray-700" : "text-gray-300"
+                              }`}>
+                                {dayDate.getDate()}
+                              </span>
+                              {/* Badge for rate type */}
+                              {isCurrentMonth && rule && (
+                                <span className={`text-[8px] font-black uppercase px-1 rounded-sm border ${
+                                  isBlackout 
+                                    ? "bg-red-100 text-red-700 border-red-200" 
+                                    : isPriceOnReq
+                                    ? "bg-amber-100 text-amber-700 border-amber-200"
+                                    : rule.rateType === "peak"
+                                    ? "bg-orange-100 text-orange-700 border-orange-200"
+                                    : rule.rateType === "off-season"
+                                    ? "bg-cyan-100 text-cyan-700 border-cyan-200"
+                                    : "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                }`}>
+                                  {rule.rateType === "off-season" ? "OFF" : rule.rateType}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Price and Details */}
+                            {isCurrentMonth && (
+                              <div className="mt-2 text-right">
+                                {isBlackout ? (
+                                  <p className="text-[10px] font-black text-red-650 uppercase tracking-widest line-through">SOLD OUT</p>
+                                ) : isPriceOnReq ? (
+                                  <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">ON REQUEST</p>
+                                ) : (
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs font-black text-gray-900">
+                                      ₹{Math.round(finalPrice).toLocaleString("en-IN")}
+                                    </p>
+                                    {priceModText && (
+                                      <p className="text-[9px] text-gray-400 font-semibold leading-none">{priceModText}</p>
+                                    )}
+                                    {discText && (
+                                      <p className="text-[9px] text-emerald-600 font-bold leading-none bg-emerald-50 inline-block px-1 rounded-sm border border-emerald-100">{discText}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side: Configuration Panel */}
+                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-5 h-fit shadow-xs">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-gray-800 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Sliders className="w-4 h-4 text-[#1B3A6B]"/> Rate Overrides</h4>
+                    <p className="text-[11px] text-gray-500">Drag select dates on the calendar or enter manually to set custom seasonal pricing rules.</p>
+                  </div>
+
+                  {/* Manual Range Pickers */}
+                  <div className="grid grid-cols-2 gap-3 bg-white p-3 rounded-xl border border-gray-150 shadow-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Start Date</label>
+                      <input 
+                        type="date" 
+                        value={startDateInput} 
+                        onChange={e => {
+                          setStartDateInput(e.target.value);
+                          if (e.target.value && endDateInput) {
+                            setSelectedCalendarDates(generateDateRange(e.target.value, endDateInput));
+                          }
+                        }} 
+                        className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">End Date</label>
+                      <input 
+                        type="date" 
+                        value={endDateInput} 
+                        onChange={e => {
+                          setEndDateInput(e.target.value);
+                          if (startDateInput && e.target.value) {
+                            setSelectedCalendarDates(generateDateRange(startDateInput, e.target.value));
+                          }
+                        }} 
+                        className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none" 
+                      />
+                    </div>
+                    {selectedCalendarDates.length > 0 && (
+                      <div className="col-span-2 text-[10px] font-bold text-blue-600 bg-blue-50/50 p-1.5 rounded-md text-center border border-blue-100 mt-1">
+                        Selected {selectedCalendarDates.length} days
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bulk Toggles */}
+                  {selectedCalendarDates.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Filter Modifiers</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button type="button" onClick={() => applyBulkSelection("weekends")} className="text-[10px] px-2.5 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg font-bold text-gray-600 shadow-xs">Weekends Only</button>
+                        <button type="button" onClick={() => applyBulkSelection("weekdays")} className="text-[10px] px-2.5 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg font-bold text-gray-600 shadow-xs">Weekdays Only</button>
+                        <button type="button" onClick={() => applyBulkSelection("all")} className="text-[10px] px-2.5 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 rounded-lg font-bold text-gray-600 shadow-xs">Select All</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Settings form */}
+                  <div className="space-y-4 pt-2 border-t border-gray-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Rate Season Type</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: "peak", label: "Peak Season 🟥" },
+                          { value: "off-season", label: "Off-Season 🟦" },
+                          { value: "regular", label: "Regular 🟩" },
+                          { value: "blackout", label: "Blackout ⬛" },
+                          { value: "price-on-request", label: "On Request 🟨" }
+                        ].map(item => (
+                          <button
+                            key={item.value}
+                            type="button"
+                            onClick={() => setCalRateType(item.value as any)}
+                            className={`text-[11px] font-bold py-2 rounded-xl text-center border transition-all ${
+                              calRateType === item.value 
+                                ? "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20" 
+                                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100"
+                            } ${item.value === "price-on-request" ? "col-span-2" : ""}`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {calRateType !== "blackout" && calRateType !== "price-on-request" && (
+                      <>
+                        {/* Modifier settings */}
+                        <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-3 shadow-xs">
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Modifier Type</label>
+                            <select
+                              value={calPriceModType}
+                              onChange={e => setCalPriceModType(e.target.value as any)}
+                              className="w-full text-xs p-2 rounded-lg border border-gray-200 bg-white focus:border-[#1B3A6B] outline-none"
+                            >
+                              <option value="fixed">Set Fixed price (₹)</option>
+                              <option value="percentage">Adjust by percent (+/- %)</option>
+                              <option value="value">Adjust by flat value (+/- ₹)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Modifier Value</label>
+                            <input
+                              type="number"
+                              value={calPriceModVal || ""}
+                              onChange={e => setCalPriceModVal(Number(e.target.value))}
+                              placeholder={calPriceModType === "fixed" ? "e.g. 1200" : "e.g. +20 or -15"}
+                              className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Discount overlays */}
+                        <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-3 shadow-xs">
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Discount Overlay</label>
+                            <select
+                              value={calDiscountType}
+                              onChange={e => setCalDiscountType(e.target.value as any)}
+                              className="w-full text-xs p-2 rounded-lg border border-gray-200 bg-white focus:border-[#1B3A6B] outline-none"
+                            >
+                              <option value="none">No Discount</option>
+                              <option value="percentage">Discount Percent (%)</option>
+                              <option value="flat">Discount Flat (₹)</option>
+                            </select>
+                          </div>
+                          {calDiscountType !== "none" && (
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Discount Value</label>
+                              <input
+                                type="number"
+                                value={calDiscountVal || ""}
+                                onChange={e => setCalDiscountVal(Number(e.target.value))}
+                                placeholder={calDiscountType === "percentage" ? "e.g. 10%" : "e.g. 200"}
+                                className="w-full text-xs p-2 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={selectedCalendarDates.length === 0}
+                      onClick={handleCalendarRateSubmit}
+                      className="w-full bg-[#1B3A6B] text-white py-3 rounded-xl font-bold hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed uppercase tracking-wider text-xs shadow-md"
+                    >
+                      Update selected dates
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: Itinerary */}
         {activeTab === "Itinerary" && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
             <div className="flex justify-between items-center border-b border-gray-100 pb-4">

@@ -30,6 +30,7 @@ export const COLLECTIONS = {
   HOTELS_PUBLIC: "hotelsPublic",
   TRAVEL_GUIDES: "travelGuides",
   SYNC_LOG: "syncLog",
+  PACKAGE_CALENDAR: "packageCalendar",
 } as const;
 
 // ─── Singleton state ──────────────────────────────────────────────────────────
@@ -165,6 +166,7 @@ export async function ensureMongoIndexes(): Promise<void> {
     await Promise.all([
       packages.createIndex({ slug: 1 }, { unique: true, background: true }),
       packages.createIndex({ pgId: 1 }, { unique: true, background: true }),
+      packages.createIndex({ packageCode: 1 }, { background: true }),
       packages.createIndex({ isFeatured: 1, pricePerPerson: 1 }, { background: true }),
       packages.createIndex({ isTrending: 1, createdAt: -1 }, { background: true }),
       packages.createIndex({ stateName: 1, pricePerPerson: 1 }, { background: true }),
@@ -177,6 +179,12 @@ export async function ensureMongoIndexes(): Promise<void> {
         { name: "text", destinationName: "text", stateName: "text", category: "text", tags: "text" },
         { background: true, name: "packages_text_search" }
       ),
+    ]);
+
+    // PACKAGE CALENDAR
+    const packageCalendar = database.collection(COLLECTIONS.PACKAGE_CALENDAR);
+    await Promise.all([
+      packageCalendar.createIndex({ packageId: 1, date: 1 }, { unique: true, background: true }),
     ]);
 
     // DESTINATIONS

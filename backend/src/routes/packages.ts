@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { cacheMiddleware } from "../lib/cache";
 import { eq, sql, and, gte, lte, or, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { db, packagesTable, destinationsTable, statesTable, countriesTable, attractionsTable, diningPointsTable, packageThemesTable, themesTable } from "@workspace/db";
+import { db, packagesTable, destinationsTable, statesTable, countriesTable, attractionsTable, diningPointsTable, packageThemesTable, themesTable, packageCalendarInventoryTable } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import { getCollection, COLLECTIONS } from "../lib/mongodb";
 import type { MongoPackage } from "../lib/mongoSync";
@@ -27,6 +27,7 @@ async function getPackageWithJoins(filters: any[] = [], limit?: number, offset?:
       id: packagesTable.id,
       name: packagesTable.name,
       slug: packagesTable.slug,
+      packageCode: packagesTable.packageCode,
       destinationId: packagesTable.destinationId,
       stateId: packagesTable.stateId,
       countryId: packagesTable.countryId,
@@ -356,6 +357,50 @@ router.get("/packages/:slug", cacheMiddleware(300), async (req, res): Promise<vo
     ...detailedPackage,
     relatedPackages,
   });
+});
+
+// GET /packages/:slug/calendar-inventory
+router.get("/packages/:slug/calendar-inventory", cacheMiddleware(300), async (req, res): Promise<void> => {
+  try {
+    const slug = String(req.params.slug);
+    const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
+    const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
+
+    const [pkg] = await db
+      .select({ id: packagesTable.id })
+      .from(packagesTable)
+      .where(eq(packagesTable.slug, slug))
+      .limit(1);
+
+    if (!pkg) {
+      res.status(404).json({ error: "Package not found" });
+      return;
+    }
+
+    let query = db
+      .select()
+      .from(packageCalendarInventoryTable)
+      .where(eq(packageCalendarInventoryTable.packageId, pkg.id));
+
+    if (startDate && endDate) {
+      query = db
+        .select()
+        .from(packageCalendarInventoryTable)
+        .where(
+          and(
+            eq(packageCalendarInventoryTable.packageId, pkg.id),
+            sql`${packageCalendarInventoryTable.date} >= ${startDate}`,
+            sql`${packageCalendarInventoryTable.date} <= ${endDate}`
+          )
+        );
+    }
+
+    const list = await query;
+    res.json(list);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch public calendar inventory");
+    res.status(500).json({ error: "Failed to fetch calendar inventory" });
+  }
 });
 
 export default router;
