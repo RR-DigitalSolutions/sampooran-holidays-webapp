@@ -23,6 +23,10 @@ import {
   Coffee,
   CheckCircle,
   MapPin,
+  Award,
+  Headphones,
+  Globe,
+  Hotel,
 } from "lucide-react";
 import { validateImageUrl, cn } from "@/lib/utils";
 import { AttractionActivityModal } from "../modals/AttractionActivityModal";
@@ -293,8 +297,79 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [inquiryMessage, setInquiryMessage] = useState("");
   const [honeypotWebsite, setHoneypotWebsite] = useState("");
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
+  const [isLongDescExpanded, setIsLongDescExpanded] = useState(false);
 
   const { user, token } = useAuth();
+
+  const featuresList = [
+    {
+      Icon: Award,
+      title: "12+ Years Experience",
+      desc: "Himalayan experts crafting perfect journeys since 2012.",
+    },
+    {
+      Icon: Hotel,
+      title: "Accommodation",
+      desc: "Comfortable & convenient hotels cherry picked by our team.",
+    },
+    {
+      Icon: Utensils,
+      title: "All meals",
+      desc: "Eat to your heart's content — Breakfast, Lunch, Dinner included.",
+    },
+    {
+      Icon: Car,
+      title: "On-tour transport",
+      desc: "All rail, sea and road transport included for a tension-free trip.",
+    },
+    {
+      Icon: Users,
+      title: "Expert Tour Managers",
+      desc: "Exclusive team of managers specialising in Himalayan and India tours.",
+    },
+    {
+      Icon: Headphones,
+      title: "24/7 Ground Support",
+      desc: "Round-the-clock assistance to ensure a seamless travel experience.",
+    },
+    {
+      Icon: ShieldCheck,
+      title: "100% Secure & Trusted",
+      desc: "Your safety and satisfaction are our top priority.",
+    },
+    {
+      Icon: Globe,
+      title: "B2B Agent Network",
+      desc: "Trusted by over 500+ travel agent partners across India.",
+    }
+  ];
+
+  const longDescParagraphs = useMemo(() => {
+    const raw = packageData.longDescription || "";
+    if (!raw.trim()) {
+      const name = packageData.name || "Holiday Package";
+      const dest = packageData.destinationName || packageData.stateName || "the Himalayas";
+      const duration = packageData.duration ? `${packageData.duration} Days` : "";
+      const nights = packageData.nights ? `${packageData.nights} Nights` : "";
+      const durationText = [duration, nights].filter(Boolean).join(" and ");
+      
+      return [
+        `Discover the ultimate travel experience with our signature ${name} designed specifically for discerning travelers. Handcrafted by local destination curators at Sampooran Holidays, this comprehensive ${durationText || "holiday"} journey showcases the very best of ${dest}, blending iconic sightseeing wonders with hidden regional secrets that generic operators miss.`,
+        `Your premium all-inclusive tour includes cherry-picked accommodations offering exceptional hospitality and comfort, delicious daily regional meals, safe and expert on-ground transportation, and round-the-clock ground support from our expert tour managers. Every single detail is thoroughly structured, giving you absolute peace of mind so you can focus entirely on creating unforgettable memories with your loved ones.`,
+        `At Sampooran Holidays, we pride ourselves on delivering standard-setting B2B and B2C Himalayan travel solutions. With over 12 years of specialized mountain operations and a trusted network of over 500+ agent partners across India, we guarantee the best rates, verified premium inclusions, and a seamless travel itinerary from arrival to departure. Book today to secure your slots!`
+      ];
+    }
+    
+    return raw
+      .split(/\r?\n\r?\n/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+  }, [packageData.longDescription, packageData.name, packageData.destinationName, packageData.stateName, packageData.duration, packageData.nights]);
+
+  const longDescTitle = useMemo(() => {
+    const dest = packageData.destinationName || packageData.stateName || "Himalayan";
+    return `Complete Travel Guide & Insights for ${packageData.name} in ${dest}`;
+  }, [packageData.name, packageData.destinationName, packageData.stateName]);
 
   const fetchCalendarRates = async () => {
     if (!packageData.slug) return;
@@ -2153,6 +2228,76 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </a>
             </div>
           </aside>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════
+           ALL INCLUSIVE & LONG DESCRIPTION SECTION
+      ════════════════════════════════════════════ */}
+      <section className="bg-white border-t border-slate-200 py-10 md:py-16 mt-6">
+        <div className="container mx-auto px-4 lg:px-8">
+          
+          {/* Top Header */}
+          <div className="text-center mb-10">
+            <p className="text-accent font-bold text-xs md:text-sm mb-2 uppercase tracking-widest">Why Choose Sampooran Holidays</p>
+            <h2 className="text-xl md:text-3xl font-serif font-bold text-[#1B3A6B] mb-4 relative inline-block">
+              Your Complete Travel Partner - All Inclusive Tours!
+              <div className="absolute -bottom-2 left-0 right-0 h-1 bg-accent/20 rounded-full" />
+              <div className="absolute -bottom-2 left-1/4 right-1/4 h-1 bg-accent rounded-full" />
+            </h2>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-10 max-w-6xl mx-auto">
+            {featuresList.map((item, idx) => (
+              <div
+                key={idx}
+                className="flex flex-col items-center text-center p-3 md:p-5 rounded-2xl border border-slate-100 hover:border-accent/20 hover:bg-slate-50/50 transition-all duration-500 group"
+              >
+                <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br from-[#1B3A6B] to-[#0a182e] rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-3 relative overflow-hidden transition-transform group-hover:scale-110 duration-500 shadow-md shadow-primary/20 shrink-0">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  <item.Icon className="w-4 h-4 md:w-6 md:h-6 text-accent transition-all duration-500 group-hover:scale-110" />
+                </div>
+                <h3 className="text-xs md:text-sm font-bold text-[#1B3A6B] tracking-tight leading-tight mb-1">
+                  {item.title}
+                </h3>
+                <p className="text-slate-500 leading-relaxed text-[10px] md:text-xs font-medium line-clamp-3">
+                  {item.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* SEO / Long Description Section */}
+          <div className="max-w-6xl mx-auto border-t border-slate-100 pt-10">
+            <h3 className="text-lg sm:text-xl font-bold text-[#1B3A6B] mb-4 font-serif">
+              {longDescTitle}
+            </h3>
+            
+            <div 
+              className={cn(
+                "space-y-4 text-slate-600 leading-relaxed text-xs md:text-sm font-medium transition-all duration-500 overflow-hidden relative",
+                !isLongDescExpanded && "max-h-[140px]"
+              )}
+            >
+              {longDescParagraphs.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+              
+              {!isLongDescExpanded && (
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
+              )}
+            </div>
+
+            <button
+              onClick={() => setIsLongDescExpanded(!isLongDescExpanded)}
+              className="mt-6 flex items-center gap-2 text-[#1B3A6B] font-bold uppercase text-xs tracking-widest hover:text-accent transition-colors"
+            >
+              {isLongDescExpanded ? "Read Less" : "Read More"}
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-300", isLongDescExpanded && "rotate-180")} />
+            </button>
+          </div>
+
         </div>
       </section>
 
