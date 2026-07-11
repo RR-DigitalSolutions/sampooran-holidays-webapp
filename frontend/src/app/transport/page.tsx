@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import TransportClient from "@/components/pages/TransportClient";
 import type { Metadata } from "next";
 
@@ -12,5 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function Page() {
-  return <TransportClient />;
+  return (
+    <Suspense fallback={<div className="min-h-screen pt-32 pb-16 text-center text-slate-500">Loading fleet...</div>}>
+      <TransportClient />
+    </Suspense>
+  );
 }
