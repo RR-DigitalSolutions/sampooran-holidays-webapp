@@ -29,7 +29,7 @@ import { AttractionActivityModal } from "../modals/AttractionActivityModal";
 import { HeroImageSlider } from "../HeroImageSlider";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Sliders, Calendar } from "lucide-react";
+import { Sliders, Calendar, CreditCard, CalendarRange, Info, Clock } from "lucide-react";
 
 type PackageItineraryDay = {
   day?: number;
@@ -218,6 +218,40 @@ function normalizeDiningStops(raw: unknown): string[] {
   }
   return dedupeStrings(normalizeTextItem(raw).split(",").map((s) => s.trim()).filter(Boolean));
 }
+
+const renderPolicyContent = (text: string | null) => {
+  if (!text) return <p className="text-xs text-slate-400 font-semibold">Policy details will be updated soon.</p>;
+  
+  if (text.includes("<") && text.includes(">")) {
+    return (
+      <div 
+        className="prose prose-slate prose-xs max-w-none text-slate-600 leading-relaxed font-semibold space-y-1.5
+                   prose-p:m-0 prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5 prose-strong:text-slate-800"
+        dangerouslySetInnerHTML={{ __html: text }} 
+      />
+    );
+  }
+
+  const lines = text
+    .split("\n")
+    .map(line => line.trim().replace(/^[-*•\d+.]\s*/, ""))
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return <p className="text-xs text-slate-400 font-semibold">Policy details will be updated soon.</p>;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {lines.map((line, idx) => (
+        <li key={idx} className="flex items-start gap-2 text-xs text-slate-650 font-semibold leading-relaxed">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#1B3A6B] mt-1.5 shrink-0" />
+          <span>{line}</span>
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
@@ -1045,14 +1079,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
               {/* Duration + nights + themes + places chips in a single row (placed above title) */}
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                {packageData.duration && (
-                  <span className="rounded-md bg-white/12 backdrop-blur-sm border border-white/20 px-3.5 py-1.5">
-                    {packageData.duration} {Number(packageData.duration) === 1 ? "Day" : "Days"}
-                  </span>
-                )}
-                {packageData.nights && (
-                  <span className="rounded-md bg-white/12 backdrop-blur-sm border border-white/20 px-3.5 py-1.5">
-                    {packageData.nights} {Number(packageData.nights) === 1 ? "Night" : "Nights"}
+                {(packageData.duration || packageData.nights) && (
+                  <span className="rounded-md bg-white/12 backdrop-blur-sm border border-white/20 px-3.5 py-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span>
+                      {packageData.nights ? `${packageData.nights} ${Number(packageData.nights) === 1 ? "Night" : "Nights"}` : ""}
+                      {packageData.nights && packageData.duration ? " / " : ""}
+                      {packageData.duration ? `${packageData.duration} ${Number(packageData.duration) === 1 ? "Day" : "Days"}` : ""}
+                    </span>
                   </span>
                 )}
                 {packageData.category && (
@@ -1065,6 +1099,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     {badge}
                   </span>
                 ))}
+                {packageData.packageCode && (
+                  <span className="rounded-md bg-accent text-primary text-[10px] sm:text-xs font-mono font-bold px-3 py-1.5 border border-accent/20 shadow-sm uppercase shrink-0">
+                    Code: {packageData.packageCode}
+                  </span>
+                )}
                 {departureCities && (
                   <span className="inline-flex items-center gap-1.5 text-white/90 px-3 py-1.5 rounded-md bg-black/30 backdrop-blur-sm border border-white/10">
                     <MapPin className="w-3.5 h-3.5" />
@@ -1079,11 +1118,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   <h1 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight drop-shadow-lg text-white">
                     {packageData.name}
                   </h1>
-                  {packageData.packageCode && (
-                    <span className="text-[10px] sm:text-xs font-mono font-bold bg-white/10 px-2.5 py-1 rounded border border-white/10 text-white shadow-sm shrink-0">
-                      Code: {packageData.packageCode}
-                    </span>
-                  )}
                 </div>
                 <p className="text-[11px] sm:text-xs text-white/80 leading-relaxed">
                   {packageData.shortDescription || packageData.longDescription?.slice(0, 200) || "A curated escape with premium stays and local experiences."}
@@ -1598,19 +1632,51 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </section>
             )}
 
-            <section id="policies" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
-              <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Policies</h2>
-              <div className="space-y-6 text-sm text-slate-700 leading-7">
+            <div id="policies" className="grid grid-cols-1 md:grid-cols-2 gap-6 scroll-mt-20">
+              {/* Payment Policy Card */}
+              <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
                 <div>
-                  <p className="font-semibold text-slate-900 mb-2">Payment Policy</p>
-                  <div dangerouslySetInnerHTML={{ __html: packageData.paymentPolicy || "Payment policy details will be updated soon." }} />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0">
+                      <CreditCard className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Payment &amp; Booking Policy</h3>
+                      <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase">Securing your reservations</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-100 pt-3">
+                    {renderPolicyContent(packageData.paymentPolicy || null)}
+                  </div>
                 </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-[9px] font-bold text-indigo-700 bg-indigo-50/40 px-2 py-1 rounded">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Verified Safe &amp; Secure Payment Processing</span>
+                </div>
+              </section>
+
+              {/* Cancellation Policy Card */}
+              <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
                 <div>
-                  <p className="font-semibold text-slate-900 mb-2">Cancellation Policy</p>
-                  <div dangerouslySetInnerHTML={{ __html: packageData.cancellationPolicy || "Cancellation policy details will be updated soon." }} />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-650 shrink-0">
+                      <CalendarRange className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Cancellation &amp; Refund Policy</h3>
+                      <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase">Easy cancellation terms</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-100 pt-3">
+                    {renderPolicyContent(packageData.cancellationPolicy || null)}
+                  </div>
                 </div>
-              </div>
-            </section>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-[9px] font-bold text-rose-700 bg-rose-50/40 px-2 py-1 rounded">
+                  <Info className="w-3.5 h-3.5" />
+                  <span>Refer to T&amp;C for detailed retention slabs</span>
+                </div>
+              </section>
+            </div>
 
             {importantNotes.length > 0 && (
               <section id="important-notes" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">

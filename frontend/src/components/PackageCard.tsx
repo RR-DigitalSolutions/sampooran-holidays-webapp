@@ -55,11 +55,13 @@ function PackageCardComponent({
       ? Math.round((1 - pkg.pricePerPerson / pkg.originalPrice) * 100)
       : 0);
 
-  const displayHighlights = pkg.highlights?.slice(0, 4) || [
+  const displayHighlights = pkg.highlights?.slice(0, 6) || [
     "Expert Guided Tours",
     "Luxury Accommodation",
     "All Transfers Included",
     "Scenic Sightseeing",
+    "Meals Included",
+    "24/7 Dedicated Support",
   ];
 
   const displayInclusions = pkg.inclusions?.slice(0, 4) || [
@@ -264,7 +266,7 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[210px] xs:h-[230px] sm:h-[310px] md:h-[365px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
+        className="block h-[240px] xs:h-[260px] sm:h-[325px] md:h-[380px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
       >
         {/* Top Image Section (58%) */}
         <div className="absolute top-0 left-0 right-0 h-[58%] w-full">
@@ -363,8 +365,14 @@ function PackageCardComponent({
           {displayHighlights.length > 0 && (
             <div className="space-y-0.5 mb-1.5">
               <div className="flex flex-col gap-0.5">
-                {displayHighlights.slice(0, 2).map((h, i) => (
-                  <div key={i} className="flex items-center gap-1 text-[6.5px] xs:text-[7px] sm:text-[7.5px] text-white/80 font-normal leading-none">
+                {displayHighlights.slice(0, 6).map((h, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "items-center gap-1 text-[6.5px] xs:text-[7px] sm:text-[7.5px] text-white/80 font-normal leading-none",
+                      i >= 4 ? "hidden md:flex" : "flex"
+                    )}
+                  >
                     <div className="w-1 h-1 rounded-full bg-accent shrink-0" />
                     <span className="line-clamp-1 truncate">{h}</span>
                   </div>
@@ -374,15 +382,15 @@ function PackageCardComponent({
           )}
 
           <div className="flex items-end justify-between mt-auto">
-            <div className="flex flex-col">
-              {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
-                <span className="text-white/50 text-[7.5px] xs:text-[8px] sm:text-[9px] line-through font-semibold leading-none mb-0.5">
-                  ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
-                </span>
-              ) : <span className="h-2" />}
+            <div className="flex items-baseline gap-1 xs:gap-1.5 sm:gap-2 flex-wrap">
               <span className="text-white text-xs xs:text-sm sm:text-[16px] font-bold leading-none tracking-tight">
                 ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
               </span>
+              {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson && (
+                <span className="text-red-500 text-[8px] xs:text-[9.5px] sm:text-[11px] line-through font-bold leading-none">
+                  ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
+                </span>
+              )}
             </div>
             <button className="hidden sm:block bg-white text-primary text-[10px] font-bold px-2.5 py-1.5 rounded-sm hover:bg-accent transition-colors shadow-sm active:scale-95 shrink-0">
               Details

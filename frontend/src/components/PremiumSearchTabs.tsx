@@ -66,20 +66,31 @@ export default function PremiumSearchTabs() {
 
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const basePath = activeTab === "packages"
-      ? `/india-holiday-tour-packages`
-      : `/${activeTab}`;
+    let basePath = "/packages";
+    if (activeTab === "hotels") {
+      basePath = "/hotels";
+    } else if (activeTab === "transport") {
+      basePath = "/transport";
+    } else if (activeTab === "bus") {
+      basePath = "/transport";
+    }
     const params = new URLSearchParams();
     if (query) params.set("q", query);
     if (guests) params.set("guests", String(guests));
     if (date) params.set("date", date.toISOString());
+    if (activeTab === "bus") {
+      params.set("category", "Coach");
+    }
     router.push(`${basePath}?${params.toString()}`);
   };
 
   const prefetchSearch = () => {
-    const basePath = activeTab === "packages"
-      ? `/india-holiday-tour-packages`
-      : `/${activeTab}`;
+    let basePath = "/packages";
+    if (activeTab === "hotels") {
+      basePath = "/hotels";
+    } else if (activeTab === "transport" || activeTab === "bus") {
+      basePath = "/transport";
+    }
     router.prefetch(basePath);
   };
 
@@ -131,14 +142,14 @@ export default function PremiumSearchTabs() {
       {/* Main Search Panel */}
       <div className="bg-white rounded-lg shadow-[0_40px_80px_-15px_rgba(0,0,0,0.4)] p-0.5 md:p-1.5 relative group/panel border border-white/20">
         <div className="bg-slate-50/20 rounded-lg p-0.5 md:p-1.5 border border-slate-100">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white rounded-lg shadow-sm pb-16 md:pb-0">
+          <form onSubmit={handleSearch} className="grid grid-cols-2 md:flex md:flex-row items-center bg-white rounded-lg shadow-sm pb-12 md:pb-0">
 
             {/* Destination Section */}
             <div
-              className="flex-[1.4] w-full py-1.5 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-text"
+              className="col-span-2 w-full py-2 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-text flex flex-col justify-center"
               onClick={() => document.getElementById('search-dest')?.focus()}
             >
-              <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
+              <div className="flex items-center gap-2 md:gap-2.5 mb-0.5 md:mb-1.5">
                 <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-orange-50 flex items-center justify-center">
                   <MapPin className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-orange-500" />
                 </div>
@@ -150,10 +161,10 @@ export default function PremiumSearchTabs() {
                 <input
                   id="search-dest"
                   type="text"
-                  placeholder={activeTab === "hotels" ? "Search Stays..." : "Where to next?"}
+                  placeholder={activeTab === "hotels" ? "Search Stays..." : activeTab === "bus" ? "Search Bus Routes..." : "Where to next?"}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-transparent text-base md:text-2xl font-bold focus:outline-none placeholder:text-slate-400 text-primary pb-0.5 truncate font-sans tracking-tight"
+                  className="w-full bg-transparent text-sm md:text-2xl font-bold focus:outline-none placeholder:text-slate-400 text-primary pb-0.5 truncate font-sans tracking-tight"
                 />
                 <button
                   type="button"
@@ -167,7 +178,7 @@ export default function PremiumSearchTabs() {
                   }}
                   className="p-1 hover:bg-slate-200 rounded-full text-primary transition-colors flex-shrink-0"
                 >
-                  <Navigation className="w-3.5 h-3.5 md:w-4 md:h-4 opacity-20 group-hover/field:opacity-100" />
+                  <Navigation className="w-3 h-3 md:w-4 md:h-4 opacity-20 group-hover/field:opacity-100" />
                 </button>
               </div>
               <p className="pl-6 md:pl-8.5 text-[9px] md:text-[10px] font-bold text-slate-400 hidden sm:flex items-center gap-1 mt-0.5 md:mt-1 truncate opacity-60">
@@ -179,8 +190,8 @@ export default function PremiumSearchTabs() {
             {/* Date Section */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex-1 w-full py-1.5 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[180px]">
-                  <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
+                <div className="col-span-1 w-full py-2 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left border-t border-r border-slate-100 md:border-t-0 md:border-r-0 md:min-w-[180px] flex flex-col justify-center">
+                  <div className="flex items-center gap-2 md:gap-2.5 mb-0.5 md:mb-1.5">
                     <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-blue-50 flex items-center justify-center">
                       <Calendar className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-blue-500" />
                     </div>
@@ -190,16 +201,16 @@ export default function PremiumSearchTabs() {
                     <ChevronDown className="w-3 h-3 md:w-4 md:h-4 ml-auto text-slate-200" />
                   </div>
                   <div className="pl-6 md:pl-8.5">
-                    <div className="text-base md:text-2xl font-bold text-primary flex items-baseline gap-1 md:gap-2 font-sans tracking-tight">
+                    <div className="text-sm md:text-2xl font-bold text-primary flex items-baseline gap-1 md:gap-2 font-sans tracking-tight leading-none">
                       {date ? (
                         <>
-                          {format(date, "dd")} <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{format(date, "MMM yyyy")}</span>
+                          {format(date, "dd")} <span className="text-[8px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{format(date, "MMM yyyy")}</span>
                         </>
                       ) : (
-                        <span className="text-sm md:text-xl">Select</span>
+                        <span className="text-xs md:text-xl">Select</span>
                       )}
                     </div>
-                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 mt-0.5 md:mt-1 opacity-60 hidden sm:block">{date ? format(date, "EEEE") : "Any day"}</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-slate-400 mt-0.5 opacity-60 hidden sm:block">{date ? format(date, "EEEE") : "Any day"}</p>
                   </div>
                 </div>
               </PopoverTrigger>
@@ -217,8 +228,8 @@ export default function PremiumSearchTabs() {
             {/* Guests Section */}
             <Popover>
               <PopoverTrigger asChild>
-                <div className="flex-1 w-full py-1.5 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left md:min-w-[160px] md:rounded-r-lg">
-                  <div className="flex items-center gap-2 md:gap-2.5 mb-1 md:mb-1.5">
+                <div className="col-span-1 w-full py-2 px-3 md:p-5 relative group/field hover:bg-slate-50/50 transition-all cursor-pointer text-left border-t border-slate-100 md:border-t-0 md:rounded-r-lg flex flex-col justify-center">
+                  <div className="flex items-center gap-2 md:gap-2.5 mb-0.5 md:mb-1.5">
                     <div className="w-4 h-4 md:w-6 md:h-6 rounded-md bg-indigo-50 flex items-center justify-center">
                       <Users className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 text-indigo-500" />
                     </div>
@@ -228,10 +239,10 @@ export default function PremiumSearchTabs() {
                     <ChevronDown className="w-3 h-3 md:w-4 md:h-4 ml-auto text-slate-200" />
                   </div>
                   <div className="pl-6 md:pl-8.5">
-                    <div className="text-base md:text-2xl font-bold text-primary flex items-baseline gap-1 md:gap-2 font-sans tracking-tight">
-                      {guests} <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{guests > 1 ? "Travelers" : "Traveler"}</span>
+                    <div className="text-sm md:text-2xl font-bold text-primary flex items-baseline gap-1 md:gap-2 font-sans tracking-tight leading-none">
+                      {guests} <span className="text-[8px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">{guests > 1 ? "Travelers" : "Traveler"}</span>
                     </div>
-                    <p className="text-[9px] md:text-[10px] font-bold text-slate-400 mt-0.5 md:mt-1 opacity-60 hidden sm:block">1 Room</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-slate-400 mt-0.5 opacity-60 hidden sm:block">1 Room</p>
                   </div>
                 </div>
               </PopoverTrigger>

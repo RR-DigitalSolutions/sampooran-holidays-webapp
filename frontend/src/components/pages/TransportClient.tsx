@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Car, Search, ShieldCheck, MapPin, PhoneCall, LayoutGrid, List,
   Star, ArrowRight, ChevronRight, SlidersHorizontal, X, Zap, Users, Clock,
-  Calculator, ArrowLeftRight, Check, Tag, Shield, Clock4
+  Calculator, ArrowLeftRight, Check, Tag, Shield, Clock4, Compass
 } from "lucide-react";
 import { VehicleCard } from "@/components/VehicleCard";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,61 @@ import { DEMO_FLEET, DEMO_ROUTES } from "@/lib/demo-fleet";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
+
+// ─── Fuzzy Match Typo Tolerance Helpers ─────────────────────────────────────
+
+function getBigrams(str: string): string[] {
+  const s = str.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const bigrams: string[] = [];
+  for (let i = 0; i < s.length - 1; i++) {
+    bigrams.push(s.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
+function stringSimilarity(str1: string, str2: string): number {
+  const pairs1 = getBigrams(str1);
+  const pairs2 = getBigrams(str2);
+  if (pairs1.length === 0 && pairs2.length === 0) return 1;
+  if (pairs1.length === 0 || pairs2.length === 0) return 0;
+  const union = pairs1.length + pairs2.length;
+  let hits = 0;
+  for (const x of pairs1) {
+    const idx = pairs2.indexOf(x);
+    if (idx !== -1) {
+      hits++;
+      pairs2.splice(idx, 1);
+    }
+  }
+  return (2.0 * hits) / union;
+}
+
+export function isFuzzyMatch(term: string | null | undefined, query: string): boolean {
+  if (!term) return false;
+  const t = term.toLowerCase().trim();
+  const q = query.toLowerCase().trim();
+  
+  // Direct match
+  if (t.includes(q) || q.includes(t)) return true;
+  
+  // Word level matches
+  const qWords = q.split(/\s+/).filter(w => w.length > 2);
+  if (qWords.length > 0) {
+    const tWords = t.split(/\s+/).filter(w => w.length > 2);
+    for (const qw of qWords) {
+      if (tWords.some(tw => tw.includes(qw) || qw.includes(tw))) return true;
+      if (tWords.some(tw => stringSimilarity(tw, qw) >= 0.5)) return true;
+    }
+  }
+  
+  // Whole string similarity
+  if (q.length > 3 && t.length > 3) {
+    if (stringSimilarity(t, q) >= 0.45) return true;
+  }
+  
+  return false;
+}
 
 interface TransportClientProps {
   geoFilter?: { country: string; state: string; city: string };
@@ -38,12 +93,31 @@ const STATS = [
 ];
 
 export default function TransportClient({ geoFilter, pageTitle }: TransportClientProps) {
+  const searchParams = useSearchParams();
+  const initType = searchParams?.get("category") || searchParams?.get("type") || null;
+  const initQuery = searchParams?.get("q") || "";
+
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [routes, setRoutes] = useState<any[]>(DEMO_ROUTES);
   const [loading, setLoading] = useState(true);
-  const [type, setType] = useState<Category>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [type, setType] = useState<Category>(() => {
+    if (initType === "Cab" || initType === "Tempo" || initType === "Coach") return initType;
+    return null;
+  });
+  const [searchQuery, setSearchQuery] = useState(initQuery);
   const [sortBy, setSortBy] = useState("rating");
+
+  // Sync state with URL search parameters
+  useEffect(() => {
+    const qParam = searchParams?.get("q") || "";
+    const typeParam = searchParams?.get("category") || searchParams?.get("type") || null;
+    if (qParam !== searchQuery) setSearchQuery(qParam);
+    if (typeParam && (typeParam === "Cab" || typeParam === "Tempo" || typeParam === "Coach")) {
+      setType(typeParam);
+    } else if (!typeParam) {
+      setType(null);
+    }
+  }, [searchParams]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
 
@@ -139,12 +213,12 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
     let list = [...vehicles];
     if (type) list = list.filter(v => v.type === type);
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
       list = list.filter(v =>
-        v.name?.toLowerCase().includes(q) ||
-        v.make?.toLowerCase().includes(q) ||
-        v.model?.toLowerCase().includes(q) ||
-        v.type?.toLowerCase().includes(q)
+        isFuzzyMatch(v.name, searchQuery) ||
+        isFuzzyMatch(v.make, searchQuery) ||
+        isFuzzyMatch(v.model, searchQuery) ||
+        isFuzzyMatch(v.type, searchQuery) ||
+        isFuzzyMatch(v.cityName, searchQuery)
       );
     }
     // Sidebar filters
@@ -608,15 +682,29 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
                 ))}
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed border-primary/10">
-                <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Car className="h-8 w-8 text-primary opacity-20" />
+              <div className="rounded-3xl border border-slate-200 bg-white p-8 md:p-16 text-center max-w-2xl mx-auto shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-accent/10 to-transparent rounded-br-full" />
+                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5 border border-accent/20">
+                  <Compass className="w-8 h-8 text-accent animate-[spin_10s_linear_infinite]" />
                 </div>
-                <h3 className="text-base font-bold mb-1 tracking-tight">No vehicles match your filters</h3>
-                <p className="text-muted-foreground text-xs font-medium mb-4">Try widening your filters or price settings.</p>
-                <Button onClick={resetAllFilters} className="rounded-xl font-bold uppercase tracking-wider text-[10px] px-6">
-                  Clear Filters
-                </Button>
+                <h3 className="text-xl md:text-2xl font-black text-primary tracking-tight mb-3">Unexplored Horizons Await! 🌍</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-6 max-w-md mx-auto">
+                  Our travel curators are currently mapping out private transfers and coach routes in {searchQuery ? <strong className="text-primary">"{searchQuery}"</strong> : "this destination"}. We haven't launched this route yet, but we are boarding soon! In the meantime, let's customize a bespoke experience for you.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    href="/customized-holidays"
+                    className="w-full sm:w-auto bg-[#F5A623] hover:bg-yellow-500 text-primary font-black text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center"
+                  >
+                    Request Custom Itinerary
+                  </Link>
+                  <button
+                    onClick={resetAllFilters}
+                    className="w-full sm:w-auto border border-slate-200 hover:border-slate-300 bg-white text-slate-600 font-bold text-xs px-6 py-3.5 rounded-xl transition-all active:scale-95"
+                  >
+                    Explore Popular Escapes
+                  </button>
+                </div>
               </div>
             ) : (
               <>

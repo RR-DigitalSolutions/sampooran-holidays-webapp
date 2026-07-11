@@ -8,8 +8,55 @@ import {
   MapPin, Building2, SlidersHorizontal, Star, ChevronRight,
   X, Filter, Wifi, Coffee, Car, UtensilsCrossed, Waves,
   Dumbbell, ChevronDown, Check, AlertCircle, Sparkles, Zap,
-  IndianRupee, Shield, Flame, LayoutGrid, LayoutList
+  IndianRupee, Shield, Flame, LayoutGrid, LayoutList, Compass
 } from "lucide-react";
+
+// ─── Fuzzy Match Typo Tolerance Helpers ─────────────────────────────────────
+
+function getBigrams(str: string): string[] {
+  const s = str.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const bigrams: string[] = [];
+  for (let i = 0; i < s.length - 1; i++) {
+    bigrams.push(s.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
+function stringSimilarity(str1: string, str2: string): number {
+  const pairs1 = getBigrams(str1);
+  const pairs2 = getBigrams(str2);
+  if (pairs1.length === 0 && pairs2.length === 0) return 1;
+  if (pairs1.length === 0 || pairs2.length === 0) return 0;
+  const union = pairs1.length + pairs2.length;
+  let hits = 0;
+  for (const x of pairs1) {
+    const idx = pairs2.indexOf(x);
+    if (idx !== -1) {
+      hits++;
+      pairs2.splice(idx, 1);
+    }
+  }
+  return (2.0 * hits) / union;
+}
+
+const TOP_DESTINATIONS = [
+  "Manali", "Kashmir", "Ladakh", "Leh", "Shimla", "Spiti",
+  "Rishikesh", "Jaipur", "Goa", "Kerala", "Andaman",
+  "Thailand", "Bhutan", "Nepal", "Dubai", "Singapore"
+];
+
+function correctTypo(query: string): string {
+  const q = query.toLowerCase().trim();
+  if (!q) return query;
+  for (const dest of TOP_DESTINATIONS) {
+    const d = dest.toLowerCase();
+    if (d.includes(q) || q.includes(d)) return dest;
+    if (stringSimilarity(d, q) >= 0.45) {
+      return dest;
+    }
+  }
+  return query;
+}
 import { cn, getHotelImageUrl } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
 import SmartSearchBar from "@/components/SmartSearchBar";
@@ -498,7 +545,8 @@ export default function HotelsClient({
 
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams();
-    if (debouncedSearch) params.set("q", debouncedSearch);
+    const queryToUse = correctTypo(debouncedSearch);
+    if (queryToUse) params.set("q", queryToUse);
     if (filters.type) params.set("type", filters.type);
     if (filters.starRating) params.set("starRating", String(filters.starRating));
     if (filters.priceRange) {
@@ -728,13 +776,29 @@ export default function HotelsClient({
                 {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
               </div>
             ) : hotels.length === 0 ? (
-              <div className="text-center py-32 bg-white rounded-3xl border border-dashed border-slate-200">
-                <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-200" />
-                <h3 className="text-xl font-black text-slate-700 mb-2">No properties found</h3>
-                <p className="text-slate-400 text-sm mb-6">Try different filters or broaden your search.</p>
-                <button onClick={resetFilters} className="px-8 py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors">
-                  Reset Filters
-                </button>
+              <div className="rounded-3xl border border-slate-200 bg-white p-8 md:p-16 text-center max-w-2xl mx-auto shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-accent/10 to-transparent rounded-br-full" />
+                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5 border border-accent/20">
+                  <Compass className="w-8 h-8 text-accent animate-[spin_10s_linear_infinite]" />
+                </div>
+                <h3 className="text-xl md:text-2xl font-black text-primary tracking-tight mb-3">Unexplored Horizons Await! 🌍</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-6 max-w-md mx-auto">
+                  Our travel curators are currently mapping out unique stays and boutique hotels in {debouncedSearch ? <strong className="text-primary">"{debouncedSearch}"</strong> : "this destination"}. We haven't launched this route yet, but we are boarding soon! In the meantime, let's customize a bespoke experience for you.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    href="/customized-holidays"
+                    className="w-full sm:w-auto bg-[#F5A623] hover:bg-yellow-500 text-primary font-black text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition-all shadow-md active:scale-95"
+                  >
+                    Request Custom Itinerary
+                  </Link>
+                  <button
+                    onClick={resetFilters}
+                    className="w-full sm:w-auto border border-slate-200 hover:border-slate-300 bg-white text-slate-600 font-bold text-xs px-6 py-3.5 rounded-xl transition-all active:scale-95"
+                  >
+                    Explore Popular Escapes
+                  </button>
+                </div>
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

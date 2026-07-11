@@ -93,9 +93,15 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
               <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-400 rounded-full animate-pulse" />
               <span className="text-[6px] sm:text-[8px] font-bold uppercase tracking-wide font-sans">Available</span>
             </div>
-            {vehicle.isAc && (
-              <span className="text-[6px] sm:text-[7px] font-bold bg-blue-500/80 text-white px-1.5 py-0.5 rounded-full">AC</span>
-            )}
+            <div className="flex items-center gap-1">
+              {vehicle.isAc && (
+                <span className="text-[6px] sm:text-[7px] font-bold bg-blue-500/80 text-white px-1.5 py-0.5 rounded-full leading-none shrink-0">AC</span>
+              )}
+              <div className="flex items-center gap-0.5 bg-[#ff8f00] text-white px-1 py-0.5 rounded-md shadow-xs border border-white/10 shrink-0">
+                <Star className="h-2 w-2 fill-current" />
+                <span className="text-[6px] sm:text-[7px] font-medium leading-none">{rating.toFixed(1)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -121,11 +127,7 @@ export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
             ))}
           </div>
 
-          {/* Rating */}
-          <div className="flex items-center gap-1 mb-2 sm:mb-3">
-            <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-            <span className="text-[8px] sm:text-[9px] font-bold text-amber-300">{rating.toFixed(1)}</span>
-          </div>
+
 
           {/* Footer */}
           <div className="mt-auto pt-2 sm:pt-2.5 border-t border-white/10 flex items-center justify-between w-full font-sans">

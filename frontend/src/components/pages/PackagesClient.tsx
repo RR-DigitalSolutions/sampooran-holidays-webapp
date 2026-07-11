@@ -11,7 +11,62 @@ import {
   Plane, Shield, Headphones, Zap, TrendingUp, Filter,
   CheckCircle2, ArrowRight, Sparkles, Mountain, Heart,
   Users, Briefcase, Trees, Camera, Globe, BookOpen, Check,
+  Compass,
 } from "lucide-react";
+
+// ─── Fuzzy Match Typo Tolerance Helpers ─────────────────────────────────────
+
+function getBigrams(str: string): string[] {
+  const s = str.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const bigrams: string[] = [];
+  for (let i = 0; i < s.length - 1; i++) {
+    bigrams.push(s.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
+function stringSimilarity(str1: string, str2: string): number {
+  const pairs1 = getBigrams(str1);
+  const pairs2 = getBigrams(str2);
+  if (pairs1.length === 0 && pairs2.length === 0) return 1;
+  if (pairs1.length === 0 || pairs2.length === 0) return 0;
+  const union = pairs1.length + pairs2.length;
+  let hits = 0;
+  for (const x of pairs1) {
+    const idx = pairs2.indexOf(x);
+    if (idx !== -1) {
+      hits++;
+      pairs2.splice(idx, 1);
+    }
+  }
+  return (2.0 * hits) / union;
+}
+
+export function isFuzzyMatch(term: string | null | undefined, query: string): boolean {
+  if (!term) return false;
+  const t = term.toLowerCase().trim();
+  const q = query.toLowerCase().trim();
+  
+  // Direct match
+  if (t.includes(q) || q.includes(t)) return true;
+  
+  // Word level matches
+  const qWords = q.split(/\s+/).filter(w => w.length > 2);
+  if (qWords.length > 0) {
+    const tWords = t.split(/\s+/).filter(w => w.length > 2);
+    for (const qw of qWords) {
+      if (tWords.some(tw => tw.includes(qw) || qw.includes(tw))) return true;
+      if (tWords.some(tw => stringSimilarity(tw, qw) >= 0.5)) return true;
+    }
+  }
+  
+  // Whole string similarity
+  if (q.length > 3 && t.length > 3) {
+    if (stringSimilarity(t, q) >= 0.45) return true;
+  }
+  
+  return false;
+}
 import { getApiUrl } from "@/lib/api-url";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -356,12 +411,11 @@ export default function PackagesPage() {
   const filtered = useMemo(() => {
     let result = [...allPackages];
     if (q) {
-      const lq = q.toLowerCase();
       result = result.filter(p =>
-        p.name.toLowerCase().includes(lq) ||
-        (p.destinationName ?? "").toLowerCase().includes(lq) ||
-        (p.shortDescription ?? "").toLowerCase().includes(lq) ||
-        (p.stateName ?? "").toLowerCase().includes(lq)
+        isFuzzyMatch(p.name, q) ||
+        isFuzzyMatch(p.destinationName, q) ||
+        isFuzzyMatch(p.shortDescription, q) ||
+        isFuzzyMatch(p.stateName, q)
       );
     }
     if (category !== "All") {
@@ -811,21 +865,30 @@ export default function PackagesPage() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 md:p-20 text-center"
+                className="rounded-2xl border border-slate-200 bg-white p-8 md:p-16 text-center max-w-2xl mx-auto shadow-xl relative overflow-hidden"
               >
-                <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-5">
-                  <Search className="w-7 h-7 text-slate-400" />
+                <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-accent/10 to-transparent rounded-br-full" />
+                <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5 border border-accent/20">
+                  <Compass className="w-8 h-8 text-accent animate-[spin_10s_linear_infinite]" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">No packages match your search</h3>
-                <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
-                  Try widening your filters — change the budget, duration, or destination to see more options.
+                <h3 className="text-xl md:text-2xl font-black text-primary tracking-tight mb-3">Unexplored Horizons Await! 🌍</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-6 max-w-md mx-auto">
+                  Our travel curators are currently mapping out hidden gems and elite itineraries for {q ? <strong className="text-primary">"{q}"</strong> : "this route"}. We haven't launched this route yet, but we are boarding soon! In the meantime, let's customize a bespoke experience for you.
                 </p>
-                <button
-                  onClick={resetFilters}
-                  className="bg-primary text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-[#1B3A6B] transition-colors shadow-lg shadow-primary/20"
-                >
-                  Reset All Filters
-                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    href="/customized-holidays"
+                    className="w-full sm:w-auto bg-[#F5A623] hover:bg-yellow-500 text-primary font-black text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition-all shadow-md active:scale-95"
+                  >
+                    Request Custom Itinerary
+                  </Link>
+                  <button
+                    onClick={resetFilters}
+                    className="w-full sm:w-auto border border-slate-200 hover:border-slate-300 bg-white text-slate-600 font-bold text-xs px-6 py-3.5 rounded-xl transition-all active:scale-95"
+                  >
+                    Explore Popular Escapes
+                  </button>
+                </div>
               </motion.div>
             ) : viewMode === "grid" ? (
               <motion.div

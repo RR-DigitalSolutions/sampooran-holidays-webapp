@@ -873,12 +873,29 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                   <Loader2 className="w-10 h-10 animate-spin text-primary" />
                 </div>
               ) : filteredPackages.length === 0 ? (
-                <div className="bg-white rounded-lg p-12 text-center border border-slate-200 shadow-sm flex flex-col items-center justify-center">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <Search className="w-8 h-8 text-slate-300" />
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 md:p-16 text-center max-w-2xl mx-auto shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-accent/10 to-transparent rounded-br-full" />
+                  <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-5 border border-accent/20">
+                    <Compass className="w-8 h-8 text-accent animate-[spin_10s_linear_infinite]" />
                   </div>
-                  <h3 className="text-xl my-6 font-bold text-slate-800 mb-2">No packages found</h3>
-                  <p className="text-slate-600 max-w-md">We are currently updating our packages for {entityData.name}. Please try removing some filters or check back later.</p>
+                  <h3 className="text-xl md:text-2xl font-black text-primary tracking-tight mb-3">Unexplored Horizons Await! 🌍</h3>
+                  <p className="text-slate-600 text-sm leading-relaxed mb-6 max-w-md mx-auto">
+                    Our travel curators are currently mapping out hidden gems and elite itineraries for <strong className="text-primary">{entityData.name}</strong>. We haven't launched this route yet, but we are boarding soon! In the meantime, let's customize a bespoke experience for you.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <Link
+                      href="/customized-holidays"
+                      className="w-full sm:w-auto bg-[#F5A623] hover:bg-yellow-500 text-primary font-black text-xs uppercase tracking-wider px-6 py-3.5 rounded-xl transition-all shadow-md active:scale-95"
+                    >
+                      Request Custom Itinerary
+                    </Link>
+                    <button
+                      onClick={resetFilters}
+                      className="w-full sm:w-auto border border-slate-200 hover:border-slate-300 bg-white text-slate-600 font-bold text-xs px-6 py-3.5 rounded-xl transition-all active:scale-95"
+                    >
+                      Explore Popular Escapes
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className={cn("gap-4 md:gap-5", viewMode === "list" ? "flex flex-col gap-3 md:gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>

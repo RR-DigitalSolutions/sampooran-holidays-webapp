@@ -1384,16 +1384,19 @@ export default function PackageForm() {
         {/* TAB 7: Policies, FAQs & SEO */}
         {activeTab === "Policies, FAQs & SEO" && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
-            <div className="grid grid-cols-2 gap-4 border-b border-gray-100 pb-6">
-               <h3 className="col-span-2 font-bold text-gray-900 uppercase tracking-widest text-sm mb-2">Policies</h3>
-               <div className="col-span-2 md:col-span-1">
-                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Cancellation Policy</label>
-                 <textarea value={cancellationPolicy} onChange={e=>setCancellationPolicy(e.target.value)} rows={4} className="w-full p-3 rounded-xl border outline-none text-sm"/>
-               </div>
-               <div className="col-span-2 md:col-span-1">
-                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Payment Policy</label>
-                 <textarea value={paymentPolicy} onChange={e=>setPaymentPolicy(e.target.value)} rows={4} className="w-full p-3 rounded-xl border outline-none text-sm"/>
-               </div>
+            <div className="grid grid-cols-2 gap-6 border-b border-gray-100 pb-6">
+                <h3 className="col-span-2 font-bold text-gray-900 uppercase tracking-widest text-sm mb-1">Policies</h3>
+                <p className="col-span-2 text-xs text-gray-400 font-medium -mt-1">Add policy lines dynamically below. Write them line-by-line (press Enter for a new line) to automatically format them as beautiful bullets on the website detail page.</p>
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cancellation Policy</label>
+                  <p className="text-[10px] text-gray-400 mb-1.5 font-medium">Enter cancellation conditions line-by-line. HTML is also supported.</p>
+                  <textarea value={cancellationPolicy} onChange={e=>setCancellationPolicy(e.target.value)} rows={6} className="w-full p-3 rounded-xl border outline-none text-sm focus:border-[#1B3A6B] bg-gray-50/30" placeholder="e.g. 30 Days before travel: 100% Refund&#10;15-30 Days before travel: 50% Refund"/>
+                </div>
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Payment Policy</label>
+                  <p className="text-[10px] text-gray-400 mb-1.5 font-medium">Enter payment and booking schedules line-by-line. HTML is also supported.</p>
+                  <textarea value={paymentPolicy} onChange={e=>setPaymentPolicy(e.target.value)} rows={6} className="w-full p-3 rounded-xl border outline-none text-sm focus:border-[#1B3A6B] bg-gray-50/30" placeholder="e.g. 25% Booking advance amount to confirm reservation&#10;Balance payment 15 days before travel date"/>
+                </div>
             </div>
             
             <div>

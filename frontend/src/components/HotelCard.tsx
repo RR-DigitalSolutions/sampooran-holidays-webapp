@@ -101,8 +101,8 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
             {hotel.name}
           </h3>
 
-          {/* Amenities — horizontal scroll nero bar */}
-          {hotel.amenities && hotel.amenities.length > 0 && (
+          {/* Amenities — horizontal scroll bar */}
+          {displayAmenities && displayAmenities.length > 0 && (
             <div
               className="flex gap-1 overflow-x-auto no-scrollbar mb-2.5 pb-0.5 whitespace-nowrap select-none w-full scroll-smooth cursor-grab active:cursor-grabbing"
               onMouseDown={(e) => {
@@ -139,20 +139,10 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
                 }
               }}
             >
-              {hotel.amenities.map((ame, index) => {
-                if (!ame) return null;
-                let nameVal = "";
-                if (typeof ame === "object") {
-                  nameVal = (ame as any).code || (ame as any).key || (ame as any).name || String(ame);
-                } else {
-                  nameVal = String(ame);
-                }
-                const keyVal = nameVal === "[object Object]" ? `amenity-${index}` : nameVal;
-                const info = getAmenityInfo(keyVal.toUpperCase());
-                if (!info) return null;
+              {displayAmenities.map((info, index) => {
                 const Icon = info.icon;
                 return (
-                  <span key={`${keyVal}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
+                  <span key={`${info.key}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
                     {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
                     {info.label}
                   </span>
