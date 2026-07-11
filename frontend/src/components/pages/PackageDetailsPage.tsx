@@ -869,7 +869,25 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   const activePricePerPerson = travelDate ? dynamicPricePerPerson : basePricePerPerson;
   const pricePerPerson = activePricePerPerson;
-  const originalPrice = Number(packageData.originalPrice || basePricePerPerson);
+  
+  const originalPrice = useMemo(() => {
+    if (travelDate && selectedDateOverride) {
+      let baseVal = basePricePerPerson;
+      const mod = Number(selectedDateOverride.priceModifierValue) || 0;
+      if (selectedDateOverride.priceModifierType === "fixed") baseVal = mod;
+      else if (selectedDateOverride.priceModifierType === "percentage") baseVal = basePricePerPerson * (1 + mod / 100);
+      else if (selectedDateOverride.priceModifierType === "value") baseVal = basePricePerPerson + mod;
+      return Math.round(baseVal);
+    }
+    if (packageData.originalPrice && Number(packageData.originalPrice) > 0) {
+      return Number(packageData.originalPrice);
+    }
+    if (packageData.discountPercent && packageData.discountPercent > 0) {
+      return Math.round(basePricePerPerson / (1 - packageData.discountPercent / 100));
+    }
+    return basePricePerPerson;
+  }, [travelDate, selectedDateOverride, basePricePerPerson, packageData]);
+
   const savings = Math.max(0, originalPrice - pricePerPerson);
   const packageHighlights = packageData.highlights || [];
   const packageThemes = Array.isArray(packageData.themes)
@@ -1079,20 +1097,20 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {/* Combined Price panel + Trust indicators */}
               <div className="rounded-md bg-black/30 backdrop-blur-md border border-white/20 p-2 text-white shadow-2xl flex flex-col gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-white/60 mb-1">Starting from</p>
-                  <div className="flex items-end gap-3">
-                    <p className="text-4xl font-extrabold tracking-tight">{priceLabel}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-0.5">Starting from</p>
+                  <div className="flex items-end gap-2.5">
+                    <p className="text-2xl sm:text-3xl font-black tracking-tight">{priceLabel}</p>
                     {savings > 0 && (
-                      <div className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs font-bold text-emerald-300">
-                        You save ₹{savings.toLocaleString("en-IN")}
+                      <div className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300">
+                        Save ₹{savings.toLocaleString("en-IN")}
                         {packageData.discountPercent ? ` · ${packageData.discountPercent}% OFF` : ""}
                       </div>
                     )}
                     {savings > 0 && (
-                      <p className="text-sm text-white/50 line-through mb-1">₹{originalPrice.toLocaleString("en-IN")}</p>
+                      <p className="text-xs text-white/40 line-through mb-0.5">₹{originalPrice.toLocaleString("en-IN")}</p>
                     )}
                   </div>
-                  <p className="text-xs text-white/60 mt-1">Per person · Twin sharing</p>
+                  <p className="text-[10px] text-white/50 mt-1">Per person · Twin sharing</p>
                 </div>
 
                 <div className="space-y-3">
@@ -1689,7 +1707,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
           </main>
 
-          <aside className="space-y-4 xl:sticky xl:top-20">
+          <aside className="space-y-2.5 xl:sticky xl:top-14">
             {/* ── Guest Occupancy & Fare Selector Widget ── */}
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
               {/* Header with popover toggle and grand total */}
@@ -1984,11 +2002,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                           )}
                           <div className="flex flex-col items-center justify-center leading-none">
                             {discountPercentVal > 0 && (
-                              <span className={`text-[5.5px] line-through ${isSelected ? "text-white/60" : "text-slate-400"} leading-none mb-0.5`}>
+                              <span className={`text-[5.5px] font-bold line-through ${isSelected ? "text-white/60" : "text-slate-400"} leading-none mb-0.5`}>
                                 ₹{Math.round(originalPriceBeforeDiscount)}
                               </span>
                             )}
-                            <span className={`text-[7px] sm:text-[7.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-600"}`}>
+                            <span className={`text-[8.5px] sm:text-[9.5px] font-black tracking-tight leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-600"}`}>
                               ₹{Math.round(finalPrice)}
                             </span>
                           </div>
@@ -2357,7 +2375,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               ₹{Math.round(originalPriceBeforeDiscount)}
                             </span>
                           )}
-                          <span className={`text-[6.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-650"}`}>
+                          <span className={`text-[7.5px] font-black tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-650"}`}>
                             ₹{Math.round(finalPrice)}
                           </span>
                         </div>
