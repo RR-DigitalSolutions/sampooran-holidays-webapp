@@ -1982,14 +1982,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               -{discountPercentVal}%
                             </span>
                           )}
-                          <div className="flex items-center gap-0.5 justify-center leading-none">
+                          <div className="flex flex-col items-center justify-center leading-none">
                             {discountPercentVal > 0 && (
-                              <span className={`text-[6px] line-through ${isSelected ? "text-white/60" : "text-slate-400"}`}>
-                                ₹{Math.round(originalPriceBeforeDiscount / 1000)}k
+                              <span className={`text-[5.5px] line-through ${isSelected ? "text-white/60" : "text-slate-400"} leading-none mb-0.5`}>
+                                ₹{Math.round(originalPriceBeforeDiscount)}
                               </span>
                             )}
-                            <span className={`text-[8px] font-bold ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-600"}`}>
-                              ₹{Math.round(finalPrice / 1000)}k
+                            <span className={`text-[7px] sm:text-[7.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-600"}`}>
+                              ₹{Math.round(finalPrice)}
                             </span>
                           </div>
                         </div>
@@ -2351,9 +2351,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     >
                       <span className="text-[9px] font-bold">{dayDate.getDate()}</span>
                       {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
-                        <div className="flex items-center gap-0.5 justify-center leading-none mt-0.5 scale-90">
-                          <span className={`text-[7px] font-bold ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-500"}`}>
-                            ₹{Math.round(finalPrice / 1000)}k
+                        <div className="flex flex-col items-center justify-center leading-none mt-0.5 scale-90">
+                          {discountPercentVal > 0 && (
+                            <span className={`text-[5.5px] line-through ${isSelected ? "text-white/60" : "text-slate-400"} leading-none mb-0.5`}>
+                              ₹{Math.round(originalPriceBeforeDiscount)}
+                            </span>
+                          )}
+                          <span className={`text-[6.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700 font-extrabold" : "text-slate-650"}`}>
+                            ₹{Math.round(finalPrice)}
                           </span>
                         </div>
                       )}
