@@ -1707,7 +1707,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
           </main>
 
-          <aside className="space-y-2.5 xl:sticky xl:top-14">
+          <aside className="space-y-2.5 xl:sticky xl:top-24">
             {/* ── Guest Occupancy & Fare Selector Widget ── */}
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
               {/* Header with popover toggle and grand total */}
@@ -1878,7 +1878,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Travel Date</p>
-                  <p className="text-sm font-black text-slate-900 mt-0.5">Choose departure date</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">Choose departure date</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -2006,7 +2006,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                 ₹{Math.round(originalPriceBeforeDiscount)}
                               </span>
                             )}
-                            <span className={`text-[8.5px] sm:text-[9.5px] font-black tracking-tight leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-600"}`}>
+                            <span className={`text-[8.5px] sm:text-[9.5px] font-bold tracking-tight leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-600"}`}>
                               ₹{Math.round(finalPrice)}
                             </span>
                           </div>
@@ -2375,7 +2375,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               ₹{Math.round(originalPriceBeforeDiscount)}
                             </span>
                           )}
-                          <span className={`text-[7.5px] font-black tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-650"}`}>
+                          <span className={`text-[7.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-650"}`}>
                             ₹{Math.round(finalPrice)}
                           </span>
                         </div>

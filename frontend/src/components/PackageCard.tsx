@@ -359,6 +359,20 @@ function PackageCardComponent({
             ))}
           </div>
 
+          {/* Tour Highlights */}
+          {displayHighlights.length > 0 && (
+            <div className="space-y-0.5 mb-1.5">
+              <div className="flex flex-col gap-0.5">
+                {displayHighlights.slice(0, 2).map((h, i) => (
+                  <div key={i} className="flex items-center gap-1 text-[7.5px] xs:text-[8px] sm:text-[9px] text-white/90 font-medium leading-none">
+                    <div className="w-1 h-1 rounded-full bg-accent shrink-0" />
+                    <span className="line-clamp-1 truncate">{h}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-end justify-between mt-auto">
             <div className="flex flex-col">
               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson ? (
