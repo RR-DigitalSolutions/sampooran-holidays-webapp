@@ -1707,7 +1707,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
           </main>
 
-          <aside className="space-y-2.5 xl:sticky xl:top-24">
+          <aside className="space-y-2.5 xl:sticky xl:top-[76px]">
             {/* ── Guest Occupancy & Fare Selector Widget ── */}
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
               {/* Header with popover toggle and grand total */}
@@ -1996,7 +1996,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
                         <div className="flex flex-col items-center">
                           {discountPercentVal > 0 && !isSelected && (
-                            <span className="text-[6px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded-sm border border-emerald-100 leading-none mb-0.5 scale-90">
+                            <span className="text-[6px] text-rose-600 font-bold bg-rose-50 px-1 rounded-sm border border-rose-100 leading-none mb-0.5 scale-90">
                               -{discountPercentVal}%
                             </span>
                           )}
