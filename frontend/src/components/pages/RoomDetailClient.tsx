@@ -1172,7 +1172,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
 
 {/* RIGHT: Booking Engine (sticky) */}
         <div className="hidden lg:block lg:w-[380px] shrink-0">
-          <div className="lg:sticky lg:top-[80px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
+          <div className="lg:sticky lg:top-[80px] space-y-3">
             
             {/* Card 1: Rate Calendar Card */}
             <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs space-y-3">
@@ -1308,7 +1308,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                   <button
                     type="button"
                     onClick={() => setGuestPopoverOpen(!guestPopoverOpen)}
-                    className="w-full h-8.5 rounded border border-slate-200 bg-white text-slate-700 px-2 text-left text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                    className="w-full h-8.5 rounded border border-slate-200 bg-white text-slate-700 px-2 text-left text-xs font-bold hover:bg-slate-55 transition-colors flex items-center justify-between"
                   >
                     <span className="flex items-center gap-1.5 min-w-0 truncate">
                       <Users className="w-3.5 h-3.5 text-[#1B3A6B] shrink-0" />
@@ -1345,7 +1345,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-2">
                     <h4 className="font-bold text-[9px] text-[#1B3A6B] uppercase tracking-wider">Occupancy Config</h4>
-                    <button type="button" onClick={() => setGuestPopoverOpen(false)} aria-label="Close occupancy panel" className="p-0.5 hover:bg-slate-200 rounded text-slate-505"><X className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => setGuestPopoverOpen(false)} aria-label="Close occupancy panel" className="p-0.5 hover:bg-slate-200 rounded text-slate-550"><X className="w-3.5 h-3.5" /></button>
                   </div>
 
                   <div className="bg-sky-50 border border-sky-100 rounded p-1.5 text-[8px] text-sky-700 font-medium leading-normal mb-2">
