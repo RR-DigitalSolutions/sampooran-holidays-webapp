@@ -149,57 +149,85 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                     exit="exit"
                     className="absolute inset-0 w-full h-fit p-5 space-y-2"
                   >
-                    <button 
-                      onClick={() => setView('india')}
-                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
+                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                      <Link 
+                        href="/india-tour-packages" 
+                        onClick={onClose}
+                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                      >
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
                           <MapPin className="w-5 h-5 text-accent" />
                         </div>
                         <span className="font-semibold text-slate-800 text-[14px]">India Tours</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                    </button>
+                      </Link>
+                      <button 
+                        onClick={() => setView('india')}
+                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        aria-label="View India regions"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
 
-                    <button 
-                      onClick={() => setView('world')}
-                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
+                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                      <Link 
+                        href="/world-tour-packages" 
+                        onClick={onClose}
+                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                      >
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
                           <Globe className="w-5 h-5 text-accent" />
                         </div>
                         <span className="font-semibold text-slate-800 text-[14px]">World Tours</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                    </button>
+                      </Link>
+                      <button 
+                        onClick={() => setView('world')}
+                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        aria-label="View World regions"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
 
-                    <button 
-                      onClick={() => setView('hotels')}
-                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
+                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                      <Link 
+                        href="/hotels" 
+                        onClick={onClose}
+                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                      >
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
                           <Building2 className="w-5 h-5 text-accent" />
                         </div>
                         <span className="font-semibold text-slate-800 text-[14px]">Hotels</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                    </button>
+                      </Link>
+                      <button 
+                        onClick={() => setView('hotels')}
+                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        aria-label="View Hotels list"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
 
-                    <button 
-                      onClick={() => setView('transport')}
-                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
-                    >
-                      <div className="flex items-center gap-3">
+                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                      <Link 
+                        href="/transport" 
+                        onClick={onClose}
+                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                      >
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
                           <Car className="w-5 h-5 text-accent" />
                         </div>
                         <span className="font-semibold text-slate-800 text-[14px]">Transport</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                    </button>
+                      </Link>
+                      <button 
+                        onClick={() => setView('transport')}
+                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        aria-label="View Transport list"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
 
                     <button 
                       onClick={() => setView('services')}
@@ -258,83 +286,95 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       <span className="font-semibold text-slate-900 text-base">India Destinations</span>
                     </div>
                     <div className="p-4 space-y-3">
-                      {data?.indiaZones ? data.indiaZones.map((zone: any) => (
-                        <div key={zone.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
-                          <button 
-                            onClick={() => setExpandedRegion(expandedRegion === zone.name ? null : zone.name)}
-                            className="w-full flex items-center justify-between p-4 bg-white"
-                          >
-                            <span className="font-bold text-slate-700">{zone.name}</span>
-                            <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedRegion === zone.name && "rotate-180")} />
-                          </button>
-                          
-                          <AnimatePresence>
-                            {expandedRegion === zone.name && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden"
+                      {data?.indiaZones ? data.indiaZones.map((zone: any) => {
+                        const zoneSlug = zone.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                        const isExpanded = expandedRegion === zone.name;
+                        return (
+                          <div key={zone.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                            <div className="w-full flex items-center justify-between p-4 bg-white relative">
+                              <Link 
+                                href={`/${zoneSlug}-tour-packages`}
+                                onClick={onClose}
+                                className="flex-1 text-left font-bold text-slate-700 hover:text-primary transition-colors"
                               >
-                                <div className="p-4 pt-2 space-y-4">
-                                  {zone.states.map((state: any) => {
-                                    const subRegionKey = `india-${state.slug}`;
-                                    const isSubExpanded = expandedSubRegion === subRegionKey;
-                                    return (
-                                      <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
-                                        <button 
-                                          onClick={() => toggleSubRegion(subRegionKey)}
-                                          className="w-full flex items-center justify-between py-2 text-left"
-                                        >
-                                          <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
-                                            {state.title.toLowerCase().endsWith('tours') ? state.title : `${state.title} Tours`}
-                                          </span>
-                                          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
-                                        </button>
-                                        
-                                        <AnimatePresence>
-                                          {isSubExpanded && (
-                                            <motion.div
-                                              initial={{ height: 0, opacity: 0 }}
-                                              animate={{ height: "auto", opacity: 1 }}
-                                              exit={{ height: 0, opacity: 0 }}
-                                              className="overflow-hidden"
-                                            >
-                                              <div className="pt-2 pb-1">
-                                                <div className="flex flex-wrap gap-2">
-                                                  <Link 
-                                                    href={`/${state.slug}-tour-packages`} 
-                                                    onClick={onClose}
-                                                    className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
-                                                  >
-                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
-                                                    <span>All {state.title} Packages</span>
-                                                  </Link>
-                                                  {state.items.map((item: any) => (
-                                                    <Link
-                                                      key={item.slug || item.name}
-                                                      href={`/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                {zone.name}
+                              </Link>
+                              <button 
+                                onClick={() => setExpandedRegion(isExpanded ? null : zone.name)}
+                                className="p-2 -mr-2 text-slate-400 hover:text-slate-600 transition-colors active:scale-90"
+                                aria-label={`Toggle ${zone.name} states`}
+                              >
+                                <ChevronDown className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />
+                              </button>
+                            </div>
+                            
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="p-4 pt-2 space-y-4">
+                                    {zone.states.map((state: any) => {
+                                      const subRegionKey = `india-${state.slug}`;
+                                      const isSubExpanded = expandedSubRegion === subRegionKey;
+                                      return (
+                                        <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                          <button 
+                                            onClick={() => toggleSubRegion(subRegionKey)}
+                                            className="w-full flex items-center justify-between py-2 text-left"
+                                          >
+                                            <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                              {state.title.toLowerCase().endsWith('tours') ? state.title : `${state.title} Tours`}
+                                            </span>
+                                            <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                          </button>
+                                          
+                                          <AnimatePresence>
+                                            {isSubExpanded && (
+                                              <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                              >
+                                                <div className="pt-2 pb-1">
+                                                  <div className="flex flex-wrap gap-2">
+                                                    <Link 
+                                                      href={`/${state.slug}-tour-packages`} 
                                                       onClick={onClose}
-                                                      className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                     >
-                                                      <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                                      <span>{item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}</span>
+                                                      <span>All {state.title} Packages</span>
                                                     </Link>
-                                                  ))}
+                                                    {state.items.map((item: any) => (
+                                                      <Link
+                                                        key={item.slug || item.name}
+                                                        href={`/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                                        onClick={onClose}
+                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      >
+                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                        <span>{item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}</span>
+                                                      </Link>
+                                                    ))}
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            </motion.div>
-                                          )}
-                                        </AnimatePresence>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )) : (
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      }) : (
                         <div className="p-8 text-center text-slate-400 text-sm">Loading destinations...</div>
                       )}
                       
@@ -402,83 +442,95 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       <span className="font-semibold text-slate-900 text-base">World Destinations</span>
                     </div>
                     <div className="p-4 space-y-3">
-                      {data?.worldRegions ? data.worldRegions.map((region: any) => (
-                        <div key={region.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
-                          <button 
-                            onClick={() => setExpandedRegion(expandedRegion === region.name ? null : region.name)}
-                            className="w-full flex items-center justify-between p-4 bg-white"
-                          >
-                            <span className="font-semibold text-slate-900">{region.name}</span>
-                            <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedRegion === region.name && "rotate-180")} />
-                          </button>
-                          
-                          <AnimatePresence>
-                            {expandedRegion === region.name && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden"
+                      {data?.worldRegions ? data.worldRegions.map((region: any) => {
+                        const regionSlug = region.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                        const isExpanded = expandedRegion === region.name;
+                        return (
+                          <div key={region.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                            <div className="w-full flex items-center justify-between p-4 bg-white relative">
+                              <Link 
+                                href={`/${regionSlug}-tour-packages`}
+                                onClick={onClose}
+                                className="flex-1 text-left font-semibold text-slate-900 hover:text-primary transition-colors"
                               >
-                                <div className="p-4 pt-2 space-y-4">
-                                  {region.countries.map((country: any) => {
-                                    const subRegionKey = `world-${country.slug}`;
-                                    const isSubExpanded = expandedSubRegion === subRegionKey;
-                                    return (
-                                      <div key={country.name} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
-                                        <button 
-                                          onClick={() => toggleSubRegion(subRegionKey)}
-                                          className="w-full flex items-center justify-between py-2 text-left"
-                                        >
-                                          <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
-                                            {country.name.toLowerCase().endsWith('tours') ? country.name : `${country.name} Tours`}
-                                          </span>
-                                          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
-                                        </button>
-                                        
-                                        <AnimatePresence>
-                                          {isSubExpanded && (
-                                            <motion.div
-                                              initial={{ height: 0, opacity: 0 }}
-                                              animate={{ height: "auto", opacity: 1 }}
-                                              exit={{ height: 0, opacity: 0 }}
-                                              className="overflow-hidden"
-                                            >
-                                              <div className="pt-2 pb-1">
-                                                <div className="flex flex-wrap gap-2">
-                                                  <Link 
-                                                    href={`/${country.slug}-tour-packages`} 
-                                                    onClick={onClose}
-                                                    className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
-                                                  >
-                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
-                                                    <span>All {country.name} Packages</span>
-                                                  </Link>
-                                                  {country.destinations && country.destinations.map((dest: any) => (
-                                                    <Link
-                                                      key={dest.slug || dest.name}
-                                                      href={`/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                {region.name}
+                              </Link>
+                              <button 
+                                onClick={() => setExpandedRegion(isExpanded ? null : region.name)}
+                                className="p-2 -mr-2 text-slate-400 hover:text-slate-600 transition-colors active:scale-90"
+                                aria-label={`Toggle ${region.name} countries`}
+                              >
+                                <ChevronDown className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />
+                              </button>
+                            </div>
+                            
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="p-4 pt-2 space-y-4">
+                                    {region.countries.map((country: any) => {
+                                      const subRegionKey = `world-${country.slug}`;
+                                      const isSubExpanded = expandedSubRegion === subRegionKey;
+                                      return (
+                                        <div key={country.name} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                          <button 
+                                            onClick={() => toggleSubRegion(subRegionKey)}
+                                            className="w-full flex items-center justify-between py-2 text-left"
+                                          >
+                                            <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                              {country.name.toLowerCase().endsWith('tours') ? country.name : `${country.name} Tours`}
+                                            </span>
+                                            <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                          </button>
+                                          
+                                          <AnimatePresence>
+                                            {isSubExpanded && (
+                                              <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                              >
+                                                <div className="pt-2 pb-1">
+                                                  <div className="flex flex-wrap gap-2">
+                                                    <Link 
+                                                      href={`/${country.slug}-tour-packages`} 
                                                       onClick={onClose}
-                                                      className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                     >
-                                                      <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                                      <span>{dest.name.toLowerCase().endsWith('tours') ? dest.name : `${dest.name} Tours`}</span>
+                                                      <span>All {country.name} Packages</span>
                                                     </Link>
-                                                  ))}
+                                                    {country.destinations && country.destinations.map((dest: any) => (
+                                                      <Link
+                                                        key={dest.slug || dest.name}
+                                                        href={`/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                                        onClick={onClose}
+                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      >
+                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                        <span>{dest.name.toLowerCase().endsWith('tours') ? dest.name : `${dest.name} Tours`}</span>
+                                                      </Link>
+                                                    ))}
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            </motion.div>
-                                          )}
-                                        </AnimatePresence>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )) : (
+                                              </motion.div>
+                                            )}
+                                          </AnimatePresence>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      }) : (
                         <div className="p-8 text-center text-slate-400 text-sm">Loading destinations...</div>
                       )}
                       
@@ -571,7 +623,6 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                               onClick={onClose}
                                                               className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                             >
-                                                              <Sparkles className="w-3 h-3 text-accent shrink-0" />
                                                               <span>All {state.title} Transport</span>
                                                             </Link>
                                                             {state.items && state.items.map((item: any) => {
@@ -657,7 +708,6 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                               onClick={onClose}
                                                               className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                             >
-                                                              <Sparkles className="w-3 h-3 text-accent shrink-0" />
                                                               <span>All {country.name} Transport</span>
                                                             </Link>
                                                             {country.destinations && country.destinations.map((dest: any) => (
@@ -771,7 +821,6 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                     onClick={onClose}
                                                     className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                   >
-                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
                                                     <span>All {state.title.toLowerCase().endsWith('hotels') ? state.title : `${state.title} Hotels`}</span>
                                                   </Link>
                                                   {state.items.map((item: any) => {
@@ -859,7 +908,6 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                     onClick={onClose}
                                                     className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                   >
-                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
                                                     <span>All {country.name.toLowerCase().endsWith('hotels') ? country.name : `${country.name} Hotels`}</span>
                                                   </Link>
                                                   {country.destinations && country.destinations.map((dest: any) => {

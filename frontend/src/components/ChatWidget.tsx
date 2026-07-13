@@ -486,7 +486,7 @@ export default function ChatWidget() {
           whileHover={{ scale: 1.07 }}
           whileTap={{ scale: 0.93 }}
           onClick={() => setIsOpen(o => !o)}
-          className="w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-grab active:cursor-grabbing z-10 bg-[#1B3A6B] text-[#F5A623]"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-grab active:cursor-grabbing z-10 bg-[#1B3A6B] text-[#F5A623]"
           aria-label="Toggle chat"
         >
           <AnimatePresence mode="wait">
@@ -497,7 +497,7 @@ export default function ChatWidget() {
                 animate={{ rotate: 0, opacity: 1 }} 
                 exit={{ rotate: 90, opacity: 0 }}
               >
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                <X className="w-6 h-6" />
               </motion.div>
             ) : (
               <motion.div 
@@ -507,7 +507,7 @@ export default function ChatWidget() {
                 exit={{ rotate: -90, opacity: 0 }}
                 className="animate-pulse"
               >
-                <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F5A623] text-[#F5A623]" />
+                <MessageCircle className="w-6 h-6 fill-[#F5A623] text-[#F5A623]" />
               </motion.div>
             )}
           </AnimatePresence>
