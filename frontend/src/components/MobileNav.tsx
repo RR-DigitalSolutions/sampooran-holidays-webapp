@@ -18,6 +18,11 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const [hotelsData, setHotelsData] = useState<any>(null);
   const [transportData, setTransportData] = useState<any>(null);
   const [expandedRegion, setExpandedRegion] = useState<string | null>(null);
+  const [expandedSubRegion, setExpandedSubRegion] = useState<string | null>(null);
+
+  const toggleSubRegion = (key: string) => {
+    setExpandedSubRegion(expandedSubRegion === key ? null : key);
+  };
 
   useEffect(() => {
     fetch("/api/destinations/mega-menu")
@@ -58,9 +63,15 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       setTimeout(() => {
         setView('main');
         setExpandedRegion(null);
+        setExpandedSubRegion(null);
       }, 300);
     }
   }, [isOpen]);
+
+  // Reset expanded subregion when the main region/view changes
+  useEffect(() => {
+    setExpandedSubRegion(null);
+  }, [expandedRegion, view]);
 
   const slideVariants: Variants = {
     initial: (direction: number) => ({
@@ -266,30 +277,58 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                 className="overflow-hidden"
                               >
                                 <div className="p-4 pt-2 space-y-4">
-                                  {zone.states.map((state: any) => (
-                                    <div key={state.title}>
-                                      <Link 
-                                        href={`/${state.slug}-tour-packages`} 
-                                        onClick={onClose}
-                                        className="text-[13px] font-semibold text-slate-900 hover:text-primary block mb-2"
-                                      >
-                                        {state.title.toLowerCase().endsWith('tours') ? state.title : `${state.title} Tours`}
-                                      </Link>
-                                      <div className="flex flex-wrap gap-2">
-                                        {state.items.map((item: any) => (
-                                          <Link
-                                            key={item.slug || item.name}
-                                            href={`/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
-                                            onClick={onClose}
-                                            className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
-                                          >
-                                            <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                            <span>{item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}</span>
-                                          </Link>
-                                        ))}
+                                  {zone.states.map((state: any) => {
+                                    const subRegionKey = `india-${state.slug}`;
+                                    const isSubExpanded = expandedSubRegion === subRegionKey;
+                                    return (
+                                      <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                        <button 
+                                          onClick={() => toggleSubRegion(subRegionKey)}
+                                          className="w-full flex items-center justify-between py-2 text-left"
+                                        >
+                                          <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                            {state.title.toLowerCase().endsWith('tours') ? state.title : `${state.title} Tours`}
+                                          </span>
+                                          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                        </button>
+                                        
+                                        <AnimatePresence>
+                                          {isSubExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              className="overflow-hidden"
+                                            >
+                                              <div className="pt-2 pb-1">
+                                                <div className="flex flex-wrap gap-2">
+                                                  <Link 
+                                                    href={`/${state.slug}-tour-packages`} 
+                                                    onClick={onClose}
+                                                    className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                  >
+                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                                                    <span>All {state.title} Packages</span>
+                                                  </Link>
+                                                  {state.items.map((item: any) => (
+                                                    <Link
+                                                      key={item.slug || item.name}
+                                                      href={`/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                                      onClick={onClose}
+                                                      className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                    >
+                                                      <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                      <span>{item.name.toLowerCase().endsWith('tours') ? item.name : `${item.name} Tours`}</span>
+                                                    </Link>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </motion.div>
                             )}
@@ -382,32 +421,58 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                 className="overflow-hidden"
                               >
                                 <div className="p-4 pt-2 space-y-4">
-                                  {region.countries.map((country: any) => (
-                                    <div key={country.name}>
-                                      <Link 
-                                        href={`/${country.slug}-tour-packages`} 
-                                        onClick={onClose}
-                                        className="text-[13px] font-bold text-primary block mb-2"
-                                      >
-                                        {country.name.toLowerCase().endsWith('tours') ? country.name : `${country.name} Tours`}
-                                      </Link>
-                                      {country.destinations && country.destinations.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                          {country.destinations.map((dest: any) => (
-                                            <Link
-                                              key={dest.slug || dest.name}
-                                              href={`/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
-                                              onClick={onClose}
-                                              className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                  {region.countries.map((country: any) => {
+                                    const subRegionKey = `world-${country.slug}`;
+                                    const isSubExpanded = expandedSubRegion === subRegionKey;
+                                    return (
+                                      <div key={country.name} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                        <button 
+                                          onClick={() => toggleSubRegion(subRegionKey)}
+                                          className="w-full flex items-center justify-between py-2 text-left"
+                                        >
+                                          <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                            {country.name.toLowerCase().endsWith('tours') ? country.name : `${country.name} Tours`}
+                                          </span>
+                                          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                        </button>
+                                        
+                                        <AnimatePresence>
+                                          {isSubExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              className="overflow-hidden"
                                             >
-                                              <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                              <span>{dest.name.toLowerCase().endsWith('tours') ? dest.name : `${dest.name} Tours`}</span>
-                                            </Link>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                              <div className="pt-2 pb-1">
+                                                <div className="flex flex-wrap gap-2">
+                                                  <Link 
+                                                    href={`/${country.slug}-tour-packages`} 
+                                                    onClick={onClose}
+                                                    className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                  >
+                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                                                    <span>All {country.name} Packages</span>
+                                                  </Link>
+                                                  {country.destinations && country.destinations.map((dest: any) => (
+                                                    <Link
+                                                      key={dest.slug || dest.name}
+                                                      href={`/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                                      onClick={onClose}
+                                                      className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                    >
+                                                      <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                      <span>{dest.name.toLowerCase().endsWith('tours') ? dest.name : `${dest.name} Tours`}</span>
+                                                    </Link>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </motion.div>
                             )}
@@ -476,34 +541,62 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                           className="overflow-hidden"
                                         >
                                           <div className="p-4 pt-2 space-y-4">
-                                            {zone.states && zone.states.map((state: any) => (
-                                              <div key={state.title}>
-                                                <Link
-                                                  href={`/transport?state=${state.slug}&country=india`}
-                                                  onClick={onClose}
-                                                  className="text-[13px] font-semibold text-slate-900 hover:text-primary block mb-2"
-                                                >
-                                                  🚗 {state.title} Transport
-                                                </Link>
-                                                <div className="flex flex-wrap gap-2">
-                                                  {state.items && state.items.map((item: any) => {
-                                                    const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/[^a-z0-9]+/g, '-') : item?.slug;
-                                                    const itemName = typeof item === 'string' ? item : item?.name;
-                                                    return (
-                                                      <Link
-                                                        key={itemSlug || itemName}
-                                                        href={`/transport?city=${itemSlug}&state=${state.slug}&country=india`}
-                                                        onClick={onClose}
-                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                            {zone.states && zone.states.map((state: any) => {
+                                              const subRegionKey = `transport-india-${state.slug}`;
+                                              const isSubExpanded = expandedSubRegion === subRegionKey;
+                                              return (
+                                                <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                                  <button
+                                                    onClick={() => toggleSubRegion(subRegionKey)}
+                                                    className="w-full flex items-center justify-between py-2 text-left"
+                                                  >
+                                                    <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                                      {state.title} Transport
+                                                    </span>
+                                                    <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                                  </button>
+                                                  
+                                                  <AnimatePresence>
+                                                    {isSubExpanded && (
+                                                      <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: "auto", opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="overflow-hidden"
                                                       >
-                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                                        <span>{itemName} Transport</span>
-                                                      </Link>
-                                                    );
-                                                  })}
+                                                        <div className="pt-2 pb-1">
+                                                          <div className="flex flex-wrap gap-2">
+                                                            <Link
+                                                              href={`/transport?state=${state.slug}&country=india`}
+                                                              onClick={onClose}
+                                                              className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                            >
+                                                              <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                                                              <span>All {state.title} Transport</span>
+                                                            </Link>
+                                                            {state.items && state.items.map((item: any) => {
+                                                              const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/[^a-z0-9]+/g, '-') : item?.slug;
+                                                              const itemName = typeof item === 'string' ? item : item?.name;
+                                                              return (
+                                                                <Link
+                                                                  key={itemSlug || itemName}
+                                                                  href={`/transport?city=${itemSlug}&state=${state.slug}&country=india`}
+                                                                  onClick={onClose}
+                                                                  className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                                >
+                                                                  <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                                  <span>{itemName} Transport</span>
+                                                                </Link>
+                                                              );
+                                                            })}
+                                                          </div>
+                                                        </div>
+                                                      </motion.div>
+                                                    )}
+                                                  </AnimatePresence>
                                                 </div>
-                                              </div>
-                                            ))}
+                                              );
+                                            })}
                                           </div>
                                         </motion.div>
                                       )}
@@ -534,32 +627,58 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                           className="overflow-hidden"
                                         >
                                           <div className="p-4 pt-2 space-y-4">
-                                            {region.countries && region.countries.map((country: any) => (
-                                              <div key={country.name}>
-                                                <Link
-                                                  href={`/transport?country=${country.slug}`}
-                                                  onClick={onClose}
-                                                  className="text-[13px] font-bold text-primary block mb-2"
-                                                >
-                                                  🚗 {country.name} Transport
-                                                </Link>
-                                                {country.destinations && country.destinations.length > 0 && (
-                                                  <div className="flex flex-wrap gap-2">
-                                                    {country.destinations.map((dest: any) => (
-                                                      <Link
-                                                        key={dest.slug || dest.name}
-                                                        href={`/transport?city=${dest.slug}&country=${country.slug}`}
-                                                        onClick={onClose}
-                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                            {region.countries && region.countries.map((country: any) => {
+                                              const subRegionKey = `transport-world-${country.slug}`;
+                                              const isSubExpanded = expandedSubRegion === subRegionKey;
+                                              return (
+                                                <div key={country.name} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                                  <button
+                                                    onClick={() => toggleSubRegion(subRegionKey)}
+                                                    className="w-full flex items-center justify-between py-2 text-left"
+                                                  >
+                                                    <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                                      {country.name} Transport
+                                                    </span>
+                                                    <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                                  </button>
+                                                  
+                                                  <AnimatePresence>
+                                                    {isSubExpanded && (
+                                                      <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: "auto", opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="overflow-hidden"
                                                       >
-                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                                        <span>{dest.name} Transport</span>
-                                                      </Link>
-                                                    ))}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ))}
+                                                        <div className="pt-2 pb-1">
+                                                          <div className="flex flex-wrap gap-2">
+                                                            <Link
+                                                              href={`/transport?country=${country.slug}`}
+                                                              onClick={onClose}
+                                                              className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                            >
+                                                              <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                                                              <span>All {country.name} Transport</span>
+                                                            </Link>
+                                                            {country.destinations && country.destinations.map((dest: any) => (
+                                                              <Link
+                                                                key={dest.slug || dest.name}
+                                                                href={`/transport?city=${dest.slug}&country=${country.slug}`}
+                                                                onClick={onClose}
+                                                                className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                              >
+                                                                <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                                <span>{dest.name} Transport</span>
+                                                              </Link>
+                                                            ))}
+                                                          </div>
+                                                        </div>
+                                                      </motion.div>
+                                                    )}
+                                                  </AnimatePresence>
+                                                </div>
+                                              );
+                                            })}
                                           </div>
                                         </motion.div>
                                       )}
@@ -622,40 +741,68 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                 className="overflow-hidden"
                               >
                                 <div className="p-4 pt-2 space-y-4">
-                                  {zone.states.map((state: any) => (
-                                    <div key={state.title}>
-                                      <Link 
-                                        href={`/hotels/india/${state.slug}`} 
-                                        onClick={onClose}
-                                        className="text-[13px] font-semibold text-slate-900 block mb-2"
-                                      >
-                                        {state.title.toLowerCase().endsWith('hotels') ? state.title : `${state.title} Hotels`}
-                                      </Link>
-                                      <div className="flex flex-wrap gap-2">
-                                        {state.items.map((item: any) => {
-                                          const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : item?.slug;
-                                          const stateSlug = item.stateSlug || state.slug;
-                                          const isStateItem = item.isState;
-                                          
-                                          const href = isStateItem
-                                            ? `/hotels/india/${itemSlug}`
-                                            : `/hotels/india/${stateSlug}/hotels-in-${itemSlug}`;
-
-                                          return (
-                                            <Link
-                                              key={itemSlug}
-                                              href={href}
-                                              onClick={onClose}
-                                              className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                  {zone.states.map((state: any) => {
+                                    const subRegionKey = `hotels-india-${state.slug}`;
+                                    const isSubExpanded = expandedSubRegion === subRegionKey;
+                                    return (
+                                      <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                        <button
+                                          onClick={() => toggleSubRegion(subRegionKey)}
+                                          className="w-full flex items-center justify-between py-2 text-left"
+                                        >
+                                          <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                            {state.title.toLowerCase().endsWith('hotels') ? state.title : `${state.title} Hotels`}
+                                          </span>
+                                          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                        </button>
+                                        
+                                        <AnimatePresence>
+                                          {isSubExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              className="overflow-hidden"
                                             >
-                                              <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                              <span>{item.name.toLowerCase().endsWith('hotels') ? item.name : `${item.name} Hotels`}</span>
-                                            </Link>
-                                          );
-                                        })}
+                                              <div className="pt-2 pb-1">
+                                                <div className="flex flex-wrap gap-2">
+                                                  <Link
+                                                    href={`/hotels/india/${state.slug}`}
+                                                    onClick={onClose}
+                                                    className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                  >
+                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                                                    <span>All {state.title.toLowerCase().endsWith('hotels') ? state.title : `${state.title} Hotels`}</span>
+                                                  </Link>
+                                                  {state.items.map((item: any) => {
+                                                    const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : item?.slug;
+                                                    const stateSlug = item.stateSlug || state.slug;
+                                                    const isStateItem = item.isState;
+                                                    
+                                                    const href = isStateItem
+                                                      ? `/hotels/india/${itemSlug}`
+                                                      : `/hotels/india/${stateSlug}/hotels-in-${itemSlug}`;
+
+                                                    return (
+                                                      <Link
+                                                        key={itemSlug}
+                                                        href={href}
+                                                        onClick={onClose}
+                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      >
+                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                        <span>{item.name.toLowerCase().endsWith('hotels') ? item.name : `${item.name} Hotels`}</span>
+                                                      </Link>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </motion.div>
                             )}
@@ -682,42 +829,68 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                 className="overflow-hidden"
                               >
                                 <div className="p-4 pt-2 space-y-4">
-                                  {region.countries.map((country: any) => (
-                                    <div key={country.name}>
-                                      <Link 
-                                        href={`/hotels/${country.slug}`} 
-                                        onClick={onClose}
-                                        className="text-[13px] font-semibold text-slate-900 block mb-2"
-                                      >
-                                        {country.name.toLowerCase().endsWith('hotels') ? country.name : `${country.name} Hotels`}
-                                      </Link>
-                                      {country.destinations && country.destinations.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                          {country.destinations.map((dest: any) => {
-                                            const destSlug = dest.slug;
-                                            const stateSlug = dest.stateSlug || "all";
-                                            const isStateItem = dest.isState;
+                                  {region.countries.map((country: any) => {
+                                    const subRegionKey = `hotels-world-${country.slug}`;
+                                    const isSubExpanded = expandedSubRegion === subRegionKey;
+                                    return (
+                                      <div key={country.name} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                        <button
+                                          onClick={() => toggleSubRegion(subRegionKey)}
+                                          className="w-full flex items-center justify-between py-2 text-left"
+                                        >
+                                          <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                            {country.name.toLowerCase().endsWith('hotels') ? country.name : `${country.name} Hotels`}
+                                          </span>
+                                          <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
+                                        </button>
+                                        
+                                        <AnimatePresence>
+                                          {isSubExpanded && (
+                                            <motion.div
+                                              initial={{ height: 0, opacity: 0 }}
+                                              animate={{ height: "auto", opacity: 1 }}
+                                              exit={{ height: 0, opacity: 0 }}
+                                              className="overflow-hidden"
+                                            >
+                                              <div className="pt-2 pb-1">
+                                                <div className="flex flex-wrap gap-2">
+                                                  <Link
+                                                    href={`/hotels/${country.slug}`}
+                                                    onClick={onClose}
+                                                    className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                  >
+                                                    <Sparkles className="w-3 h-3 text-accent shrink-0" />
+                                                    <span>All {country.name.toLowerCase().endsWith('hotels') ? country.name : `${country.name} Hotels`}</span>
+                                                  </Link>
+                                                  {country.destinations && country.destinations.map((dest: any) => {
+                                                    const destSlug = dest.slug;
+                                                    const stateSlug = dest.stateSlug || "all";
+                                                    const isStateItem = dest.isState;
 
-                                            const href = isStateItem
-                                              ? `/hotels/${country.slug}/${destSlug}`
-                                              : `/hotels/${country.slug}/${stateSlug}/hotels-in-${destSlug}`;
+                                                    const href = isStateItem
+                                                      ? `/hotels/${country.slug}/${destSlug}`
+                                                      : `/hotels/${country.slug}/${stateSlug}/hotels-in-${destSlug}`;
 
-                                            return (
-                                              <Link
-                                                key={destSlug}
-                                                href={href}
-                                                onClick={onClose}
-                                                className="group flex items-center gap-1.5 text-[12px] font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-colors"
-                                              >
-                                                <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
-                                                <span>{dest.name.toLowerCase().endsWith('hotels') ? dest.name : `${dest.name} Hotels`}</span>
-                                              </Link>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                                    return (
+                                                      <Link
+                                                        key={destSlug}
+                                                        href={href}
+                                                        onClick={onClose}
+                                                        className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                      >
+                                                        <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
+                                                        <span>{dest.name.toLowerCase().endsWith('hotels') ? dest.name : `${dest.name} Hotels`}</span>
+                                                      </Link>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            </motion.div>
+                                          )}
+                                        </AnimatePresence>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </motion.div>
                             )}
