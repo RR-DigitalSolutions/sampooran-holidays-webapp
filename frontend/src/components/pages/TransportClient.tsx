@@ -180,7 +180,27 @@ export default function TransportClient({ geoFilter, pageTitle }: TransportClien
         : `${API_BASE}/ota/transport`;
       const res = await fetch(url);
       const data = await res.json();
-      setVehicles(Array.isArray(data) && data.length > 0 ? data : DEMO_FLEET);
+      // ─── Normalize snake_case DB columns → camelCase props for VehicleCard ───
+      const normalize = (v: any) => ({
+        ...v,
+        // Geo slug fields (DB returns snake_case, VehicleCard needs camelCase)
+        countrySlug:     v.countrySlug     ?? v.country_slug     ?? "",
+        stateSlug:       v.stateSlug       ?? v.state_slug       ?? "",
+        destinationSlug: v.destinationSlug ?? v.destination_slug ?? (v.custom_city ? v.custom_city.toLowerCase().replace(/\s+/g, "-") : ""),
+        cityName:        v.cityName        ?? v.city_name        ?? v.custom_city ?? "",
+        // Price fields
+        pricePerDay:     v.pricePerDay     ?? v.base_price_per_day ?? v.minPrice ?? v.min_price ?? 0,
+        pricePerKm:      v.pricePerKm      ?? v.base_price_per_km  ?? v.basePricePerKm ?? 0,
+        // Capacity
+        capacity:        v.capacity        ?? v.seating_capacity ?? 4,
+        // Amenities
+        isAc:            v.isAc            ?? v.is_ac            ?? true,
+        // Owner / vendor
+        ownerName:       v.ownerName       ?? v.owner_name       ?? "",
+        businessName:    v.businessName    ?? v.business_name    ?? "",
+        rating:          v.rating          ?? v.avg_rating       ?? 4.5,
+      });
+      setVehicles(Array.isArray(data) && data.length > 0 ? data.map(normalize) : DEMO_FLEET);
 
       try {
         const routesRes = await fetch(`${API_BASE}/ota/routes`);

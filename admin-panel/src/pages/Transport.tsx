@@ -7,18 +7,9 @@ import {
   Save, Camera, Clock, Phone, Globe, Mail, AlertTriangle, TrendingUp, Info, DollarSign
 } from "lucide-react";
 import { getApiUrl } from "@/utils/api-url";
+import { useAuth } from "../context/AuthContext";
 
 const API_URL = getApiUrl();
-
-const getToken = () => {
-  try { return JSON.parse(localStorage.getItem("sh_admin_token") || "{}").token; }
-  catch { return ""; }
-};
-
-const authHeaders = () => ({
-  "Authorization": `Bearer ${getToken()}`,
-  "Content-Type": "application/json",
-});
 
 interface Vehicle {
   id: number;
@@ -96,6 +87,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 };
 
 export default function Transport() {
+  const { user } = useAuth();
+
+  // ── Always-fresh auth headers using React context token ──────────────────
+  const authHeaders = useCallback((): Record<string, string> => ({
+    "Authorization": `Bearer ${user?.token || ""}`,
+    "Content-Type": "application/json",
+  }), [user?.token]);
+
   const [activeTab, setActiveTab] = useState<"vendors" | "vehicles" | "bookings" | "routes" | "dashboard">("dashboard");
   const [stats, setStats] = useState<any>({
     totalVehicles: 0,
@@ -150,64 +149,76 @@ export default function Transport() {
     images: "",
     description: "",
     isFeatured: false,
-    status: "PENDING",
+    // Admin-created vehicles are immediately APPROVED and visible on the site
+    status: "APPROVED",
     customCity: "",
   });
 
+  // ── Stats: use admin vehicles + vendors endpoint instead of vendor dashboard ─
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/vendor/transport/dashboard`, { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
+      const [vRes, vendorRes] = await Promise.all([
+        fetch(`${API_URL}/admin/transport-vehicles`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/transport-vendors`,  { headers: authHeaders() }),
+      ]);
+      const [allVehicles, allVendors] = await Promise.all([
+        vRes.ok   ? vRes.json()      : [],
+        vendorRes.ok ? vendorRes.json() : [],
+      ]);
+      setStats({
+        totalVehicles:    allVehicles.length || 0,
+        approvedVehicles: (allVehicles as any[]).filter((v: any) => v.status === "APPROVED").length,
+        totalVendors:     allVendors.length || 0,
+        activeVendors:    (allVendors as any[]).filter((v: any) => v.status === "APPROVED").length,
+        pendingVehicles:  (allVehicles as any[]).filter((v: any) => v.status === "PENDING").length,
+        totalBookings:    0,
+        pendingBookings:  0,
+        totalRevenue:     0,
+        monthRevenue:     0,
+      });
     } catch (e) {
-      console.error(e);
+      console.error("[Transport] Stats fetch error:", e);
     }
-  }, []);
+  }, [authHeaders]);
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
     try {
       // Use admin endpoint so we get ALL vehicles (not just own vendor's)
       const res = await fetch(`${API_URL}/admin/transport-vehicles`, { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setVehicles(data);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        console.error("[Transport] fetchVehicles error:", err);
+      } else {
+        setVehicles(await res.json());
       }
     } catch (e) {
-      console.error(e);
+      console.error("[Transport] fetchVehicles network error:", e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authHeaders]);
 
   const fetchVendors = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/admin/transport-vendors`, { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setVendors(data);
-      }
+      if (res.ok) setVendors(await res.json());
     } catch (e) {
-      console.error(e);
+      console.error("[Transport] fetchVendors error:", e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authHeaders]);
 
   const fetchBookings = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/vendor/transport/bookings`, { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setBookings(data);
-      }
+      if (res.ok) setBookings(await res.json());
     } catch (e) {
-      console.error(e);
+      console.error("[Transport] fetchBookings error:", e);
     }
-  }, []);
+  }, [authHeaders]);
 
   const fetchRoutes = useCallback(async () => {
     try {
@@ -217,17 +228,19 @@ export default function Transport() {
         setRoutes(data.routes || []);
       }
     } catch (e) {
-      console.error(e);
+      console.error("[Transport] fetchRoutes error:", e);
     }
-  }, []);
+  }, [authHeaders]);
 
+  // Re-fetch when user token is available (avoids Invalid Token on first load)
   useEffect(() => {
+    if (!user?.token) return;
     fetchStats();
     if (activeTab === "vendors")  fetchVendors();
     if (activeTab === "vehicles") fetchVehicles();
     if (activeTab === "bookings") fetchBookings();
     if (activeTab === "routes")   fetchRoutes();
-  }, [activeTab, fetchStats, fetchVendors, fetchVehicles, fetchBookings, fetchRoutes]);
+  }, [activeTab, user?.token, fetchStats, fetchVendors, fetchVehicles, fetchBookings, fetchRoutes]);
 
   const updateVehicleStatus = async (id: number, status: string, isFeatured?: boolean) => {
     try {
@@ -321,7 +334,7 @@ export default function Transport() {
         year: new Date().getFullYear(), seatingCapacity: 4, luggageCapacity: 2,
         isAC: true, minPrice: 0, basePricePerKm: 0, basePricePerDay: 0,
         features: "", images: "", description: "", isFeatured: false,
-        status: "PENDING", customCity: "",
+        status: "APPROVED", customCity: "",
       });
       fetchVehicles();
       fetchStats();
@@ -639,6 +652,16 @@ export default function Transport() {
                   <input type="checkbox" id="vFeatured" checked={newVehicle.isFeatured} onChange={e => setNewVehicle(v => ({ ...v, isFeatured: e.target.checked }))} className="w-5 h-5 ml-4" />
                   <label htmlFor="vFeatured" className="text-sm font-medium text-gray-700">Featured</label>
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Publish Status</label>
+                  <select value={newVehicle.status} onChange={e => setNewVehicle(v => ({ ...v, status: e.target.value }))} className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-[#1B3A6B] bg-white text-sm">
+                    <option value="APPROVED">✅ Approved — Visible on site immediately</option>
+                    <option value="PENDING">⏳ Pending — Requires review before going live</option>
+                    <option value="DRAFT">📝 Draft — Save without publishing</option>
+                  </select>
+                  <p className="text-[10px] text-emerald-600 mt-1 font-medium">Admin-added vehicles are set to Approved by default — they appear on the website immediately.</p>
+                </div>
+
                 <div className="col-span-2">
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Features (comma-separated)</label>
                   <input value={newVehicle.features} onChange={e => setNewVehicle(v => ({ ...v, features: e.target.value }))}
