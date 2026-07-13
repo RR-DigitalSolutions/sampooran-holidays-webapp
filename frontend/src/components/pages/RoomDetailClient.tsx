@@ -366,6 +366,22 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
   const openMobileSheet = () => setMobileSheetOpen(true);
   const closeMobileSheet = () => setMobileSheetOpen(false);
 
+  const formatDateSafe = (dateStr: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const formatDateSafeShort = (dateStr: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   const handleDateClick = (dateStr: string, isSelectable: boolean) => {
     if (!isSelectable) return;
 
@@ -494,6 +510,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
     const totalGuests = c.adults + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0);
     return c.adults > (room.maxAdults || 2) || totalGuests > maxTotalPerRoom;
   });
+
   const renderInteractiveCalendar = (isCompact: boolean = false) => {
     if (loadingCalendar) {
       return (
@@ -1154,17 +1171,17 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
         </div>
 
 {/* RIGHT: Booking Engine (sticky) */}
-        <div className="hidden lg:block lg:w-[380px] space-y-4">
-          <div className="lg:sticky lg:top-[80px] space-y-4">
+        <div className="hidden lg:block lg:w-[380px] shrink-0">
+          <div className="lg:sticky lg:top-[80px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
             
             {/* Card 1: Rate Calendar Card */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-4">
+            <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Rate Calendar</p>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">Click dates to check-in/out</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-[#1B3A6B]">Rate Calendar</p>
+                  <p className="text-[10px] text-slate-500 font-medium">Click dates to check-in/out</p>
                 </div>
-                <div className="flex items-center gap-1 bg-slate-50 mb-0.5">
+                <div className="flex items-center gap-1 bg-slate-50/80 p-0.5 rounded border border-slate-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -1177,11 +1194,11 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                       currentMonth.getFullYear() === new Date().getFullYear() &&
                       currentMonth.getMonth() === new Date().getMonth()
                     }
-                    className="p-1 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold disabled:opacity-30"
+                    className="p-1 hover:bg-slate-200 rounded text-slate-600 disabled:opacity-30 text-[10px] font-bold"
                   >
                     &larr;
                   </button>
-                  <span className="text-xs font-bold text-slate-700 min-w-[70px] text-center font-mono">
+                  <span className="text-[10px] font-bold text-slate-700 min-w-[65px] text-center font-mono">
                     {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                   </span>
                   <button
@@ -1196,14 +1213,14 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                       currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getFullYear() &&
                       currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getMonth()
                     }
-                    className="p-1 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold disabled:opacity-30"
+                    className="p-1 hover:bg-slate-200 rounded text-slate-600 disabled:opacity-30 text-[10px] font-bold"
                   >
                     &rarr;
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1.5 uppercase tracking-wider">
+              <div className="grid grid-cols-7 text-center text-[9px] font-bold text-slate-400 border-b border-slate-100 pb-1 uppercase tracking-wider">
                 <div>Su</div>
                 <div>Mo</div>
                 <div>Tu</div>
@@ -1213,212 +1230,223 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                 <div>Sa</div>
               </div>
 
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-0.5">
                 {renderInteractiveCalendar(true)}
               </div>
 
               {/* Legend */}
-              <div className="flex flex-wrap items-center justify-between gap-y-1.5 pt-2 border-t border-slate-100 text-[8px] font-bold text-slate-500">
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#1B3A6B]" /> Selected</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-50 border border-emerald-250" /> Deal</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-50 border border-amber-250" /> Low Stock</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-slate-100 border border-slate-200" /> Sold</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-50 border border-rose-200" /> Block</span>
+              <div className="flex flex-wrap items-center justify-between gap-y-1 pt-1.5 border-t border-slate-100 text-[8px] font-bold text-slate-400">
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-[#1B3A6B]" /> Selected</span>
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-emerald-50 border border-emerald-250" /> Deal</span>
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-amber-50 border border-amber-250" /> Low Stock</span>
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-slate-100 border border-slate-200" /> Sold</span>
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded bg-rose-50 border border-rose-200" /> Block</span>
               </div>
             </div>
 
             {/* Card 2: Booking Engine Card */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-4">
+            <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs space-y-2.5">
               {/* Daily / Starting Rate Display */}
-              <div className="border-b border-slate-100 pb-3">
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">Starting from</p>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div>
+                  <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider leading-none">Starting Rate</p>
+                  {(() => {
+                    const displayDate = checkIn || new Date().toISOString().split("T")[0];
+                    const livePrice = getDailyPrice(displayDate);
+                    const originalPrice = getOriginalDailyPrice(displayDate);
+                    const savings = Math.max(0, originalPrice - livePrice);
+                    const hasLiveDiscount = savings > 0;
+                    return (
+                      <div className="flex items-baseline gap-1 mt-0.5 flex-wrap">
+                        {hasLiveDiscount && (
+                          <span className="text-[10px] text-slate-400 line-through font-medium">₹{Math.round(originalPrice).toLocaleString()}</span>
+                        )}
+                        <span className="text-xl font-black text-[#1B3A6B]">₹{Math.round(livePrice).toLocaleString()}</span>
+                        <span className="text-[9px] text-slate-400 font-bold">/night</span>
+                      </div>
+                    );
+                  })()}
+                </div>
                 {(() => {
                   const displayDate = checkIn || new Date().toISOString().split("T")[0];
                   const livePrice = getDailyPrice(displayDate);
                   const originalPrice = getOriginalDailyPrice(displayDate);
                   const savings = Math.max(0, originalPrice - livePrice);
                   const hasLiveDiscount = savings > 0;
-                  const discountBadge = hasLiveDiscount ? `Save ₹${Math.round(savings).toLocaleString()}` : null;
+                  if (!hasLiveDiscount) return null;
                   return (
-                    <div className="flex items-baseline gap-1.5 mt-1.5 flex-wrap">
-                      {hasLiveDiscount && (
-                        <span className="text-xs text-slate-400 line-through font-medium">₹{Math.round(originalPrice).toLocaleString()}</span>
-                      )}
-                      <span className="text-2xl font-black text-[#1B3A6B]">₹{Math.round(livePrice).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-400 font-bold">/night</span>
-                      {hasLiveDiscount && (
-                        <span className="text-[8px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded">
-                          {discountBadge}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-[8px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded shrink-0">
+                      Save ₹{Math.round(savings).toLocaleString()}
+                    </span>
                   );
                 })()}
               </div>
 
               {/* Dates view */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Check-in</span>
-                  <div className="h-10 rounded border border-slate-200 bg-slate-50/50 px-3 flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <div className="h-8.5 rounded border border-slate-200 bg-slate-50/50 px-2.5 flex items-center gap-1.5 text-xs font-bold text-slate-700">
                     <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
-                    <span>{checkIn ? new Date(checkIn).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Select above"}</span>
+                    <span className="truncate">{checkIn ? formatDateSafeShort(checkIn) : "Select date"}</span>
                   </div>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Check-out</span>
-                  <div className="h-10 rounded border border-slate-200 bg-slate-50/50 px-3 flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <div className="h-8.5 rounded border border-slate-200 bg-slate-50/50 px-2.5 flex items-center gap-1.5 text-xs font-bold text-slate-700">
                     <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
-                    <span>{checkOut ? new Date(checkOut).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Select above"}</span>
+                    <span className="truncate">{checkOut ? formatDateSafeShort(checkOut) : "Select date"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Guests Popover */}
-              <div className="space-y-1 relative">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Guests & Rooms</span>
-                <button
-                  onClick={() => setGuestPopoverOpen(!guestPopoverOpen)}
-                  className="w-full h-10 rounded border border-slate-200 bg-white text-slate-700 px-3 text-left text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-[#1B3A6B]" />
-                    {roomsConfig.length} Room{roomsConfig.length > 1 ? "s" : ""} · {roomsConfig.reduce((a, c) => a + c.adults, 0)} Adult{roomsConfig.reduce((a, c) => a + c.adults, 0) > 1 ? "s" : ""}
-                    {roomsConfig.reduce((a, c) => a + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0) > 0 && (
-                      <span>
-                        {" "}· {roomsConfig.reduce((a, c) => a + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0)} Child
+              {/* Guests & Meal Plan combined row */}
+              <div className={cn("gap-2", room.mealPlanOptions && room.mealPlanOptions.length > 0 ? "grid grid-cols-2" : "block")}>
+                {/* Guests Popover */}
+                <div className="space-y-0.5">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Guests & Rooms</span>
+                  <button
+                    type="button"
+                    onClick={() => setGuestPopoverOpen(!guestPopoverOpen)}
+                    className="w-full h-8.5 rounded border border-slate-200 bg-white text-slate-700 px-2 text-left text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-1.5 min-w-0 truncate">
+                      <Users className="w-3.5 h-3.5 text-[#1B3A6B] shrink-0" />
+                      <span className="truncate">
+                        {roomsConfig.length} R · {roomsConfig.reduce((a, c) => a + c.adults, 0)} A
                       </span>
-                    )}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
-                </button>
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </button>
+                </div>
 
-                {guestPopoverOpen && (
-                  <div ref={popoverRef} className="absolute z-[100] left-0 right-0 top-full mt-2 bg-white text-slate-800 rounded-xl border border-slate-200 shadow-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                      <h4 className="font-bold text-[10px] text-[#1B3A6B] uppercase tracking-wider">Occupancy Config</h4>
-                      <button onClick={() => setGuestPopoverOpen(false)} aria-label="Close occupancy panel" className="p-0.5 hover:bg-slate-100 rounded text-slate-400"><X className="w-3.5 h-3.5" /></button>
-                    </div>
-
-                    <div className="bg-sky-50 border border-sky-100 rounded-lg p-2 text-[9px] text-sky-700 font-medium leading-relaxed">
-                      Base rate covers {room.baseAdults ?? 2} adult{(room.baseAdults ?? 2) !== 1 ? "s" : ""}. Max room capacity: <span className="font-bold">{room.maxAdults || 2} adults + {room.maxChildren || 1} kids</span>.
-                    </div>
-
-                    <div className="max-h-52 overflow-y-auto space-y-2.5">
-                      {roomsConfig.map((config, index) => {
-                        const totalInRoom = config.adults + (config.childrenWithBed ?? 0) + (config.childrenWithoutBed ?? 0);
-                        const roomOverCapacity = config.adults > (room.maxAdults || 2) || totalInRoom > maxTotalPerRoom;
-                        return (
-                          <div key={index} className={`p-2.5 rounded-lg border space-y-2 ${roomOverCapacity ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-100"}`}>
-                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-700">
-                              <span>Room {index + 1}</span>
-                              <div className="flex items-center gap-1.5">
-                                {roomOverCapacity && <span className="text-[8px] text-rose-600 font-bold">Over Capacity</span>}
-                                {roomsConfig.length > 1 && (
-                                  <button onClick={() => setRoomsConfig(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 text-[9px] hover:underline">Remove</button>
-                                )}
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-1.5">
-                              {([
-                                { label: "Adults", key: "adults" as const, min: 1, max: room.maxAdults || 4 },
-                                { label: "Child (Bed)", key: "childrenWithBed" as const, min: 0, max: room.maxChildren || 3 },
-                                { label: "Child (No Bed)", key: "childrenWithoutBed" as const, min: 0, max: room.maxChildren || 3 },
-                              ]).map(({ label, key, min, max }) => (
-                                <div key={key} className="flex flex-col items-center justify-between bg-white p-1 rounded border border-slate-100 text-center">
-                                  <span className="text-[8px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
-                                  <div className="flex items-center gap-1 mt-auto">
-                                    <button
-                                      type="button"
-                                      onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.max(min, c[key] - 1) } : c))}
-                                      className="w-4.5 h-4.5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
-                                    >
-                                      -
-                                    </button>
-                                    <span className="text-[10px] font-bold w-3 text-center">{config[key] ?? 0}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => setRoomsConfig(prev => prev.map((c, i) =>
-                                        i === index ? { ...c, [key]: Math.min(max, c[key] + 1) } : c
-                                      ))}
-                                      className="w-4.5 h-4.5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {roomsConfig.length < 5 && (
-                      <button onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])} className="w-full text-[10px] font-bold py-1.5 border border-slate-200 rounded-lg text-[#1B3A6B] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1">
-                        <Plus className="w-3.5 h-3.5" /> Add Room
-                      </button>
-                    )}
+                {/* Meal plan selector */}
+                {room.mealPlanOptions && room.mealPlanOptions.length > 0 && (
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Meal Plan</span>
+                    <select
+                      value={selectedMealPlan}
+                      onChange={(e) => setSelectedMealPlan(e.target.value)}
+                      className="w-full h-8.5 rounded border border-slate-200 bg-white text-slate-700 px-1.5 text-xs font-bold focus:outline-none cursor-pointer"
+                    >
+                      <option value="">Room Only</option>
+                      {room.mealPlanOptions.map((option) => (
+                        <option key={option.code} value={option.code}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
 
-              {/* Meal plan selector */}
-              {room.mealPlanOptions && room.mealPlanOptions.length > 0 && (
-                <div className="space-y-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Meal Plan</span>
-                  <select
-                    value={selectedMealPlan}
-                    onChange={(e) => setSelectedMealPlan(e.target.value)}
-                    className="w-full h-10 rounded border border-slate-200 bg-white text-slate-700 px-3 text-xs font-bold focus:outline-none cursor-pointer"
-                  >
-                    <option value="">EP (Room Only)</option>
-                    {room.mealPlanOptions.map((option) => (
-                      <option key={option.code} value={option.code}>
-                        {option.label} {option.adultPrice ? `(+₹${option.adultPrice}/adult)` : ""}
-                      </option>
-                    ))}
-                  </select>
+              {/* Collapsible Occupancy configuration panel (inline inside the flow) */}
+              {guestPopoverOpen && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-2">
+                    <h4 className="font-bold text-[9px] text-[#1B3A6B] uppercase tracking-wider">Occupancy Config</h4>
+                    <button type="button" onClick={() => setGuestPopoverOpen(false)} aria-label="Close occupancy panel" className="p-0.5 hover:bg-slate-200 rounded text-slate-505"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+
+                  <div className="bg-sky-50 border border-sky-100 rounded p-1.5 text-[8px] text-sky-700 font-medium leading-normal mb-2">
+                    Base covers {room.baseAdults ?? 2} adults. Max: <span className="font-bold">{room.maxAdults || 2} adults + {room.maxChildren || 1} kids</span> per room.
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto space-y-2 mb-2 pr-0.5">
+                    {roomsConfig.map((config, index) => {
+                      const totalInRoom = config.adults + (config.childrenWithBed ?? 0) + (config.childrenWithoutBed ?? 0);
+                      const roomOverCapacity = config.adults > (room.maxAdults || 2) || totalInRoom > maxTotalPerRoom;
+                      return (
+                        <div key={index} className={`p-2 rounded-lg border space-y-1.5 ${roomOverCapacity ? "bg-rose-50 border-rose-200" : "bg-white border-slate-150"}`}>
+                          <div className="flex justify-between items-center text-[9px] font-bold text-slate-700">
+                            <span>Room {index + 1}</span>
+                            <div className="flex items-center gap-1.5">
+                              {roomOverCapacity && <span className="text-[7.5px] text-rose-600 font-bold">Over Capacity</span>}
+                              {roomsConfig.length > 1 && (
+                                <button type="button" onClick={() => setRoomsConfig(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 text-[8.5px] font-bold hover:underline">Remove</button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1">
+                            {([
+                              { label: "Adults", key: "adults" as const, min: 1, max: room.maxAdults || 4 },
+                              { label: "Child (Bed)", key: "childrenWithBed" as const, min: 0, max: room.maxChildren || 3 },
+                              { label: "Child (No Bed)", key: "childrenWithoutBed" as const, min: 0, max: room.maxChildren || 3 },
+                            ]).map(({ label, key, min, max }) => (
+                              <div key={key} className="flex flex-col items-center justify-between bg-slate-50/50 p-1 rounded border border-slate-100 text-center">
+                                <span className="text-[8px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
+                                <div className="flex items-center gap-1 mt-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.max(min, c[key] - 1) } : c))}
+                                    className="w-4 h-4 bg-white hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px] border border-slate-200 shadow-3xs"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="text-[9px] font-bold w-3 text-center">{config[key] ?? 0}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRoomsConfig(prev => prev.map((c, i) =>
+                                      i === index ? { ...c, [key]: Math.min(max, c[key] + 1) } : c
+                                    ))}
+                                    className="w-4 h-4 bg-white hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px] border border-slate-200 shadow-3xs"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {roomsConfig.length < 5 && (
+                    <button type="button" onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])} className="w-full text-[9px] font-bold py-1 border border-slate-200 bg-white rounded text-[#1B3A6B] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 shadow-3xs">
+                      <Plus className="w-3 h-3" /> Add Room
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* Price Breakdown */}
               {checkOut && (
-                <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
+                <div className="border-t border-slate-100 pt-2 space-y-1 text-[11px] text-slate-600">
                   <div className="flex justify-between">
-                    <span>Room base stay ({pricingBreakdown.nights} night(s) × {pricingBreakdown.roomsCount} room(s))</span>
+                    <span>Room stay ({pricingBreakdown.nights} n × {pricingBreakdown.roomsCount} r)</span>
                     <span className="text-slate-800 font-bold">₹{pricingBreakdown.baseTotal.toLocaleString()}</span>
                   </div>
                   {pricingBreakdown.extraAdultTotal > 0 && (
                     <div className="flex justify-between">
-                      <span>Extra adult charges</span>
+                      <span>Extra adults</span>
                       <span className="text-slate-800 font-bold">₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span>
                     </div>
                   )}
                   {pricingBreakdown.extraChildWithBedTotal > 0 && (
                     <div className="flex justify-between">
-                      <span>Child bed charges</span>
+                      <span>Child bed charge</span>
                       <span className="text-slate-800 font-bold">₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span>
                     </div>
                   )}
                   {pricingBreakdown.extraChildWithoutBedTotal > 0 && (
                     <div className="flex justify-between">
-                      <span>Child no bed charges</span>
+                      <span>Child no bed charge</span>
                       <span className="text-slate-800 font-bold">₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span>
                     </div>
                   )}
                   {pricingBreakdown.mealPlanTotal > 0 && (
                     <div className="flex justify-between">
-                      <span>Meal plan total</span>
+                      <span>Meal plan charge</span>
                       <span className="text-slate-800 font-bold">₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span>
                     </div>
                   )}
                   {pricingBreakdown.originalSubtotal > pricingBreakdown.subtotal && (
-                    <div className="flex justify-between text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100 font-bold text-[10px]">
-                      <span>Discount saved</span>
+                    <div className="flex justify-between text-rose-600 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100 font-bold text-[9px]">
+                      <span>Discount savings</span>
                       <span>-₹{(pricingBreakdown.originalSubtotal - pricingBreakdown.subtotal).toLocaleString()}</span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-1.5 border-t border-slate-100 font-bold text-slate-800 text-sm">
+                  <div className="flex justify-between pt-1 border-t border-slate-100 font-bold text-slate-800 text-xs">
                     <span>Subtotal</span>
                     <span>₹{pricingBreakdown.subtotal.toLocaleString()}</span>
                   </div>
@@ -1426,7 +1454,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                     <span>GST (12%)</span>
                     <span>₹{pricingBreakdown.gst.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between pt-2 border-t border-slate-100 font-black text-[#1B3A6B] text-base">
+                  <div className="flex justify-between pt-1.5 border-t border-slate-100 font-black text-[#1B3A6B] text-sm">
                     <span>Grand Total</span>
                     <span>₹{pricingBreakdown.grandTotal.toLocaleString()}</span>
                   </div>
@@ -1436,43 +1464,43 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
               {/* Book Now Button */}
               <div>
                 {isOccupancyExceeded ? (
-                  <div className="bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold p-3 rounded-lg text-center">
-                    Occupancy exceeds room limit.
+                  <div className="bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold p-2.5 rounded-lg text-center">
+                    Occupancy exceeds limit.
                   </div>
                 ) : !checkOut ? (
-                  <Button disabled className="w-full h-11 rounded-lg bg-slate-100 text-slate-400 font-bold uppercase tracking-wider text-xs">
-                    Select checkout date above
+                  <Button disabled className="w-full h-10 rounded-lg bg-slate-100 text-slate-400 font-bold uppercase tracking-wider text-xs">
+                    Select checkout date
                   </Button>
                 ) : (
-                  <Button onClick={handleBookNow} className="w-full h-11 rounded-lg bg-[#1B3A6B] hover:bg-[#152e55] text-white font-bold uppercase tracking-wider text-xs shadow-md">
+                  <Button onClick={handleBookNow} className="w-full h-10 rounded-lg bg-[#1B3A6B] hover:bg-[#152e55] text-white font-bold uppercase tracking-wider text-xs shadow-md">
                     Book Room Direct ⚡
                   </Button>
                 )}
               </div>
 
               {/* Inquiry & WhatsApp desk */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                <a href="tel:+918595513009" className="flex-1 h-10 rounded-lg border border-[#1B3A6B] font-bold text-xs text-[#1B3A6B] hover:bg-slate-50 flex items-center justify-center gap-1.5 transition-colors">
-                  <Phone className="w-3.5 h-3.5 text-[#1B3A6B]" /> Call Desk
+              <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                <a href="tel:+918595513009" className="flex-1 h-9 rounded-lg border border-[#1B3A6B] font-bold text-xs text-[#1B3A6B] hover:bg-slate-50 flex items-center justify-center gap-1 transition-colors">
+                  <Phone className="w-3 h-3 text-[#1B3A6B]" /> Call Desk
                 </a>
-                <button onClick={() => toast.success("Opening inquiry...")} className="flex-1 h-10 rounded-lg border border-slate-200 font-bold text-xs text-slate-700 hover:bg-slate-55 flex items-center justify-center gap-1.5 transition-colors">
-                  <MessageSquare className="w-3.5 h-3.5 text-slate-500" /> Custom Inquiry
+                <button onClick={() => toast.success("Opening inquiry...")} className="flex-1 h-9 rounded-lg border border-slate-200 font-bold text-xs text-slate-700 hover:bg-slate-55 flex items-center justify-center gap-1 transition-colors">
+                  <MessageSquare className="w-3 h-3 text-slate-500" /> Custom Inquiry
                 </button>
               </div>
-            </div>
 
-            {/* Card 3: Trust Badges */}
-            <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm grid grid-cols-3 gap-3 text-center">
-              {[
-                { icon: ShieldCheck, label: "Secure Booking", color: "text-emerald-500" },
-                { icon: Check, label: "Instant Confirm", color: "text-sky-500" },
-                { icon: Star, label: "Verified Stay", color: "text-amber-400" },
-              ].map((t, i) => (
-                <div key={i} className="flex flex-col items-center gap-1">
-                  <t.icon className={cn("w-5 h-5", t.color)} />
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{t.label}</span>
-                </div>
-              ))}
+              {/* Trust Badges merged here for absolute compactness */}
+              <div className="border-t border-slate-100 pt-2.5 mt-2.5 grid grid-cols-3 gap-2 text-center">
+                {[
+                  { icon: ShieldCheck, label: "Secure Pay", color: "text-emerald-500" },
+                  { icon: Check, label: "Instant Confirm", color: "text-sky-500" },
+                  { icon: Star, label: "Verified Stay", color: "text-amber-400" },
+                ].map((t, i) => (
+                  <div key={i} className="flex flex-col items-center gap-0.5">
+                    <t.icon className={cn("w-3.5 h-3.5", t.color)} />
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wide">{t.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
           </div>
@@ -1522,7 +1550,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
 {/* ─── Sticky Mobile Bottom Bar ─── */}
       {!mobileSheetOpen && (
         <div 
-          className="lg:hidden fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-2 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
+          className="lg:hidden fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
           style={{ bottom: "64px" }}
           onClick={openMobileSheet}
         >
@@ -1530,8 +1558,8 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
             {/* Price Info */}
             <div className="flex flex-col shrink-0 text-white">
               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">Starting From</span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-base font-black text-white leading-tight">
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-base font-black text-white leading-none">
                   ₹{(room.basePrice || 0).toLocaleString()}
                 </span>
                 <span className="text-[9px] text-slate-400 font-semibold">/night</span>
@@ -1557,219 +1585,242 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
       {/* Mobile Booking Bottom Sheet */}
       <div
         ref={sheetRef}
-        className="lg:hidden fixed left-0 right-0 bottom-0 z-50"
+        className="lg:hidden fixed left-0 right-0 bottom-0 z-50 bg-white rounded-t-2xl border-t-4 border-[#1B3A6B] shadow-2xl overflow-hidden flex flex-col"
+        style={{
+          height: '80vh',
+          transform: touchStartY.current !== null 
+            ? `translateY(${sheetTranslate}px)` 
+            : mobileSheetOpen 
+              ? 'translateY(0)' 
+              : 'translateY(100%)',
+          transition: touchStartY.current !== null 
+            ? 'none' 
+            : 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
         onTouchStart={onSheetTouchStart}
         onTouchMove={onSheetTouchMove}
         onTouchEnd={onSheetTouchEnd}
       >
-        <div className="h-full bg-white rounded-t-2xl border-t-4 border-[#1B3A6B] shadow-2xl overflow-hidden flex flex-col">
-          <div className="p-3 border-b border-slate-200 sheet-header cursor-row-resize select-none">
-            <div className="w-10 h-1.5 bg-slate-200 rounded mx-auto mb-2" />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-800">Booking & Price Details</p>
-                <p className="text-xs text-slate-500">Swipe down to close</p>
-              </div>
-              <button 
-                onClick={closeMobileSheet} 
-                className="text-slate-500 font-semibold text-xs py-1 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-              >
-                Close
-              </button>
+        {/* Header */}
+        <div className="p-3 border-b border-slate-200 sheet-header cursor-row-resize select-none shrink-0 bg-white">
+          <div className="w-10 h-1.5 bg-slate-200 rounded mx-auto mb-2" />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-800">Booking & Price Details</p>
+              <p className="text-xs text-slate-500">Swipe down to close</p>
             </div>
-          </div>
-
-          <div className="p-4 overflow-auto">
-            <div className="space-y-4">
-              
-              {/* Price Overview */}
-              <div className="flex items-baseline justify-between border-b border-slate-100 pb-2">
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase font-semibold">Subtotal</p>
-                  <p className="text-lg font-black text-slate-900">₹{pricingBreakdown.subtotal.toLocaleString()}</p>
-                  <p className="text-[11px] text-slate-400">{pricingBreakdown.nights} night(s) · {pricingBreakdown.roomsCount} room(s)</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#1B3A6B]">₹{pricingBreakdown.grandTotal.toLocaleString()}</p>
-                  <p className="text-[11px] text-slate-400">Grand Total (GST Incl.)</p>
-                </div>
-              </div>
-
-              {/* Price Details breakdown */}
-              {checkOut && (
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5 text-xs text-slate-600">
-                  <div className="flex justify-between"><span>Base stay cost</span><span>₹{pricingBreakdown.baseTotal.toLocaleString()}</span></div>
-                  {pricingBreakdown.extraAdultTotal > 0 && <div className="flex justify-between"><span>Extra adults</span><span>₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span></div>}
-                  {pricingBreakdown.extraChildWithBedTotal > 0 && <div className="flex justify-between"><span>Extra child (with bed)</span><span>₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span></div>}
-                  {pricingBreakdown.extraChildWithoutBedTotal > 0 && <div className="flex justify-between"><span>Child sharing (no bed)</span><span>₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span></div>}
-                  {pricingBreakdown.mealPlanTotal > 0 && <div className="flex justify-between"><span>Meal plan ({pricingBreakdown.selectedPlanObj.label})</span><span>₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span></div>}
-                  <div className="flex justify-between font-bold pt-2 border-t border-slate-200/80 text-slate-800"><span>GST (12%)</span><span>₹{pricingBreakdown.gst.toLocaleString()}</span></div>
-                </div>
-              )}
-
-              {/* Mobile Guest Configuration */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Configure Guests</span>
-                  <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-500">
-                    Rooms: {roomsConfig.length}
-                  </span>
-                </div>
-                <div className="max-h-40 overflow-y-auto space-y-2">
-                  {roomsConfig.map((config, index) => {
-                    const totalInRoom = config.adults + (config.childrenWithBed ?? 0) + (config.childrenWithoutBed ?? 0);
-                    const roomOverCapacity = config.adults > (room.maxAdults || 2) || totalInRoom > maxTotalPerRoom;
-                    return (
-                      <div key={index} className={`p-2.5 rounded-lg border space-y-1.5 ${roomOverCapacity ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-105"}`}>
-                        <div className="flex justify-between items-center text-[10px] font-bold text-slate-700">
-                          <span>Room {index + 1}</span>
-                          <div className="flex items-center gap-2">
-                            {roomsConfig.length > 1 && (
-                              <button type="button" onClick={() => setRoomsConfig(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 text-[9px] hover:underline">Remove</button>
-                            )}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1">
-                          {([
-                            { label: "Adults", key: "adults" as const, min: 1, max: room.maxAdults || 4 },
-                            { label: "Child (Bed)", key: "childrenWithBed" as const, min: 0, max: room.maxChildren || 3 },
-                            { label: "Child (No Bed)", key: "childrenWithoutBed" as const, min: 0, max: room.maxChildren || 3 },
-                          ] as const).map(({ label, key, min, max }) => (
-                            <div key={key} className="flex flex-col items-center justify-between bg-white p-1 rounded border border-slate-105 text-center">
-                              <span className="text-[8px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
-                              <div className="flex items-center gap-1 mt-auto">
-                                <button
-                                  type="button"
-                                  onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.max(min, c[key] - 1) } : c))}
-                                  className="w-4 h-4 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
-                                >
-                                  -
-                                </button>
-                                <span className="text-[9px] font-bold w-3 text-center">{config[key] ?? 0}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setRoomsConfig(prev => prev.map((c, i) =>
-                                    i === index ? { ...c, [key]: Math.min(max, c[key] + 1) } : c
-                                  ))}
-                                  className="w-4 h-4 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {roomsConfig.length < 5 && (
-                  <button onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])} className="w-full text-[9px] font-bold py-1 border border-slate-200 rounded-lg text-[#1B3A6B] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1">
-                    <Plus className="w-3.5 h-3.5" /> Add Room
-                  </button>
-                )}
-              </div>
-
-              {/* Mobile Calendar Date-Picker Widget */}
-              <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Rate Calendar</span>
-                  <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const today = new Date();
-                        const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                        const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-                        if (prev >= minMonth) setCurrentMonth(prev);
-                      }}
-                      disabled={
-                        currentMonth.getFullYear() === new Date().getFullYear() &&
-                        currentMonth.getMonth() === new Date().getMonth()
-                      }
-                      className="p-1 hover:bg-slate-250 rounded disabled:opacity-30 text-[10px] font-bold"
-                    >
-                      &larr;
-                    </button>
-                    <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
-                      {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const today = new Date();
-                        const maxMonth = new Date(today.getFullYear(), today.getMonth() + 5, 1);
-                        const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-                        if (next <= maxMonth) setCurrentMonth(next);
-                      }}
-                      disabled={
-                        currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getFullYear() &&
-                        currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getMonth()
-                      }
-                      className="p-1 hover:bg-slate-250 rounded disabled:opacity-30 text-[10px] font-bold"
-                    >
-                      &rarr;
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-bold text-slate-400 uppercase border-b border-slate-50 pb-1">
-                  <div>Su</div>
-                  <div>Mo</div>
-                  <div>Tu</div>
-                  <div>We</div>
-                  <div>Th</div>
-                  <div>Fr</div>
-                  <div>Sa</div>
-                </div>
-
-                <div className="grid grid-cols-7 gap-0.5">
-                  {renderInteractiveCalendar(true)}
-                </div>
-              </div>
-
-              {/* Meal Plan selector for mobile */}
-              {room.mealPlanOptions && room.mealPlanOptions.length > 0 && (
-                <div className="space-y-1">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Meal Plan Option</label>
-                  <select
-                    value={selectedMealPlan}
-                    onChange={(e) => setSelectedMealPlan(e.target.value)}
-                    className="w-full h-11 rounded-lg border border-slate-200 bg-white text-slate-700 px-3 text-xs font-bold focus:outline-none"
-                  >
-                    <option value="">EP (Room Only)</option>
-                    {room.mealPlanOptions.map((option: MealPlanOption) => (
-                      <option key={option.code} value={option.code}>
-                        {option.label} {option.adultPrice ? `(+₹${option.adultPrice}/adult)` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Book stay CTA */}
-              <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-105">
-                {isOccupancyExceeded ? (
-                  <div className="col-span-2 bg-rose-50 text-rose-600 text-xs font-bold p-3 rounded-lg text-center">
-                    Guest count exceeds capacity limit.
-                  </div>
-                ) : !checkOut ? (
-                  <Button disabled className="w-full h-11 rounded-lg bg-slate-100 text-slate-400 font-bold uppercase tracking-wider text-xs">
-                    Select Dates
-                  </Button>
-                ) : (
-                  <Button onClick={(e) => handleBookNow(e)} className="w-full h-11 rounded-lg bg-[#1B3A6B] hover:bg-[#152e55] text-white font-bold uppercase tracking-wider text-xs shadow-md">
-                    Book Room ⚡
-                  </Button>
-                )}
-                <a href="tel:+918595513009" className="h-11 rounded-lg border border-slate-200 font-bold text-xs text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5 transition-colors">
-                  <Phone className="w-3.5 h-3.5 text-[#1B3A6B]" /> Call Desk
-                </a>
-              </div>
-
-            </div>
+            <button 
+              onClick={closeMobileSheet} 
+              className="text-slate-500 font-semibold text-xs py-1 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              Close
+            </button>
           </div>
         </div>
+
+        {/* Content (Scrollable) */}
+        <div className="p-4 overflow-y-auto flex-1 pb-24 space-y-4">
+          
+          {/* Price Overview */}
+          <div className="flex items-baseline justify-between border-b border-slate-100 pb-2">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase font-semibold">Subtotal</p>
+              <p className="text-lg font-black text-slate-900">₹{pricingBreakdown.subtotal.toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400">{pricingBreakdown.nights} night(s) · {pricingBreakdown.roomsCount} room(s)</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-[#1B3A6B]">₹{pricingBreakdown.grandTotal.toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400">Grand Total (GST Incl.)</p>
+            </div>
+          </div>
+
+          {/* Stay Dates Overview Bar */}
+          <div className="bg-[#1B3A6B]/5 border border-[#1B3A6B]/10 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+              <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
+              <span>{checkIn ? formatDateSafe(checkIn) : "Select Check-in"}</span>
+            </div>
+            <span className="text-[#1B3A6B]/40 font-bold">➔</span>
+            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+              <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
+              <span>{checkOut ? formatDateSafe(checkOut) : "Select Check-out"}</span>
+            </div>
+          </div>
+
+          {/* Price Details breakdown */}
+          {checkOut && (
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5 text-xs text-slate-600">
+              <div className="flex justify-between"><span>Base stay cost</span><span>₹{pricingBreakdown.baseTotal.toLocaleString()}</span></div>
+              {pricingBreakdown.extraAdultTotal > 0 && <div className="flex justify-between"><span>Extra adults</span><span>₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span></div>}
+              {pricingBreakdown.extraChildWithBedTotal > 0 && <div className="flex justify-between"><span>Extra child (with bed)</span><span>₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span></div>}
+              {pricingBreakdown.extraChildWithoutBedTotal > 0 && <div className="flex justify-between"><span>Child sharing (no bed)</span><span>₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span></div>}
+              {pricingBreakdown.mealPlanTotal > 0 && <div className="flex justify-between"><span>Meal plan ({pricingBreakdown.selectedPlanObj.label})</span><span>₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span></div>}
+              <div className="flex justify-between font-bold pt-2 border-t border-slate-205 text-slate-800"><span>GST (12%)</span><span>₹{pricingBreakdown.gst.toLocaleString()}</span></div>
+            </div>
+          )}
+
+          {/* Mobile Guest Configuration */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Configure Guests</span>
+              <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-500">
+                Rooms: {roomsConfig.length}
+              </span>
+            </div>
+            <div className="max-h-40 overflow-y-auto space-y-2">
+              {roomsConfig.map((config, index) => {
+                const totalInRoom = config.adults + (config.childrenWithBed ?? 0) + (config.childrenWithoutBed ?? 0);
+                const roomOverCapacity = config.adults > (room.maxAdults || 2) || totalInRoom > maxTotalPerRoom;
+                return (
+                  <div key={index} className={`p-2.5 rounded-lg border space-y-1.5 ${roomOverCapacity ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-105"}`}>
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-700">
+                      <span>Room {index + 1}</span>
+                      <div className="flex items-center gap-2">
+                        {roomsConfig.length > 1 && (
+                          <button type="button" onClick={() => setRoomsConfig(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 text-[9px] hover:underline">Remove</button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {([
+                        { label: "Adults", key: "adults" as const, min: 1, max: room.maxAdults || 4 },
+                        { label: "Child (Bed)", key: "childrenWithBed" as const, min: 0, max: room.maxChildren || 3 },
+                        { label: "Child (No Bed)", key: "childrenWithoutBed" as const, min: 0, max: room.maxChildren || 3 },
+                      ] as const).map(({ label, key, min, max }) => (
+                        <div key={key} className="flex flex-col items-center justify-between bg-white p-1 rounded border border-slate-105 text-center">
+                          <span className="text-[8px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
+                          <div className="flex items-center gap-1 mt-auto">
+                            <button
+                              type="button"
+                              onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.max(min, c[key] - 1) } : c))}
+                              className="w-4 h-4 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
+                            >
+                              -
+                            </button>
+                            <span className="text-[9px] font-bold w-3 text-center">{config[key] ?? 0}</span>
+                            <button
+                              type="button"
+                              onClick={() => setRoomsConfig(prev => prev.map((c, i) =>
+                                i === index ? { ...c, [key]: Math.min(max, c[key] + 1) } : c
+                              ))}
+                              className="w-4 h-4 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {roomsConfig.length < 5 && (
+              <button onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])} className="w-full text-[9px] font-bold py-1 border border-slate-200 rounded-lg text-[#1B3A6B] hover:bg-slate-55 transition-colors flex items-center justify-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Add Room
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Calendar Date-Picker Widget */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Rate Calendar</span>
+              <div className="flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date();
+                    const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+                    if (prev >= minMonth) setCurrentMonth(prev);
+                  }}
+                  disabled={
+                    currentMonth.getFullYear() === new Date().getFullYear() &&
+                    currentMonth.getMonth() === new Date().getMonth()
+                  }
+                  className="p-1 hover:bg-slate-250 rounded disabled:opacity-30 text-[10px] font-bold"
+                >
+                  &larr;
+                </button>
+                <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
+                  {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date();
+                    const maxMonth = new Date(today.getFullYear(), today.getMonth() + 5, 1);
+                    const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+                    if (next <= maxMonth) setCurrentMonth(next);
+                  }}
+                  disabled={
+                    currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getFullYear() &&
+                    currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getMonth()
+                  }
+                  className="p-1 hover:bg-slate-250 rounded disabled:opacity-30 text-[10px] font-bold"
+                >
+                  &rarr;
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-bold text-slate-400 uppercase border-b border-slate-55 pb-1">
+              <div>Su</div>
+              <div>Mo</div>
+              <div>Tu</div>
+              <div>We</div>
+              <div>Th</div>
+              <div>Fr</div>
+              <div>Sa</div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-0.5">
+              {renderInteractiveCalendar(true)}
+            </div>
+          </div>
+
+          {/* Meal Plan selector for mobile */}
+          {room.mealPlanOptions && room.mealPlanOptions.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Meal Plan Option</label>
+              <select
+                value={selectedMealPlan}
+                onChange={(e) => setSelectedMealPlan(e.target.value)}
+                className="w-full h-11 rounded-lg border border-slate-200 bg-white text-slate-700 px-3 text-xs font-bold focus:outline-none"
+              >
+                <option value="">EP (Room Only)</option>
+                {room.mealPlanOptions.map((option: MealPlanOption) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label} {option.adultPrice ? `(+₹${option.adultPrice}/adult)` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+        </div>
+
+        {/* Sticky Footer CTA Bar */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 z-30 shrink-0 grid grid-cols-2 gap-2">
+          {isOccupancyExceeded ? (
+            <div className="col-span-2 bg-rose-50 text-rose-600 text-xs font-bold p-2.5 rounded-lg text-center">
+              Guest count exceeds capacity limit.
+            </div>
+          ) : !checkOut ? (
+            <Button disabled className="w-full h-10 rounded-lg bg-slate-100 text-slate-400 font-bold uppercase tracking-wider text-xs">
+              Select Stay Dates
+            </Button>
+          ) : (
+            <Button onClick={(e) => handleBookNow(e)} className="w-full h-10 rounded-lg bg-[#1B3A6B] hover:bg-[#152e55] text-white font-bold uppercase tracking-wider text-xs shadow-md">
+              Book Room ⚡
+            </Button>
+          )}
+          <a href="tel:+918595513009" className="h-10 rounded-lg border border-slate-200 font-bold text-xs text-slate-700 hover:bg-slate-55 flex items-center justify-center gap-1.5 transition-colors">
+            <Phone className="w-3.5 h-3.5 text-[#1B3A6B]" /> Call Desk
+          </a>
+        </div>
+
       </div>
 
     </div>
