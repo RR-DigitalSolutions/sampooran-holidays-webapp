@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Users, Briefcase, Compass, Star, MapPin, ChevronLeft, ChevronRight,
-  ShieldCheck, Award, Calendar, Phone, MessageCircle, Fuel, Thermometer,
+  ShieldCheck, Award, Calendar, Phone, MessageSquare, Fuel, Thermometer,
   Gauge, CheckCircle2, Clock, ArrowRight, Share2, Heart, BadgeCheck,
-  Zap, Navigation, Car, X, Shield
+  Zap, Navigation, Car, X, Plus, MessageCircle, HelpCircle, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import type { DemoVehicle } from "@/lib/demo-fleet";
 
 interface VehicleDetailClientProps {
@@ -31,10 +34,10 @@ const SAFETY_CHECKS = [
 ];
 
 const categoryLabel: Record<string, { label: string; color: string }> = {
-  economy: { label: "Economy", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-  standard: { label: "Standard", color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  premium: { label: "Premium", color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-  luxury: { label: "Luxury", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+  economy: { label: "Economy", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+  standard: { label: "Standard", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  premium: { label: "Premium", color: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  luxury: { label: "Luxury", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
 };
 
 export default function VehicleDetailClient({
@@ -43,10 +46,27 @@ export default function VehicleDetailClient({
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
-  const [tripDate, setTripDate] = useState("");
-  const [pickup, setPickup] = useState("");
-  const [drop, setDrop] = useState("");
+
+  // Dynamic Fare Estimator State
+  const [tripType, setTripType] = useState<"oneway" | "roundtrip" | "local">("roundtrip");
+  const [pickupDate, setPickupDate] = useState("");
+  const [pickupTime, setPickupTime] = useState("10:00");
+  const [returnDate, setReturnDate] = useState("");
+  const [estKm, setEstKm] = useState<number>(250);
+  const [pickupAddr, setPickupAddr] = useState("");
+  const [dropAddr, setDropAddr] = useState("");
   const [bookingSubmitted, setBookingSubmitted] = useState(false);
+
+  // Mobile drawer panel state
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [sheetTranslate, setSheetTranslate] = useState(0);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const sheetHeightRef = useRef<number>(600);
+  const touchStartY = useRef<number | null>(null);
+  const startTranslate = useRef<number>(0);
+
+  const openMobileSheet = () => setMobileSheetOpen(true);
+  const closeMobileSheet = () => setMobileSheetOpen(false);
 
   if (!vehicle) {
     return (
@@ -74,10 +94,115 @@ export default function VehicleDetailClient({
   const prevImage = () => setActiveImageIdx(i => (i - 1 + images.length) % images.length);
   const nextImage = () => setActiveImageIdx(i => (i + 1) % images.length);
 
-  return (
-    <div className="bg-slate-50 min-h-screen font-sans">
+  // Calculate rental duration in days
+  const calculateDays = () => {
+    if (tripType !== "roundtrip") return 1;
+    if (!pickupDate || !returnDate) return 1;
+    const start = new Date(pickupDate);
+    const end = new Date(returnDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return 1;
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays);
+  };
 
-      {/* ── Lightbox ── */}
+  const rentalDays = calculateDays();
+
+  // Minimim guarantee km rule defaults
+  const getDefaultKm = (type: "oneway" | "roundtrip" | "local", days: number) => {
+    if (type === "oneway") return 100;
+    if (type === "local") return 80;
+    return days * 250;
+  };
+
+  // Sync km limits when selection changes
+  useEffect(() => {
+    setEstKm(getDefaultKm(tripType, rentalDays));
+  }, [tripType, rentalDays]);
+
+  const displayKm = estKm || getDefaultKm(tripType, rentalDays);
+  const baseRate = vehicle.pricePerDay;
+  const kmRate = vehicle.pricePerKm;
+
+  // Pricing calculations
+  const basePriceTotal = baseRate * rentalDays;
+  const coveredKm = getDefaultKm(tripType, rentalDays);
+  const extraKm = Math.max(0, displayKm - coveredKm);
+  const extraKmCharges = extraKm * kmRate;
+  const driverAllowance = tripType === "local" ? 250 : 400 * rentalDays;
+  const stateTaxEstimate = tripType === "local" ? 0 : 350 * rentalDays;
+
+  const originalBaseTotal = basePriceTotal + extraKmCharges + driverAllowance + stateTaxEstimate;
+  const discountPercent = vehicle.category === "luxury" ? 5 : 10;
+  const discountAmount = Math.round((originalBaseTotal * discountPercent) / 100);
+
+  const subtotal = originalBaseTotal - discountAmount;
+  const gst = Math.round((subtotal * 5) / 100); // 5% GST for transportation
+  const grandTotal = subtotal + gst;
+
+  const handleBookNow = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pickupDate) {
+      toast.error("Please select a trip start date.");
+      return;
+    }
+    if (!pickupAddr || !dropAddr) {
+      toast.error("Please fill in both pickup address and drop location.");
+      return;
+    }
+    setBookingSubmitted(true);
+    toast.success("Logistics request submitted successfully!");
+  };
+
+  // Date parsing safely
+  const formatDateSafe = (dateStr: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const formatDateSafeShort = (dateStr: string) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  // Drag handlers for mobile drawer sheet
+  const onSheetTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartY.current = touch.clientY;
+    startTranslate.current = mobileSheetOpen ? 0 : (sheetHeightRef.current || 600);
+  };
+
+  const onSheetTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const touch = e.touches[0];
+    const diff = touch.clientY - touchStartY.current;
+    if (diff > 0) {
+      setSheetTranslate(diff);
+    }
+  };
+
+  const onSheetTouchEnd = () => {
+    if (touchStartY.current == null) return;
+    const threshold = (sheetHeightRef.current || 600) / 3;
+    if (sheetTranslate > threshold) {
+      setMobileSheetOpen(false);
+    } else {
+      setMobileSheetOpen(true);
+    }
+    setSheetTranslate(0);
+    touchStartY.current = null;
+  };
+
+  return (
+    <div className="bg-slate-50 min-h-screen font-sans antialiased text-slate-850 pb-16 lg:pb-0">
+      
+      {/* ── Lightbox Modal ── */}
       <AnimatePresence>
         {lightboxOpen && (
           <motion.div
@@ -96,20 +221,20 @@ export default function VehicleDetailClient({
             <img
               src={images[activeImageIdx]}
               alt={vehicle.name}
-              className="max-h-[85vh] max-w-full object-contain rounded-lg"
+              className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl"
               onClick={e => e.stopPropagation()}
             />
             <button className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white p-2" onClick={e => { e.stopPropagation(); nextImage(); }}>
               <ChevronRight className="w-8 h-8" />
             </button>
-            <p className="absolute bottom-4 text-white/50 text-sm font-medium">
+            <p className="absolute bottom-4 text-white/50 text-xs font-bold font-mono">
               {activeImageIdx + 1} / {images.length}
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Sub Header / Breadcrumb Sticky bar ── */}
+      {/* ── Breadcrumbs Sticky Header ── */}
       <div className="bg-white border-b border-slate-200/60 sticky top-14 md:top-[74px] z-40">
         <div className="container mx-auto px-4 h-12 flex items-center justify-between gap-4">
           <nav className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-widest font-black overflow-hidden">
@@ -124,13 +249,22 @@ export default function VehicleDetailClient({
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => setWishlisted(!wishlisted)}
-              className={`p-2 rounded-xl border transition-all ${wishlisted ? "bg-red-50 border-red-200 text-red-500" : "border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-400"}`}
+              onClick={() => {
+                setWishlisted(!wishlisted);
+                toast.success(wishlisted ? "Removed from wishlist" : "Saved to wishlist!");
+              }}
+              className={cn(
+                "p-2 rounded-xl border transition-all",
+                wishlisted ? "bg-red-50 border-red-200 text-red-500" : "border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-400"
+              )}
             >
-              <Heart className={`w-3.5 h-3.5 ${wishlisted ? "fill-red-500" : ""}`} />
+              <Heart className={cn("w-3.5 h-3.5", wishlisted && "fill-red-500")} />
             </button>
             <button
-              onClick={() => navigator.share?.({ title: vehicle.name, url: window.location.href })}
+              onClick={() => {
+                navigator.share?.({ title: vehicle.name, url: window.location.href });
+                toast.success("Shared successfully!");
+              }}
               className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:border-primary hover:text-primary transition-all"
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -143,10 +277,10 @@ export default function VehicleDetailClient({
       <div className="container mx-auto px-4 py-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
-          {/* LEFT: Content (8 columns) */}
+          {/* LEFT: Content Panel (8 columns) */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* Gallery card with overlay navigation */}
+            {/* Gallery Frame */}
             <div className="bg-white border border-slate-200/60 rounded-3xl p-3 shadow-sm">
               <div
                 className="relative w-full rounded-2xl overflow-hidden bg-slate-900 cursor-zoom-in group"
@@ -172,29 +306,29 @@ export default function VehicleDetailClient({
                       onClick={e => { e.stopPropagation(); prevImage(); }}
                       className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70 transition-colors z-10"
                     >
-                      <ChevronLeft className="w-5.5 h-5.5" />
+                      <ChevronLeft className="w-5 h-5" />
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); nextImage(); }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70 transition-colors z-10"
                     >
-                      <ChevronRight className="w-5.5 h-5.5" />
+                      <ChevronRight className="w-5 h-5" />
                     </button>
                   </>
                 )}
 
                 <div className="absolute top-4 left-4 flex gap-2 z-10">
-                  <span className="bg-primary text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest">
+                  <span className="bg-primary text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest shadow-md">
                     {vehicle.type}
                   </span>
                   {vehicle.badge && (
-                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest">
+                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest shadow-md">
                       {vehicle.badge}
                     </span>
                   )}
                 </div>
 
-                <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1 rounded-full">
+                <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1 rounded-full font-mono">
                   {activeImageIdx + 1} / {images.length}
                 </div>
               </div>
@@ -205,9 +339,10 @@ export default function VehicleDetailClient({
                     <button
                       key={idx}
                       onClick={() => setActiveImageIdx(idx)}
-                      className={`shrink-0 w-16 h-12 md:w-20 md:h-14 rounded-xl overflow-hidden border-2 transition-all ${
+                      className={cn(
+                        "shrink-0 w-16 h-12 md:w-20 md:h-14 rounded-xl overflow-hidden border-2 transition-all",
                         activeImageIdx === idx ? "border-primary shadow-sm scale-95" : "border-transparent opacity-60 hover:opacity-100"
-                      }`}
+                      )}
                     >
                       <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
@@ -216,15 +351,15 @@ export default function VehicleDetailClient({
               )}
             </div>
 
-            {/* Vehicle Metadata Profile */}
+            {/* Title & Primary Metadata Profile */}
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`text-[9px] font-black uppercase border px-2.5 py-0.5 rounded-full ${cat.color}`}>
+                <span className={cn("text-[9px] font-black uppercase border px-2.5 py-0.5 rounded-full", cat.color)}>
                   {cat.label} Class
                 </span>
                 {vehicle.isVerified && (
-                  <span className="flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                    <BadgeCheck className="w-3.5 h-3.5" /> Verified Logistics Partner
+                  <span className="flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                    <BadgeCheck className="w-3.5 h-3.5 text-emerald-500" /> Verified Logistics Partner
                   </span>
                 )}
               </div>
@@ -234,14 +369,14 @@ export default function VehicleDetailClient({
               </h1>
 
               <div className="flex items-center gap-1">
-                {[1,2,3,4,5].map(s => (
-                  <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(vehicle.rating) ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Star key={s} className={cn("w-3.5 h-3.5", s <= Math.round(vehicle.rating) ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
                 ))}
                 <span className="text-xs font-black text-slate-700 ml-1.5">{vehicle.rating}</span>
-                <span className="text-xs text-slate-400 font-medium">({vehicle.reviewCount} verified reviews)</span>
+                <span className="text-xs text-slate-400 font-semibold">({vehicle.reviewCount} verified reviews)</span>
               </div>
 
-              {/* Specifications row */}
+              {/* Grid specs row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                 {[
                   { icon: Users, label: "Capacity", value: `${vehicle.capacity} Seats` },
@@ -261,70 +396,82 @@ export default function VehicleDetailClient({
 
               <div className="flex flex-wrap gap-2 pt-2">
                 {vehicle.isAc && (
-                  <span className="flex items-center gap-1.5 text-xs font-bold bg-blue-500/10 text-blue-600 border border-blue-500/25 px-3 py-1.5 rounded-full">
-                    <Thermometer className="w-3.5 h-3.5" /> Climate Control AC
+                  <span className="flex items-center gap-1.5 text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1.5 rounded-full">
+                    <Thermometer className="w-3.5 h-3.5 text-blue-500" /> Climate Control AC
                   </span>
                 )}
                 <span className="flex items-center gap-1.5 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200/60 px-3 py-1.5 rounded-full">
-                  <Calendar className="w-3.5 h-3.5" /> Model Year {vehicle.year} ({vehicleAge === 0 ? "New" : `${vehicleAge}y`})
+                  <Calendar className="w-3.5 h-3.5 text-slate-500" /> Model Year {vehicle.year} ({vehicleAge === 0 ? "New" : `${vehicleAge}y`})
                 </span>
                 <span className="flex items-center gap-1.5 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200/60 px-3 py-1.5 rounded-full">
-                  <Gauge className="w-3.5 h-3.5" /> Base Rate ₹{vehicle.pricePerKm}/km
+                  <Gauge className="w-3.5 h-3.5 text-slate-500" /> Base Rate ₹{vehicle.pricePerKm}/km
                 </span>
               </div>
             </div>
 
             {/* Description card */}
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-3">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Fleet details & services</h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Fleet Details & Services</h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
                 {vehicle.description}
               </p>
+            </div>
+
+            {/* Included / Excluded Fare Rules */}
+            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Fare Inclusions & Exclusions</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4">
+                  <h3 className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Included in Fare
+                  </h3>
+                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside pl-1 font-medium">
+                    <li>Fuel Charges & Maintenance</li>
+                    <li>Commercial Vehicle Insurance</li>
+                    <li>Professional Driver Allowance</li>
+                    <li>Clean, Sanitized AC Cab</li>
+                    <li>24/7 Helpline Support</li>
+                  </ul>
+                </div>
+                <div className="space-y-2 bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4">
+                  <h3 className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                    <X className="w-4 h-4 text-rose-500" /> Excluded from Fare
+                  </h3>
+                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside pl-1 font-medium">
+                    <li>Toll taxes & State Entry taxes</li>
+                    <li>Parking fees (paid as actuals)</li>
+                    <li>Night charges (after 10:00 PM)</li>
+                    <li>Airport pick-up/drop tolls</li>
+                    <li>GST (5% Service tax)</li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             {/* Amenities Grid */}
             {vehicle.features && vehicle.features.length > 0 && (
               <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Amenities</h2>
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Vehicle Amenities</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {vehicle.features.map((feature, i) => (
                     <div key={i} className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-700">{feature.replace(/_/g, " ")}</span>
+                      <span className="text-xs font-bold text-slate-700">{feature.replace(/_/g, " ")}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Transporter Details */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Logistics Vendor</h2>
-              <div className="flex items-center gap-4 bg-slate-900 text-white rounded-2xl p-4 md:p-5">
-                <div className="w-12 h-12 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-lg shrink-0">
-                  {vehicle.businessName?.[0] || "L"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-white text-sm md:text-base truncate">{vehicle.businessName}</p>
-                  <p className="text-slate-400 text-xs mt-0.5">Contact: {vehicle.ownerName} · Active since {vehicle.operatingSince}</p>
-                </div>
-                {vehicle.isVerified && (
-                  <div className="shrink-0 flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
-                    <ShieldCheck className="w-3.5 h-3.5" /> Verified
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Digital Safety Log Checklist */}
+            {/* Safety Log Checklist */}
             <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Inspection Log</h2>
+                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Inspection Safety Log</h2>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {SAFETY_CHECKS.map((item, idx) => (
-                  <div key={idx} className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-3.5 flex flex-col items-center text-center gap-1.5">
+                  <div key={idx} className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-3.5 flex flex-col items-center text-center gap-1.5 hover:bg-emerald-500/10 transition-colors">
                     <span className="text-base">{item.icon}</span>
                     <span className="text-[9px] text-slate-500 font-bold block leading-tight">{item.label}</span>
                     <span className="text-[10px] font-black text-emerald-600 block">{item.status}</span>
@@ -333,145 +480,324 @@ export default function VehicleDetailClient({
               </div>
             </div>
 
+            {/* Logistics Vendor Profile */}
+            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Transporter Profile</h2>
+              <div className="flex items-center gap-4 bg-slate-900 text-white rounded-2xl p-4 md:p-5">
+                <div className="w-12 h-12 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-lg shrink-0">
+                  {vehicle.businessName?.[0] || "L"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-white text-sm md:text-base truncate">{vehicle.businessName}</p>
+                  <p className="text-slate-400 text-xs mt-0.5 font-medium">Logistics Vendor: {vehicle.ownerName} · Registered since {vehicle.operatingSince}</p>
+                </div>
+                {vehicle.isVerified && (
+                  <div className="shrink-0 flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Verified
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Verified Client Reviews */}
+            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Verified Client Reviews</h2>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Verified testimonials from recent rentals</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center text-amber-400">
+                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    <span className="text-sm font-black text-slate-800 ml-1">{vehicle.rating}</span>
+                  </div>
+                  <span className="text-xs text-slate-400 font-black">/ 5.0</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { name: "Sanjay Kumar", date: "June 2026", rating: 5, comment: `Outstanding service! Car was super clean, AC was freezing, and the driver was extremely polite and professional. We took a round trip to Manali and felt completely safe throughout.` },
+                  { name: "Neha Sharma", date: "May 2026", rating: 5, comment: `Highly recommended for family trips. The booking team coordinated everything seamlessly. Driver was experienced on mountain roads. The luggage carrier held all our bags easily.` },
+                  { name: "Amanpreet Singh", date: "April 2026", rating: 4, comment: `Very neat interior, excellent sound system. We rented it for sightseeing. Driver knew all the short routes and scenic spots. Will book again.` },
+                ].map((rev, i) => (
+                  <div key={i} className="space-y-2 pb-3.5 border-b border-slate-100 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-[#1B3A6B]/10 text-[#1B3A6B] font-black text-xs flex items-center justify-center">
+                          {rev.name[0]}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{rev.name}</p>
+                          <p className="text-[9px] text-slate-400 font-medium">{rev.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center text-amber-400">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <Star key={s} className={cn("w-3 h-3", s <= rev.rating ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed italic font-medium">
+                      "{rev.comment}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
 
-          {/* RIGHT: Booking Desk Panel (4 columns) */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-28 space-y-4">
-
-              <div className="bg-white border border-slate-200/60 rounded-3xl shadow-xl overflow-hidden">
-                {/* Price block */}
-                <div className="bg-slate-950 p-5 md:p-6 text-white relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
-                  <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1">Starting Daily Fare</p>
+          {/* RIGHT: Booking Desk Card (4 columns) - Desktop only */}
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="lg:sticky lg:top-[130px] space-y-4">
+              
+              <div className="bg-white border border-slate-200/60 rounded-3xl shadow-lg overflow-hidden">
+                {/* Header starting price */}
+                <div className="bg-slate-900 p-5 text-white relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-[#1B3A6B]/20 rounded-full blur-2xl" />
+                  <p className="text-white/40 text-[8px] font-black uppercase tracking-widest mb-1">Starting Rental Fee</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-black text-white">₹{vehicle.pricePerDay.toLocaleString("en-IN")}</span>
                     <span className="text-white/50 text-xs font-bold">/day</span>
                   </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10 text-[10px] text-white/60">
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10 text-[9px] text-white/50 font-semibold">
                     <span>Base rate: ₹{vehicle.pricePerKm}/km</span>
                     <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                      <Zap className="w-3.5 h-3.5" /> Instant Booking
+                      <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Instant Booking
                     </span>
                   </div>
                 </div>
 
-                {/* Form fields */}
-                <div className="p-5 space-y-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">Check Availability</h3>
+                {/* Booking Inputs & Calculations */}
+                <div className="p-4 space-y-4">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#1B3A6B]">Dynamic Fare Calculator</h3>
 
                   {bookingSubmitted ? (
                     <div className="flex flex-col items-center gap-3 py-6 text-center">
                       <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
                         <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                       </div>
-                      <p className="font-bold text-slate-900 text-sm">Query Submitted!</p>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">Our transport desk will verify fleet availability and driver details within 15 minutes.</p>
-                      <button onClick={() => setBookingSubmitted(false)} className="text-[11px] font-bold text-primary hover:underline">Submit another query</button>
+                      <p className="font-bold text-slate-900 text-sm">Booking Query Submitted!</p>
+                      <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">Our transport coordinator will verify fleet availability and driver logs, sending details within 15 minutes.</p>
+                      <button type="button" onClick={() => setBookingSubmitted(false)} className="text-[11px] font-black text-[#1B3A6B] hover:underline">Submit another query</button>
                     </div>
                   ) : (
-                    <div className="space-y-3.5">
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-slate-500 block mb-1">Trip Date</label>
-                        <div className="relative">
-                          <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <form onSubmit={handleBookNow} className="space-y-3.5">
+                      
+                      {/* Trip Type selection pills */}
+                      <div className="grid grid-cols-3 gap-1 bg-slate-100 rounded-lg p-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                        {([
+                          { label: "One-Way", value: "oneway" as const },
+                          { label: "Round Trip", value: "roundtrip" as const },
+                          { label: "Local Tour", value: "local" as const },
+                        ] as const).map(tab => (
+                          <button
+                            key={tab.value}
+                            type="button"
+                            onClick={() => setTripType(tab.value)}
+                            className={cn(
+                              "py-1.5 rounded-md transition-all text-center",
+                              tripType === tab.value ? "bg-white text-slate-800 shadow-3xs font-black" : "hover:text-slate-700"
+                            )}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Pickup Date & Time Grid */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Date</label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <input
+                              type="date"
+                              required
+                              value={pickupDate}
+                              onChange={e => setPickupDate(e.target.value)}
+                              min={new Date().toISOString().split("T")[0]}
+                              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                            />
+                          </div>
+                        </div>
+                        {tripType === "roundtrip" ? (
+                          <div>
+                            <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Return Date</label>
+                            <div className="relative">
+                              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                              <input
+                                type="date"
+                                required
+                                value={returnDate}
+                                onChange={e => setReturnDate(e.target.value)}
+                                min={pickupDate || new Date().toISOString().split("T")[0]}
+                                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Time</label>
+                            <div className="relative">
+                              <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                              <input
+                                type="time"
+                                required
+                                value={pickupTime}
+                                onChange={e => setPickupTime(e.target.value)}
+                                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Travel distance selection if roundtrip/oneway */}
+                      {tripType !== "local" && (
+                        <div>
+                          <div className="flex justify-between items-center mb-0.5">
+                            <label className="text-[9px] font-black uppercase text-slate-400">Est. Distance: {displayKm} km</label>
+                            <span className="text-[8px] font-bold text-slate-400">(Covered: {coveredKm}km)</span>
+                          </div>
                           <input
-                            type="date"
-                            value={tripDate}
-                            onChange={e => setTripDate(e.target.value)}
-                            min={new Date().toISOString().split("T")[0]}
-                            className="w-full bg-slate-50 border border-slate-200/60 rounded-xl pl-9 pr-3 h-11 text-xs font-semibold focus:outline-none focus:border-primary transition-all"
+                            type="range"
+                            min={coveredKm}
+                            max={coveredKm + 1500}
+                            step={50}
+                            value={displayKm}
+                            onChange={e => setEstKm(Number(e.target.value))}
+                            className="w-full accent-[#1B3A6B] h-1.5 bg-slate-100 rounded-lg cursor-pointer"
                           />
+                        </div>
+                      )}
+
+                      {/* Pickup & Drop inputs */}
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Point Address</label>
+                          <div className="relative">
+                            <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <input
+                              type="text"
+                              required
+                              value={pickupAddr}
+                              placeholder="Hotel / Airport / Residence"
+                              onChange={e => setPickupAddr(e.target.value)}
+                              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 placeholder:text-slate-350 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Drop Destination</label>
+                          <div className="relative">
+                            <Navigation className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <input
+                              type="text"
+                              required
+                              value={dropAddr}
+                              placeholder="Sightseeing city or hotel"
+                              onChange={e => setDropAddr(e.target.value)}
+                              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 placeholder:text-slate-350 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-slate-500 block mb-1">Pickup Address</label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <input
-                            type="text"
-                            value={pickup}
-                            onChange={e => setPickup(e.target.value)}
-                            placeholder="e.g. Hotel / Airport / Station"
-                            className="w-full bg-slate-50 border border-slate-200/60 rounded-xl pl-9 pr-3 h-11 text-xs font-semibold focus:outline-none focus:border-primary transition-all"
-                          />
+                      {/* Dynamic Pricing Breakout */}
+                      {pickupDate && (
+                        <div className="border-t border-slate-100 pt-2.5 space-y-1 text-[11px] text-slate-650 font-medium">
+                          <div className="flex justify-between">
+                            <span>Base Stay Rate ({rentalDays} d)</span>
+                            <span className="text-slate-800 font-bold">₹{basePriceTotal.toLocaleString()}</span>
+                          </div>
+                          {extraKmCharges > 0 && (
+                            <div className="flex justify-between">
+                              <span>Extra distance charge ({extraKm} km)</span>
+                              <span className="text-slate-800 font-bold">₹{extraKmCharges.toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>Driver allowance</span>
+                            <span className="text-slate-800 font-bold">₹{driverAllowance.toLocaleString()}</span>
+                          </div>
+                          {stateTaxEstimate > 0 && (
+                            <div className="flex justify-between">
+                              <span>State tax & toll allowance</span>
+                              <span className="text-slate-800 font-bold">₹{stateTaxEstimate.toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-rose-600 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100 font-bold text-[9px] mt-1">
+                            <span>Category discount ({discountPercent}%)</span>
+                            <span>-₹{discountAmount.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-slate-100 font-bold text-slate-800 text-xs">
+                            <span>Subtotal</span>
+                            <span>₹{subtotal.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-400 text-[10px]">
+                            <span>GST (5%)</span>
+                            <span>₹{gst.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between pt-1.5 border-t border-slate-100 font-black text-[#1B3A6B] text-sm">
+                            <span>Est. Grand Total</span>
+                            <span>₹{grandTotal.toLocaleString()}</span>
+                          </div>
                         </div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div className="space-y-1.5">
+                        <Button type="submit" className="w-full h-10 rounded-lg bg-[#1B3A6B] hover:bg-[#142d54] text-white font-black uppercase text-xs tracking-wider shadow-md">
+                          Request Fleet Booking ⚡
+                        </Button>
                       </div>
 
-                      <div>
-                        <label className="text-[9px] font-black uppercase text-slate-500 block mb-1">Drop Location</label>
-                        <div className="relative">
-                          <Navigation className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                          <input
-                            type="text"
-                            value={drop}
-                            onChange={e => setDrop(e.target.value)}
-                            placeholder="Destination city or hotel"
-                            className="w-full bg-slate-50 border border-slate-200/60 rounded-xl pl-9 pr-3 h-11 text-xs font-semibold focus:outline-none focus:border-primary transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => { if (tripDate || pickup || drop) setBookingSubmitted(true); }}
-                        className="w-full bg-primary hover:bg-primary/95 text-white font-black h-11 rounded-xl transition-all shadow-lg shadow-primary/20 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
-                      >
-                        <Calendar className="w-4 h-4" /> Submit Enquiry
-                      </button>
-                    </div>
+                    </form>
                   )}
 
-                  <p className="text-[9px] text-center text-slate-400 leading-tight">
-                    Driver credentials and vehicle contacts will be shared 12 hours prior to scheduled departure.
+                  <p className="text-[8.5px] text-center text-slate-450 leading-tight">
+                    *Toll taxes, parking fees, and borders entry taxes are directly paid to the driver on actual ticket receipt.
                   </p>
                 </div>
               </div>
 
-              {/* Instant support card */}
-              <div className="bg-white border border-slate-200/60 rounded-3xl p-5 shadow-sm space-y-3.5">
-                <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Immediate booking help</p>
-                <div className="grid grid-cols-1 gap-2.5">
-                  <a
-                    href="tel:+919805001916"
-                    className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 hover:border-primary transition-all group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+              {/* Call desk cards */}
+              <div className="bg-white border border-slate-200/60 rounded-3xl p-4.5 shadow-sm space-y-3">
+                <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Immediate Helpline Desk</p>
+                <div className="grid grid-cols-1 gap-2">
+                  <a href="tel:+918595513009" className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-2.5 hover:border-[#1B3A6B] transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#1B3A6B] flex items-center justify-center group-hover:bg-[#1B3A6B] group-hover:text-white transition-colors shrink-0">
                       <Phone className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Call Agent</p>
-                      <p className="text-xs font-black text-slate-800">+91 98050-01916</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">Call Transport Head</p>
+                      <p className="text-xs font-black text-slate-800">+91 85955-13009</p>
                     </div>
                   </a>
-
-                  <a
-                    href="https://wa.me/919805001916"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3 hover:border-green-500 transition-all group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600 group-hover:bg-green-500 group-hover:text-white transition-colors">
+                  <a href="https://wa.me/918595513009" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-2.5 hover:border-emerald-500 transition-all group">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
                       <MessageCircle className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">WhatsApp</p>
-                      <p className="text-xs font-black text-slate-800">Chat with Logistics Desk</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">WhatsApp Desk</p>
+                      <p className="text-xs font-black text-slate-800">Instant Chat Connection</p>
                     </div>
                   </a>
                 </div>
               </div>
 
-              {/* Security Badge bar */}
+              {/* Security assurances */}
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { icon: ShieldCheck, label: "100% Secure" },
-                  { icon: Clock, label: "24/7 Helpdesk" },
-                  { icon: Award, label: "Lowest Price" },
+                  { icon: Clock, label: "24/7 Desk" },
+                  { icon: Award, label: "Lowest price" },
                 ].map((b, i) => (
-                  <div key={i} className="bg-white border border-slate-200/60 rounded-2xl p-2 flex flex-col items-center gap-1 text-center shadow-xs">
-                    <b.icon className="w-4 h-4 text-primary" />
-                    <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wide leading-none">{b.label}</span>
+                  <div key={i} className="bg-white border border-slate-200/60 rounded-xl p-2 flex flex-col items-center gap-0.5 text-center shadow-3xs">
+                    <b.icon className="w-3.5 h-3.5 text-[#1B3A6B]" />
+                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-wide leading-none">{b.label}</span>
                   </div>
                 ))}
               </div>
@@ -481,12 +807,12 @@ export default function VehicleDetailClient({
 
         </div>
 
-        {/* Similar Fleet Section */}
+        {/* Recommended alternative fleet */}
         {related.length > 0 && (
           <section className="mt-12 pt-10 border-t border-slate-200/60">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">
-                Recommended Alternative Fleets
+                Recommended Fleet Options
               </h2>
               <Link
                 href="/transport"
@@ -518,7 +844,7 @@ export default function VehicleDetailClient({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        <span className="text-[10px] font-bold text-slate-500">{rv.rating}</span>
+                        <span className="text-[10px] font-bold text-slate-505">{rv.rating}</span>
                       </div>
                       <span className="text-xs font-black text-primary">₹{rv.pricePerDay.toLocaleString("en-IN")}/d</span>
                     </div>
@@ -529,6 +855,258 @@ export default function VehicleDetailClient({
           </section>
         )}
       </div>
+
+      {/* ── Mobile Sticky Action Footer Bar ── */}
+      {!mobileSheetOpen && (
+        <div 
+          className="lg:hidden fixed z-[90] left-0 right-0 bg-slate-900 border-t border-white/10 p-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.2)] cursor-pointer"
+          style={{ bottom: "64px" }}
+          onClick={openMobileSheet}
+        >
+          <div className="container mx-auto flex items-center justify-between gap-3">
+            <div className="flex flex-col shrink-0 text-white">
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">Starting From</span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-base font-black text-white leading-none">
+                  ₹{vehicle.pricePerDay.toLocaleString("en-IN")}
+                </span>
+                <span className="text-[9px] text-slate-400 font-semibold">/day</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 bg-[#1B3A6B] text-white px-3 py-1.5 rounded-md font-bold text-xs shadow-sm">
+              <span>Choose Dates / Book</span>
+              <ChevronDown className="w-3.5 h-3.5 rotate-180" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backdrop overlay for mobile drawer */}
+      {mobileSheetOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-45 transition-opacity duration-300"
+          onClick={closeMobileSheet}
+        />
+      )}
+
+      {/* Mobile pull-up drawer sheet */}
+      <div
+        ref={sheetRef}
+        className="lg:hidden fixed left-0 right-0 bottom-0 z-50 bg-white rounded-t-2xl border-t-4 border-[#1B3A6B] shadow-2xl overflow-hidden flex flex-col"
+        style={{
+          height: '80vh',
+          transform: touchStartY.current !== null 
+            ? `translateY(${sheetTranslate}px)` 
+            : mobileSheetOpen 
+              ? 'translateY(0)' 
+              : 'translateY(100%)',
+          transition: touchStartY.current !== null 
+            ? 'none' 
+            : 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
+        }}
+        onTouchStart={onSheetTouchStart}
+        onTouchMove={onSheetTouchMove}
+        onTouchEnd={onSheetTouchEnd}
+      >
+        {/* Header */}
+        <div className="p-3 border-b border-slate-200 sheet-header cursor-row-resize select-none shrink-0 bg-white">
+          <div className="w-10 h-1.5 bg-slate-200 rounded mx-auto mb-2" />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-800">Configure Trip Details</p>
+              <p className="text-xs text-slate-500">Swipe down to close</p>
+            </div>
+            <button 
+              onClick={closeMobileSheet} 
+              className="text-slate-500 font-semibold text-xs py-1 px-3 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* Content (Scrollable) */}
+        <div className="p-4 overflow-y-auto flex-1 pb-24 space-y-4">
+          
+          {/* Trip overview */}
+          <div className="flex items-baseline justify-between border-b border-slate-100 pb-2">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase font-semibold">Subtotal</p>
+              <p className="text-lg font-black text-slate-900">₹{subtotal.toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400">{rentalDays} rental day(s) · {displayKm} est. km</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-[#1B3A6B]">₹{grandTotal.toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400">Grand Total (GST Incl.)</p>
+            </div>
+          </div>
+
+          {/* Stay Dates banner */}
+          <div className="bg-[#1B3A6B]/5 border border-[#1B3A6B]/10 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+              <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
+              <span>{pickupDate ? formatDateSafe(pickupDate) : "Select pickup date"}</span>
+            </div>
+            {tripType === "roundtrip" && (
+              <>
+                <span className="text-[#1B3A6B]/40 font-bold">➔</span>
+                <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                  <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
+                  <span>{returnDate ? formatDateSafe(returnDate) : "Select return date"}</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Form details */}
+          <div className="space-y-3.5">
+            {/* Trip type selector pills */}
+            <div className="grid grid-cols-3 gap-1 bg-slate-100 rounded-lg p-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+              {([
+                { label: "One-Way", value: "oneway" as const },
+                { label: "Round Trip", value: "roundtrip" as const },
+                { label: "Local Tour", value: "local" as const },
+              ] as const).map(tab => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setTripType(tab.value)}
+                  className={cn(
+                    "py-1.5 rounded-md transition-all text-center",
+                    tripType === tab.value ? "bg-white text-slate-800 shadow-3xs font-black" : "hover:text-slate-700"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Date picking grid */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Date</label>
+                <div className="relative">
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="date"
+                    required
+                    value={pickupDate}
+                    onChange={e => setPickupDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none"
+                  />
+                </div>
+              </div>
+              {tripType === "roundtrip" ? (
+                <div>
+                  <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Return Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="date"
+                      required
+                      value={returnDate}
+                      onChange={e => setReturnDate(e.target.value)}
+                      min={pickupDate || new Date().toISOString().split("T")[0]}
+                      className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Time</label>
+                  <div className="relative">
+                    <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="time"
+                      required
+                      value={pickupTime}
+                      onChange={e => setPickupTime(e.target.value)}
+                      className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Travel range slider */}
+            {tripType !== "local" && (
+              <div>
+                <div className="flex justify-between items-center mb-0.5">
+                  <label className="text-[9px] font-black uppercase text-slate-400">Est. Distance: {displayKm} km</label>
+                  <span className="text-[8px] font-bold text-slate-400">(Covered: {coveredKm}km)</span>
+                </div>
+                <input
+                  type="range"
+                  min={coveredKm}
+                  max={coveredKm + 1500}
+                  step={50}
+                  value={displayKm}
+                  onChange={e => setEstKm(Number(e.target.value))}
+                  className="w-full accent-[#1B3A6B] h-1.5 bg-slate-100 rounded-lg cursor-pointer"
+                />
+              </div>
+            )}
+
+            {/* Pickup drop inputs */}
+            <div className="space-y-2">
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Point Address</label>
+                <div className="relative">
+                  <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={pickupAddr}
+                    placeholder="Hotel / Airport / Residence"
+                    onChange={e => setPickupAddr(e.target.value)}
+                    className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Drop Destination</label>
+                <div className="relative">
+                  <Navigation className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    required
+                    value={dropAddr}
+                    placeholder="Sightseeing city or hotel"
+                    onChange={e => setDropAddr(e.target.value)}
+                    className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing details breakout inside mobile sheet */}
+            {pickupDate && (
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1.5 text-xs text-slate-650">
+                <div className="flex justify-between"><span>Base Stay Rate ({rentalDays} d)</span><span>₹{basePriceTotal.toLocaleString()}</span></div>
+                {extraKmCharges > 0 && <div className="flex justify-between"><span>Extra distance ({extraKm} km)</span><span>₹{extraKmCharges.toLocaleString()}</span></div>}
+                <div className="flex justify-between"><span>Driver allowance</span><span>₹{driverAllowance.toLocaleString()}</span></div>
+                {stateTaxEstimate > 0 && <div className="flex justify-between"><span>State tax & toll allowance</span><span>₹{stateTaxEstimate.toLocaleString()}</span></div>}
+                <div className="flex justify-between font-bold text-rose-600 pt-1.5 border-t border-slate-200"><span>Category discount ({discountPercent}%)</span><span>-₹{discountAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between font-bold pt-1.5 border-t border-slate-200 text-slate-800"><span>GST (5%)</span><span>₹{gst.toLocaleString()}</span></div>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Sticky footer actions for Mobile sheet */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 z-30 shrink-0 grid grid-cols-2 gap-2">
+          <Button onClick={handleBookNow} className="w-full h-10 rounded-lg bg-[#1B3A6B] hover:bg-[#152e55] text-white font-black uppercase tracking-wider text-xs shadow-md">
+            Request Booking ⚡
+          </Button>
+          <a href="tel:+918595513009" className="h-10 rounded-lg border border-slate-200 font-bold text-xs text-slate-700 hover:bg-slate-55 flex items-center justify-center gap-1.5 transition-colors">
+            <Phone className="w-3.5 h-3.5 text-[#1B3A6B]" /> Call Desk
+          </a>
+        </div>
+
+      </div>
+
     </div>
   );
 }
