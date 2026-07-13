@@ -494,13 +494,12 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
     const totalGuests = c.adults + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0);
     return c.adults > (room.maxAdults || 2) || totalGuests > maxTotalPerRoom;
   });
-
-  const renderInteractiveCalendar = () => {
+  const renderInteractiveCalendar = (isCompact: boolean = false) => {
     if (loadingCalendar) {
       return (
-        <div className="col-span-7 flex flex-col items-center justify-center py-12 min-h-[200px]">
-          <div className="w-8 h-8 border-[3px] border-[#1B3A6B] border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-[11px] text-slate-400 font-semibold">Loading availability…</p>
+        <div className="col-span-7 flex flex-col items-center justify-center py-6 min-h-[140px]">
+          <div className="w-6 h-6 border-[3px] border-[#1B3A6B] border-t-transparent rounded-full animate-spin mb-2" />
+          <p className="text-[10px] text-slate-400 font-semibold">Loading availability…</p>
         </div>
       );
     }
@@ -544,8 +543,8 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
       // Discount badge text shows both % and ₹ savings
       const discountBadgeText = hasDiscount
         ? (discountType === "PERCENT"
-          ? `${discountPercent}% · ₹${Math.round(savedAmount).toLocaleString()}`
-          : `₹${Math.round(savedAmount).toLocaleString()} off`)
+          ? `${discountPercent}%`
+          : `₹${Math.round(savedAmount).toLocaleString()}`)
         : null;
 
       // Status
@@ -573,124 +572,168 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
       else if (isToday) cellStatus = "today";
 
       const CELL: Record<CellStatus, { wrap: string; dayNum: string; cursor: string }> = {
-        selected:      { wrap: "bg-[#1B3A6B] border-[#1B3A6B] shadow-sm",                         dayNum: "text-white",          cursor: "cursor-pointer" },
-        inrange:       { wrap: "bg-[#1B3A6B]/10 border-[#1B3A6B]/30",                             dayNum: "text-[#1B3A6B]",      cursor: "cursor-pointer" },
-        past:          { wrap: "bg-gray-50 border-gray-100 opacity-50",                            dayNum: "text-gray-300",       cursor: "cursor-not-allowed" },
-        blocked:       { wrap: "bg-rose-50 border-rose-200 opacity-70",                            dayNum: "text-rose-400",       cursor: "cursor-not-allowed" },
-        soldout:       { wrap: "bg-slate-100 border-slate-200 opacity-60",                         dayNum: "text-slate-400",      cursor: "cursor-not-allowed" },
-        lowstock_deal: { wrap: "bg-gradient-to-br from-amber-50 to-emerald-50 border-amber-300 hover:shadow-sm hover:-translate-y-0.5", dayNum: "text-slate-800", cursor: "cursor-pointer" },
-        lowstock:      { wrap: "bg-amber-50 border-amber-300 hover:shadow-sm hover:-translate-y-0.5", dayNum: "text-amber-900",  cursor: "cursor-pointer" },
-        deal:          { wrap: "bg-emerald-50 border-emerald-300 hover:shadow-sm hover:-translate-y-0.5", dayNum: "text-emerald-900", cursor: "cursor-pointer" },
-        today:         { wrap: "bg-blue-50 border-blue-200 hover:shadow-sm hover:-translate-y-0.5", dayNum: "text-blue-800",    cursor: "cursor-pointer" },
-        normal:        { wrap: "bg-white border-slate-200 hover:border-[#1B3A6B]/40 hover:shadow-sm hover:-translate-y-0.5", dayNum: "text-slate-700", cursor: "cursor-pointer" },
+        selected:      { wrap: "bg-[#1B3A6B] border-[#1B3A6B] text-white shadow-sm",              dayNum: "text-white",          cursor: "cursor-pointer" },
+        inrange:       { wrap: "bg-[#1B3A6B]/10 border-[#1B3A6B]/20",                             dayNum: "text-[#1B3A6B]",      cursor: "cursor-pointer" },
+        past:          { wrap: "bg-gray-50 border-gray-100 opacity-40",                            dayNum: "text-gray-300",       cursor: "cursor-not-allowed" },
+        blocked:       { wrap: "bg-rose-50 border-rose-105 opacity-60",                            dayNum: "text-rose-455",       cursor: "cursor-not-allowed" },
+        soldout:       { wrap: "bg-slate-100 border-slate-200 opacity-50",                         dayNum: "text-slate-400",      cursor: "cursor-not-allowed" },
+        lowstock_deal: { wrap: "bg-amber-50 border-amber-200 hover:border-amber-400",             dayNum: "text-slate-800",      cursor: "cursor-pointer" },
+        lowstock:      { wrap: "bg-amber-50 border-amber-200 hover:border-amber-400",             dayNum: "text-amber-900",      cursor: "cursor-pointer" },
+        deal:          { wrap: "bg-emerald-50 border-emerald-200 hover:border-emerald-400",       dayNum: "text-emerald-900",    cursor: "cursor-pointer" },
+        today:         { wrap: "bg-blue-50 border-blue-200 hover:border-blue-400",                 dayNum: "text-blue-800",       cursor: "cursor-pointer" },
+        normal:        { wrap: "bg-white border-slate-200 hover:border-[#1B3A6B]/40 hover:shadow-xs", dayNum: "text-slate-700", cursor: "cursor-pointer" },
       };
       const S = CELL[cellStatus];
 
-      dayCells.push(
-        <div
-          key={d}
-          onClick={() => handleDateClick(dateStr, isSelectable)}
-          className={cn(
+      if (isCompact) {
+        dayCells.push(
+          <button
+            key={d}
+            type="button"
+            disabled={!isSelectable}
+            onClick={() => handleDateClick(dateStr, isSelectable)}
+            className={cn(
+              "relative rounded-md border flex flex-col items-center justify-between transition-all select-none overflow-hidden",
+              "min-h-[44px] py-1 px-0.5",
+              S.wrap, isSelectable ? "cursor-pointer" : "cursor-not-allowed"
+            )}
+          >
+            {/* compact top row: day number + discount label if any */}
+            <div className="w-full flex items-center justify-between px-1">
+              <span className={cn("text-[9px] font-bold leading-none", S.dayNum)}>{d}</span>
+              {isSelectable && hasDiscount && (
+                <span className={cn("text-[6.5px] font-bold px-0.5 rounded leading-none shrink-0", isSelectedEdge ? "bg-white/20 text-white" : "bg-emerald-555 text-white")}>
+                  {discountPercent}%
+                </span>
+              )}
+            </div>
+
+            {/* compact middle row: Price */}
+            {isSelectable && (
+              <div className="flex flex-col items-center justify-center leading-none my-0.5">
+                <span className={cn("text-[8.5px] font-extrabold tracking-tight leading-none", isSelectedEdge ? "text-white" : "text-slate-700")}>
+                  ₹{Math.round(discountedPrice).toLocaleString()}
+                </span>
+              </div>
+            )}
+
+            {/* compact bottom row: Status abbreviation */}
+            {!isSelectable && (
+              <span className="text-[7.5px] font-semibold leading-none text-slate-400 mt-auto mb-0.5">
+                {isPast ? "" : isBlocked ? "Block" : "Sold"}
+              </span>
+            )}
+
+            {isSelectedEdge && (
+              <span className="text-[6.5px] font-extrabold uppercase text-white/95 leading-none mt-auto">
+                {isCheckIn ? "In" : "Out"}
+              </span>
+            )}
+          </button>
+        );
+      } else {
+        dayCells.push(
+          <div
+            key={d}
+            onClick={() => handleDateClick(dateStr, isSelectable)}
+            className={cn(
               "relative rounded-xl border transition-all duration-150 select-none overflow-hidden flex flex-col",
               "min-h-[72px] md:min-h-[90px]",
               S.wrap, S.cursor
             )}
-        >
-          {/* TOP ROW: Day number + primary badge */}
-          <div className="flex items-start justify-between px-2 pt-2 pb-0.5 gap-0.5">
-            <span className={cn("text-[10px] md:text-[11px] font-semibold leading-none shrink-0", S.dayNum)}>{d}</span>
+          >
+            {/* TOP ROW: Day number + primary badge */}
+            <div className="flex items-start justify-between px-2 pt-2 pb-0.5 gap-0.5">
+              <span className={cn("text-[10px] md:text-[11px] font-semibold leading-none shrink-0", S.dayNum)}>{d}</span>
 
-            {/* Right side badges */}
-            <div className="flex flex-col items-end gap-0.5 min-w-0">
-              {/* Discount badge — shows BOTH % and ₹ saved */}
-              {isSelectable && hasDiscount && (
-                <span className={cn(
-                  "text-[7px] font-semibold leading-none px-1.5 py-0.5 rounded-full whitespace-nowrap",
-                  isSelectedEdge ? "bg-white/20 text-white" : "bg-emerald-500 text-white"
-                )}>
-                  {discountBadgeText}
-                </span>
-              )}
-              {/* Blocked icon */}
-              {isBlocked && !isPast && (
-                <Lock className={cn("w-2.5 h-2.5 shrink-0", isSelectedEdge ? "text-white" : "text-rose-400")} />
-              )}
-              {/* Sold out */}
-              {isSoldOut && (
-                <span className="text-[7px] font-black text-white bg-slate-500 px-1.5 py-0.5 rounded-full leading-none">Full</span>
-              )}
-              {/* Today marker */}
-              {isToday && !isSelectedEdge && (
-                <span className="text-[7px] font-black text-blue-700 bg-blue-200 px-1.5 py-0.5 rounded-full leading-none">Today</span>
-              )}
-            </div>
-          </div>
-
-          {/* MIDDLE: Price display */}
-          <div className="flex flex-col justify-center flex-1 px-2">
-            {!isBlocked && !isSoldOut && !isPast ? (
-              <>
-                {hasDiscount ? (
-                  <>
-                    <span className={cn("text-[9px] leading-none line-through", isSelectedEdge ? "text-white/50" : "text-slate-400")}>
-                      ₹{basePrice.toLocaleString()}
-                    </span>
-                    <span className={cn("text-[11px] md:text-[12px] font-black leading-tight mt-0.5", isSelectedEdge ? "text-white" : "text-emerald-700")}>
-                      ₹{Math.round(discountedPrice).toLocaleString()}
-                    </span>
-                  </>
-                ) : (
-                  <span className={cn("text-[11px] md:text-[12px] font-black leading-tight", isSelectedEdge ? "text-white" : "text-slate-800")}>
-                    ₹{basePrice.toLocaleString()}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className={cn("text-[9px] font-semibold leading-none italic",
-                isBlocked ? (isSelectedEdge ? "text-white/60" : "text-rose-400") : "text-slate-400"
-              )}>
-                {isPast ? "" : isBlocked ? "Blocked" : "Sold Out"}
-              </span>
-            )}
-          </div>
-
-          {/* BOTTOM ROW: Status label */}
-          <div className="px-2 pb-2">
-            {!isPast && !isSelectedEdge && (
-              <>
-                {isLowAvailability && (
-                  <span className="text-[7px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full leading-none">
-                    ⚡ {availableCount} left
-                  </span>
-                )}
-                {!isBlocked && !isSoldOut && !isLowAvailability && (
+              {/* Right side badges */}
+              <div className="flex flex-col items-end gap-0.5 min-w-0">
+                {isSelectable && hasDiscount && (
                   <span className={cn(
-                    "text-[7px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none",
-                    hasDiscount ? "text-emerald-700 bg-emerald-100" : "text-slate-400 bg-slate-100"
+                    "text-[7px] font-semibold leading-none px-1.5 py-0.5 rounded-full whitespace-nowrap",
+                    isSelectedEdge ? "bg-white/20 text-white" : "bg-emerald-500 text-white"
                   )}>
-                    {hasDiscount ? "Deal" : "Available"}
+                    {discountBadgeText}
                   </span>
+                )}
+                {isBlocked && !isPast && (
+                  <Lock className={cn("w-2.5 h-2.5 shrink-0", isSelectedEdge ? "text-white" : "text-rose-455")} />
                 )}
                 {isSoldOut && (
-                  <span className="text-[7px] font-semibold uppercase text-slate-500">Sold Out</span>
+                  <span className="text-[7px] font-black text-white bg-slate-500 px-1.5 py-0.5 rounded-full leading-none">Full</span>
                 )}
-                {isBlocked && (
-                  <span className="text-[7px] font-semibold uppercase text-rose-500">Blocked</span>
+                {isToday && !isSelectedEdge && (
+                  <span className="text-[7px] font-black text-blue-700 bg-blue-200 px-1.5 py-0.5 rounded-full leading-none">Today</span>
                 )}
-              </>
-            )}
-            {isSelectedEdge && (
-              <span className="text-[7px] font-semibold uppercase text-white/70">
-                {isCheckIn ? "Check-in" : "Check-out"}
-              </span>
-            )}
-          </div>
+              </div>
+            </div>
 
-          {/* Range indicator strip */}
-          {isInRange && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B3A6B]/25" />}
-          {isCheckIn && <div className="absolute bottom-0 right-0 top-0 w-0.5 bg-white/20" />}
-        </div>
-      );
+            {/* MIDDLE: Price display */}
+            <div className="flex flex-col justify-center flex-1 px-2">
+              {!isBlocked && !isSoldOut && !isPast ? (
+                <>
+                  {hasDiscount ? (
+                    <>
+                      <span className={cn("text-[9px] leading-none line-through", isSelectedEdge ? "text-white/50" : "text-slate-400")}>
+                        ₹{basePrice.toLocaleString()}
+                      </span>
+                      <span className={cn("text-[11px] md:text-[12px] font-black leading-tight mt-0.5", isSelectedEdge ? "text-white" : "text-emerald-700")}>
+                        ₹{Math.round(discountedPrice).toLocaleString()}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={cn("text-[11px] md:text-[12px] font-black leading-tight", isSelectedEdge ? "text-white" : "text-slate-800")}>
+                      ₹{basePrice.toLocaleString()}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className={cn("text-[9px] font-semibold leading-none italic",
+                  isBlocked ? (isSelectedEdge ? "text-white/60" : "text-rose-455") : "text-slate-400"
+                )}>
+                  {isPast ? "" : isBlocked ? "Blocked" : "Sold Out"}
+                </span>
+              )}
+            </div>
+
+            {/* BOTTOM ROW: Status label */}
+            <div className="px-2 pb-2">
+              {!isPast && !isSelectedEdge && (
+                <>
+                  {isLowAvailability && (
+                    <span className="text-[7px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full leading-none">
+                      ⚡ {availableCount} left
+                    </span>
+                  )}
+                  {!isBlocked && !isSoldOut && !isLowAvailability && (
+                    <span className={cn(
+                      "text-[7px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full leading-none",
+                      hasDiscount ? "text-emerald-700 bg-emerald-100" : "text-slate-400 bg-slate-100"
+                    )}>
+                      {hasDiscount ? "Deal" : "Available"}
+                    </span>
+                  )}
+                  {isSoldOut && (
+                    <span className="text-[7px] font-semibold uppercase text-slate-500">Sold Out</span>
+                  )}
+                  {isBlocked && (
+                    <span className="text-[7px] font-semibold uppercase text-rose-500">Blocked</span>
+                  )}
+                </>
+              )}
+              {isSelectedEdge && (
+                <span className="text-[7px] font-semibold uppercase text-white/70">
+                  {isCheckIn ? "Check-in" : "Check-out"}
+                </span>
+              )}
+            </div>
+
+            {/* Range indicator strip */}
+            {isInRange && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1B3A6B]/25" />}
+            {isCheckIn && <div className="absolute bottom-0 right-0 top-0 w-0.5 bg-white/20" />}
+          </div>
+        );
+      }
     }
 
     return [...padding, ...dayCells];
@@ -936,104 +979,6 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
             </div>
           )}
 
-          {/* Interactive Month-Wise Price Calendar */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-[#0F1E3D] to-[#1B3A6B] px-5 py-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-sky-300" /> Rate Calendar
-                  </h3>
-                  <p className="text-[10px] text-white/60 mt-0.5">
-                    Click any date to select check-in, then pick checkout. Live prices &amp; deals shown.
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 bg-white/10 rounded-xl p-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const today = new Date();
-                      const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                      const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-                      if (prev >= minMonth) setCurrentMonth(prev);
-                    }}
-                    disabled={
-                      currentMonth.getFullYear() === new Date().getFullYear() &&
-                      currentMonth.getMonth() === new Date().getMonth()
-                    }
-                    className="p-2 hover:bg-white/15 rounded-lg disabled:opacity-30 transition-colors"
-                    aria-label="Previous Month"
-                  >
-                    <ChevronLeft className="w-4 h-4 text-white" />
-                  </button>
-                  <span className="text-xs font-semibold text-white min-w-[130px] text-center">
-                    {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const today = new Date();
-                      const maxMonth = new Date(today.getFullYear(), today.getMonth() + 5, 1);
-                      const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-                      if (next <= maxMonth) setCurrentMonth(next);
-                    }}
-                    disabled={
-                      currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getFullYear() &&
-                      currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getMonth()
-                    }
-                    className="p-2 hover:bg-white/15 rounded-lg disabled:opacity-30 transition-colors"
-                    aria-label="Next Month"
-                  >
-                    <ChevronRight className="w-4 h-4 text-white" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 md:p-4">
-              {/* Day headers */}
-              <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-                  <div key={d} className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest py-1">{d}</div>
-                ))}
-              </div>
-
-              {/* Calendar cells */}
-              <div className="grid grid-cols-7 gap-1 md:gap-1.5">
-                {renderInteractiveCalendar()}
-              </div>
-
-              {/* Legend */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-3 mt-3 border-t border-slate-100">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-[#1B3A6B] rounded" />
-                  <span className="text-[9px] font-semibold text-slate-500">Selected</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-slate-100 border border-slate-200 rounded" />
-                  <span className="text-[9px] font-semibold text-slate-500">Available</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-emerald-100 border border-emerald-300 rounded" />
-                  <span className="text-[9px] font-semibold text-slate-500">Deal / Promo</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-amber-100 border border-amber-300 rounded" />
-                  <span className="text-[9px] font-semibold text-slate-500">⚡ Low Stock (≤2)</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-slate-200 rounded" />
-                  <span className="text-[9px] font-semibold text-slate-500">Sold Out</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 bg-rose-100 border border-rose-200 rounded" />
-                  <span className="text-[9px] font-semibold text-slate-500">Blocked</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Description - About This Room */}
           <div className="bg-white rounded-xl p-2 md:p-4 border border-slate-100 shadow-xs space-y-3">
             <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1208,15 +1153,86 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
           )}
         </div>
 
-        {/* RIGHT: Booking Engine (sticky) */}
+{/* RIGHT: Booking Engine (sticky) */}
         <div className="hidden lg:block lg:w-[380px] space-y-4">
           <div className="lg:sticky lg:top-[80px] space-y-4">
-            {/* Booking Widget */}
-            <div id="booking-widget" className="bg-[#0F1E3D] text-white rounded-xl p-4 space-y-5 shadow-xl">
-              <div>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mb-1">Starting from</p>
+            
+            {/* Card 1: Rate Calendar Card */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Rate Calendar</p>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">Click dates to check-in/out</p>
+                </div>
+                <div className="flex items-center gap-1 bg-slate-50 mb-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date();
+                      const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                      const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+                      if (prev >= minMonth) setCurrentMonth(prev);
+                    }}
+                    disabled={
+                      currentMonth.getFullYear() === new Date().getFullYear() &&
+                      currentMonth.getMonth() === new Date().getMonth()
+                    }
+                    className="p-1 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold disabled:opacity-30"
+                  >
+                    &larr;
+                  </button>
+                  <span className="text-xs font-bold text-slate-700 min-w-[70px] text-center font-mono">
+                    {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date();
+                      const maxMonth = new Date(today.getFullYear(), today.getMonth() + 5, 1);
+                      const next = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+                      if (next <= maxMonth) setCurrentMonth(next);
+                    }}
+                    disabled={
+                      currentMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getFullYear() &&
+                      currentMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 5, 1).getMonth()
+                    }
+                    className="p-1 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold disabled:opacity-30"
+                  >
+                    &rarr;
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1.5 uppercase tracking-wider">
+                <div>Su</div>
+                <div>Mo</div>
+                <div>Tu</div>
+                <div>We</div>
+                <div>Th</div>
+                <div>Fr</div>
+                <div>Sa</div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {renderInteractiveCalendar(true)}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap items-center justify-between gap-y-1.5 pt-2 border-t border-slate-100 text-[8px] font-bold text-slate-500">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#1B3A6B]" /> Selected</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-50 border border-emerald-250" /> Deal</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-50 border border-amber-250" /> Low Stock</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-slate-100 border border-slate-200" /> Sold</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-rose-50 border border-rose-200" /> Block</span>
+              </div>
+            </div>
+
+            {/* Card 2: Booking Engine Card */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-4">
+              {/* Daily / Starting Rate Display */}
+              <div className="border-b border-slate-100 pb-3">
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none">Starting from</p>
                 {(() => {
-                  // Show live discounted price for check-in date, or today if not selected
                   const displayDate = checkIn || new Date().toISOString().split("T")[0];
                   const livePrice = getDailyPrice(displayDate);
                   const originalPrice = getOriginalDailyPrice(displayDate);
@@ -1224,134 +1240,108 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                   const hasLiveDiscount = savings > 0;
                   const discountBadge = hasLiveDiscount ? `Save ₹${Math.round(savings).toLocaleString()}` : null;
                   return (
-                    <>
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        {hasLiveDiscount && (
-                          <span className="text-base text-white/40 line-through font-semibold tracking-tight">₹{Math.round(originalPrice).toLocaleString()}</span>
-                        )}
-                        <span className="text-3xl font-black tracking-tight">₹{Math.round(livePrice).toLocaleString()}</span>
-                        <span className="text-xs text-white/40 font-semibold italic">/night</span>
-                        {hasLiveDiscount && (
-                          <span className="text-[9px] font-semibold bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
-                            {discountBadge}
-                          </span>
-                        )}
-                      </div>
-
-                    </>
+                    <div className="flex items-baseline gap-1.5 mt-1.5 flex-wrap">
+                      {hasLiveDiscount && (
+                        <span className="text-xs text-slate-400 line-through font-medium">₹{Math.round(originalPrice).toLocaleString()}</span>
+                      )}
+                      <span className="text-2xl font-black text-[#1B3A6B]">₹{Math.round(livePrice).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">/night</span>
+                      {hasLiveDiscount && (
+                        <span className="text-[8px] font-bold bg-rose-50 border border-rose-100 text-rose-600 px-1.5 py-0.5 rounded">
+                          {discountBadge}
+                        </span>
+                      )}
+                    </div>
                   );
                 })()}
               </div>
 
-              {/* Dates */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 ml-1">Check-in</label>
-                    <div className="relative">
-                      <Calendar className="w-4 h-4 text-sky-400 absolute left-3.5 top-4 pointer-events-none" />
-                      <input
-                        type="date" aria-label="Check-in" value={checkIn}
-                        onChange={(e) => {
-                          setCheckIn(e.target.value);
-                          if (checkOut && new Date(e.target.value) >= new Date(checkOut)) {
-                            const d = new Date(e.target.value);
-                            d.setDate(d.getDate() + 1);
-                            setCheckOut(d.toISOString().split("T")[0]);
-                          }
-                        }}
-                        min={new Date().toISOString().split("T")[0]}
-                        max={calendarMaxDateStr}
-                        className="w-full h-12 rounded-sm bg-white/5 border border-white/10 text-white pl-10 pr-2 text-xs font-bold focus:outline-none focus:border-sky-400 cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 ml-1">Check-out</label>
-                    <div className="relative">
-                      <Calendar className="w-4 h-4 text-sky-400 absolute left-3.5 top-4 pointer-events-none" />
-                      <input
-                        type="date" aria-label="Check-out" value={checkOut}
-                        onChange={(e) => setCheckOut(e.target.value)} min={checkIn}
-                        max={calendarMaxDateStr}
-                        className="w-full h-12 rounded-sm bg-white/5 border border-white/10 text-white pl-10 pr-2 text-xs font-bold focus:outline-none focus:border-sky-400 cursor-pointer"
-                      />
-                    </div>
+              {/* Dates view */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Check-in</span>
+                  <div className="h-10 rounded border border-slate-200 bg-slate-50/50 px-3 flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
+                    <span>{checkIn ? new Date(checkIn).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Select above"}</span>
                   </div>
                 </div>
-
-
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Check-out</span>
+                  <div className="h-10 rounded border border-slate-200 bg-slate-50/50 px-3 flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <Calendar className="w-3.5 h-3.5 text-[#1B3A6B]" />
+                    <span>{checkOut ? new Date(checkOut).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Select above"}</span>
+                  </div>
+                </div>
+              </div>
 
               {/* Guests Popover */}
-              <div className="space-y-1.5 relative">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-white/40 ml-1">Guests & Rooms</label>
+              <div className="space-y-1 relative">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Guests & Rooms</span>
                 <button
                   onClick={() => setGuestPopoverOpen(!guestPopoverOpen)}
-                  className="w-full h-12 rounded-sm bg-white/5 border border-white/10 text-white px-4 text-left text-xs font-bold hover:bg-white/10 transition-colors flex items-center justify-between"
+                  className="w-full h-10 rounded border border-slate-200 bg-white text-slate-700 px-3 text-left text-xs font-bold hover:bg-slate-50 transition-colors flex items-center justify-between"
                 >
                   <span className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-sky-400" />
+                    <Users className="w-3.5 h-3.5 text-[#1B3A6B]" />
                     {roomsConfig.length} Room{roomsConfig.length > 1 ? "s" : ""} · {roomsConfig.reduce((a, c) => a + c.adults, 0)} Adult{roomsConfig.reduce((a, c) => a + c.adults, 0) > 1 ? "s" : ""}
                     {roomsConfig.reduce((a, c) => a + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0) > 0 && (
                       <span>
-                        {" "}· {roomsConfig.reduce((a, c) => a + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0)} Child{roomsConfig.reduce((a, c) => a + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0) > 1 ? "ren" : ""}
+                        {" "}· {roomsConfig.reduce((a, c) => a + (c.childrenWithBed ?? 0) + (c.childrenWithoutBed ?? 0), 0)} Child
                       </span>
                     )}
                   </span>
-                  <ChevronDown className="w-4 h-4 text-white/40" />
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
 
                 {guestPopoverOpen && (
-                  <div ref={popoverRef} className="absolute z-30 left-0 right-0 top-full mt-2 bg-white text-slate-800 rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <h4 className="font-bold text-xs text-[#1B3A6B] uppercase tracking-wider">Occupancy Setup</h4>
-                      <button onClick={() => setGuestPopoverOpen(false)} aria-label="Close occupancy panel" className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4" /></button>
+                  <div ref={popoverRef} className="absolute z-[100] left-0 right-0 top-full mt-2 bg-white text-slate-800 rounded-xl border border-slate-200 shadow-xl p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                      <h4 className="font-bold text-[10px] text-[#1B3A6B] uppercase tracking-wider">Occupancy Config</h4>
+                      <button onClick={() => setGuestPopoverOpen(false)} aria-label="Close occupancy panel" className="p-0.5 hover:bg-slate-100 rounded text-slate-400"><X className="w-3.5 h-3.5" /></button>
                     </div>
 
-                    {/* Occupancy info banner */}
-                    <div className="bg-sky-50 border border-sky-100 rounded-xl px-3 py-2 text-[10px] text-sky-700 font-medium">
-                      <span className="font-bold">Base price</span> covers {room.baseAdults ?? 2} adult{(room.baseAdults ?? 2) !== 1 ? "s" : ""}{(room.baseChildren ?? 0) > 0 ? ` + ${room.baseChildren} child${room.baseChildren !== 1 ? "ren" : ""}` : ""}.
-                      {" "}Max capacity: <span className="font-bold">{room.maxAdults || 2} adults + {room.maxChildren || 1} children</span> per room.
+                    <div className="bg-sky-50 border border-sky-100 rounded-lg p-2 text-[9px] text-sky-700 font-medium leading-relaxed">
+                      Base rate covers {room.baseAdults ?? 2} adult{(room.baseAdults ?? 2) !== 1 ? "s" : ""}. Max room capacity: <span className="font-bold">{room.maxAdults || 2} adults + {room.maxChildren || 1} kids</span>.
                     </div>
 
-                    <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
+                    <div className="max-h-52 overflow-y-auto space-y-2.5">
                       {roomsConfig.map((config, index) => {
                         const totalInRoom = config.adults + (config.childrenWithBed ?? 0) + (config.childrenWithoutBed ?? 0);
                         const roomOverCapacity = config.adults > (room.maxAdults || 2) || totalInRoom > maxTotalPerRoom;
                         return (
-                          <div key={index} className={`p-3 rounded-xl border space-y-2 ${roomOverCapacity ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-100"}`}>
-                            <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                          <div key={index} className={`p-2.5 rounded-lg border space-y-2 ${roomOverCapacity ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-100"}`}>
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-700">
                               <span>Room {index + 1}</span>
-                              <div className="flex items-center gap-2">
-                                {roomOverCapacity && <span className="text-[9px] text-rose-600 font-bold">⚠ Over capacity</span>}
+                              <div className="flex items-center gap-1.5">
+                                {roomOverCapacity && <span className="text-[8px] text-rose-600 font-bold">Over Capacity</span>}
                                 {roomsConfig.length > 1 && (
-                                  <button onClick={() => setRoomsConfig(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 text-[10px] hover:underline">Remove</button>
+                                  <button onClick={() => setRoomsConfig(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 text-[9px] hover:underline">Remove</button>
                                 )}
                               </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-3 gap-1.5">
                               {([
                                 { label: "Adults", key: "adults" as const, min: 1, max: room.maxAdults || 4 },
-                                { label: "Child (With Bed)", key: "childrenWithBed" as const, min: 0, max: room.maxChildren || 3 },
+                                { label: "Child (Bed)", key: "childrenWithBed" as const, min: 0, max: room.maxChildren || 3 },
                                 { label: "Child (No Bed)", key: "childrenWithoutBed" as const, min: 0, max: room.maxChildren || 3 },
-                              ] as const).map(({ label, key, min, max }) => (
-                                <div key={key} className="flex flex-col items-center justify-between bg-white p-2 rounded-lg border border-slate-100 text-center">
-                                  <span className="text-[10px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
-                                  <div className="flex items-center gap-1.5 mt-auto">
+                              ]).map(({ label, key, min, max }) => (
+                                <div key={key} className="flex flex-col items-center justify-between bg-white p-1 rounded border border-slate-100 text-center">
+                                  <span className="text-[8px] font-semibold text-slate-500 leading-tight mb-1">{label}</span>
+                                  <div className="flex items-center gap-1 mt-auto">
                                     <button
                                       type="button"
                                       onClick={() => setRoomsConfig(prev => prev.map((c, i) => i === index ? { ...c, [key]: Math.max(min, c[key] - 1) } : c))}
-                                      className="w-5 h-5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-xs"
+                                      className="w-4.5 h-4.5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
                                     >
                                       -
                                     </button>
-                                    <span className="text-xs font-bold w-4 text-center">{config[key] ?? 0}</span>
+                                    <span className="text-[10px] font-bold w-3 text-center">{config[key] ?? 0}</span>
                                     <button
                                       type="button"
                                       onClick={() => setRoomsConfig(prev => prev.map((c, i) =>
                                         i === index ? { ...c, [key]: Math.min(max, c[key] + 1) } : c
                                       ))}
-                                      className="w-5 h-5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-xs"
+                                      className="w-4.5 h-4.5 bg-slate-100 hover:bg-slate-200 rounded flex items-center justify-center font-bold text-[10px]"
                                     >
                                       +
                                     </button>
@@ -1359,114 +1349,120 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                                 </div>
                               ))}
                             </div>
-                            {/* Per-room capacity progress */}
-                            <div className="space-y-2">
-                              <div className="grid grid-cols-10 gap-0.5 h-2 rounded-full overflow-hidden bg-slate-200">
-                                {Array.from({ length: 10 }).map((_, segmentIndex) => {
-                                  const filledSegments = Math.round(Math.min(1, totalInRoom / maxTotalPerRoom) * 10);
-                                  return (
-                                    <div
-                                      key={segmentIndex}
-                                      className={cn(
-                                        "h-full rounded-full transition-colors",
-                                        segmentIndex < filledSegments ? (roomOverCapacity ? "bg-rose-500" : "bg-emerald-400") : "bg-slate-200"
-                                      )}
-                                    />
-                                  );
-                                })}
-                              </div>
-                              <span className={`text-[9px] font-bold ${roomOverCapacity ? "text-rose-600" : "text-slate-400"}`}>{totalInRoom}/{maxTotalPerRoom}</span>
-                            </div>
                           </div>
                         );
                       })}
                     </div>
                     {roomsConfig.length < 5 && (
-                      <button onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])} className="w-full text-xs font-bold py-2 border border-slate-200 rounded-xl text-[#1B3A6B] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1">
-                        <Plus className="w-3.5 h-3.5" /> Add Another Room
+                      <button onClick={() => setRoomsConfig(prev => [...prev, { adults: 2, childrenWithBed: 0, childrenWithoutBed: 0 }])} className="w-full text-[10px] font-bold py-1.5 border border-slate-200 rounded-lg text-[#1B3A6B] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1">
+                        <Plus className="w-3.5 h-3.5" /> Add Room
                       </button>
                     )}
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Price Summary */}
-              <div className="pt-3 border-t border-white/10 space-y-2 text-xs text-white/70">
-                <div className="flex justify-between">
-                  <span>Room base ({pricingBreakdown.nights} night{pricingBreakdown.nights > 1 ? "s" : ""} × {pricingBreakdown.roomsCount} room{pricingBreakdown.roomsCount > 1 ? "s" : ""})</span>
-                  <span className="text-white font-bold">₹{pricingBreakdown.baseTotal.toLocaleString()}</span>
+              {/* Meal plan selector */}
+              {room.mealPlanOptions && room.mealPlanOptions.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-0.5">Meal Plan</span>
+                  <select
+                    value={selectedMealPlan}
+                    onChange={(e) => setSelectedMealPlan(e.target.value)}
+                    className="w-full h-10 rounded border border-slate-200 bg-white text-slate-700 px-3 text-xs font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="">EP (Room Only)</option>
+                    {room.mealPlanOptions.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.label} {option.adultPrice ? `(+₹${option.adultPrice}/adult)` : ""}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                {pricingBreakdown.extraAdultTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span>Extra adults charge</span>
-                    <span className="text-white font-bold">₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span>
-                  </div>
-                )}
-                {pricingBreakdown.extraChildWithBedTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span>Extra child (with bed) charge</span>
-                    <span className="text-white font-bold">₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span>
-                  </div>
-                )}
-                {pricingBreakdown.extraChildWithoutBedTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span>Child sharing (no bed) charge</span>
-                    <span className="text-white font-bold">₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span>
-                  </div>
-                )}
-                {pricingBreakdown.mealPlanTotal > 0 && (
-                  <div className="flex justify-between">
-                    <span>Meal plan ({pricingBreakdown.selectedPlanObj.label})</span>
-                    <span className="text-white font-bold">₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span>
-                  </div>
-                )}
-                {pricingBreakdown.originalSubtotal > pricingBreakdown.subtotal && (
-                  <div className="flex justify-between text-emerald-200/90 text-[11px] bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-400/20">
-                    <span>Discount applied</span>
-                    <span>-₹{(pricingBreakdown.originalSubtotal - pricingBreakdown.subtotal).toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between pt-1 border-t border-white/5 text-sm font-bold text-white">
-                  <span>Subtotal</span>
-                  <span>₹{pricingBreakdown.subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-white/50 text-[11px]">
-                  <span>GST (12%)</span>
-                  <span className="text-white font-medium">₹{pricingBreakdown.gst.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-white/10 text-base font-black text-white">
-                  <span>Grand Total</span>
-                  <span className="text-sky-300 font-extrabold text-sm">₹{pricingBreakdown.grandTotal.toLocaleString()}</span>
-                </div>
-              </div>
- 
-              {/* CTA */}
-              {isOccupancyExceeded ? (
-                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold p-3 rounded-sm text-center">
-                  Guest count exceeds room capacity. Please adjust above.
-                </div>
-              ) : !checkOut ? (
-                <Button disabled className="w-full h-14 rounded-sm bg-white/20 text-white/40 font-black uppercase tracking-wider text-xs cursor-not-allowed">
-                  Select Check-out Date
-                </Button>
-              ) : (
-                <Button onClick={handleBookNow} className="w-full h-14 rounded-sm bg-white text-[#0F1E3D] hover:bg-white/90 font-black uppercase tracking-wider text-xs shadow-lg">
-                  Book Now — ₹{stayTotal.toLocaleString()}
-                </Button>
               )}
 
-              <div className="flex items-center gap-3 pt-2 border-t border-white/10">
-                <a href="tel:+918595513009" className="flex-1 h-11 rounded-sm border border-white/10 font-bold text-xs text-white hover:bg-white/5 flex items-center justify-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-sky-400" /> Call Desk
+              {/* Price Breakdown */}
+              {checkOut && (
+                <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs text-slate-600">
+                  <div className="flex justify-between">
+                    <span>Room base stay ({pricingBreakdown.nights} night(s) × {pricingBreakdown.roomsCount} room(s))</span>
+                    <span className="text-slate-800 font-bold">₹{pricingBreakdown.baseTotal.toLocaleString()}</span>
+                  </div>
+                  {pricingBreakdown.extraAdultTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span>Extra adult charges</span>
+                      <span className="text-slate-800 font-bold">₹{pricingBreakdown.extraAdultTotal.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {pricingBreakdown.extraChildWithBedTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span>Child bed charges</span>
+                      <span className="text-slate-800 font-bold">₹{pricingBreakdown.extraChildWithBedTotal.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {pricingBreakdown.extraChildWithoutBedTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span>Child no bed charges</span>
+                      <span className="text-slate-800 font-bold">₹{pricingBreakdown.extraChildWithoutBedTotal.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {pricingBreakdown.mealPlanTotal > 0 && (
+                    <div className="flex justify-between">
+                      <span>Meal plan total</span>
+                      <span className="text-slate-800 font-bold">₹{pricingBreakdown.mealPlanTotal.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {pricingBreakdown.originalSubtotal > pricingBreakdown.subtotal && (
+                    <div className="flex justify-between text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100 font-bold text-[10px]">
+                      <span>Discount saved</span>
+                      <span>-₹{(pricingBreakdown.originalSubtotal - pricingBreakdown.subtotal).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-1.5 border-t border-slate-100 font-bold text-slate-800 text-sm">
+                    <span>Subtotal</span>
+                    <span>₹{pricingBreakdown.subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500 text-[10px]">
+                    <span>GST (12%)</span>
+                    <span>₹{pricingBreakdown.gst.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-slate-100 font-black text-[#1B3A6B] text-base">
+                    <span>Grand Total</span>
+                    <span>₹{pricingBreakdown.grandTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Book Now Button */}
+              <div>
+                {isOccupancyExceeded ? (
+                  <div className="bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold p-3 rounded-lg text-center">
+                    Occupancy exceeds room limit.
+                  </div>
+                ) : !checkOut ? (
+                  <Button disabled className="w-full h-11 rounded-lg bg-slate-100 text-slate-400 font-bold uppercase tracking-wider text-xs">
+                    Select checkout date above
+                  </Button>
+                ) : (
+                  <Button onClick={handleBookNow} className="w-full h-11 rounded-lg bg-[#1B3A6B] hover:bg-[#152e55] text-white font-bold uppercase tracking-wider text-xs shadow-md">
+                    Book Room Direct ⚡
+                  </Button>
+                )}
+              </div>
+
+              {/* Inquiry & WhatsApp desk */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                <a href="tel:+918595513009" className="flex-1 h-10 rounded-lg border border-[#1B3A6B] font-bold text-xs text-[#1B3A6B] hover:bg-slate-50 flex items-center justify-center gap-1.5 transition-colors">
+                  <Phone className="w-3.5 h-3.5 text-[#1B3A6B]" /> Call Desk
                 </a>
-                <button onClick={() => toast.success("Opening inquiry form...")} className="flex-1 h-11 rounded-sm border border-white/10 font-bold text-xs text-white hover:bg-white/5 flex items-center justify-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-sky-400" /> Inquiry
+                <button onClick={() => toast.success("Opening inquiry...")} className="flex-1 h-10 rounded-lg border border-slate-200 font-bold text-xs text-slate-700 hover:bg-slate-55 flex items-center justify-center gap-1.5 transition-colors">
+                  <MessageSquare className="w-3.5 h-3.5 text-slate-500" /> Custom Inquiry
                 </button>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-2 border border-slate-100 shadow-xs grid grid-cols-3 gap-3 text-center">
+            {/* Card 3: Trust Badges */}
+            <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm grid grid-cols-3 gap-3 text-center">
               {[
                 { icon: ShieldCheck, label: "Secure Booking", color: "text-emerald-500" },
                 { icon: Check, label: "Instant Confirm", color: "text-sky-500" },
@@ -1478,6 +1474,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                 </div>
               ))}
             </div>
+
           </div>
         </div>
       </div>
