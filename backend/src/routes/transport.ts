@@ -104,10 +104,19 @@ router.get("/transport", cacheMiddleware(30), async (req: Request, res: Response
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC: Get vehicle by slug
 // GET /api/transport/:slug
+// NOTE: Specific sub-routes (/routes, /types, /mega-menu, /my-bookings) are declared
+//       BEFORE this handler in the file — Express respects registration order.
+//       This guard also prevents keyword slugs from hitting the DB unnecessarily.
 // ─────────────────────────────────────────────────────────────────────────────
+const TRANSPORT_KEYWORD_SLUGS = new Set(["routes", "types", "mega-menu", "my-bookings", "book"]);
 router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
+
+    // Pass-through guard for keyword paths that should be handled by their own routes
+    if (TRANSPORT_KEYWORD_SLUGS.has(slug)) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
 
     const vehicleResult = await db.execute(sql`
       SELECT
@@ -171,25 +180,27 @@ router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Re
       LIMIT 10
     `);
 
-    // Avg rating
-    const [ratingData] = await db.execute(sql`
+    // Avg rating — db.execute() returns {rows:[...]} directly
+    const ratingResult = await db.execute(sql`
       SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) AS review_count
       FROM transport_reviews WHERE vehicle_id = ${v.id} AND admin_approved = true
     `) as any;
+    const ratingRow = ratingResult?.rows?.[0] || {};
 
     res.json({
       ...v,
       pricing,
       driver: driver || null,
       reviews: reviews.rows,
-      avgRating: Number(ratingData?.rows?.[0]?.avg_rating || 0),
-      reviewCount: Number(ratingData?.rows?.[0]?.review_count || 0),
+      avgRating:   Number(ratingRow.avg_rating   || 0),
+      reviewCount: Number(ratingRow.review_count || 0),
     });
   } catch (error: any) {
     logger.error({ error: error.message }, "Vehicle detail error");
     res.status(500).json({ error: "Failed to fetch vehicle" });
   }
 });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC: Popular Routes

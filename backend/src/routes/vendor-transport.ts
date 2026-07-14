@@ -8,11 +8,22 @@ import { eq, and, desc, sql, asc } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../lib/logger";
 
+// ─── Safe array coercer for text[] Drizzle columns ──────────────────────────
+// Drizzle crashes with "value.map is not a function" if a plain string/null
+// is passed to a text[].array() column. Always use this helper for features / images.
+const toStringArray = (val: any, separator = ","): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(String).filter(Boolean);
+  if (typeof val === "string") return val.split(separator).map((s) => s.trim()).filter(Boolean);
+  return [];
+};
+
 const router = Router();
 
 // All vendor-transport routes require authentication
 router.use(authenticate);
 router.use(authorize(["TRANSPORTER", "ADMIN", "SUPERADMIN"]));
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR PROFILE / ONBOARDING
@@ -49,6 +60,10 @@ router.post("/profile", async (req: AuthenticatedRequest, res: Response) => {
       logoUrl, description,
     } = req.body;
 
+    if (!businessName || !phone || !email || !address || !city || !state || !pincode) {
+      return res.status(400).json({ error: "businessName, phone, email, address, city, state, pincode are required" });
+    }
+
     const existing = await db
       .select()
       .from(transportVendorsTable)
@@ -56,14 +71,25 @@ router.post("/profile", async (req: AuthenticatedRequest, res: Response) => {
       .limit(1);
 
     const data: any = {
-      userId, businessName, businessType,
-      phone, alternatePhone, email, website,
+      userId, businessName, businessType: businessType || "PROPRIETORSHIP",
+      phone, alternatePhone: alternatePhone || null, email, website: website || null,
       address, city, state, pincode,
-      gstNumber, panNumber,
-      gstCertificateUrl, panCardUrl, businessRegistrationUrl, addressProofUrl,
-      operatingSince, operatingCities, vehicleTypes,
-      bankAccountName, bankAccountNumber, bankIfscCode, bankName,
-      logoUrl, description,
+      gstNumber: gstNumber || null, panNumber: panNumber || null,
+      gstCertificateUrl: gstCertificateUrl || null,
+      panCardUrl: panCardUrl || null,
+      businessRegistrationUrl: businessRegistrationUrl || null,
+      addressProofUrl: addressProofUrl || null,
+      operatingSince: operatingSince ? Number(operatingSince) : null,
+      // ─── CRITICAL: coerce text[].array() columns ───────────────────────────
+      operatingCities: toStringArray(operatingCities, ","),
+      vehicleTypes:    toStringArray(vehicleTypes,    ","),
+      // ──────────────────────────────────────────────────────────────────────
+      bankAccountName: bankAccountName || null,
+      bankAccountNumber: bankAccountNumber || null,
+      bankIfscCode: bankIfscCode || null,
+      bankName: bankName || null,
+      logoUrl: logoUrl || null,
+      description: description || null,
       updatedAt: new Date(),
     };
 
@@ -102,6 +128,7 @@ router.post("/profile", async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ error: "Failed to save vendor profile", details: error.message });
   }
 });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VENDOR DASHBOARD STATS
@@ -301,7 +328,11 @@ router.post("/vehicles", async (req: AuthenticatedRequest, res: Response) => {
       make, model, year, color, registrationNumber,
       seatingCapacity, luggageCapacity, fuelType, transmission,
       isAC: isAC !== undefined ? isAC : true,
-      features, images, documents: documents || {}, conditionReport: conditionReport || {},
+      // ─── CRITICAL: coerce to proper string[] for Drizzle text[] columns ───
+      features: toStringArray(features, ","),
+      images:   toStringArray(images, "\n"),
+      documents: documents && typeof documents === "object" ? documents : {},
+      conditionReport: conditionReport && typeof conditionReport === "object" ? conditionReport : {},
       bookingType: bookingType || "INSTANT",
       basePricePerKm, basePricePerDay, minimumKm,
       waitingChargePerHour, driverAllowancePerDay, nightChargePercent,
@@ -311,6 +342,7 @@ router.post("/vehicles", async (req: AuthenticatedRequest, res: Response) => {
       metaTitle, metaDescription,
       status: isAdmin ? "APPROVED" : "PENDING",
     } as any).returning();
+
 
     res.status(201).json(vehicle);
   } catch (error: any) {
@@ -336,6 +368,10 @@ router.patch("/vehicles/:id", async (req: AuthenticatedRequest, res: Response) =
     delete updateData.id; delete updateData.ownerId; delete updateData.vendorId;
     delete updateData.slug; delete updateData.createdAt;
 
+    // ─── Coerce array fields so Drizzle text[] columns never receive a string ─
+    if ("features" in updateData) updateData.features = toStringArray(updateData.features, ",");
+    if ("images"   in updateData) updateData.images   = toStringArray(updateData.images,   "\n");
+
     // Recalculate minPrice if pricing changed
     if (updateData.basePricePerDay || updateData.basePricePerKm) {
       const day = updateData.basePricePerDay || vehicle.basePricePerDay || 99999;
@@ -354,6 +390,7 @@ router.patch("/vehicles/:id", async (req: AuthenticatedRequest, res: Response) =
     res.status(500).json({ error: "Failed to update vehicle" });
   }
 });
+
 
 // DELETE /api/vendor/transport/vehicles/:id — Soft delete (set to DRAFT)
 router.delete("/vehicles/:id", async (req: AuthenticatedRequest, res: Response) => {
@@ -655,6 +692,7 @@ router.patch("/bookings/:id", async (req: AuthenticatedRequest, res: Response) =
     const bookingId = Number(req.params.id);
     const { status, driverId, vendorNote, cancelledReason } = req.body;
 
+    // Fetch booking + verify ownership via vehicle's ownerId
     const bookingResult = await db.execute(sql`
       SELECT tb.*, tv.owner_id FROM transport_bookings tb
       LEFT JOIN transport_vehicles tv ON tb.vehicle_id = tv.id
@@ -665,25 +703,36 @@ router.patch("/bookings/:id", async (req: AuthenticatedRequest, res: Response) =
     if (!b) return res.status(404).json({ error: "Booking not found" });
     if (!isAdmin && b.owner_id !== ownerId) return res.status(403).json({ error: "Forbidden" });
 
-    const updateData: any = { updatedAt: new Date() };
-    if (status) updateData.status = status;
-    if (driverId) updateData.driverId = driverId;
-    if (vendorNote) updateData.vendorNote = vendorNote;
-    if (cancelledReason) updateData.cancelledReason = cancelledReason;
+    // ── Build update safely using parameterized queries ───────────────────────
+    const updateData: Record<string, any> = { updated_at: new Date() };
+    if (status)          updateData.status           = status;
+    if (driverId)        updateData.driver_id        = Number(driverId);
+    if (vendorNote)      updateData.vendor_note      = vendorNote;
+    if (cancelledReason) updateData.cancelled_reason = cancelledReason;
 
-    // When confirming, block those dates in availability
+    // When confirming, block those dates in availability calendar
     if (status === "CONFIRMED" && b.pickup_date) {
       await db.execute(sql`
         INSERT INTO transport_availability (vehicle_id, vendor_id, start_date, end_date, status, reason)
-        VALUES (${b.vehicle_id}, ${b.vendor_id}, ${b.pickup_date}, ${b.return_date || b.pickup_date}, 'BOOKED', 'Booking ${bookingId}')
+        VALUES (${b.vehicle_id}, ${b.vendor_id}, ${b.pickup_date}, ${b.return_date || b.pickup_date},
+                'BOOKED', ${`Booking #${bookingId}`})
         ON CONFLICT DO NOTHING
       `);
     }
 
+    // Safe parameterized update — no raw string interpolation
+    await db.execute(sql`
+      UPDATE transport_bookings SET
+        status            = COALESCE(${updateData.status            ?? null}, status),
+        driver_id         = COALESCE(${updateData.driver_id         ?? null}, driver_id),
+        vendor_note       = COALESCE(${updateData.vendor_note       ?? null}, vendor_note),
+        cancelled_reason  = COALESCE(${updateData.cancelled_reason  ?? null}, cancelled_reason),
+        updated_at        = NOW()
+      WHERE id = ${bookingId}
+    `);
+
     const updatedResult = await db.execute(sql`
-      UPDATE transport_bookings SET ${sql.raw(
-        Object.entries(updateData).map(([k, v]) => `${k.replace(/([A-Z])/g, '_$1').toLowerCase()} = '${v}'`).join(', ')
-      )} WHERE id = ${bookingId} RETURNING *
+      SELECT * FROM transport_bookings WHERE id = ${bookingId} LIMIT 1
     `) as any;
 
     res.json(updatedResult.rows[0]);
@@ -692,5 +741,6 @@ router.patch("/bookings/:id", async (req: AuthenticatedRequest, res: Response) =
     res.status(500).json({ error: "Failed to update booking" });
   }
 });
+
 
 export default router;

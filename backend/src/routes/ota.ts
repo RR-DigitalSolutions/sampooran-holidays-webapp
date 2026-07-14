@@ -107,11 +107,10 @@ router.get("/hotels/:slug", cacheMiddleware(300), async (req, res) => {
   }
 });
 
-// GET /api/ota/transport — supports ?country=&state=&city= geo filtering
+// GET /api/ota/transport — supports ?country=&state=&city=&type= geo filtering
 router.get("/transport", cacheMiddleware(120), async (req, res) => {
   try {
     const { country, state, city, type, limit = 100 } = req.query;
-    let query = db.select().from(transportVehiclesTable).$dynamic();
     const conditions: any[] = [eq(transportVehiclesTable.status, "APPROVED")];
     if (country) conditions.push(eq(transportVehiclesTable.countrySlug, country as string));
     if (state)   conditions.push(eq(transportVehiclesTable.stateSlug,   state   as string));
@@ -131,6 +130,7 @@ router.get("/transport", cacheMiddleware(120), async (req, res) => {
     res.status(500).json({ error: "Failed to fetch transport" });
   }
 });
+
 
 // GET /api/ota/route-prices — fare calculator: from + to + optional vehicleType
 router.get("/route-prices", async (req, res) => {

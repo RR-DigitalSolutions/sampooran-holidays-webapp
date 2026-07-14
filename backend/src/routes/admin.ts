@@ -12,6 +12,21 @@ import { syncPackage, deleteMongoPackage, syncDestination, deleteMongoDestinatio
 import { seedHimachalTransport } from "../lib/seedHimachalTransport";
 import { packageCalendarInventoryTable, packagePriceHistoryTable } from "@workspace/db";
 
+// ─── Local slug generator (no external dep) ─────────────────────────────────
+const slugify = (str: string): string =>
+  str.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+// ─── Safe array coercer for text[] Drizzle columns ──────────────────────────
+// Ensures the value passed to a text[].array() column is always a proper array.
+// Drizzle crashes with "value.map is not a function" if a string/null is passed.
+const toStringArray = (val: any, separator = ","): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map(String).filter(Boolean);
+  if (typeof val === "string") return val.split(separator).map((s) => s.trim()).filter(Boolean);
+  return [];
+};
+
+
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is required");
@@ -1301,9 +1316,8 @@ router.delete("/home/offers/:id", requirePermission("SETTINGS"), async (req, res
 // Admin-created hotels use the admin's own userId as ownerId.
 // ─────────────────────────────────────────────────────────────
 
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
+
+
 
 // GET /admin/hotels — list all hotels with owner info and destination name
 router.get("/hotels", requirePermission("HOTELS"), async (req, res) => {
@@ -1545,85 +1559,121 @@ router.delete("/hotels/:id/rooms/:roomId", requirePermission("HOTELS"), async (r
 // Uses or creates a system "Admin Direct Fleet" vendor for ownerId assignment.
 router.post("/transport-vehicles", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
   try {
-    const data = { ...req.body };
-    delete data.id; delete data.createdAt; delete data.updatedAt;
-    delete data.owner_name; delete data.owner_email; delete data.city_name;
+    const body = { ...req.body };
 
-    if (!data.name || !data.make || !data.model || !data.type) {
+    // ── Strip read-only / auto-generated fields ────────────────────────────
+    delete body.id; delete body.createdAt; delete body.updatedAt;
+    delete body.owner_name; delete body.owner_email; delete body.city_name;
+    delete body.vendorId; // resolved below
+
+    // ── Required field validation ──────────────────────────────────────────
+    if (!body.name || !body.make || !body.model || !body.type) {
       return res.status(400).json({ error: "name, make, model, and type are required" });
     }
 
-    // Auto-generate slug
-    if (!data.slug) {
-      data.slug = slugify(`${data.name}-${data.make}-${data.model}`) + "-" + Math.random().toString(36).slice(2, 6);
+    // ── Auto-generate slug ─────────────────────────────────────────────────
+    if (!body.slug) {
+      const city = body.customCity ? `-${slugify(body.customCity)}` : "";
+      body.slug = `${slugify(body.name)}${city}-${Date.now().toString().slice(-6)}`;
     }
 
-    data.ownerId = req.user!.id;
-    data.status = data.status || "PENDING"; // Admin-created vehicles start as PENDING — approve after verification
-    data.seatingCapacity = Number(data.seatingCapacity) || 4;
-    if (data.minPrice) data.minPrice = Number(data.minPrice);
-    if (data.basePricePerKm) data.basePricePerKm = Number(data.basePricePerKm);
-    if (data.basePricePerDay) data.basePricePerDay = Number(data.basePricePerDay);
-    if (data.year) data.year = Number(data.year);
-    if (data.luggageCapacity) data.luggageCapacity = Number(data.luggageCapacity);
-    if (data.features && typeof data.features === "string") {
-      data.features = data.features.split(",").map((s: string) => s.trim()).filter(Boolean);
-    }
-    if (data.images && typeof data.images === "string") {
-      data.images = data.images.split("\n").map((s: string) => s.trim()).filter(Boolean);
-    }
-    if (data.destinationId) data.destinationId = Number(data.destinationId);
-    if (data.stateId) data.stateId = Number(data.stateId);
-    if (data.countryId) data.countryId = Number(data.countryId);
+    // ── Numeric coercions ──────────────────────────────────────────────────
+    const seatingCapacity = Number(body.seatingCapacity) || 4;
+    const luggageCapacity  = body.luggageCapacity   != null ? Number(body.luggageCapacity)   : null;
+    const year             = body.year              != null ? Number(body.year)              : null;
+    const minPrice         = body.minPrice          != null ? Number(body.minPrice)          : 0;
+    const basePricePerKm   = body.basePricePerKm    != null ? Number(body.basePricePerKm)   : null;
+    const basePricePerDay  = body.basePricePerDay   != null ? Number(body.basePricePerDay)  : null;
+    const destinationId    = body.destinationId     != null ? Number(body.destinationId)    : null;
+    const stateId          = body.stateId           != null ? Number(body.stateId)          : null;
+    const countryId        = body.countryId         != null ? Number(body.countryId)        : null;
 
-    // Resolve or create a system transport vendor for admin-direct vehicles
-    let vendorId = data.vendorId ? Number(data.vendorId) : null;
-    if (!vendorId) {
-      const [existingVendor] = await db
-        .select({ id: transportVendorsTable.id })
-        .from(transportVendorsTable)
-        .where(eq(transportVendorsTable.userId, req.user!.id))
-        .limit(1);
+    // ── Array fields — CRITICAL: must be proper JS arrays for Drizzle text[] ─
+    const features = toStringArray(body.features, ",");
+    const images   = toStringArray(body.images,   "\n");
 
-      if (existingVendor) {
-        vendorId = existingVendor.id;
-      } else {
-        // Create a system vendor profile for the admin
-        const adminUser = await db.select().from(usersTable)
-          .where(eq(usersTable.id, req.user!.id)).limit(1);
-        const admin = adminUser[0];
-        const [newVendor] = await db.insert(transportVendorsTable).values({
-          userId: req.user!.id,
-          businessName: "Admin Direct Fleet",
-          businessType: "PROPRIETORSHIP",
-          phone: admin?.phoneNumber || "0000000000",
-          email: admin?.email || "admin@sampooran.com",
-          address: "Head Office",
-          city: "Delhi",
-          state: "Delhi",
-          pincode: "110001",
-          status: "APPROVED",
-          commissionPct: 0,
-          adminNote: "System vendor for admin-created vehicles",
-        }).returning();
-        vendorId = newVendor.id;
-      }
+    // ── Status & flags ─────────────────────────────────────────────────────
+    const status     = body.status     || "APPROVED";   // Admin-created → live by default
+    const isAC       = body.isAC       !== undefined ? Boolean(body.isAC)       : true;
+    const isFeatured = body.isFeatured !== undefined ? Boolean(body.isFeatured) : false;
+
+    // ── Resolve or auto-create a system transport vendor for this admin ─────
+    let vendorId: number;
+    const [existingVendor] = await db
+      .select({ id: transportVendorsTable.id })
+      .from(transportVendorsTable)
+      .where(eq(transportVendorsTable.userId, req.user!.id))
+      .limit(1);
+
+    if (existingVendor) {
+      vendorId = existingVendor.id;
+    } else {
+      const [adminUser] = await db.select().from(usersTable)
+        .where(eq(usersTable.id, req.user!.id)).limit(1);
+      const [newVendor] = await db.insert(transportVendorsTable).values({
+        userId:       req.user!.id,
+        businessName: "Admin Direct Fleet – Sampooran Holidays",
+        businessType: "PROPRIETORSHIP",
+        phone:        adminUser?.phoneNumber || "9800000000",
+        email:        adminUser?.email       || "admin@sampooran.com",
+        address:      "Sampooran Holidays Head Office",
+        city:         body.customCity || "Delhi",
+        state:        "Delhi",
+        pincode:      "110001",
+        status:       "APPROVED",
+        commissionPct: 0,
+        adminNote:    "System vendor auto-created for admin-direct CRM vehicles",
+      }).returning();
+      vendorId = newVendor.id;
     }
-    data.vendorId = vendorId;
-    delete data.vendorId; // avoid double assignment below
 
+    // ── Insert vehicle ─────────────────────────────────────────────────────
     const [inserted] = await db.insert(transportVehiclesTable).values({
-      ...data,
       vendorId,
+      ownerId:      req.user!.id,
+      name:         body.name,
+      slug:         body.slug,
+      type:         body.type,
+      subType:      body.subType      || null,
+      description:  body.description  || null,
+      make:         body.make,
+      model:        body.model,
+      year,
+      color:        body.color        || null,
+      registrationNumber: body.registrationNumber || null,
+      seatingCapacity,
+      luggageCapacity,
+      fuelType:     body.fuelType     || "DIESEL",
+      transmission: body.transmission || "MANUAL",
+      isAC,
+      features,       // ← proper string[]
+      images,         // ← proper string[]
+      documents:    {},
+      conditionReport: {},
+      basePricePerKm,
+      basePricePerDay,
+      minPrice,
+      customCity:   body.customCity   || null,
+      destinationId,
+      stateId,
+      countryId,
+      destinationSlug: body.destinationSlug || null,
+      stateSlug:       body.stateSlug       || null,
+      countrySlug:     body.countrySlug     || null,
+      status,
+      isFeatured,
+      displayOrder: 0,
+      adminNote:    body.adminNote || "Admin CRM direct entry",
     }).returning();
 
     await clearCachePattern("cache:/api/transport*");
     res.status(201).json(inserted);
   } catch (e: any) {
-    logger.error({ error: e.message }, "Admin vehicle create error");
+    logger.error({ error: e.message, stack: e.stack }, "Admin vehicle create error");
     res.status(500).json({ error: "Failed to create vehicle: " + e.message });
   }
 });
+
 
 // ─────────────────────────────────────────────────────────────
 // LIVE CHAT MANAGEMENT
@@ -2316,4 +2366,151 @@ const resolvePendingCity = async (req: AuthenticatedRequest, res: import("expres
 router.post("/pending-cities/:id", requirePermission("PACKAGES"), resolvePendingCity);
 router.patch("/pending-cities/:id", requirePermission("PACKAGES"), resolvePendingCity);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSPORT VEHICLES — Admin CRUD (GET all, PATCH status/featured)
+// Admin panel calls: GET /admin/transport-vehicles
+//                   PATCH /admin/transport-vehicles/:id
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /admin/transport-vehicles — all vehicles with owner + city name + vendor info
+router.get("/transport-vehicles", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const vehicles = await db.execute(sql`
+      SELECT
+        tv.*,
+        u.name              AS owner_name,
+        u.email             AS owner_email,
+        tv2.business_name   AS vendor_business_name_full,
+        COALESCE(d.name, tv.custom_city) AS city_name
+      FROM transport_vehicles tv
+      LEFT JOIN users u            ON tv.owner_id   = u.id
+      LEFT JOIN transport_vendors tv2 ON tv.vendor_id = tv2.id
+      LEFT JOIN destinations d     ON tv.destination_id = d.id
+      ORDER BY tv.created_at DESC
+    `);
+    res.json(vehicles.rows);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin transport-vehicles GET error");
+    res.status(500).json({ error: "Failed to fetch transport vehicles" });
+  }
+});
+
+// PATCH /admin/transport-vehicles/:id — update status, isFeatured, adminNote, etc.
+router.patch("/transport-vehicles/:id", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const vehicleId = Number(req.params.id);
+    const data: any = { ...req.body, updatedAt: new Date() };
+    // Strip immutable fields
+    delete data.id; delete data.ownerId; delete data.vendorId;
+    delete data.slug; delete data.createdAt;
+    delete data.owner_name; delete data.owner_email; delete data.city_name; delete data.vendor_business_name_full;
+
+    // Safe-coerce array fields (avoid Drizzle "value.map is not a function")
+    if ("features" in data) data.features = toStringArray(data.features, ",");
+    if ("images"   in data) data.images   = toStringArray(data.images,   "\n");
+
+    // Numeric coercions
+    if (data.minPrice          != null) data.minPrice          = Number(data.minPrice);
+    if (data.basePricePerKm    != null) data.basePricePerKm    = Number(data.basePricePerKm);
+    if (data.basePricePerDay   != null) data.basePricePerDay   = Number(data.basePricePerDay);
+    if (data.seatingCapacity   != null) data.seatingCapacity   = Number(data.seatingCapacity);
+    if (data.luggageCapacity   != null) data.luggageCapacity   = Number(data.luggageCapacity);
+    if (data.displayOrder      != null) data.displayOrder      = Number(data.displayOrder);
+
+    const [updated] = await db
+      .update(transportVehiclesTable)
+      .set(data)
+      .where(eq(transportVehiclesTable.id, vehicleId))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Vehicle not found" });
+    await clearCachePattern("cache:/api/transport*");
+    res.json(updated);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin transport-vehicles PATCH error");
+    res.status(500).json({ error: "Failed to update vehicle: " + e.message });
+  }
+});
+
+// DELETE /admin/transport-vehicles/:id — soft delete (set to DRAFT)
+router.delete("/transport-vehicles/:id", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
+  try {
+    await db.update(transportVehiclesTable)
+      .set({ status: "DRAFT" } as any)
+      .where(eq(transportVehiclesTable.id, Number(req.params.id)));
+    await clearCachePattern("cache:/api/transport*");
+    res.json({ message: "Vehicle delisted successfully" });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to delete vehicle" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSPORT VENDORS — Admin CRUD (GET all, PATCH status/commission)
+// Admin panel calls: GET /admin/transport-vendors
+//                   PATCH /admin/transport-vendors/:id
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /admin/transport-vendors — all vendors with owner info
+router.get("/transport-vendors", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const vendors = await db.execute(sql`
+      SELECT
+        tv.*,
+        u.name  AS owner_name,
+        u.email AS owner_email,
+        (SELECT COUNT(*) FROM transport_vehicles tvh WHERE tvh.vendor_id = tv.id) AS vehicle_count
+      FROM transport_vendors tv
+      LEFT JOIN users u ON tv.user_id = u.id
+      ORDER BY tv.created_at DESC
+    `);
+    res.json(vendors.rows);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin transport-vendors GET error");
+    res.status(500).json({ error: "Failed to fetch transport vendors" });
+  }
+});
+
+// PATCH /admin/transport-vendors/:id — update status, commissionPct, adminNote
+router.patch("/transport-vendors/:id", requirePermission("TRANSPORT"), async (req: AuthenticatedRequest, res) => {
+  try {
+    const vendorId = Number(req.params.id);
+    const data: any = { ...req.body, updatedAt: new Date() };
+    delete data.id; delete data.userId; delete data.createdAt;
+    delete data.owner_name; delete data.owner_email; delete data.vehicle_count;
+
+    if (data.commissionPct != null) data.commissionPct = Number(data.commissionPct);
+
+    // Auto-stamp approval timestamp
+    if (data.status === "APPROVED" && !data.approvedAt) {
+      data.approvedAt = new Date();
+    }
+
+    const [updated] = await db
+      .update(transportVendorsTable)
+      .set(data)
+      .where(eq(transportVendorsTable.id, vendorId))
+      .returning();
+
+    if (!updated) return res.status(404).json({ error: "Vendor not found" });
+
+    // Notify vendor on approval
+    if (data.status === "APPROVED") {
+      try {
+        const [owner] = await db.select().from(usersTable)
+          .where(eq(usersTable.id, updated.userId)).limit(1);
+        if (owner?.email) {
+          await notifyVendorOfVerification(owner.email, updated.businessName || "your business");
+        }
+      } catch { /* non-critical */ }
+    }
+
+    res.json(updated);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin transport-vendors PATCH error");
+    res.status(500).json({ error: "Failed to update vendor: " + e.message });
+  }
+});
+
 export default router;
+
