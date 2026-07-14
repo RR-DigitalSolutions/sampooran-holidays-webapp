@@ -111,7 +111,7 @@ router.get("/transport", cacheMiddleware(30), async (req: Request, res: Response
 const TRANSPORT_KEYWORD_SLUGS = new Set(["routes", "types", "mega-menu", "my-bookings", "book"]);
 router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Response) => {
   try {
-    const { slug } = req.params;
+    const slug = req.params.slug as string;
 
     // Pass-through guard for keyword paths that should be handled by their own routes
     if (TRANSPORT_KEYWORD_SLUGS.has(slug)) {
@@ -268,10 +268,18 @@ router.get("/transport/:id/availability", async (req: Request, res: Response) =>
     const vehicleId = Number(req.params.id);
     const { startDate, endDate } = req.query;
 
+    const conditions: any[] = [eq(transportAvailabilityTable.vehicleId, vehicleId)];
+    if (startDate) {
+      conditions.push(sql`end_date >= ${startDate as string}`);
+    }
+    if (endDate) {
+      conditions.push(sql`start_date <= ${endDate as string}`);
+    }
+
     const blocks = await db
       .select()
       .from(transportAvailabilityTable)
-      .where(eq(transportAvailabilityTable.vehicleId, vehicleId));
+      .where(and(...conditions));
 
     res.json({ vehicleId, blockedRanges: blocks });
   } catch (error: any) {

@@ -626,6 +626,28 @@ router.post("/vehicles/:id/pricing", async (req: AuthenticatedRequest, res: Resp
 router.patch("/pricing/:ruleId", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const ruleId = Number(req.params.ruleId);
+    const ownerId = req.user!.id;
+    const isAdmin = ["ADMIN", "SUPERADMIN"].includes(req.user!.role);
+
+    const [rule] = await db
+      .select()
+      .from(transportPricingRulesTable)
+      .where(eq(transportPricingRulesTable.id, ruleId))
+      .limit(1);
+
+    if (!rule) return res.status(404).json({ error: "Pricing rule not found" });
+
+    if (!isAdmin) {
+      const [vendor] = await db
+        .select({ id: transportVendorsTable.id })
+        .from(transportVendorsTable)
+        .where(eq(transportVendorsTable.userId, ownerId))
+        .limit(1);
+      if (!vendor || vendor.id !== rule.vendorId) {
+        return res.status(403).json({ error: "Forbidden: You do not own this pricing rule" });
+      }
+    }
+
     const updateData: any = { ...req.body, updatedAt: new Date() };
     delete updateData.id; delete updateData.vehicleId; delete updateData.vendorId;
 
@@ -639,7 +661,30 @@ router.patch("/pricing/:ruleId", async (req: AuthenticatedRequest, res: Response
 // DELETE /api/vendor/transport/pricing/:ruleId
 router.delete("/pricing/:ruleId", async (req: AuthenticatedRequest, res: Response) => {
   try {
-    await db.delete(transportPricingRulesTable).where(eq(transportPricingRulesTable.id, Number(req.params.ruleId)));
+    const ruleId = Number(req.params.ruleId);
+    const ownerId = req.user!.id;
+    const isAdmin = ["ADMIN", "SUPERADMIN"].includes(req.user!.role);
+
+    const [rule] = await db
+      .select()
+      .from(transportPricingRulesTable)
+      .where(eq(transportPricingRulesTable.id, ruleId))
+      .limit(1);
+
+    if (!rule) return res.status(404).json({ error: "Pricing rule not found" });
+
+    if (!isAdmin) {
+      const [vendor] = await db
+        .select({ id: transportVendorsTable.id })
+        .from(transportVendorsTable)
+        .where(eq(transportVendorsTable.userId, ownerId))
+        .limit(1);
+      if (!vendor || vendor.id !== rule.vendorId) {
+        return res.status(403).json({ error: "Forbidden: You do not own this pricing rule" });
+      }
+    }
+
+    await db.delete(transportPricingRulesTable).where(eq(transportPricingRulesTable.id, ruleId));
     res.json({ message: "Pricing rule deleted" });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to delete pricing rule" });
