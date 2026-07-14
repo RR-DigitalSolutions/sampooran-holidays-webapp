@@ -933,9 +933,23 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       const altMeals = d["meals"] ?? d["meal"] ?? d["mealsProvided"] ?? d["mealsIncluded"];
       const altSight = d["sightSeeing"] ?? d["sight"] ?? d["todaySightseeing"];
 
+      // ── New Smart Itinerary fields ─────────────────────────────────────────
+      const dayType = typeof d["dayType"] === "string" ? d["dayType"] : undefined;
+      const fromCity = normalizeTextItem(d["fromCity"]);
+      const toCity = normalizeTextItem(d["toCity"]);
+      const isTransit = dayType === "TRANSIT";
+
       return {
         title: normalizeTextItem(d["title"] ?? d["name"] ?? d["heading"]),
-        location: normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"]),
+        // For TRANSIT days, display location as "FromCity → ToCity"; fallback to single location
+        location: isTransit && (fromCity || toCity)
+          ? [fromCity, toCity].filter(Boolean).join(" → ")
+          : normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"]),
+        // Preserve new route fields for UI rendering
+        dayType,
+        fromCity,
+        toCity,
+        isTransit,
         day: typeof d["day"] === "number" ? Number(d["day"]) : d["day"] ? Number(String(d["day"])) : undefined,
         description: normalizeTextItem(d["description"] ?? d["content"] ?? d["detail"]),
         accommodation: normalizeTextItem(d["accommodation"] ?? d["hotel"] ?? d["stay"] ?? d["nightStay"]),
@@ -949,6 +963,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         activities: parseActivities(altActivities),
       };
     };
+
 
     return parsedItinerary.map((d) => {
       if (!d || typeof d !== "object") return {} as any;
@@ -1400,8 +1415,27 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                         {idx < normalizedItinerary.length - 1 && (
                           <div className="absolute left-2.5 sm:left-4 top-5 sm:top-6 bottom-0 w-0.5 bg-slate-200" />
                         )}
-                        <div className="absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center z-10">
-                          <MapPin className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-blue-600" />
+                        {/* Timeline dot — changes based on day type */}
+                        <div className={`absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 flex items-center justify-center z-10 ${
+                          day.dayType === "TRANSIT"
+                            ? "border-amber-300 bg-amber-50"
+                            : day.dayType === "ARRIVAL"
+                            ? "border-emerald-300 bg-emerald-50"
+                            : day.dayType === "DEPARTURE"
+                            ? "border-rose-300 bg-rose-50"
+                            : day.dayType === "LEISURE"
+                            ? "border-purple-300 bg-purple-50"
+                            : "border-slate-200 bg-white"
+                        }`}>
+                          {day.dayType === "TRANSIT"
+                            ? <Car className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-amber-500" />
+                            : <MapPin className={`h-2.5 w-2.5 sm:h-4 sm:w-4 ${
+                                day.dayType === "ARRIVAL" ? "text-emerald-500"
+                                : day.dayType === "DEPARTURE" ? "text-rose-500"
+                                : day.dayType === "LEISURE" ? "text-purple-500"
+                                : "text-blue-600"
+                              }`} />
+                          }
                         </div>
 
                         {/* Day header with expand button */}
@@ -1410,12 +1444,45 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                           className="w-full pl-7 sm:pl-12 pr-3 sm:pr-4 py-1 sm:py-1.5 hover:bg-slate-50/50 rounded-md transition flex items-start justify-between gap-3"
                         >
                           <div className="text-left flex-1 min-w-0">
-                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">
-                              Day {idx + 1} / {String(day.title || '').match(/\d+ \w+, \d+/)?.[0] || 'TBA'}
-                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">
+                                Day {idx + 1}
+                              </p>
+                              {/* Day type badge — only for typed days */}
+                              {day.dayType && day.dayType !== "SIGHTSEEING" && (
+                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ${
+                                  day.dayType === "TRANSIT"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : day.dayType === "ARRIVAL"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : day.dayType === "DEPARTURE"
+                                    ? "bg-rose-100 text-rose-700"
+                                    : "bg-purple-100 text-purple-700"
+                                }`}>
+                                  {day.dayType === "TRANSIT" ? "🚗 Travel Day"
+                                    : day.dayType === "ARRIVAL" ? "✈️ Arrival"
+                                    : day.dayType === "DEPARTURE" ? "🏠 Departure"
+                                    : "🌸 Leisure"}
+                                </span>
+                              )}
+                              {/* TRANSIT: From → To route display */}
+                              {day.isTransit && day.fromCity && day.toCity && (
+                                <span className="text-[8px] sm:text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 flex items-center gap-1 leading-none">
+                                  <span>{day.fromCity}</span>
+                                  <span className="text-amber-400">→</span>
+                                  <span>{day.toCity}</span>
+                                </span>
+                              )}
+                            </div>
                             <h3 className="mt-0.5 text-xs sm:text-base font-bold text-slate-800 truncate">
                               {day.title || `Day ${idx + 1}`}
                             </h3>
+                            {/* Show route as subtitle for transit days when title doesn't already include arrow */}
+                            {day.isTransit && day.fromCity && day.toCity && !String(day.title || "").includes("→") && (
+                              <p className="text-[9px] sm:text-[10px] text-amber-600 font-semibold mt-0.5">
+                                {day.fromCity} → {day.toCity}
+                              </p>
+                            )}
                           </div>
                           <div className="mt-0.5 flex-shrink-0">
                             {isExpanded ? (
@@ -1425,6 +1492,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                             )}
                           </div>
                         </button>
+
 
                         {/* Expanded content */}
                         {isExpanded && (

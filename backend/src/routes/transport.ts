@@ -49,7 +49,7 @@ router.get("/transport", cacheMiddleware(30), async (req: Request, res: Response
 
     const vehicles = await db.execute(sql`
       SELECT
-        tv.id, tv.slug, tv.name, tv.type, tv.sub_type,
+        tv.id, tv.slug, tv.name, tv.type, tv.sub_type, tv.destination_id,
         tv.make, tv.model, tv.year, tv.seating_capacity, tv.luggage_capacity,
         tv.is_ac, tv.features, tv.images,
         tv.booking_type, tv.min_price, tv.base_price_per_km, tv.base_price_per_day,
