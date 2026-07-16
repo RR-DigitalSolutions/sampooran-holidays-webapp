@@ -40,6 +40,7 @@ interface Hotel {
   longitude?: number;
   description?: string;
   amenities?: string[];
+  highlights?: string[];
   images?: string[];
   bookingType?: string;
   checkInTime?: string;
@@ -162,6 +163,11 @@ function HotelFormModal({
       ? hotel.amenities
       : typeof hotel?.amenities === "string"
       ? (hotel.amenities as string).split(",").map(s => s.trim()).filter(Boolean)
+      : [] as string[],
+    highlights: Array.isArray(hotel?.highlights)
+      ? hotel.highlights
+      : typeof hotel?.highlights === "string"
+      ? (hotel.highlights as string).split(",").map(s => s.trim()).filter(Boolean)
       : [] as string[],
     pincode: hotel?.pincode || "",
     latitude: hotel?.latitude || "",
@@ -288,6 +294,38 @@ function HotelFormModal({
                 <label className="label">Description *</label>
                 <textarea value={form.description} onChange={e => update("description", e.target.value)}
                   className="input w-full" rows={4} placeholder="About this premium property..." />
+              </div>
+              <div className="mt-3">
+                <label className="label text-[#1B3A6B] font-bold">Hotel Highlights (Select up to 4 popular amenities to display as card badges) *</label>
+                <div className="grid grid-cols-2 gap-2.5 border border-slate-100 rounded-2xl p-4 bg-slate-50/20 max-h-56 overflow-y-auto no-scrollbar">
+                  {POPULAR_AMENITIES.map(opt => {
+                    const isChecked = (form.highlights || []).includes(opt.key);
+                    return (
+                      <label key={opt.key} className={`flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-all ${isChecked ? "bg-[#1B3A6B]/5 border-[#1B3A6B]/20 text-[#1B3A6B]" : "bg-white border-slate-100 text-slate-700 hover:bg-slate-50"}`}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const current = form.highlights || [];
+                            let next;
+                            if (e.target.checked) {
+                              if (current.length >= 4) {
+                                alert("You can select a maximum of 4 highlights.");
+                                return;
+                              }
+                              next = [...current, opt.key];
+                            } else {
+                              next = current.filter(k => k !== opt.key);
+                            }
+                            update("highlights", next);
+                          }}
+                          className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]"
+                        />
+                        {opt.label}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}

@@ -118,7 +118,7 @@ router.post("/hotels", async (req: AuthenticatedRequest, res: Response) => {
     const {
       name, destinationId, stateId, countryId,
       address, city, pincode, phone, email: hotelEmail, website,
-      description, starRating, type, images, amenities,
+      description, starRating, type, images, amenities, highlights,
       checkInTime, checkOutTime, totalRooms, bookingType, metaTitle, metaDescription,
       // Custom city fallback (when vendor city isn't in CMS)
       customCity, customStateName, customCountryName,
@@ -172,7 +172,7 @@ router.post("/hotels", async (req: AuthenticatedRequest, res: Response) => {
       countrySlug,
       customCity: customCity || null,
       name, slug, address, city, pincode, phone, email: hotelEmail, website,
-      description, starRating, type, images, amenities,
+      description, starRating, type, images, amenities, highlights,
       checkInTime: checkInTime || "14:00",
       checkOutTime: checkOutTime || "12:00",
       totalRooms: totalRooms || 0,

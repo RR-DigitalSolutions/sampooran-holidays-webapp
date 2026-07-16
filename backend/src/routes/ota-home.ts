@@ -326,7 +326,8 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       images: hotelsTable.images,
       starRating: hotelsTable.starRating,
       city: hotelsTable.city,
-      startingPrice: hotelsTable.minPrice
+      startingPrice: hotelsTable.minPrice,
+      highlights: hotelsTable.highlights
     })
     .from(hotelsTable)
     .where(and(
@@ -344,7 +345,8 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       imageUrl: Array.isArray(h.images) && h.images.length > 0 ? h.images[0] : "https://images.unsplash.com/photo-1542314831-c6a4d14d837e?w=800",
       starRating: h.starRating || 3,
       city: h.city || "Unknown",
-      startingPrice: h.startingPrice || 0
+      startingPrice: h.startingPrice || 0,
+      highlights: h.highlights || []
     }));
 
     res.json(formattedHotels);

@@ -267,7 +267,7 @@ router.get("/", cacheMiddleware(60), async (req: Request, res: Response) => {
     const hotels = await db.execute(sql`
       SELECT
         hotels.id, hotels.name, hotels.slug, hotels.type, hotels.star_rating as "starRating",
-        hotels.address, hotels.city, hotels.images, hotels.amenities, hotels.min_price as "minPrice",
+        hotels.address, hotels.city, hotels.images, hotels.amenities, hotels.highlights, hotels.min_price as "minPrice",
         hotels.is_featured as "isFeatured", hotels.latitude, hotels.longitude,
         hotels.check_in_time as "checkInTime", hotels.check_out_time as "checkOutTime",
         hotels.breakfast_included as "breakfastIncluded", hotels.booking_type as "bookingType",

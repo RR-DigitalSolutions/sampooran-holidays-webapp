@@ -11,6 +11,7 @@ import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
 import { cn } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
 import { AmenitiesSelector } from "@/components/AmenitiesSelector";
+import { POPULAR_AMENITIES } from "@/lib/amenities-config";
 import VendorSidebar from "@/components/VendorSidebar";
 
 const API_BASE = getApiUrl();
@@ -178,6 +179,7 @@ export default function AddPropertyPage() {
     starRating: 3,
     description: "",
     amenities: [] as string[],
+    highlights: [] as string[],
     address: "",
     city: "",
     pincode: "",
@@ -389,6 +391,39 @@ export default function AddPropertyPage() {
                       className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] transition-colors resize-none"
                       rows={4} placeholder="Describe your property, its unique features, location highlights, views, special offerings..." />
                     <p className="text-[10px] text-gray-400 mt-1">{form.description.length} / 2000 characters</p>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <label className="block text-xs font-bold text-[#1B3A6B] mb-2">Hotel Highlights (Select up to 4 popular amenities to display as card badges) *</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border border-gray-100 rounded-2xl p-4 bg-slate-50/20 max-h-56 overflow-y-auto no-scrollbar mb-4">
+                      {POPULAR_AMENITIES.map(opt => {
+                        const isChecked = (form.highlights || []).includes(opt.key);
+                        return (
+                          <label key={opt.key} className={`flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-all ${isChecked ? "bg-[#1B3A6B]/5 border-[#1B3A6B]/20 text-[#1B3A6B]" : "bg-white border-slate-100 text-slate-700 hover:bg-slate-50"}`}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const current = form.highlights || [];
+                                let next;
+                                if (e.target.checked) {
+                                  if (current.length >= 4) {
+                                    alert("You can select a maximum of 4 highlights.");
+                                    return;
+                                  }
+                                  next = [...current, opt.key];
+                                } else {
+                                  next = current.filter(k => k !== opt.key);
+                                }
+                                update("highlights", next);
+                              }}
+                              className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]"
+                            />
+                            {opt.label}
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div>

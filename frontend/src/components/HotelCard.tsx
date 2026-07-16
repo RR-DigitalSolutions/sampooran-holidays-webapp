@@ -17,12 +17,13 @@ interface Hotel {
   images?: string[];
   address: string;
   amenities?: string[];
+  highlights?: string[];
   startingPrice?: number;
   isVerified?: boolean;
 }
 
-// Default fallback amenity keys shown when hotel has none set
-const FALLBACK_AMENITY_KEYS = ["WIFI", "RESTAURANT", "HOT_WATER"];
+// Default fallback highlight keys shown when hotel has none set
+const FALLBACK_HIGHLIGHTS_KEYS = ["WIFI", "RESTAURANT", "HOT_WATER", "PARKING"];
 
 export function HotelCard({ hotel }: { hotel: Hotel }) {
   const [wishlisted, setWishlisted] = useState(false);
@@ -40,14 +41,16 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
     return String(val).trim().toUpperCase();
   };
 
-  const amenityKeys = hotel.amenities && hotel.amenities.length > 0
-    ? hotel.amenities.map(normalizeAmenityKey).filter(Boolean).slice(0, 3)
-    : FALLBACK_AMENITY_KEYS;
+  const highlightKeys = hotel.highlights && hotel.highlights.length > 0
+    ? hotel.highlights.map(normalizeAmenityKey).filter(Boolean).slice(0, 4)
+    : (hotel.amenities && hotel.amenities.length > 0
+        ? hotel.amenities.map(normalizeAmenityKey).filter(Boolean).slice(0, 4)
+        : FALLBACK_HIGHLIGHTS_KEYS);
 
-  const displayAmenities = amenityKeys
+  const displayAmenities = highlightKeys
     .map((key) => getAmenityInfo(key))
     .filter(Boolean)
-    .slice(0, 3) as { key: string; label: string; icon: any }[];
+    .slice(0, 4) as { key: string; label: string; icon: any }[];
 
   return (
     <div className="h-full flex w-full card-mobile-margin card-gpu-fix group hover:-translate-y-1.5 transition-transform duration-300 ease-out">
@@ -109,15 +112,14 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
             {hotel.name}
           </h3>
 
-          {/* Amenities — dynamic horizontal scroll row */}
+          {/* Amenities — dynamic horizontal scroll row (icons only) */}
           {displayAmenities && displayAmenities.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2.5 pb-1 whitespace-nowrap w-full scroll-smooth touch-pan-x">
               {displayAmenities.map((info, index) => {
                 const Icon = info.icon;
                 return (
-                  <span key={`${info.key}-${index}`} className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] text-white/85 bg-white/10 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-white/10 shrink-0 select-none">
-                    {Icon && <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-accent" />}
-                    {info.label}
+                  <span key={`${info.key}-${index}`} className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/10 shrink-0 select-none transition-colors" title={info.label}>
+                    {Icon && <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent" />}
                   </span>
                 );
               })}

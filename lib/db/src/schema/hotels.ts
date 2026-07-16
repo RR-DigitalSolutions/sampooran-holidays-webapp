@@ -44,6 +44,7 @@ export const hotelsTable = pgTable("hotels", {
   // Property Specs
   totalRooms: integer("total_rooms").default(0),
   amenities: text("amenities").array(), // e.g., ["WIFI", "POOL", "RESTAURANT"]
+  highlights: text("highlights").array(), // selected highlight amenities (max 4)
   images: text("images").array(),
   minPrice: real("min_price").default(0), // Cached minimum room price for search
 
