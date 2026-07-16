@@ -8,6 +8,7 @@ import {
 import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { clearCachePattern } from "../lib/cache";
 
 const router = Router();
 
@@ -215,6 +216,10 @@ router.post("/hotels", async (req: AuthenticatedRequest, res: Response) => {
       }).onConflictDoNothing();
     }
 
+    // Clear cached API responses for homepage & list pages
+    await clearCachePattern("cache:/api/hotels*");
+    await clearCachePattern("cache:/api/ota/home*");
+
     res.status(201).json(newHotel);
   } catch (error: any) {
     logger.error({ error: error.message }, "Hotel creation error");
@@ -291,6 +296,10 @@ router.patch("/hotels/:id", async (req: AuthenticatedRequest, res: Response) => 
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(hotelsTable.id, hotelId))
       .returning();
+
+    // Clear cached API responses for homepage & list pages
+    await clearCachePattern("cache:/api/hotels*");
+    await clearCachePattern("cache:/api/ota/home*");
 
     res.json(updated);
   } catch (error: any) {

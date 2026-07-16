@@ -126,6 +126,7 @@ router.get("/by-location", cacheMiddleware(60), async (req: Request, res: Respon
         hotels.city,
         hotels.images,
         hotels.amenities,
+        hotels.highlights,
         hotels.min_price          AS "minPrice",
         hotels.is_featured        AS "isFeatured",
         hotels.booking_type       AS "bookingType",

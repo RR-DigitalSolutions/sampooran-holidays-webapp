@@ -7,7 +7,7 @@ import {
   Star, MapPin, Share2, Heart, ShieldCheck, Check, Info, Calendar,
   Users, Building2, Utensils, Wifi, Coffee, Phone, MessageSquare,
   Plus, Minus, X, ChevronRight, ChevronLeft, Bed, Sparkles, Clock, AlertTriangle,
-  Plane, Bus, Activity
+  Plane, Bus, Activity, Wind, Tv, Bell, Waves, Compass, Car, Flame
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,47 @@ interface RoomConfig {
   childrenWithBed: number;
   childrenWithoutBed: number;
 }
+
+// Helper to dynamically resolve custom text highlights into matching Lucide icons
+const getHighlightIconAndLabel = (text: string) => {
+  const normalized = text.toLowerCase();
+  
+  if (normalized.includes("wifi") || normalized.includes("wi-fi") || normalized.includes("internet") || normalized.includes("wi fi")) {
+    return { icon: Wifi };
+  }
+  if (normalized.includes("pool") || normalized.includes("swim")) {
+    return { icon: Waves };
+  }
+  if (normalized.includes("food") || normalized.includes("breakfast") || normalized.includes("restaurant") || normalized.includes("dining") || normalized.includes("meal") || normalized.includes("tea") || normalized.includes("coffee") || normalized.includes("drink") || normalized.includes("kitchen")) {
+    return { icon: Coffee };
+  }
+  if (normalized.includes("ac") || normalized.includes("air cond") || normalized.includes("cooling")) {
+    return { icon: Wind };
+  }
+  if (normalized.includes("view") || normalized.includes("valley") || normalized.includes("mountain") || normalized.includes("hill") || normalized.includes("lake") || normalized.includes("river") || normalized.includes("scen") || normalized.includes("forest")) {
+    return { icon: Compass };
+  }
+  if (normalized.includes("park") || normalized.includes("car") || normalized.includes("valet") || normalized.includes("parking")) {
+    return { icon: Car };
+  }
+  if (normalized.includes("heat") || normalized.includes("warm") || normalized.includes("fire") || normalized.includes("geyser") || normalized.includes("hot water") || normalized.includes("winter") || normalized.includes("heater")) {
+    return { icon: Flame };
+  }
+  if (normalized.includes("tv") || normalized.includes("television") || normalized.includes("screen")) {
+    return { icon: Tv };
+  }
+  if (normalized.includes("service") || normalized.includes("staff") || normalized.includes("bell") || normalized.includes("reception") || normalized.includes("security") || normalized.includes("housekeeping")) {
+    return { icon: Bell };
+  }
+  if (normalized.includes("spa") || normalized.includes("massag") || normalized.includes("wellness") || normalized.includes("gym") || normalized.includes("fitness")) {
+    return { icon: Activity };
+  }
+  if (normalized.includes("premium") || normalized.includes("luxury") || normalized.includes("special") || normalized.includes("free") || normalized.includes("best") || normalized.includes("star") || normalized.includes("gold")) {
+    return { icon: Sparkles };
+  }
+  
+  return { icon: Check };
+};
 
 export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string; breadcrumbs?: { label: string; href: string }[] }) {
   const router = useRouter();
@@ -530,6 +571,26 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
                 <Button variant="outline" size="icon" className="rounded-full hover:bg-rose-50 hover:text-rose-500"><Heart className="w-4 h-4" /></Button>
               </div>
             </div>
+
+            {hotel.highlights && hotel.highlights.length > 0 && (
+              <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100/80">
+                <h4 className="text-[10px] font-black text-[#1B3A6B] uppercase tracking-wider mb-3">Hotel Highlights</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {hotel.highlights.slice(0, 4).map((text: string, idx: number) => {
+                    const info = getHighlightIconAndLabel(text);
+                    const Icon = info.icon;
+                    return (
+                      <div key={idx} className="flex items-center gap-2.5 bg-white p-3 rounded-xl border border-slate-100 shadow-xs">
+                        <div className="w-8 h-8 rounded-lg bg-[#1B3A6B]/5 flex items-center justify-center shrink-0">
+                          {Icon && <Icon className="w-4 h-4 text-[#1B3A6B]" />}
+                        </div>
+                        <span className="text-xs font-bold text-slate-700 leading-tight">{text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 mb-2">Property Description</h3>
             <p className="text-xs text-slate-500 leading-relaxed">

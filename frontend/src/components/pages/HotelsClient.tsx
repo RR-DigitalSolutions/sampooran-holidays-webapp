@@ -8,7 +8,8 @@ import {
   MapPin, Building2, SlidersHorizontal, Star, ChevronRight,
   X, Filter, Wifi, Coffee, Car, UtensilsCrossed, Waves,
   Dumbbell, ChevronDown, Check, AlertCircle, Sparkles, Zap,
-  IndianRupee, Shield, Flame, LayoutGrid, LayoutList, Compass
+  IndianRupee, Shield, Flame, LayoutGrid, LayoutList, Compass,
+  Wind, Tv, Bell, Activity
 } from "lucide-react";
 
 // ─── Fuzzy Match Typo Tolerance Helpers ─────────────────────────────────────
@@ -116,6 +117,7 @@ interface Hotel {
   images?: string[];
   primaryImageUrl?: string;
   amenities?: string[];
+  highlights?: string[];
   minPrice: number;
   isFeatured: boolean;
   avgRating?: number;
@@ -164,11 +166,63 @@ function SkeletonCard() {
   );
 }
 
+// Default fallback highlights shown when hotel has none set
+const FALLBACK_HIGHLIGHTS = ["Free Wi-Fi", "In-House Restaurant", "Hot Water 24/7", "Free Parking"];
+
+// Helper to dynamically resolve custom text highlights into matching Lucide icons
+const getHighlightIconAndLabel = (text: string) => {
+  const normalized = text.toLowerCase();
+  
+  if (normalized.includes("wifi") || normalized.includes("wi-fi") || normalized.includes("internet") || normalized.includes("wi fi")) {
+    return { icon: Wifi, label: text };
+  }
+  if (normalized.includes("pool") || normalized.includes("swim")) {
+    return { icon: Waves, label: text };
+  }
+  if (normalized.includes("food") || normalized.includes("breakfast") || normalized.includes("restaurant") || normalized.includes("dining") || normalized.includes("meal") || normalized.includes("tea") || normalized.includes("coffee") || normalized.includes("drink") || normalized.includes("kitchen")) {
+    return { icon: Coffee, label: text };
+  }
+  if (normalized.includes("ac") || normalized.includes("air cond") || normalized.includes("cooling")) {
+    return { icon: Wind, label: text };
+  }
+  if (normalized.includes("view") || normalized.includes("valley") || normalized.includes("mountain") || normalized.includes("hill") || normalized.includes("lake") || normalized.includes("river") || normalized.includes("scen") || normalized.includes("forest")) {
+    return { icon: Compass, label: text };
+  }
+  if (normalized.includes("park") || normalized.includes("car") || normalized.includes("valet") || normalized.includes("parking")) {
+    return { icon: Car, label: text };
+  }
+  if (normalized.includes("heat") || normalized.includes("warm") || normalized.includes("fire") || normalized.includes("geyser") || normalized.includes("hot water") || normalized.includes("winter") || normalized.includes("heater")) {
+    return { icon: Flame, label: text };
+  }
+  if (normalized.includes("tv") || normalized.includes("television") || normalized.includes("screen")) {
+    return { icon: Tv, label: text };
+  }
+  if (normalized.includes("service") || normalized.includes("staff") || normalized.includes("bell") || normalized.includes("reception") || normalized.includes("security") || normalized.includes("housekeeping")) {
+    return { icon: Bell, label: text };
+  }
+  if (normalized.includes("spa") || normalized.includes("massag") || normalized.includes("wellness") || normalized.includes("gym") || normalized.includes("fitness")) {
+    return { icon: Activity, label: text };
+  }
+  if (normalized.includes("premium") || normalized.includes("luxury") || normalized.includes("special") || normalized.includes("free") || normalized.includes("best") || normalized.includes("star") || normalized.includes("gold")) {
+    return { icon: Sparkles, label: text };
+  }
+  
+  return { icon: Check, label: text };
+};
+
 function HotelListingCard({ hotel, priority = false }: { hotel: Hotel; priority?: boolean }) {
   const [imgErr, setImgErr] = useState(false);
   const rawImg = !imgErr ? (hotel.primaryImageUrl || hotel.images?.[0]) : undefined;
   const img = getHotelImageUrl(rawImg, 400, 300, "4:3");
   const hotelUrl = buildHotelUrl(hotel);
+
+  const highlightItems = hotel.highlights && hotel.highlights.length > 0
+    ? hotel.highlights.slice(0, 4)
+    : (hotel.amenities && hotel.amenities.length > 0
+        ? hotel.amenities.slice(0, 4)
+        : FALLBACK_HIGHLIGHTS);
+
+  const displayAmenities = highlightItems.map(getHighlightIconAndLabel);
 
   return (
     <Link
@@ -236,16 +290,13 @@ function HotelListingCard({ hotel, priority = false }: { hotel: Hotel; priority?
             {hotel.city || hotel.destinationName || hotel.address.slice(0, 30)}
           </span>
         </div>
-        {hotel.amenities && hotel.amenities.length > 0 && (
-          <div className="flex gap-1 overflow-x-auto no-scrollbar mb-2 whitespace-nowrap">
-            {hotel.amenities.slice(0, 5).map((ame, idx) => {
-              if (!ame) return null;
-              const nameVal = typeof ame === "object" ? ((ame as any).code || (ame as any).key || String(ame)) : String(ame);
-              const info = AMENITY_OPTS.find(a => a.key === nameVal.toUpperCase());
+        {displayAmenities && displayAmenities.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2.5 pb-1 whitespace-nowrap w-full scroll-smooth touch-pan-x">
+            {displayAmenities.map((info, idx) => {
+              const Icon = info.icon;
               return (
-                <span key={idx} className="inline-flex items-center gap-0.5 text-[9px] text-white/70 bg-white/5 px-1.5 py-0.5 rounded-full border border-white/10 shrink-0">
-                  {info?.Icon && <info.Icon className="w-2 h-2 text-accent" />}
-                  {info?.label || nameVal}
+                <span key={`${info.label}-${idx}`} className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/10 shrink-0 select-none transition-colors" title={info.label}>
+                  {Icon && <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent" />}
                 </span>
               );
             })}
@@ -834,13 +885,25 @@ export default function HotelsClient({
                         <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
                           <MapPin className="w-3 h-3 shrink-0 text-accent" /> {hotel.city || hotel.destinationName}
                         </p>
-                        {hotel.amenities && (
-                          <div className="flex gap-1 mt-2 flex-wrap">
-                            {hotel.amenities.slice(0, 4).map((a, i) => (
-                              <span key={i} className="text-[9px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-full border border-slate-100">{a}</span>
-                            ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const items = hotel.highlights && hotel.highlights.length > 0
+                            ? hotel.highlights.slice(0, 4)
+                            : (hotel.amenities && hotel.amenities.length > 0 ? hotel.amenities.slice(0, 4) : FALLBACK_HIGHLIGHTS);
+                          const listAmenities = items.map(getHighlightIconAndLabel);
+                          return listAmenities.length > 0 ? (
+                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                              {listAmenities.map((info, i) => {
+                                const Icon = info.icon;
+                                return (
+                                  <span key={i} className="inline-flex items-center gap-1 text-[9px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100" title={info.label}>
+                                    {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
+                                    {info.label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                       <div className="text-right ml-3 shrink-0">
                         {hotel.minPrice ? (
