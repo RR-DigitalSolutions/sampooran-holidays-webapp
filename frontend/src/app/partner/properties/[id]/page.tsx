@@ -661,6 +661,9 @@ export default function VendorPropertyManagerPage() {
   const [editedHotel, setEditedHotel] = useState<any>({});
   const [savingField, setSavingField] = useState(false);
 
+  const selectedRoom = rooms.find(r => String(r.id) === selectedRoomForInv);
+  const todayDateStr = new Date().toISOString().split("T")[0];
+
   // Geolocation State for Location dropdowns
   const [countries, setCountries] = useState<any[]>([]);
   const [states, setStates] = useState<any[]>([]);
@@ -2019,515 +2022,546 @@ export default function VendorPropertyManagerPage() {
 
           {/* ─── Dynamic Rates Tab ─── */}
           {tab === "rates" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
+            <div className="space-y-0">
+              {/* Header bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="font-bold text-gray-900">Dynamic Rates Calendar</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Set base rates, weekend plans, discounts, meal options, and seasonal price overrides per room type.</p>
+                  <h2 className="font-black text-gray-900 text-base flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-[#1B3A6B] flex items-center justify-center"><DollarSign className="w-4 h-4 text-white" /></span>
+                    Dynamic Rates
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5 ml-9">Set prices, seasonal plans &amp; discounts per room type</p>
                 </div>
+                {selectedRoom && (
+                  <div className="flex items-center gap-2 bg-[#1B3A6B]/5 border border-[#1B3A6B]/10 rounded-xl px-3 py-2">
+                    <Bed className="w-3.5 h-3.5 text-[#1B3A6B]" />
+                    <span className="text-xs font-bold text-[#1B3A6B]">{selectedRoom.name}</span>
+                    <span className="text-[10px] text-gray-400 ml-1">Base ₹{selectedRoom.basePrice?.toLocaleString()}/night</span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-col gap-4 items-start">
-                {/* ── Bulk Update Form ── */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full">
-                  <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-[#1B3A6B]" /> Bulk Rate Update
-                  </h3>
-                  <form onSubmit={handleBulkUpdateRates} className="space-y-3">
-                    {/* Compact Top Row: Room, Rate Type, Session Price, Discount */}
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Room Type *</label>
-                        <select aria-label="Select Room Type" title="Select Room Type" required value={selectedRoomForInv}
-                          onChange={e => {
-                            const roomIdVal = e.target.value;
-                            setSelectedRoomForInv(roomIdVal);
-                            const r = rooms.find(x => String(x.id) === roomIdVal);
-                            if (r) {
-                              setInvAvailableCount(String(r.totalRooms));
-                              setInvWeekendPrice(r.weekendPrice !== undefined && r.weekendPrice !== null ? String(r.weekendPrice) : "");
-                              setInvWeekendDays(Array.isArray(r.weekendDays) ? r.weekendDays : ["Friday", "Saturday"]);
-                              setInvExtraAdultPrice(r.extraAdultPrice !== undefined && r.extraAdultPrice !== null ? String(r.extraAdultPrice) : "");
-                              setInvExtraChildWithBedPrice(r.extraChildWithBedPrice !== undefined && r.extraChildWithBedPrice !== null ? String(r.extraChildWithBedPrice) : "");
-                              setInvExtraChildWithoutBedPrice(r.extraChildWithoutBedPrice !== undefined && r.extraChildWithoutBedPrice !== null ? String(r.extraChildWithoutBedPrice) : "");
-                              const roomMealPlans = r.mealPlanOptions || DEFAULT_MEAL_OPTIONS;
-                              const mergedMealPlans = DEFAULT_MEAL_OPTIONS.map(defOpt => {
-                                const matched = roomMealPlans.find((x: any) => x.code === defOpt.code);
-                                return matched ? { ...defOpt, ...matched } : defOpt;
-                              });
-                              setInvMealPlanOptions(mergedMealPlans);
-                            }
+              {/* Main grid: Control Panel + Calendar */}
+              <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
+
+                {/* ── LEFT: Control Panel ── */}
+                <div className="space-y-3">
+
+                  {/* Step 1: Room Type */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">① Select Room Type</p>
+                    <div className="space-y-2">
+                      {rooms.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-4">No rooms added yet. Add rooms first.</p>
+                      ) : rooms.map(r => (
+                        <button type="button" key={r.id}
+                          onClick={() => {
+                            setSelectedRoomForInv(String(r.id));
+                            setInvAvailableCount(String(r.totalRooms));
+                            setInvWeekendPrice(r.weekendPrice != null ? String(r.weekendPrice) : "");
+                            setInvWeekendDays(Array.isArray(r.weekendDays) ? r.weekendDays : ["Friday", "Saturday"]);
+                            setInvExtraAdultPrice(r.extraAdultPrice != null ? String(r.extraAdultPrice) : "");
+                            setInvExtraChildWithBedPrice(r.extraChildWithBedPrice != null ? String(r.extraChildWithBedPrice) : "");
+                            setInvExtraChildWithoutBedPrice(r.extraChildWithoutBedPrice != null ? String(r.extraChildWithoutBedPrice) : "");
+                            const mpo = r.mealPlanOptions || DEFAULT_MEAL_OPTIONS;
+                            setInvMealPlanOptions(DEFAULT_MEAL_OPTIONS.map(d => ({ ...d, ...(mpo.find((x: any) => x.code === d.code) || {}) })));
                           }}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]">
-                          <option value="" disabled>-- Select a room --</option>
-                          {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Base: ₹{r.basePrice})</option>)}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Rate Type / Season</label>
-                        <div className="relative">
-                          <select
-                            aria-label="Rate Type"
-                            value={invRateType}
-                            onChange={e => setInvRateType(e.target.value)}
-                            className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none focus:border-[#1B3A6B] appearance-none bg-white cursor-pointer"
-                          >
-                            {RATE_MODES.map(mode => (
-                              <option key={mode.key} value={mode.key}>{mode.icon} {mode.label}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                            <span className="text-gray-400 text-xs">▼</span>
+                          className={cn(
+                            "w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition-all",
+                            selectedRoomForInv === String(r.id)
+                              ? "bg-[#1B3A6B] border-[#1B3A6B] text-white"
+                              : "border-gray-200 hover:border-[#1B3A6B]/40 hover:bg-[#1B3A6B]/5 text-gray-700"
+                          )}>
+                          <div>
+                            <p className="text-xs font-bold">{r.name}</p>
+                            <p className={cn("text-[10px]", selectedRoomForInv === String(r.id) ? "text-white/70" : "text-gray-400")}>
+                              ₹{r.basePrice?.toLocaleString()}/night · {r.totalRooms} rooms
+                            </p>
                           </div>
-                        </div>
-                      </div>
+                          {selectedRoomForInv === String(r.id) && <CheckCircle className="w-4 h-4 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
+                  {/* Step 2: Date Range */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">② Date Range</p>
+                    {/* Quick presets */}
+                    <div className="grid grid-cols-2 gap-1.5 mb-3">
+                      {[
+                        { label: "Today", days: 0 },
+                        { label: "This Week", days: 6 },
+                        { label: "Next 14 Days", days: 13 },
+                        { label: "Next 30 Days", days: 29 },
+                      ].map(p => (
+                        <button type="button" key={p.label}
+                          onClick={() => {
+                            const s = new Date(); const e = new Date();
+                            e.setDate(e.getDate() + p.days);
+                            setInvStartDate(s.toISOString().split("T")[0]);
+                            setInvEndDate(e.toISOString().split("T")[0]);
+                          }}
+                          className="text-[10px] font-bold py-1.5 px-2 rounded-lg border border-gray-200 hover:border-[#1B3A6B] hover:bg-[#1B3A6B]/5 hover:text-[#1B3A6B] text-gray-600 transition-all">
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Price Override (₹)</label>
-                        <input type="number" min="0" value={invPriceOverride} onChange={e => setInvPriceOverride(e.target.value)}
-                          placeholder="Blank = base price"
-                            className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                        <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">From</label>
+                        <input type="date" value={invStartDate} min={todayDateStr}
+                          onChange={e => setInvStartDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#1B3A6B]" />
                       </div>
-
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Discount</label>
-                        <div className="flex gap-2">
-                          <select aria-label="Discount Type" title="Discount Type" value={invDiscountType} onChange={e => setInvDiscountType(e.target.value)}
-                            className="w-1/2 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]">
-                            <option value="PERCENT">%</option>
-                            <option value="FLAT">₹</option>
-                          </select>
-                          <input type="number" min="0" value={invDiscountType === 'PERCENT' ? invDiscountPercent : invDiscountFlat}
-                            onChange={e => { if (invDiscountType === 'PERCENT') { setInvDiscountPercent(e.target.value); setInvDiscountFlat('0'); } else { setInvDiscountFlat(e.target.value); setInvDiscountPercent('0'); } }}
-                            className="w-1/2 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" placeholder="0" />
-                        </div>
+                        <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">To</label>
+                        <input type="date" value={invEndDate} min={invStartDate || todayDateStr}
+                          onChange={e => setInvEndDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#1B3A6B]" />
                       </div>
                     </div>
+                  </div>
 
-                    {/* Dates row — rates only needs start/end */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 mt-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Date</label>
-                        <input aria-label="Start Date" title="Start Date" type="date" required value={invStartDate} onChange={e => setInvStartDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">End Date</label>
-                        <input aria-label="End Date" title="End Date" type="date" required value={invEndDate} onChange={e => setInvEndDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                  {/* Step 3: Rate Settings */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">③ Rate Settings</p>
+
+                    {/* Season type */}
+                    <div className="mb-3">
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Season Type</label>
+                      <div className="grid grid-cols-2 gap-1">
+                        {RATE_MODES.map(mode => (
+                          <button type="button" key={mode.key} onClick={() => setInvRateType(mode.key)}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-[10px] font-bold transition-all text-left",
+                              invRateType === mode.key ? "bg-[#1B3A6B] border-[#1B3A6B] text-white" : "border-gray-200 text-gray-600 hover:border-[#1B3A6B]/40"
+                            )}>
+                            <span>{mode.icon}</span> {mode.label.split("(")[0].trim()}
+                          </button>
+                        ))}
                       </div>
                     </div>
-
-                    <div className="mt-1 space-y-1">
-                      {invRateType === "session" && <p className="text-[9px] text-amber-600 font-medium">☀️ Peak/high season — set a premium rate for popular travel dates</p>}
-                      {invRateType === "off_session" && <p className="text-[9px] text-sky-600 font-medium">❄️ Low season — attract bookings with a reduced rate</p>}
-                      {invRateType === "mid_session" && <p className="text-[9px] text-emerald-600 font-medium">🍂 Shoulder season — moderate rates between peak and off-season</p>}
-                      {invRateType === "blackout" && <p className="text-[9px] text-indigo-600 font-medium">🎆 Festivals & events — special pricing for high demand periods</p>}
-                      {invRateType === "stop_sales" && <p className="text-[9px] text-rose-600 font-medium">🚫 Stop Sales — blocks all bookings for the selected date range</p>}
-                    </div>
-
-                    <p className="text-[10px] text-gray-500 mt-1">Price override applies to the selected <strong>Rate Type / Season</strong>; leave blank to use the base price.</p>
 
                     {invRateType === "stop_sales" ? (
-                      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-rose-800 uppercase tracking-wide">Stop Sales Mode Active</p>
-                          <p className="text-[11px] text-rose-600 mt-1 font-medium leading-relaxed">
-                            This will block booking requests and close sales for the selected room type during this date range.
-                            Pricing and discounts are disabled.
-                          </p>
-                        </div>
+                      <div className="bg-rose-50 border border-rose-100 rounded-xl p-3">
+                        <p className="text-[11px] font-bold text-rose-700">🚫 Stop Sales will block all bookings for the selected date range.</p>
                       </div>
                     ) : (
                       <>
+                        {/* Price override */}
+                        <div className="mb-3">
+                          <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">
+                            Price Override (₹) <span className="normal-case text-gray-300">— blank = use base price</span>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
+                            <input type="number" min="0" value={invPriceOverride}
+                              onChange={e => setInvPriceOverride(e.target.value)}
+                              placeholder={selectedRoom ? String(selectedRoom.basePrice) : "0"}
+                              className="w-full border border-gray-200 rounded-lg pl-6 pr-3 py-1.5 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                          </div>
+                        </div>
 
-                        <div className="border-t border-gray-100 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowAdvanced(!showAdvanced)}
-                            className="flex items-center gap-2 text-xs font-bold text-[#1B3A6B] hover:text-[#0f2548] transition-colors select-none focus:outline-none cursor-pointer"
-                          >
-                            <span className="text-[10px] transform transition-transform duration-200">
-                              {showAdvanced ? "▼" : "▶"}
-                            </span>
-                            <span>Advanced Overrides (Weekend, Occupancy & Meals)</span>
-                          </button>
+                        {/* Discount */}
+                        <div className="mb-3">
+                          <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Discount</label>
+                          <div className="flex gap-2">
+                            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                              <button type="button" onClick={() => setInvDiscountType("PERCENT")}
+                                className={cn("px-3 py-1.5 text-xs font-bold transition-all", invDiscountType === "PERCENT" ? "bg-[#1B3A6B] text-white" : "text-gray-600 hover:bg-gray-50")}>%</button>
+                              <button type="button" onClick={() => setInvDiscountType("FLAT")}
+                                className={cn("px-3 py-1.5 text-xs font-bold transition-all", invDiscountType === "FLAT" ? "bg-[#1B3A6B] text-white" : "text-gray-600 hover:bg-gray-50")}>₹</button>
+                            </div>
+                            <input type="number" min="0"
+                              value={invDiscountType === "PERCENT" ? invDiscountPercent : invDiscountFlat}
+                              onChange={e => { if (invDiscountType === "PERCENT") { setInvDiscountPercent(e.target.value); setInvDiscountFlat("0"); } else { setInvDiscountFlat(e.target.value); setInvDiscountPercent("0"); } }}
+                              placeholder="0"
+                              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                          </div>
+                        </div>
 
-                          {showAdvanced && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 mt-3 animate-in fade-in duration-200">
-                              {/* Weekend Pricing override */}
-                              <div className="bg-white p-2 rounded-lg border border-slate-100 space-y-2">
-                                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                                  <Calendar className="w-3.5 h-3.5 text-amber-500" /> Weekend pricing override
-                                </p>
-                                <div>
-                                  <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Weekend Price (₹/night)</label>
-                                  <input type="number" min="0" value={invWeekendPrice} onChange={e => setInvWeekendPrice(e.target.value)}
-                                    placeholder="Leave blank to use base"
-                                    className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-amber-400 bg-slate-50" />
-                                </div>
-                                <div>
-                                  <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Weekend Days</label>
-                                  <div className="flex flex-wrap gap-1">
-                                    {WEEKDAYS.map(day => (
-                                      <button type="button" key={day}
-                                        onClick={() => {
-                                          setInvWeekendDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-                                        }}
-                                        className={cn(
-                                          "px-2 py-1 rounded text-[10px] font-bold border transition-all",
-                                          invWeekendDays.includes(day)
-                                            ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                                            : "bg-white text-gray-400 border-gray-200 hover:border-amber-200"
-                                        )}>
-                                        {day.slice(0, 3)}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
+                        {/* Advanced toggle */}
+                        <button type="button" onClick={() => setShowAdvanced(!showAdvanced)}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-dashed border-gray-200 hover:border-[#1B3A6B]/40 text-xs font-bold text-gray-500 hover:text-[#1B3A6B] transition-all">
+                          <span>Advanced Overrides (Weekend, Meals, Occupancy)</span>
+                          <span className={cn("transition-transform", showAdvanced && "rotate-180")}>▾</span>
+                        </button>
+
+                        {showAdvanced && (
+                          <div className="mt-3 space-y-3 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            {/* Weekend Price */}
+                            <div>
+                              <label className="block text-[9px] font-bold text-amber-700 uppercase mb-1">Weekend Price Override (₹/night)</label>
+                              <input type="number" min="0" value={invWeekendPrice}
+                                onChange={e => setInvWeekendPrice(e.target.value)}
+                                placeholder="Leave blank = same as base"
+                                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-amber-400 bg-white" />
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {WEEKDAYS.map(day => (
+                                  <button type="button" key={day}
+                                    onClick={() => setInvWeekendDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])}
+                                    className={cn("px-2 py-0.5 rounded text-[9px] font-bold border transition-all",
+                                      invWeekendDays.includes(day) ? "bg-amber-500 text-white border-amber-500" : "bg-white text-gray-400 border-gray-200")}>
+                                    {day.slice(0, 3)}
+                                  </button>
+                                ))}
                               </div>
-
-                              {/* Occupancy Prices override */}
-                              <div className="bg-white p-2 rounded-lg border border-slate-100 space-y-2">
-                                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                                  <Users className="w-3.5 h-3.5 text-emerald-500" /> Occupant prices override
-                                </p>
-                                <div className="grid grid-cols-1 gap-2">
-                                  <div>
-                                    <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Extra Adult Price (₹)</label>
-                                    <input type="number" min="0" value={invExtraAdultPrice} onChange={e => setInvExtraAdultPrice(e.target.value)}
-                                      placeholder="Leave blank to use default"
-                                      className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-400 bg-slate-50" />
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Child with bed (₹)</label>
-                                      <input type="number" min="0" value={invExtraChildWithBedPrice} onChange={e => setInvExtraChildWithBedPrice(e.target.value)}
-                                        placeholder="Use default"
-                                        className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-400 bg-slate-50" />
-                                    </div>
-                                    <div>
-                                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Child no bed (₹)</label>
-                                      <input type="number" min="0" value={invExtraChildWithoutBedPrice} onChange={e => setInvExtraChildWithoutBedPrice(e.target.value)}
-                                        placeholder="Use default"
-                                        className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-400 bg-slate-50" />
-                                    </div>
-                                  </div>
+                            </div>
+                            {/* Extra Occupancy */}
+                            <div>
+                              <label className="block text-[9px] font-bold text-emerald-700 uppercase mb-1">Extra Occupancy Prices</label>
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <div>
+                                  <p className="text-[8px] text-gray-400 mb-0.5">Extra Adult</p>
+                                  <input aria-label="Extra Adult Price" type="number" min="0" value={invExtraAdultPrice} onChange={e => setInvExtraAdultPrice(e.target.value)} placeholder="₹0" className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] bg-white focus:outline-none" />
                                 </div>
-                              </div>
-
-                              {/* Meal plans card */}
-                              <div className="bg-white p-2 rounded-lg border border-slate-100 space-y-2">
-                                <p className="text-[10px] font-bold text-purple-800 uppercase tracking-wider flex items-center gap-1.5">
-                                  <Utensils className="w-3.5 h-3.5 text-purple-500" /> Meal plan rates override
-                                </p>
-                                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
-                                  {invMealPlanOptions.map((opt: any) => (
-                                    <div key={opt.code} className="border border-purple-50 p-2 rounded-lg bg-slate-50 space-y-1">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-slate-700">{MEAL_EMOJIS[opt.code]} {opt.label}</span>
-                                        <input type="checkbox" checked={opt.enabled}
-                                          onChange={e => {
-                                            setInvMealPlanOptions(prev => prev.map(o => o.code === opt.code ? { ...o, enabled: e.target.checked } : o));
-                                          }}
-                                          className="w-3.5 h-3.5 accent-purple-600 cursor-pointer" />
-                                      </div>
-                                      {opt.enabled && (
-                                        <div className="grid grid-cols-2 gap-1">
-                                          <div>
-                                            <label className="block text-[7px] text-gray-400 font-bold uppercase">Adult price</label>
-                                            <input type="number" min="0" value={opt.adultPrice}
-                                              onChange={e => {
-                                                setInvMealPlanOptions(prev => prev.map(o => o.code === opt.code ? { ...o, adultPrice: Number(e.target.value) } : o));
-                                              }}
-                                              placeholder="Adult ₹"
-                                              className="w-full border border-gray-100 rounded px-1.5 py-0.5 text-[10px] bg-white focus:outline-none" />
-                                          </div>
-                                          <div>
-                                            <label className="block text-[7px] text-gray-400 font-bold uppercase">Child price</label>
-                                            <input type="number" min="0" value={opt.childPrice}
-                                              onChange={e => {
-                                                setInvMealPlanOptions(prev => prev.map(o => o.code === opt.code ? { ...o, childPrice: Number(e.target.value) } : o));
-                                              }}
-                                              placeholder="Child ₹"
-                                              className="w-full border border-gray-100 rounded px-1.5 py-0.5 text-[10px] bg-white focus:outline-none" />
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                <div>
+                                  <p className="text-[8px] text-gray-400 mb-0.5">Child + Bed</p>
+                                  <input aria-label="Child With Bed Price" type="number" min="0" value={invExtraChildWithBedPrice} onChange={e => setInvExtraChildWithBedPrice(e.target.value)} placeholder="₹0" className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] bg-white focus:outline-none" />
+                                </div>
+                                <div>
+                                  <p className="text-[8px] text-gray-400 mb-0.5">Child No Bed</p>
+                                  <input aria-label="Child Without Bed Price" type="number" min="0" value={invExtraChildWithoutBedPrice} onChange={e => setInvExtraChildWithoutBedPrice(e.target.value)} placeholder="₹0" className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] bg-white focus:outline-none" />
                                 </div>
                               </div>
                             </div>
-                          )}
-                        </div>
+                            {/* Meal Plans */}
+                            <div>
+                              <label className="block text-[9px] font-bold text-purple-700 uppercase mb-1">Meal Plan Rates</label>
+                              <div className="space-y-1.5">
+                                {invMealPlanOptions.map((opt) => (
+                                  <div key={opt.code} className="bg-white rounded-lg border border-gray-100 p-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-bold text-gray-700">{MEAL_EMOJIS[opt.code]} {opt.label}</span>
+                                      <input type="checkbox" checked={opt.enabled}
+                                        onChange={e => setInvMealPlanOptions((prev) => prev.map(o => o.code === opt.code ? { ...o, enabled: e.target.checked } : o))}
+                                        className="w-3.5 h-3.5 accent-purple-600" />
+                                    </div>
+                                    {opt.enabled && (
+                                      <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                        <input aria-label="Meal Plan Adult Price" type="number" min="0" value={opt.adultPrice} placeholder="Adult ₹"
+                                          onChange={e => setInvMealPlanOptions((prev) => prev.map(o => o.code === opt.code ? { ...o, adultPrice: Number(e.target.value) } : o))}
+                                          className="border border-gray-100 rounded px-2 py-0.5 text-[10px] focus:outline-none" />
+                                        <input aria-label="Meal Plan Child Price" type="number" min="0" value={opt.childPrice} placeholder="Child ₹"
+                                          onChange={e => setInvMealPlanOptions((prev) => prev.map(o => o.code === opt.code ? { ...o, childPrice: Number(e.target.value) } : o))}
+                                          className="border border-gray-100 rounded px-2 py-0.5 text-[10px] focus:outline-none" />
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
-                    )}
-
-                    <div className="flex justify-stretch pt-1">
-                      <button type="submit" disabled={savingInv}
-                        className="w-full px-5 py-2 bg-[#1B3A6B] text-white rounded-xl text-sm font-bold hover:bg-[#0f2548] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
-                        {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving Rates...</> : <><DollarSign className="w-4 h-4" /> Apply Rate Plan</>}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                {/* ── Right: Calendar ── */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 w-full min-w-0">
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">💰 Dynamic Rate Calendar</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {selectedRoomForInv ? "Click any date to pre-fill the rate form" : "Select a room type to view its rate calendar"}
-                      </p>
-                    </div>
-                    {selectedRoomForInv && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const today = new Date();
-                            const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                            const prev = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1);
-                            if (prev >= minMonth) setCurrentCalendarMonth(prev);
-                          }}
-                          disabled={
-                            currentCalendarMonth.getFullYear() === new Date().getFullYear() &&
-                            currentCalendarMonth.getMonth() === new Date().getMonth()
-                          }
-                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <span className="text-sm font-bold text-gray-800 min-w-32 text-center">
-                          {currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const today = new Date();
-                            const maxMonth = new Date(today.getFullYear(), today.getMonth() + 11, 1);
-                            const next = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1);
-                            if (next <= maxMonth) setCurrentCalendarMonth(next);
-                          }}
-                          disabled={
-                            currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() &&
-                            currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()
-                          }
-                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </div>
                     )}
                   </div>
 
-                  {selectedRoomForInv ? (
-                    <>
-                      {/* Calendar Grid */}
-                      <div className="grid grid-cols-7 gap-1.5 mb-4">
-                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
-                          <div key={day} className="text-center text-[10px] font-black text-gray-400 uppercase py-1 select-none">
-                            {day}
-                          </div>
-                        ))}
-                        {renderCalendar("rates")}
-                      </div>
-
-                      {/* Calendar Legend */}
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4 mt-3 border-t border-gray-100">
-                        {[
-                          { color: "bg-white border-gray-200", text: "Open" },
-                          { color: "bg-amber-50/70 border-amber-200", text: "Session Rates (Peak)" },
-                          { color: "bg-emerald-50/70 border-emerald-200", text: "Mid-Season Rates" },
-                          { color: "bg-sky-50/70 border-sky-200", text: "Off-Low Rates" },
-                          { color: "bg-indigo-50/70 border-indigo-200", text: "Festival Rates" },
-                          { color: "bg-emerald-50 border-emerald-300", text: "Discounted" },
-                          { color: "bg-amber-50 border-amber-300", text: "Low Stock" },
-                          { color: "bg-rose-50/70 border-rose-200", text: "Blocked (Stop Sales)" },
-                          { color: "bg-slate-100 border-slate-200", text: "Sold Out" },
-                          { color: "bg-gray-50 border-gray-100 opacity-60", text: "Past" },
-                        ].map(item => (
-                          <div key={item.text} className="flex items-center gap-1.5">
-                            <span className={`w-3.5 h-3.5 rounded border ${item.color}`} />
-                            <span className="text-[9px] font-bold text-gray-500">{item.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Calendar className="w-12 h-12 text-gray-200 mb-3" />
-                      <p className="text-gray-500 font-medium text-sm">No room selected</p>
-                      <p className="text-gray-400 text-xs mt-1">Select a room type in the form to view its rate calendar</p>
-                    </div>
-                  )}
+                  {/* Apply Button */}
+                  <button
+                    onClick={handleBulkUpdateRates}
+                    disabled={savingInv || !selectedRoomForInv || !invStartDate || !invEndDate}
+                    className="w-full py-3 bg-[#1B3A6B] text-white rounded-2xl text-sm font-black hover:bg-[#0f2548] transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-lg shadow-[#1B3A6B]/20">
+                    {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</> : <><DollarSign className="w-4 h-4" /> Apply Rate Plan</>}
+                  </button>
                 </div>
-              </div>{/* flex row end */}
+
+                {/* ── RIGHT: Calendar ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 min-w-0">
+                  {/* Calendar header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button type="button"
+                      onClick={() => { const p = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1); if (p >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)) setCurrentCalendarMonth(p); }}
+                      disabled={currentCalendarMonth.getFullYear() === new Date().getFullYear() && currentCalendarMonth.getMonth() === new Date().getMonth()}
+                      className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <div className="text-center">
+                      <p className="font-black text-gray-900">{currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+                      {!selectedRoomForInv && <p className="text-[10px] text-amber-600 font-medium mt-0.5">← Select a room to view rates</p>}
+                    </div>
+                    <button type="button"
+                      onClick={() => { const n = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1); const max = new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1); if (n <= max) setCurrentCalendarMonth(n); }}
+                      disabled={currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() && currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()}
+                      className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+
+                  {/* Day header */}
+                  <div className="grid grid-cols-7 mb-2">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                      <div key={d} className="text-center text-[9px] font-black text-gray-400 uppercase py-1">{d}</div>
+                    ))}
+                  </div>
+
+                  {/* Calendar grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {selectedRoomForInv ? renderCalendar("rates") : (
+                      Array.from({ length: 35 }).map((_, i) => (
+                        <div key={i} className="aspect-square rounded-lg bg-gray-50 border border-gray-100 opacity-40" />
+                      ))
+                    )}
+                  </div>
+
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 pt-3 border-t border-gray-100">
+                    {[
+                      { c: "bg-white border-gray-200", t: "Normal" },
+                      { c: "bg-amber-50 border-amber-200", t: "Peak Season" },
+                      { c: "bg-sky-50 border-sky-200", t: "Low Season" },
+                      { c: "bg-emerald-50 border-emerald-300", t: "Discounted" },
+                      { c: "bg-rose-50 border-rose-200", t: "Stop Sales" },
+                      { c: "bg-gray-100 border-gray-200 opacity-50", t: "Past" },
+                    ].map(i => (
+                      <div key={i.t} className="flex items-center gap-1.5">
+                        <span className={`w-3 h-3 rounded border ${i.c}`} />
+                        <span className="text-[9px] text-gray-500 font-medium">{i.t}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {/* ─── Room Inventory Tab ─── */}
           {tab === "inventory" && (
-            <div className="space-y-5">
-              <div className="flex items-center justify-between">
+            <div className="space-y-0">
+              {/* Header bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="font-bold text-gray-900 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#1B3A6B]" /> Room Inventory Management</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Control daily room availability, set stop-sales, and manage allotment quotas per room type.</p>
+                  <h2 className="font-black text-gray-900 text-base flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center"><Calendar className="w-4 h-4 text-white" /></span>
+                    Room Inventory
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5 ml-9">Control daily availability quotas and stop-sales</p>
                 </div>
+                {selectedRoom && (
+                  <div className="flex items-center gap-3">
+                    {inventoryData.filter(d => d.isBlocked).length > 0 && (
+                      <span className="flex items-center gap-1.5 bg-rose-50 border border-rose-100 text-rose-700 text-[10px] font-black px-3 py-1.5 rounded-xl">
+                        <XCircle className="w-3.5 h-3.5" /> {inventoryData.filter(d => d.isBlocked).length} Stop Sales
+                      </span>
+                    )}
+                    {inventoryData.filter(d => !d.isBlocked && Number(d.availableCount) <= 2).length > 0 && (
+                      <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-black px-3 py-1.5 rounded-xl">
+                        <AlertTriangle className="w-3.5 h-3.5" /> {inventoryData.filter(d => !d.isBlocked && Number(d.availableCount) <= 2).length} Low Stock
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-col gap-4 items-start">
-                {/* ── Bulk Inventory Update Form ── */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full">
-                  <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#1B3A6B]" /> Bulk Inventory / Stop Sales Update
-                  </h3>
-                  <form onSubmit={handleBulkUpdateInventory} className="space-y-3">
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Room Type *</label>
-                        <select aria-label="Select Room Type" title="Select Room Type" required value={selectedRoomForInv}
-                          onChange={e => {
-                            const roomIdVal = e.target.value;
-                            setSelectedRoomForInv(roomIdVal);
-                            const r = rooms.find(x => String(x.id) === roomIdVal);
-                            if (r) setInvAvailableCount(String(r.totalRooms));
+              {/* Main grid: Control Panel + Calendar */}
+              <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
+
+                {/* ── LEFT: Control Panel ── */}
+                <div className="space-y-3">
+
+                  {/* Step 1: Room Type */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">① Select Room Type</p>
+                    <div className="space-y-2">
+                      {rooms.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-4">No rooms added yet.</p>
+                      ) : rooms.map(r => (
+                        <button type="button" key={r.id}
+                          onClick={() => { setSelectedRoomForInv(String(r.id)); setInvAvailableCount(String(r.totalRooms)); }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-left transition-all",
+                            selectedRoomForInv === String(r.id)
+                              ? "bg-emerald-600 border-emerald-600 text-white"
+                              : "border-gray-200 hover:border-emerald-400/40 hover:bg-emerald-50/50 text-gray-700"
+                          )}>
+                          <div>
+                            <p className="text-xs font-bold">{r.name}</p>
+                            <p className={cn("text-[10px]", selectedRoomForInv === String(r.id) ? "text-white/70" : "text-gray-400")}>
+                              Total: {r.totalRooms} rooms
+                            </p>
+                          </div>
+                          {selectedRoomForInv === String(r.id) && <CheckCircle className="w-4 h-4 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Step 2: Date Range */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">② Date Range</p>
+                    <div className="grid grid-cols-2 gap-1.5 mb-3">
+                      {[
+                        { label: "Today", days: 0 },
+                        { label: "This Week", days: 6 },
+                        { label: "Next 14 Days", days: 13 },
+                        { label: "Next 30 Days", days: 29 },
+                      ].map(p => (
+                        <button type="button" key={p.label}
+                          onClick={() => {
+                            const s = new Date(); const e = new Date();
+                            e.setDate(e.getDate() + p.days);
+                            setInvStartDate(s.toISOString().split("T")[0]);
+                            setInvEndDate(e.toISOString().split("T")[0]);
                           }}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]">
-                          <option value="" disabled>-- Select a room --</option>
-                          {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Quota: {r.totalRooms})</option>)}
-                        </select>
+                          className="text-[10px] font-bold py-1.5 px-2 rounded-lg border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 text-gray-600 transition-all">
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">From</label>
+                        <input type="date" value={invStartDate} min={todayDateStr}
+                          onChange={e => setInvStartDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Rooms Available (Daily)</label>
-                        <input aria-label="Daily Available Rooms" title="Daily Available Rooms" type="number" required min="0"
-                          value={invAvailableCount} onChange={e => setInvAvailableCount(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
-                      </div>
-                      <div className="flex flex-col justify-end">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Stop Sales</label>
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input type="checkbox" checked={invIsBlocked} onChange={e => setInvIsBlocked(e.target.checked)}
-                            className="w-4 h-4 rounded accent-rose-600" />
-                          <span className="text-xs font-bold text-rose-700">Block All Bookings (Stop Sale)</span>
-                        </label>
+                        <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">To</label>
+                        <input type="date" value={invEndDate} min={invStartDate || todayDateStr}
+                          onChange={e => setInvEndDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500" />
                       </div>
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 mt-2">
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Date</label>
-                        <input aria-label="Start Date" title="Start Date" type="date" required value={invStartDate} onChange={e => setInvStartDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">End Date</label>
-                        <input aria-label="End Date" title="End Date" type="date" required value={invEndDate} onChange={e => setInvEndDate(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
-                      </div>
-                    </div>
+                  {/* Step 3: Inventory Settings */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">③ Availability Settings</p>
 
-                    {invIsBlocked && (
-                      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-bold text-rose-800 uppercase tracking-wide">Stop Sales Active</p>
-                          <p className="text-[11px] text-rose-600 mt-1 font-medium leading-relaxed">
-                            All booking requests will be blocked for this room type during the selected date range. This does not affect rates.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex justify-stretch pt-1">
-                      <button type="submit" disabled={savingInv}
-                        className="w-full px-5 py-2 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
-                        {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Updating...</> : <><Calendar className="w-4 h-4" /> Update Inventory</>}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                {/* ── Right: Inventory Calendar ── */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-5 w-full min-w-0">
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-sm">📦 Room Availability Calendar</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {selectedRoomForInv ? "Click any date to pre-fill the inventory form" : "Select a room type to view availability"}
-                      </p>
-                    </div>
-                    {selectedRoomForInv && (
+                    {/* Rooms available */}
+                    <div className="mb-4">
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">
+                        Rooms Available Per Night
+                      </label>
                       <div className="flex items-center gap-2">
                         <button type="button"
-                          onClick={() => {
-                            const today = new Date();
-                            const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                            const prev = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1);
-                            if (prev >= minMonth) setCurrentCalendarMonth(prev);
-                          }}
-                          disabled={currentCalendarMonth.getFullYear() === new Date().getFullYear() && currentCalendarMonth.getMonth() === new Date().getMonth()}
-                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors">
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <span className="text-sm font-bold text-gray-800 min-w-32 text-center">
-                          {currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                        </span>
+                          onClick={() => setInvAvailableCount(prev => String(Math.max(0, Number(prev) - 1)))}
+                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 font-bold text-lg leading-none">−</button>
+                        <input type="number" min="0"
+                          max={selectedRoom?.totalRooms || 999}
+                          value={invAvailableCount}
+                          onChange={e => setInvAvailableCount(e.target.value)}
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-black text-center focus:outline-none focus:border-emerald-500" />
                         <button type="button"
-                          onClick={() => {
-                            const today = new Date();
-                            const maxMonth = new Date(today.getFullYear(), today.getMonth() + 11, 1);
-                            const next = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1);
-                            if (next <= maxMonth) setCurrentCalendarMonth(next);
-                          }}
-                          disabled={currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() && currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()}
-                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors">
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
+                          onClick={() => setInvAvailableCount(prev => String(Math.min(selectedRoom?.totalRooms || 999, Number(prev) + 1)))}
+                          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 font-bold text-lg leading-none">+</button>
                       </div>
+                      {selectedRoom && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex-1 bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full transition-all"
+                              style={{ width: `${Math.min(100, (Number(invAvailableCount) / selectedRoom.totalRooms) * 100)}%` }} />
+                          </div>
+                          <span className="text-[9px] text-gray-400 font-bold shrink-0">{invAvailableCount}/{selectedRoom.totalRooms}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stop Sales toggle */}
+                    <div className={cn("rounded-xl border p-3 transition-all", invIsBlocked ? "bg-rose-50 border-rose-200" : "bg-gray-50 border-gray-200")}>
+                      <label className="flex items-center justify-between cursor-pointer select-none">
+                        <div>
+                          <p className={cn("text-xs font-bold", invIsBlocked ? "text-rose-700" : "text-gray-700")}>
+                            {invIsBlocked ? "🚫 Stop Sales ACTIVE" : "Stop Sales"}
+                          </p>
+                          <p className="text-[9px] text-gray-400 mt-0.5">Block all booking requests</p>
+                        </div>
+                        <div className={cn(
+                          "relative w-11 h-6 rounded-full transition-all cursor-pointer",
+                          invIsBlocked ? "bg-rose-500" : "bg-gray-300"
+                        )} onClick={() => setInvIsBlocked(!invIsBlocked)}>
+                          <div className={cn(
+                            "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all",
+                            invIsBlocked ? "left-5" : "left-0.5"
+                          )} />
+                        </div>
+                      </label>
+                      {invIsBlocked && (
+                        <p className="text-[10px] text-rose-600 font-medium mt-2">
+                          No bookings will be accepted for the selected dates. Existing bookings are unaffected.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Update Button */}
+                  <button
+                    onClick={handleBulkUpdateInventory}
+                    disabled={savingInv || !selectedRoomForInv || !invStartDate || !invEndDate}
+                    className={cn(
+                      "w-full py-3 rounded-2xl text-sm font-black transition-all disabled:opacity-40 flex items-center justify-center gap-2 shadow-lg",
+                      invIsBlocked
+                        ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                    )}>
+                    {savingInv ? (
+                      <><RefreshCw className="w-4 h-4 animate-spin" /> Updating...</>
+                    ) : invIsBlocked ? (
+                      <><XCircle className="w-4 h-4" /> Apply Stop Sales</>
+                    ) : (
+                      <><CheckCircle className="w-4 h-4" /> Update Availability</>
+                    )}
+                  </button>
+                </div>
+
+                {/* ── RIGHT: Calendar ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 min-w-0">
+                  {/* Calendar header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button type="button"
+                      onClick={() => { const p = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1); if (p >= new Date(new Date().getFullYear(), new Date().getMonth(), 1)) setCurrentCalendarMonth(p); }}
+                      disabled={currentCalendarMonth.getFullYear() === new Date().getFullYear() && currentCalendarMonth.getMonth() === new Date().getMonth()}
+                      className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+                      <ChevronLeft className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <div className="text-center">
+                      <p className="font-black text-gray-900">{currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}</p>
+                      {!selectedRoomForInv && <p className="text-[10px] text-amber-600 font-medium mt-0.5">← Select a room to view availability</p>}
+                    </div>
+                    <button type="button"
+                      onClick={() => { const n = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1); const max = new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1); if (n <= max) setCurrentCalendarMonth(n); }}
+                      disabled={currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() && currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()}
+                      className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+                      <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+
+                  {/* Day header */}
+                  <div className="grid grid-cols-7 mb-2">
+                    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+                      <div key={d} className="text-center text-[9px] font-black text-gray-400 uppercase py-1">{d}</div>
+                    ))}
+                  </div>
+
+                  {/* Calendar grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {selectedRoomForInv ? renderCalendar("inventory") : (
+                      Array.from({ length: 35 }).map((_, i) => (
+                        <div key={i} className="aspect-square rounded-lg bg-gray-50 border border-gray-100 opacity-40" />
+                      ))
                     )}
                   </div>
 
-                  {selectedRoomForInv ? (
-                    <>
-                      <div className="grid grid-cols-7 gap-1.5 mb-4">
-                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
-                          <div key={day} className="text-center text-[10px] font-black text-gray-400 uppercase py-1 select-none">{day}</div>
-                        ))}
-                        {renderCalendar("inventory")}
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 pt-3 border-t border-gray-100">
+                    {[
+                      { c: "bg-emerald-50 border-emerald-200", t: "Available" },
+                      { c: "bg-amber-50 border-amber-300", t: "Low Stock (≤2)" },
+                      { c: "bg-slate-100 border-slate-300", t: "Sold Out" },
+                      { c: "bg-rose-50 border-rose-300", t: "Stop Sales" },
+                      { c: "bg-gray-50 border-gray-100 opacity-50", t: "Past" },
+                    ].map(i => (
+                      <div key={i.t} className="flex items-center gap-1.5">
+                        <span className={`w-3 h-3 rounded border ${i.c}`} />
+                        <span className="text-[9px] text-gray-500 font-medium">{i.t}</span>
                       </div>
-                      {/* Inventory Legend */}
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4 mt-3 border-t border-gray-100">
-                        {[
-                          { color: "bg-emerald-50 border-emerald-100", text: "Available" },
-                          { color: "bg-amber-50 border-amber-300", text: "Low Stock (≤2)" },
-                          { color: "bg-slate-100 border-slate-200", text: "Sold Out" },
-                          { color: "bg-rose-50/70 border-rose-200", text: "Stop Sales" },
-                          { color: "bg-gray-50 border-gray-100 opacity-60", text: "Past" },
-                        ].map(item => (
-                          <div key={item.text} className="flex items-center gap-1.5">
-                            <span className={`w-3.5 h-3.5 rounded border ${item.color}`} />
-                            <span className="text-[9px] font-bold text-gray-500">{item.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <Calendar className="w-12 h-12 text-gray-200 mb-3" />
-                      <p className="text-gray-500 font-medium text-sm">No room selected</p>
-                      <p className="text-gray-400 text-xs mt-1">Select a room type in the form to view its availability calendar</p>
-                    </div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>{/* flex row end */}
+              </div>
             </div>
           )}
-
           {/* ─── Bookings Tab ─── */}
           {tab === "bookings" && (
             <div className="space-y-4">
