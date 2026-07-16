@@ -31,9 +31,17 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
     ? validateImageUrl(rawImage, 400, 300, "4:3")
     : "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800";
 
-  // ── Dynamic amenities: show up to 3 from hotel.amenities, fallback if empty ──
+  // Normalize amenityKeys
+  const normalizeAmenityKey = (val: any): string => {
+    if (!val) return "";
+    if (typeof val === "object") {
+      return normalizeAmenityKey(val.key || val.name || val.label);
+    }
+    return String(val).trim().toUpperCase();
+  };
+
   const amenityKeys = hotel.amenities && hotel.amenities.length > 0
-    ? hotel.amenities.slice(0, 3)
+    ? hotel.amenities.map(normalizeAmenityKey).filter(Boolean).slice(0, 3)
     : FALLBACK_AMENITY_KEYS;
 
   const displayAmenities = amenityKeys
@@ -101,49 +109,14 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
             {hotel.name}
           </h3>
 
-          {/* Amenities — horizontal scroll bar */}
+          {/* Amenities */}
           {displayAmenities && displayAmenities.length > 0 && (
-            <div
-              className="flex gap-1 overflow-x-auto no-scrollbar mb-2.5 pb-0.5 whitespace-nowrap select-none w-full scroll-smooth cursor-grab active:cursor-grabbing"
-              onMouseDown={(e) => {
-                const el = e.currentTarget;
-                el.dataset.isDown = "true";
-                el.dataset.startX = String(e.pageX - el.offsetLeft);
-                el.dataset.scrollLeft = String(el.scrollLeft);
-              }}
-              onMouseLeave={(e) => {
-                delete e.currentTarget.dataset.isDown;
-              }}
-              onMouseUp={(e) => {
-                delete e.currentTarget.dataset.isDown;
-              }}
-              onMouseMove={(e) => {
-                const el = e.currentTarget;
-                if (el.dataset.isDown !== "true") return;
-                e.preventDefault();
-                e.stopPropagation();
-                const x = e.pageX - el.offsetLeft;
-                const startX = Number(el.dataset.startX || 0);
-                const walk = (x - startX) * 1.5;
-                if (Math.abs(x - startX) > 5) {
-                  el.dataset.wasDragged = "true";
-                }
-                el.scrollLeft = Number(el.dataset.scrollLeft || 0) - walk;
-              }}
-              onClick={(e) => {
-                const el = e.currentTarget;
-                if (el.dataset.wasDragged === "true") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  delete el.dataset.wasDragged;
-                }
-              }}
-            >
+            <div className="flex flex-wrap gap-1 mb-2.5 pb-0.5 w-full">
               {displayAmenities.map((info, index) => {
                 const Icon = info.icon;
                 return (
-                  <span key={`${info.key}-${index}`} className="inline-flex items-center gap-1 text-[10px] text-white/80 bg-white/5 px-2 py-1 rounded-full border border-white/10 shrink-0">
-                    {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
+                  <span key={`${info.key}-${index}`} className="inline-flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[10px] text-white/85 bg-white/10 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full border border-white/10 shrink-0">
+                    {Icon && <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-accent" />}
                     {info.label}
                   </span>
                 );

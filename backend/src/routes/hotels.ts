@@ -82,7 +82,7 @@ router.get("/by-location", cacheMiddleware(60), async (req: Request, res: Respon
     } = req.query;
 
     // Build WHERE conditions dynamically
-    const conditions: any[] = [sql`hotels.status = 'APPROVED'`];
+    const conditions: any[] = [sql`hotels.status = 'APPROVED' AND hotels.show_on_frontend = true`];
     if (country) conditions.push(sql`hotels.country_slug = ${country}`);
     if (state && state !== "all" && state !== "undefined") {
       conditions.push(sql`hotels.state_slug = ${state}`);
@@ -203,7 +203,7 @@ router.get("/featured", cacheMiddleware(300), async (req: Request, res: Response
       })
       .from(hotelsTable)
       .leftJoin(destinationsTable, eq(hotelsTable.destinationId, destinationsTable.id))
-      .where(and(eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.isFeatured, true)))
+      .where(and(eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.showOnFrontend, true), eq(hotelsTable.isFeatured, true)))
       .orderBy(hotelsTable.displayOrder)
       .limit(8);
 
@@ -229,7 +229,7 @@ router.get("/", cacheMiddleware(60), async (req: Request, res: Response) => {
       offset = "0",
     } = req.query;
 
-    const conditions: any[] = [eq(hotelsTable.status, "APPROVED")];
+    const conditions: any[] = [eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.showOnFrontend, true)];
 
     // Destination lookup — only do it if destination param exists
     if (destination) {
@@ -460,6 +460,33 @@ router.get("/mega-menu", async (_req: Request, res: Response): Promise<void> => 
 });
 
 // ─────────────────────────────────────────────────────────────
+// AUTHENTICATED: Check Review Eligibility
+// GET /api/hotels/:slug/can-review
+// ─────────────────────────────────────────────────────────────
+router.get("/:slug/can-review", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { slug } = req.params;
+    const userId = req.user!.id;
+
+    const [hotel] = await db.select({ id: hotelsTable.id }).from(hotelsTable)
+      .where(eq(hotelsTable.slug, slug as string)).limit(1);
+    if (!hotel) return res.status(404).json({ error: "Hotel not found" });
+
+    const userBookings = await db.select({ id: bookingsTable.id }).from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.hotelId, hotel.id),
+        eq(bookingsTable.userId, userId),
+        eq(bookingsTable.status, "CONFIRMED")
+      ));
+
+    res.json({ canReview: userBookings.length > 0 });
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Can review check error");
+    res.status(500).json({ error: "Failed to check review eligibility" });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // PUBLIC: Hotel Detail Page
 // GET /api/hotels/:slug — cached 3 min
 // ─────────────────────────────────────────────────────────────
@@ -482,7 +509,11 @@ router.get("/:slug", cacheMiddleware(180), async (req: Request, res: Response) =
       .leftJoin(destinationsTable, eq(hotelsTable.destinationId, destinationsTable.id))
       .leftJoin(statesTable, eq(hotelsTable.stateId, statesTable.id))
       .leftJoin(countriesTable, eq(hotelsTable.countryId, countriesTable.id))
-      .where(and(eq(hotelsTable.slug, slug as string), eq(hotelsTable.status, "APPROVED")))
+      .where(and(
+        eq(hotelsTable.slug, slug as string),
+        eq(hotelsTable.status, "APPROVED"),
+        eq(hotelsTable.showOnFrontend, true)
+      ))
       .limit(1);
 
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });
@@ -944,22 +975,25 @@ router.post("/:slug/reviews", authenticate, async (req: AuthenticatedRequest, re
       facilitiesRating, serviceRating, valueRating, bookingId
     } = req.body;
 
-    let isVerified = false;
-    if (bookingId) {
-      const [booking] = await db.select({ id: bookingsTable.id }).from(bookingsTable)
-        .where(and(
-          eq(bookingsTable.id, Number(bookingId)),
-          eq(bookingsTable.hotelId, hotel.id),
-          eq(bookingsTable.userId, userId),
-          eq(bookingsTable.status, "CONFIRMED")
-        )).limit(1);
-      isVerified = !!booking;
+    // Enforce that only users who stayed (have confirmed booking) can review
+    const confirmedBookings = await db.select({ id: bookingsTable.id }).from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.hotelId, hotel.id),
+        eq(bookingsTable.userId, userId),
+        eq(bookingsTable.status, "CONFIRMED")
+      ));
+
+    if (confirmedBookings.length === 0) {
+      return res.status(403).json({ error: "Only guests who have stayed in this hotel can write a review." });
     }
+
+    let isVerified = true;
+    let finalBookingId = bookingId ? Number(bookingId) : confirmedBookings[0].id;
 
     const [review] = await db.insert(hotelReviewsTable).values({
       hotelId: hotel.id,
       userId,
-      bookingId: bookingId ? Number(bookingId) : null,
+      bookingId: finalBookingId,
       rating: Number(rating),
       cleanlinessRating: cleanlinessRating ? Number(cleanlinessRating) : null,
       comfortRating: comfortRating ? Number(comfortRating) : null,

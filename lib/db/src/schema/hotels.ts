@@ -60,6 +60,7 @@ export const hotelsTable = pgTable("hotels", {
   status: text("status").notNull().default("PENDING"), // 'PENDING','APPROVED','REJECTED','DRAFT','SUSPENDED'
   isFeatured: boolean("is_featured").default(false),
   displayOrder: integer("display_order").notNull().default(0),
+  showOnFrontend: boolean("show_on_frontend").default(true),
 
   // SEO
   metaTitle: text("meta_title"),

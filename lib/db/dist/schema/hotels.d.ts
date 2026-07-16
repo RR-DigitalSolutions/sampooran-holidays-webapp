@@ -667,6 +667,23 @@ export declare const hotelsTable: import("drizzle-orm/pg-core").PgTableWithColum
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        showOnFrontend: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_on_frontend";
+            tableName: "hotels";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         metaTitle: import("drizzle-orm/pg-core").PgColumn<{
             name: "meta_title";
             tableName: "hotels";
@@ -3021,6 +3038,7 @@ export declare const insertHotelSchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodString>;
     isFeatured: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     displayOrder: z.ZodOptional<z.ZodInt>;
+    showOnFrontend: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     metaTitle: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     metaDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {

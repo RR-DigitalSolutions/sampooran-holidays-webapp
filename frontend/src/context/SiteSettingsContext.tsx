@@ -30,6 +30,21 @@ export interface AboutContent {
   whyChooseUs: { title: string; description: string }[];
 }
 
+// ─── Partner card shape ───────────────────────────────────────────────────────
+export interface PartnerCard {
+  title: string;
+  subtitle: string;
+  detail: string;
+  tag: string;
+  iconName: string;
+  imageSrc: string;
+  imageAlt: string;
+  ctaLabel: string;
+  ctaHref: string;
+  secondaryCtaLabel: string;
+  secondaryCtaHref: string;
+}
+
 // ─── Main Settings shape ─────────────────────────────────────────────────────
 export interface SiteSettings {
   siteName: string;
@@ -55,6 +70,7 @@ export interface SiteSettings {
   ota_partners: OtaPartner[];
   associations: Association[];
   about_content: AboutContent;
+  partner_network: PartnerCard[];
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -89,6 +105,48 @@ export const DEFAULT_ABOUT_CONTENT: AboutContent = {
   ],
 };
 
+export const DEFAULT_PARTNER_NETWORK: PartnerCard[] = [
+  {
+    title: "Verified Property Listings",
+    subtitle: "Hotel & Resort Partners",
+    detail: "List your hotel, resort, or homestay with trusted visibility, faster approvals, and secure payouts in our marketplace.",
+    tag: "Property Vendor",
+    iconName: "Building2",
+    imageSrc: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    imageAlt: "Verified Luxury resort hotel partner property listing",
+    ctaLabel: "Register Property",
+    ctaHref: "/partner/register",
+    secondaryCtaLabel: "Partner Login",
+    secondaryCtaHref: "/partner/login"
+  },
+  {
+    title: "Taxi, Tempo & Coach Fleet",
+    subtitle: "Transport Operators",
+    detail: "Add your vehicles to a verified premium fleet for airport transfers, sightseeing routes, and group travel across the mountains.",
+    tag: "Transport Vendor",
+    iconName: "Truck",
+    imageSrc: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
+    imageAlt: "Taxi, coach, and traveler fleet services",
+    ctaLabel: "Join Fleet",
+    ctaHref: "/transport",
+    secondaryCtaLabel: "Call Fleet Desk",
+    secondaryCtaHref: "tel:+918595513009"
+  },
+  {
+    title: "B2B Agent Partnerships",
+    subtitle: "Travel Trade Network",
+    detail: "Grow your agency business with exclusive net rates, marketing support, and a dedicated partner desk for travel agents.",
+    tag: "B2B Agents",
+    iconName: "Handshake",
+    imageSrc: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
+    imageAlt: "B2B agent travel business networking partnership",
+    ctaLabel: "Become an Agent",
+    ctaHref: "/b2b",
+    secondaryCtaLabel: "Agent Login",
+    secondaryCtaHref: "/partner/login"
+  }
+];
+
 export const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "Sampooran Holidays",
   tagline: "Your Dream Holiday, Planned Perfectly",
@@ -112,6 +170,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   ota_partners: DEFAULT_OTA_PARTNERS,
   associations: DEFAULT_ASSOCIATIONS,
   about_content: DEFAULT_ABOUT_CONTENT,
+  partner_network: DEFAULT_PARTNER_NETWORK,
 };
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -164,6 +223,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         merged.ota_partners = safeJson<OtaPartner[]>(raw["ota_partners"], DEFAULT_OTA_PARTNERS);
         merged.associations = safeJson<Association[]>(raw["associations"], DEFAULT_ASSOCIATIONS);
         merged.about_content = safeJson<AboutContent>(raw["about_content"], DEFAULT_ABOUT_CONTENT);
+        merged.partner_network = safeJson<PartnerCard[]>(raw["partner_network"], DEFAULT_PARTNER_NETWORK);
 
         setSettings(merged);
       } catch (error) {

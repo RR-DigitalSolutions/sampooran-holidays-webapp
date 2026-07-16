@@ -21,14 +21,47 @@ export function AttractionActivityModal({
   if (!isOpen || !data) return null;
 
   const rawImages = data.images && Array.isArray(data.images) ? data.images : [];
-  const cover = data.coverImage || data.image || data.imageUrl || null;
+  const cover = data.coverImage || data.image || data.imageUrl || (rawImages.length > 0 ? rawImages[0] : null);
   const allImages = cover
-    ? [cover, ...rawImages].filter(Boolean)
+    ? [cover, ...rawImages.filter(img => img !== cover)].filter(Boolean)
     : rawImages;
 
   const highlights = Array.isArray(data.highlights) ? data.highlights : [];
   const tips = Array.isArray(data.tips) ? data.tips : [];
   const famousFor = Array.isArray(data.famousFor) ? data.famousFor : [];
+
+  const formatAmenityName = (feat: any): string => {
+    if (!feat) return "";
+    if (typeof feat === "object") {
+      const val = feat.label || feat.name || feat.key || JSON.stringify(feat);
+      return formatAmenityName(val);
+    }
+    const str = String(feat).trim();
+    if (str.startsWith("[object") || str === "object") {
+      return "";
+    }
+    const overrides: Record<string, string> = {
+      WIFI: "Free Wi-Fi",
+      AC: "Air Conditioning",
+      POOL: "Swimming Pool",
+      GYM: "Fitness Center",
+      SPA: "Spa & Massage",
+      TV: "Flat-screen TV",
+      ROOM_SERVICE: "Room Service",
+      PARKING: "Free Parking",
+      HEATING: "Room Heating",
+      HOT_WATER: "24/7 Hot Water",
+      BONFIRE: "Bonfire",
+      MOUNTAIN_VIEW: "Mountain View",
+      VALLEY_VIEW: "Valley View",
+      BREAKFAST: "Breakfast Included"
+    };
+    const key = str.toUpperCase();
+    if (overrides[key]) return overrides[key];
+    return str
+      .replace(/[_-]+/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
 
   return (
     <>
@@ -299,11 +332,15 @@ export function AttractionActivityModal({
                   {type === "hotel" ? "Amenities" : "Key Features"}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {(data.amenities || data.features || []).map((feat: string, idx: number) => (
-                    <span key={idx} className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
-                      {feat}
-                    </span>
-                  ))}
+                  {(data.amenities || data.features || []).map((feat: any, idx: number) => {
+                    const formatted = formatAmenityName(feat);
+                    if (!formatted) return null;
+                    return (
+                      <span key={idx} className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-800">
+                        {formatted}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}

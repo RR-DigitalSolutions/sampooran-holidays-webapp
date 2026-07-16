@@ -329,7 +329,11 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       startingPrice: hotelsTable.minPrice
     })
     .from(hotelsTable)
-    .where(and(eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.isFeatured, true)))
+    .where(and(
+      eq(hotelsTable.status, "APPROVED"),
+      eq(hotelsTable.showOnFrontend, true),
+      eq(hotelsTable.isFeatured, true)
+    ))
     .orderBy(desc(hotelsTable.createdAt))
     .limit(8);
 

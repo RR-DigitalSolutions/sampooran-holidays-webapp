@@ -52,6 +52,12 @@ interface Hotel {
   website?: string;
   vendorCommissionPct?: number;
   createdAt?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  breakfastIncluded?: boolean;
+  showOnFrontend?: boolean;
+  proximity?: { place: string; distance: string }[];
+  faqs?: { question: string; answer: string }[];
 }
 
 interface Room {
@@ -147,12 +153,27 @@ function HotelFormModal({
     checkInTime: hotel?.checkInTime || "14:00",
     checkOutTime: hotel?.checkOutTime || "12:00",
     bookingType: hotel?.bookingType || "INSTANT",
-    metaTitle: hotel?.name || "",
-    metaDescription: hotel?.description?.slice(0, 160) || "",
+    metaTitle: hotel?.metaTitle || hotel?.name || "",
+    metaDescription: hotel?.metaDescription || hotel?.description?.slice(0, 160) || "",
     status: hotel?.status || "PENDING",
     isFeatured: hotel?.isFeatured || false,
     images: hotel?.images?.join("\n") || "",
-    amenities: (hotel?.amenities || []).join(", "),
+    amenities: Array.isArray(hotel?.amenities)
+      ? hotel.amenities
+      : typeof hotel?.amenities === "string"
+      ? (hotel.amenities as string).split(",").map(s => s.trim()).filter(Boolean)
+      : [] as string[],
+    pincode: hotel?.pincode || "",
+    latitude: hotel?.latitude || "",
+    longitude: hotel?.longitude || "",
+    minPrice: hotel?.minPrice || "",
+    totalRooms: hotel?.totalRooms || "",
+    breakfastIncluded: hotel?.breakfastIncluded || false,
+    vendorCommissionPct: hotel?.vendorCommissionPct || 15.0,
+    website: hotel?.website || "",
+    showOnFrontend: hotel?.showOnFrontend !== false,
+    proximity: hotel?.proximity || [] as { place: string; distance: string }[],
+    faqs: hotel?.faqs || [] as { question: string; answer: string }[],
   });
 
   const update = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
@@ -163,9 +184,17 @@ function HotelFormModal({
       const body = {
         ...form,
         starRating: Number(form.starRating),
-        destinationId: form.destinationId ? Number(form.destinationId) : undefined,
+        destinationId: form.destinationId ? Number(form.destinationId) : null,
         images: form.images.split("\n").filter(Boolean),
-        amenities: form.amenities.split(",").map(s => s.trim()).filter(Boolean),
+        minPrice: form.minPrice ? Number(form.minPrice) : null,
+        totalRooms: form.totalRooms ? Number(form.totalRooms) : null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
+        vendorCommissionPct: form.vendorCommissionPct ? Number(form.vendorCommissionPct) : null,
+        pincode: form.pincode || null,
+        website: form.website || null,
+        breakfastIncluded: !!form.breakfastIncluded,
+        showOnFrontend: !!form.showOnFrontend,
       };
 
       const url = isEdit
@@ -184,7 +213,7 @@ function HotelFormModal({
     }
   };
 
-  const steps = ["Basic Info", "Location", "Media", "Settings"];
+  const steps = ["Basic Info", "Location", "Amenities & FAQs", "Media", "Settings"];
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -199,53 +228,66 @@ function HotelFormModal({
         </div>
 
         {/* Step Indicator */}
-        <div className="flex border-b">
+        <div className="flex border-b overflow-x-auto">
           {steps.map((s, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => setStep(i + 1)}
-              className={`flex-1 py-3 text-xs font-bold transition-colors ${step === i + 1 ? "border-b-2 border-[#1B3A6B] text-[#1B3A6B]" : "text-gray-400 hover:text-gray-600"}`}
+              className={`flex-1 min-w-[90px] py-3 text-xs font-bold transition-colors whitespace-nowrap ${step === i + 1 ? "border-b-2 border-[#1B3A6B] text-[#1B3A6B]" : "text-gray-400 hover:text-gray-600"}`}
             >
               {s}
             </button>
           ))}
         </div>
 
-        {/* Step Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {/* Content */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-4">
           {step === 1 && (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+                <div>
                   <label className="label">Property Name *</label>
-                  <input value={form.name} onChange={e => update("name", e.target.value)}
-                    className="input w-full" placeholder="e.g. The Grand Himalayan Resort" />
+                  <input value={form.name} onChange={e => update("name", e.target.value)} className="input w-full" placeholder="Grand Hyatt" />
                 </div>
                 <div>
                   <label className="label">Property Type</label>
                   <select aria-label="Property Type" title="Property Type" value={form.type} onChange={e => update("type", e.target.value)} className="input w-full">
-                    {PROPERTY_TYPES.map(t => <option key={t}>{t}</option>)}
+                    <option value="Hotel">Hotel</option>
+                    <option value="Resort">Resort</option>
+                    <option value="Villa">Villa</option>
+                    <option value="Cottage">Cottage</option>
+                    <option value="Camp">Camp</option>
+                    <option value="Homestay">Homestay</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Star Rating</label>
-                  <select aria-label="Star Rating" title="Star Rating" value={form.starRating} onChange={e => update("starRating", e.target.value)} className="input w-full">
-                    {[1, 2, 3, 4, 5].map(s => <option key={s} value={s}>{s} Star{s > 1 ? "s" : ""}</option>)}
+                  <label className="label">Star Rating *</label>
+                  <select aria-label="Star Rating" title="Star Rating" value={form.starRating} onChange={e => update("starRating", Number(e.target.value))} className="input w-full">
+                    <option value={1}>1 Star</option>
+                    <option value={2}>2 Star</option>
+                    <option value={3}>3 Star</option>
+                    <option value={4}>4 Star</option>
+                    <option value={5}>5 Star</option>
                   </select>
                 </div>
                 <div>
-                  <label className="label">Phone</label>
+                  <label className="label">Website Link</label>
+                  <input value={form.website} onChange={e => update("website", e.target.value)} className="input w-full" placeholder="https://example.com" />
+                </div>
+                <div>
+                  <label className="label">Contact Phone</label>
                   <input value={form.phone} onChange={e => update("phone", e.target.value)} className="input w-full" placeholder="+91 98765 43210" />
                 </div>
                 <div>
-                  <label className="label">Email</label>
-                  <input value={form.email} onChange={e => update("email", e.target.value)} className="input w-full" placeholder="hotel@example.com" />
+                  <label className="label">Contact Email</label>
+                  <input type="email" value={form.email} onChange={e => update("email", e.target.value)} className="input w-full" placeholder="info@hotel.com" />
                 </div>
-                <div className="col-span-2">
-                  <label className="label">Description</label>
-                  <textarea value={form.description} onChange={e => update("description", e.target.value)}
-                    className="input w-full" rows={4} placeholder="Describe the property experience..." />
-                </div>
+              </div>
+              <div>
+                <label className="label">Description *</label>
+                <textarea value={form.description} onChange={e => update("description", e.target.value)}
+                  className="input w-full" rows={4} placeholder="About this premium property..." />
               </div>
             </>
           )}
@@ -264,32 +306,173 @@ function HotelFormModal({
                 <textarea value={form.address} onChange={e => update("address", e.target.value)}
                   className="input w-full" rows={2} placeholder="Building, Street, Area" />
               </div>
-              <div>
-                <label className="label">City / Town</label>
-                <input value={form.city} onChange={e => update("city", e.target.value)} className="input w-full" placeholder="Manali" />
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="label">City / Town</label>
+                  <input value={form.city} onChange={e => update("city", e.target.value)} className="input w-full" placeholder="Manali" />
+                </div>
+                <div>
+                  <label className="label">PIN Code</label>
+                  <input value={form.pincode} onChange={e => update("pincode", e.target.value)} className="input w-full" placeholder="175131" />
+                </div>
+                <div className="col-span-3 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Latitude</label>
+                    <input type="number" step="any" value={form.latitude} onChange={e => update("latitude", e.target.value)} className="input w-full" placeholder="32.2396" />
+                  </div>
+                  <div>
+                    <label className="label">Longitude</label>
+                    <input type="number" step="any" value={form.longitude} onChange={e => update("longitude", e.target.value)} className="input w-full" placeholder="77.1887" />
+                  </div>
+                </div>
               </div>
             </>
           )}
 
           {step === 3 && (
-            <>
+            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
               <div>
-                <label className="label">Image URLs (one per line)</label>
-                <textarea value={form.images} onChange={e => update("images", e.target.value)}
-                  className="input w-full font-mono text-xs" rows={6} placeholder="https://..." />
-                <p className="text-xs text-gray-400 mt-1">First image will be used as the cover photo.</p>
+                <label className="label">Popular Amenities</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                  {POPULAR_AMENITIES.map(opt => {
+                    const isChecked = form.amenities.includes(opt.key);
+                    return (
+                      <label key={opt.key} className="flex items-center gap-2 text-xs font-semibold text-gray-700 bg-slate-50 border border-slate-100 hover:bg-slate-100 px-3 py-2 rounded-xl cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const next = e.target.checked
+                              ? [...form.amenities, opt.key]
+                              : form.amenities.filter(k => k !== opt.key);
+                            update("amenities", next);
+                          }}
+                          className="w-3.5 h-3.5 accent-[#1B3A6B]"
+                        />
+                        {opt.label}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-              <div>
-                <label className="label">Amenities (comma-separated)</label>
-                <input value={form.amenities} onChange={e => update("amenities", e.target.value)}
-                  className="input w-full" placeholder="WIFI, POOL, RESTAURANT, PARKING, GYM" />
+
+              {/* Proximity Editor */}
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="label mb-0 text-sm">Proximity (Nearby Places)</label>
+                  <button
+                    type="button"
+                    onClick={() => update("proximity", [...form.proximity, { place: "", distance: "" }])}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                  >
+                    + Add Place
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {form.proximity.map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        placeholder="Place name (e.g. Mall Road)"
+                        value={item.place}
+                        onChange={(e) => {
+                          const list = [...form.proximity];
+                          list[idx].place = e.target.value;
+                          update("proximity", list);
+                        }}
+                        className="input flex-1 text-xs py-1.5"
+                      />
+                      <input
+                        placeholder="Distance (e.g. 500 m, 1.5 km)"
+                        value={item.distance}
+                        onChange={(e) => {
+                          const list = [...form.proximity];
+                          list[idx].distance = e.target.value;
+                          update("proximity", list);
+                        }}
+                        className="input w-32 text-xs py-1.5"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => update("proximity", form.proximity.filter((_: any, i: number) => i !== idx))}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {form.proximity.length === 0 && (
+                    <p className="text-[10px] text-gray-400 italic">No proximity data added yet.</p>
+                  )}
+                </div>
               </div>
-            </>
+
+              {/* FAQ Editor */}
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="label mb-0 text-sm">FAQs (Frequently Asked Questions)</label>
+                  <button
+                    type="button"
+                    onClick={() => update("faqs", [...form.faqs, { question: "", answer: "" }])}
+                    className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"
+                  >
+                    + Add FAQ
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {form.faqs.map((item: any, idx: number) => (
+                    <div key={idx} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl relative space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => update("faqs", form.faqs.filter((_: any, i: number) => i !== idx))}
+                        className="absolute right-2 top-2 p-1 text-red-500 hover:bg-red-100 rounded-lg"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        placeholder="Question (e.g. Is parking available?)"
+                        value={item.question}
+                        onChange={(e) => {
+                          const list = [...form.faqs];
+                          list[idx].question = e.target.value;
+                          update("faqs", list);
+                        }}
+                        className="input w-full text-xs py-1.5 bg-white"
+                      />
+                      <textarea
+                        placeholder="Answer"
+                        value={item.answer}
+                        onChange={(e) => {
+                          const list = [...form.faqs];
+                          list[idx].answer = e.target.value;
+                          update("faqs", list);
+                        }}
+                        className="input w-full text-xs py-1.5 bg-white"
+                        rows={2}
+                      />
+                    </div>
+                  ))}
+                  {form.faqs.length === 0 && (
+                    <p className="text-[10px] text-gray-400 italic">No FAQs added yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {step === 4 && (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Image URLs (one per line)</label>
+                <textarea value={form.images} onChange={e => update("images", e.target.value)}
+                  className="input w-full font-mono text-xs" rows={8} placeholder="https://..." />
+                <p className="text-xs text-gray-400 mt-1">First image will be used as the cover photo.</p>
+              </div>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
+              <div className="grid grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-2">
                 <div>
                   <label className="label">Check-in Time</label>
                   <input aria-label="Check-in Time" title="Check-in Time" type="time" value={form.checkInTime} onChange={e => update("checkInTime", e.target.value)} className="input w-full" />
@@ -297,6 +480,18 @@ function HotelFormModal({
                 <div>
                   <label className="label">Check-out Time</label>
                   <input aria-label="Check-out Time" title="Check-out Time" type="time" value={form.checkOutTime} onChange={e => update("checkOutTime", e.target.value)} className="input w-full" />
+                </div>
+                <div>
+                  <label className="label">Starting Price (Min Price)</label>
+                  <input type="number" placeholder="4500" value={form.minPrice} onChange={e => update("minPrice", e.target.value)} className="input w-full" />
+                </div>
+                <div>
+                  <label className="label">Total Rooms</label>
+                  <input type="number" placeholder="24" value={form.totalRooms} onChange={e => update("totalRooms", e.target.value)} className="input w-full" />
+                </div>
+                <div>
+                  <label className="label">Commission %</label>
+                  <input type="number" step="0.1" value={form.vendorCommissionPct} onChange={e => update("vendorCommissionPct", e.target.value)} className="input w-full" />
                 </div>
                 <div>
                   <label className="label">Booking Type</label>
@@ -311,9 +506,19 @@ function HotelFormModal({
                     {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
-                <div className="col-span-2 flex items-center gap-3">
-                  <input type="checkbox" id="featured" checked={form.isFeatured} onChange={e => update("isFeatured", e.target.checked)} className="w-4 h-4" />
-                  <label htmlFor="featured" className="text-sm font-medium text-gray-700">Mark as Featured Property</label>
+                <div className="flex flex-col gap-2 justify-center pt-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                    <input type="checkbox" checked={form.breakfastIncluded} onChange={e => update("breakfastIncluded", e.target.checked)} className="w-4 h-4 accent-[#1B3A6B]" />
+                    Breakfast Included
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                    <input type="checkbox" checked={form.showOnFrontend} onChange={e => update("showOnFrontend", e.target.checked)} className="w-4 h-4 accent-[#1B3A6B]" />
+                    Show on Frontend
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+                    <input type="checkbox" checked={form.isFeatured} onChange={e => update("isFeatured", e.target.checked)} className="w-4 h-4 accent-[#1B3A6B]" />
+                    Mark as Featured
+                  </label>
                 </div>
                 <div className="col-span-2">
                   <label className="label">SEO Meta Title</label>
@@ -354,6 +559,30 @@ function HotelFormModal({
   );
 }
 
+const POPULAR_AMENITIES = [
+  { key: "WIFI", label: "Free Wi-Fi" },
+  { key: "AC", label: "Air Conditioning" },
+  { key: "HEATING", label: "Room Heating" },
+  { key: "TV", label: "Flat-screen TV" },
+  { key: "MINIBAR", label: "Minibar" },
+  { key: "SAFE", label: "In-Room Safe" },
+  { key: "HOT_WATER", label: "Hot Water 24/7" },
+  { key: "TOILETRIES", label: "Premium Toiletries" },
+  { key: "RESTAURANT", label: "In-House Restaurant" },
+  { key: "BAR", label: "Bar & Lounge" },
+  { key: "ROOM_SERVICE", label: "24/7 Room Service" },
+  { key: "BREAKFAST", label: "Breakfast Included" },
+  { key: "POOL", label: "Swimming Pool" },
+  { key: "GYM", label: "Fitness Center" },
+  { key: "SPA", label: "Spa & Massage" },
+  { key: "LAUNDRY", label: "Laundry Service" },
+  { key: "PARKING", label: "Free Parking" },
+  { key: "VALET_PARKING", label: "Valet Parking" },
+  { key: "EV_CHARGING", label: "EV Charging" },
+  { key: "MOUNTAIN_VIEW", label: "Mountain View" },
+  { key: "VALLEY_VIEW", label: "Valley View" },
+  { key: "BONFIRE", label: "Bonfire" }
+];
 // ─── Room Management Panel ────────────────────────────────────────────────────
 function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
   const [rooms, setRooms] = useState<Room[]>([]);

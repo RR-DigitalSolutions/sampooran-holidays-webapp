@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { API_BASE } from "@/context/AuthContext";
+import { API_BASE, useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { cn, getHotelImageUrl } from "@/lib/utils";
 import { FeaturedAmenities, AmenitiesDisplay } from "@/components/AmenitiesDisplay";
@@ -25,6 +25,95 @@ interface RoomConfig {
 
 export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string; breadcrumbs?: { label: string; href: string }[] }) {
   const router = useRouter();
+  const { user, token } = useAuth();
+  const [canReview, setCanReview] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  // Review Modal State
+  const [cleanliness, setCleanliness] = useState(5);
+  const [comfort, setComfort] = useState(5);
+  const [locRating, setLocRating] = useState(5);
+  const [servRating, setServRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewBody, setReviewBody] = useState("");
+  const [travelType, setTravelType] = useState("Couple");
+  const [stayDate, setStayDate] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  useEffect(() => {
+    if (user && token) {
+      checkReviewEligibility();
+    } else {
+      setCanReview(false);
+    }
+  }, [user, token, slug]);
+
+  const checkReviewEligibility = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/hotels/${slug}/can-review`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCanReview(data.canReview);
+      }
+    } catch (e) {
+      console.error("Check review eligibility error:", e);
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewBody || reviewBody.length < 10) {
+      toast.error("Please write at least 10 characters of feedback.");
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      const avg = Math.round(((cleanliness + comfort + locRating + servRating) / 4) * 10) / 10;
+      const body = {
+        rating: avg,
+        cleanlinessRating: cleanliness,
+        comfortRating: comfort,
+        locationRating: locRating,
+        serviceRating: servRating,
+        facilitiesRating: comfort,
+        valueRating: servRating,
+        title: reviewTitle || undefined,
+        body: reviewBody,
+        travelType,
+        stayDate: stayDate || undefined,
+      };
+
+      const res = await fetch(`${API_BASE}/hotels/${slug}/reviews`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      toast.success("Thank you! Your review has been submitted successfully.");
+      setShowReviewModal(false);
+      setReviewTitle("");
+      setReviewBody("");
+      setStayDate("");
+      fetchHotel();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to submit review: " + err.message);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const [hotel, setHotel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "rooms" | "location" | "gallery" | "policies" | "reviews" | "faqs">("overview");
@@ -835,8 +924,18 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
 
           {/* Section: Reviews */}
           <div id="reviews" className="bg-white rounded-xl p-2 md:p-4 border border-slate-100 shadow-xs space-y-6">
-            <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-sky-600" /> Guest Reviews
+            <h3 className="text-xl font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-sky-600" /> Guest Reviews
+              </span>
+              {canReview && (
+                <button
+                  onClick={() => setShowReviewModal(true)}
+                  className="bg-[#1B3A6B] hover:bg-[#0f2548] text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm"
+                >
+                  Write a Review
+                </button>
+              )}
             </h3>
 
             {/* Summary Ratings Aggregates */}
@@ -1247,7 +1346,133 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
         </div>
       )}
 
+      
+      {/* Review submission modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h3 className="text-lg font-black text-[#1B3A6B]">Share Your Experience</h3>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Verified Guest Review</p>
+              </div>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmitReview} className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Star ratings breakdown */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rate the property</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { label: "Cleanliness", val: cleanliness, set: setCleanliness },
+                    { label: "Comfort", val: comfort, set: setComfort },
+                    { label: "Location", val: locRating, set: setLocRating },
+                    { label: "Service", val: servRating, set: setServRating },
+                  ].map((item, idx) => (
+                    <div key={idx} className="bg-slate-50 border border-slate-100/60 p-3 rounded-2xl space-y-1">
+                      <span className="text-xs font-bold text-slate-600">{item.label}</span>
+                      <div className="flex gap-1 text-amber-400">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => item.set(star)}
+                            className="focus:outline-none transition-transform active:scale-95"
+                          >
+                            <Star className={cn("w-5 h-5", star <= item.val ? "fill-amber-400 text-amber-400" : "text-slate-300")} />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review inputs */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Travel Type</label>
+                    <select
+                      value={travelType}
+                      onChange={(e) => setTravelType(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B] bg-white font-medium"
+                    >
+                      <option value="Solo">Solo Traveler</option>
+                      <option value="Couple">Couple</option>
+                      <option value="Family">Family</option>
+                      <option value="Business">Business</option>
+                      <option value="Friends">Friends Group</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Stay Date</label>
+                    <input
+                      type="date"
+                      value={stayDate}
+                      onChange={(e) => setStayDate(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B] bg-white font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Review Title</label>
+                  <input
+                    placeholder="Summarize your experience (e.g. Excellent service, clean rooms)"
+                    value={reviewTitle}
+                    onChange={(e) => setReviewTitle(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B] font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Detailed Review *</label>
+                  <textarea
+                    placeholder="Tell us what you liked or disliked about your stay. How were the staff, food, and facilities?"
+                    value={reviewBody}
+                    onChange={(e) => setReviewBody(e.target.value)}
+                    rows={4}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1B3A6B] font-medium"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Minimum 10 characters.</p>
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setShowReviewModal(false)}
+                  variant="outline"
+                  className="flex-1 rounded-xl text-xs h-10 border-slate-200"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="flex-1 bg-[#1B3A6B] hover:bg-[#0f2548] text-white font-bold rounded-xl text-xs h-10 shadow-sm"
+                >
+                  {submittingReview ? "Submitting..." : "Submit Review"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ─── Sticky Mobile Bottom Bar ─── */}
+
       <div className="lg:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t-2 border-[#1B3A6B] shadow-[0_-8px_30px_rgba(0,0,0,0.12)] px-4 py-2.5 flex items-center justify-between">
         <div>
           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Starting at</p>

@@ -22,12 +22,13 @@ import { SponsoredAdsSection } from "@/components/SponsoredAdsSection";
 import TrendingHotelsSection from "@/components/TrendingHotelsSection";
 import ServiceVendorSection from "@/components/ServiceVendorSection";
 import TransportFleetSection from "@/components/TransportFleetSection";
+import { useSiteSettings } from "@/context/SiteSettingsContext";
 
 
 
 // Icon mapping for dynamic categories
 const ICON_MAP: Record<string, any> = {
-  Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, TrendingUp, Percent, Users, Star, Phone, Shield, Headphones, Award, CheckCircle, Search, Calendar, MapPin, Clock, ArrowRight, Navigation
+  Mountain, Waves, Sunset, TreePine, Heart, Zap, Globe, Camera, Coffee, TrendingUp, Percent, Users, Star, Phone, Shield, Headphones, Award, CheckCircle, Search, Calendar, MapPin, Clock, ArrowRight, Navigation, Building2, Truck, Handshake
 };
 
 
@@ -275,47 +276,34 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   const transport = initialData?.transportData || [];
   const testimonials = testimonialData?.testimonials?.length ? testimonialData.testimonials : (initialData?.testimonialData?.testimonials || []);
 
-  const serviceVendorCards = [
-    {
-      title: "Verified Property Listings",
-      subtitle: "Hotel & Resort Partners",
-      detail: "List your hotel, resort, or homestay with trusted visibility, faster approvals, and secure payouts in our marketplace.",
-      tag: "Property Vendor",
-      Icon: Building2,
-      imageSrc: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-      imageAlt: "Verified Luxury resort hotel partner property listing",
-      ctaLabel: "Register Property",
-      ctaHref: "/partner/register",
-      secondaryCtaLabel: "Partner Login",
-      secondaryCtaHref: "/partner/login"
-    },
-    {
-      title: "Taxi, Tempo & Coach Fleet",
-      subtitle: "Transport Operators",
-      detail: "Add your vehicles to a verified premium fleet for airport transfers, sightseeing routes, and group travel across the mountains.",
-      tag: "Transport Vendor",
-      Icon: Truck,
-      imageSrc: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
-      imageAlt: "Taxi, coach, and traveler fleet services",
-      ctaLabel: "Join Fleet",
-      ctaHref: "/transport",
-      secondaryCtaLabel: "Call Fleet Desk",
-      secondaryCtaHref: "tel:+918595513009"
-    },
-    {
-      title: "B2B Agent Partnerships",
-      subtitle: "Travel Trade Network",
-      detail: "Grow your agency business with exclusive net rates, marketing support, and a dedicated partner desk for travel agents.",
-      tag: "B2B Agents",
-      Icon: Handshake,
-      imageSrc: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
-      imageAlt: "B2B agent travel business networking partnership",
-      ctaLabel: "Become an Agent",
-      ctaHref: "/b2b",
-      secondaryCtaLabel: "Agent Login",
-      secondaryCtaHref: "/partner/login"
-    }
-  ];
+  const { partner_network } = useSiteSettings();
+
+  const serviceVendorCards = useMemo(() => {
+    const list = partner_network || [];
+    return list.map((card) => {
+      let IconComponent = Handshake; // fallback
+      if (card.iconName && ICON_MAP[card.iconName]) {
+        IconComponent = ICON_MAP[card.iconName];
+      } else if (card.iconName === "Building2") {
+        IconComponent = Building2;
+      } else if (card.iconName === "Truck") {
+        IconComponent = Truck;
+      }
+      return {
+        title: card.title,
+        subtitle: card.subtitle,
+        detail: card.detail,
+        tag: card.tag,
+        Icon: IconComponent,
+        imageSrc: card.imageSrc,
+        imageAlt: card.imageAlt,
+        ctaLabel: card.ctaLabel,
+        ctaHref: card.ctaHref,
+        secondaryCtaLabel: card.secondaryCtaLabel,
+        secondaryCtaHref: card.secondaryCtaHref
+      };
+    });
+  }, [partner_network]);
 
   let serviceSectionRendered = false;
 

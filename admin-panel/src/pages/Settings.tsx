@@ -47,6 +47,20 @@ interface AboutContent {
   whyChooseUs: WhyItem[];
 }
 
+interface PartnerCard {
+  title: string;
+  subtitle: string;
+  detail: string;
+  tag: string;
+  iconName: string;
+  imageSrc: string;
+  imageAlt: string;
+  ctaLabel: string;
+  ctaHref: string;
+  secondaryCtaLabel: string;
+  secondaryCtaHref: string;
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function uid() {
   return Math.random().toString(36).slice(2, 9);
@@ -266,6 +280,50 @@ export default function Settings() {
   };
   const [aboutContent, setAboutContent] = useState<AboutContent>(DEFAULT_ABOUT);
 
+  // ── Partner Network State
+  const DEFAULT_PARTNER_NETWORK: PartnerCard[] = [
+    {
+      title: "Verified Property Listings",
+      subtitle: "Hotel & Resort Partners",
+      detail: "List your hotel, resort, or homestay with trusted visibility, faster approvals, and secure payouts in our marketplace.",
+      tag: "Property Vendor",
+      iconName: "Building2",
+      imageSrc: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+      imageAlt: "Verified Luxury resort hotel partner property listing",
+      ctaLabel: "Register Property",
+      ctaHref: "/partner/register",
+      secondaryCtaLabel: "Partner Login",
+      secondaryCtaHref: "/partner/login"
+    },
+    {
+      title: "Taxi, Tempo & Coach Fleet",
+      subtitle: "Transport Operators",
+      detail: "Add your vehicles to a verified premium fleet for airport transfers, sightseeing routes, and group travel across the mountains.",
+      tag: "Transport Vendor",
+      iconName: "Truck",
+      imageSrc: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
+      imageAlt: "Taxi, coach, and traveler fleet services",
+      ctaLabel: "Join Fleet",
+      ctaHref: "/transport",
+      secondaryCtaLabel: "Call Fleet Desk",
+      secondaryCtaHref: "tel:+918595513009"
+    },
+    {
+      title: "B2B Agent Partnerships",
+      subtitle: "Travel Trade Network",
+      detail: "Grow your agency business with exclusive net rates, marketing support, and a dedicated partner desk for travel agents.",
+      tag: "B2B Agents",
+      iconName: "Handshake",
+      imageSrc: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80",
+      imageAlt: "B2B agent travel business networking partnership",
+      ctaLabel: "Become an Agent",
+      ctaHref: "/b2b",
+      secondaryCtaLabel: "Agent Login",
+      secondaryCtaHref: "/partner/login"
+    }
+  ];
+  const [partnerNetwork, setPartnerNetwork] = useState<PartnerCard[]>(DEFAULT_PARTNER_NETWORK);
+
   // ─── Fetch settings on mount ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -298,6 +356,7 @@ export default function Settings() {
         if (item.key === "ota_partners") setOtaPartners(safeJson<OtaPartner[]>(item.value, DEFAULT_OTA));
         if (item.key === "associations") setAssociations(safeJson<Association[]>(item.value, DEFAULT_ASSOC));
         if (item.key === "about_content") setAboutContent(safeJson<AboutContent>(item.value, DEFAULT_ABOUT));
+        if (item.key === "partner_network") setPartnerNetwork(safeJson<PartnerCard[]>(item.value, DEFAULT_PARTNER_NETWORK));
       });
 
       setGeneral(newGeneral);
@@ -379,6 +438,12 @@ export default function Settings() {
     const newAbout = JSON.stringify(aboutContent);
     if (oldAbout !== newAbout) changes.push({ key: aboutKey, label: "About Page Content", oldVal: oldAbout, newVal: newAbout });
 
+    // Partner Network
+    const partnerKey = "partner_network";
+    const oldPartner = savedSnapshot.current[partnerKey] ?? "[]";
+    const newPartner = JSON.stringify(partnerNetwork);
+    if (oldPartner !== newPartner) changes.push({ key: partnerKey, label: "Partner Network (Homepage)", oldVal: oldPartner, newVal: newPartner });
+
     setPendingChanges(changes);
     setConfirmOpen(true);
   };
@@ -399,6 +464,7 @@ export default function Settings() {
       settingsPayload.push({ key: "ota_partners", value: JSON.stringify(otaPartners) });
       settingsPayload.push({ key: "associations", value: JSON.stringify(associations) });
       settingsPayload.push({ key: "about_content", value: JSON.stringify(aboutContent) });
+      settingsPayload.push({ key: "partner_network", value: JSON.stringify(partnerNetwork) });
 
       const res = await fetch(`${API_BASE}/api/admin/settings`, {
         method: "POST",
@@ -1078,6 +1144,172 @@ export default function Settings() {
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* ── Partner Network Section (Homepage) ── */}
+              <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+                  <div className="flex items-center gap-3">
+                    <Building className="w-5 h-5 text-[#1B3A6B]" />
+                    <div>
+                      <h3 className="font-bold text-gray-900">Partner Network (Homepage)</h3>
+                      <p className="text-xs text-gray-500">Edit dynamic register & login cards shown in the Partner Network section on Homepage</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPartnerNetwork([...partnerNetwork, {
+                      title: "", subtitle: "", detail: "", tag: "",
+                      iconName: "Handshake", imageSrc: "", imageAlt: "",
+                      ctaLabel: "", ctaHref: "", secondaryCtaLabel: "", secondaryCtaHref: ""
+                    }])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 rounded-xl hover:bg-[#1B3A6B]/15 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Program Card
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  {partnerNetwork.length === 0 && (
+                    <div className="text-center py-8 text-gray-400">
+                      <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No partner cards added yet. Click "Add Program Card" to start.</p>
+                    </div>
+                  )}
+                  {partnerNetwork.map((card, idx) => (
+                    <div key={idx} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/30 hover:bg-white transition-all">
+                      <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="w-4 h-4 text-gray-300" />
+                          <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Card #{idx + 1}</span>
+                        </div>
+                        <button
+                          onClick={() => setPartnerNetwork(partnerNetwork.filter((_, i) => i !== idx))}
+                          className="p-1 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Title *</label>
+                          <input
+                            value={card.title}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, title: e.target.value } : c))}
+                            placeholder="e.g. Verified Property Listings"
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Subtitle *</label>
+                          <input
+                            value={card.subtitle}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, subtitle: e.target.value } : c))}
+                            placeholder="e.g. Hotel & Resort Partners"
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Detail / Description *</label>
+                          <textarea
+                            rows={2}
+                            value={card.detail}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, detail: e.target.value } : c))}
+                            placeholder="Briefly describe this partner program..."
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Tag *</label>
+                          <input
+                            value={card.tag}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, tag: e.target.value } : c))}
+                            placeholder="e.g. Property Vendor"
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Icon *</label>
+                          <select
+                            value={card.iconName}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, iconName: e.target.value } : c))}
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          >
+                            <option value="Building2">Building2 (Property/Hotel)</option>
+                            <option value="Truck">Truck (Transport/Fleet)</option>
+                            <option value="Handshake">Handshake (Partnerships/B2B)</option>
+                            <option value="Globe">Globe</option>
+                            <option value="Users">Users</option>
+                            <option value="Shield">Shield</option>
+                            <option value="Award">Award</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Image URL *</label>
+                          <input
+                            value={card.imageSrc}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, imageSrc: e.target.value } : c))}
+                            placeholder="https://images.unsplash.com/..."
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Image Alt Text *</label>
+                          <input
+                            value={card.imageAlt}
+                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, imageAlt: e.target.value } : c))}
+                            placeholder="Describe the image for accessibility..."
+                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="border border-indigo-50/50 p-2.5 rounded-xl bg-indigo-50/10 space-y-2">
+                          <h5 className="text-[9px] font-black uppercase text-indigo-600">Primary CTA Action</h5>
+                          <div>
+                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Label *</label>
+                            <input
+                              value={card.ctaLabel}
+                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, ctaLabel: e.target.value } : c))}
+                              placeholder="e.g. Register Property"
+                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Href *</label>
+                            <input
+                              value={card.ctaHref}
+                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, ctaHref: e.target.value } : c))}
+                              placeholder="e.g. /partner/register"
+                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] font-mono"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="border border-slate-100 p-2.5 rounded-xl bg-slate-50/30 space-y-2">
+                          <h5 className="text-[9px] font-black uppercase text-slate-500">Secondary CTA Action</h5>
+                          <div>
+                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Label *</label>
+                            <input
+                              value={card.secondaryCtaLabel}
+                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, secondaryCtaLabel: e.target.value } : c))}
+                              placeholder="e.g. Partner Login"
+                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Href *</label>
+                            <input
+                              value={card.secondaryCtaHref}
+                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, secondaryCtaHref: e.target.value } : c))}
+                              placeholder="e.g. /partner/login"
+                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

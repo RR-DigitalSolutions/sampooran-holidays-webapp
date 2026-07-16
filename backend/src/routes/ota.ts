@@ -8,7 +8,9 @@ const router = Router();
 // GET /api/ota/hotels
 router.get("/hotels", cacheMiddleware(300), async (req, res) => {
   try {
-    const list = await db.select().from(hotelsTable).where(eq(hotelsTable.status, "APPROVED"));
+    const list = await db.select().from(hotelsTable).where(
+      and(eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.showOnFrontend, true))
+    );
     res.json(list);
   } catch (e) {
     res.status(500).json({ error: "Failed to fetch hotels" });
@@ -32,7 +34,7 @@ router.get("/hotels/featured", cacheMiddleware(300), async (req, res) => {
         description: hotelsTable.description,
       })
       .from(hotelsTable)
-      .where(eq(hotelsTable.status, "APPROVED"))
+      .where(and(eq(hotelsTable.status, "APPROVED"), eq(hotelsTable.showOnFrontend, true)))
       .orderBy(desc(hotelsTable.isFeatured), asc(hotelsTable.displayOrder), desc(hotelsTable.starRating))
       .limit(Number(limit));
     res.json(list);
@@ -79,6 +81,7 @@ router.get("/hotels/nearby", cacheMiddleware(60), async (req, res) => {
       .where(
         and(
           eq(hotelsTable.status, "APPROVED"),
+          eq(hotelsTable.showOnFrontend, true),
           sql`latitude IS NOT NULL`,
           sql`longitude IS NOT NULL`,
           sql`${distanceSql} <= ${rad}`
@@ -97,7 +100,11 @@ router.get("/hotels/nearby", cacheMiddleware(60), async (req, res) => {
 router.get("/hotels/:slug", cacheMiddleware(300), async (req, res) => {
   try {
     const [hotel] = await db.select().from(hotelsTable).where(
-      and(eq(hotelsTable.slug, req.params.slug as string), eq(hotelsTable.status, "APPROVED"))
+      and(
+        eq(hotelsTable.slug, req.params.slug as string),
+        eq(hotelsTable.status, "APPROVED"),
+        eq(hotelsTable.showOnFrontend, true)
+      )
     ).limit(1);
     
     if (!hotel) return res.status(404).json({ error: "Hotel not found" });

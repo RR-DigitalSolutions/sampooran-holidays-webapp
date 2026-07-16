@@ -322,6 +322,8 @@ a[href]:not([href^="#"]):not([href^="mailto:"]):not([href^="tel:"]):not([target=
 /* Prevent any layout shift during transitions */
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* ─── Card click ripple — fast native feel ──────────────────────────────── */
