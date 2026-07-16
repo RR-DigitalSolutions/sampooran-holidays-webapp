@@ -49,6 +49,8 @@ interface Hotel {
   destinationName?: string;
   ownerName?: string;
   ownerEmail?: string;
+  owner_name?: string;
+  owner_email?: string;
   owner_role?: string;
   pincode?: string;
   website?: string;
@@ -997,7 +999,10 @@ function PendingCityCard({
 export default function HotelsManager() {
   const [tab, setTab] = useState<"admin-added" | "vendor-added" | "pending" | "bookings" | "vendors" | "pending-cities">("admin-added");
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState("ALL");
   const [vendors, setVendors] = useState<any[]>([]);
   const [destinations, setDestinations] = useState<{ id: number; name: string }[]>([]);
   const [pendingCities, setPendingCities] = useState<any[]>([]);
@@ -1007,6 +1012,7 @@ export default function HotelsManager() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterType, setFilterType] = useState("ALL");
+  const [sortBy, setSortBy] = useState("NEWEST");
   const [editingHotel, setEditingHotel] = useState<Partial<Hotel> | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [viewingHotel, setViewingHotel] = useState<Hotel | null>(null);
@@ -1047,11 +1053,22 @@ export default function HotelsManager() {
     } catch {}
   }, []);
 
+  const fetchBookings = useCallback(async () => {
+    setBookingsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/hotel-bookings?limit=200`, { headers: authHeaders() });
+      const data = await res.json();
+      setBookings(Array.isArray(data) ? data : []);
+    } catch { setBookings([]); }
+    finally { setBookingsLoading(false); }
+  }, []);
+
   useEffect(() => {
     fetchHotels();
     fetchDestinations();
     fetchVendors();
     fetchPendingCities();
+    fetchBookings();
   }, []);
 
   const handleApprove = async (hotel: Hotel) => {
@@ -1099,7 +1116,28 @@ export default function HotelsManager() {
     fetchVendors();
   };
 
-  const adminProperties = hotels.filter(h => h.owner_role === "ADMIN" || h.owner_role === "SUPERADMIN" || !h.owner_role);
+  const handleDeleteVendor = async (vendorId: number) => {
+    if (!window.confirm("Are you sure you want to delete this vendor and all their associated properties/rooms? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/admin/users/${vendorId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        fetchVendors();
+        fetchHotels();
+      } else {
+        alert("Failed to delete vendor");
+      }
+    } catch (e: any) {
+      alert("Error: " + e.message);
+    }
+  };
+
+  // Hotels created by vendors have owner_role === "HOTEL_OWNER"; all others (admin-created, null owner, ADMIN/SUPER_ADMIN owner) are admin properties
+  const adminProperties = hotels.filter(h => !h.owner_role || h.owner_role !== "HOTEL_OWNER");
   const vendorProperties = hotels.filter(h => h.owner_role === "HOTEL_OWNER");
   const pendingHotels = hotels.filter(h => h.status === "PENDING");
 
@@ -1112,14 +1150,20 @@ export default function HotelsManager() {
 
     // Filter by Admin / Vendor ownership tabs
     if (tab === "admin-added") {
-      const isOwnerAdmin = h.owner_role === "ADMIN" || h.owner_role === "SUPERADMIN" || !h.owner_role;
-      if (!isOwnerAdmin) return false;
+      if (h.owner_role === "HOTEL_OWNER") return false;
     } else if (tab === "vendor-added") {
-      const isOwnerVendor = h.owner_role === "HOTEL_OWNER";
-      if (!isOwnerVendor) return false;
+      if (!h.owner_role || h.owner_role !== "HOTEL_OWNER") return false;
     }
 
     return matchSearch && matchStatus && matchType;
+  });
+
+  const sortedHotels = [...filteredHotels].sort((a, b) => {
+    if (sortBy === "RATING_DESC") return (b.starRating || 0) - (a.starRating || 0);
+    if (sortBy === "PRICE_ASC") return (a.minPrice || 0) - (b.minPrice || 0);
+    if (sortBy === "PRICE_DESC") return (b.minPrice || 0) - (a.minPrice || 0);
+    if (sortBy === "ROOMS_DESC") return (b.totalRooms || 0) - (a.totalRooms || 0);
+    return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
   });
 
   // Stats
@@ -1170,8 +1214,8 @@ export default function HotelsManager() {
           <div className="space-y-4">
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-gray-100">
-              <div className="flex items-center gap-3 flex-1 w-full">
-                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl flex-1 border border-gray-100 focus-within:border-[#1B3A6B] transition-all">
+              <div className="flex items-center gap-3 flex-1 w-full flex-wrap">
+                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl flex-1 border border-gray-100 focus-within:border-[#1B3A6B] transition-all min-w-[200px]">
                   <Search className="w-4 h-4 text-gray-400 shrink-0" />
                   <input placeholder="Search properties or cities..." className="bg-transparent text-sm focus:outline-none w-full"
                     value={search} onChange={e => setSearch(e.target.value)} />
@@ -1185,6 +1229,14 @@ export default function HotelsManager() {
                   className="input text-sm px-3 py-2 rounded-xl">
                   <option value="ALL">All Types</option>
                   {PROPERTY_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+                <select aria-label="Sort by" title="Sort by" value={sortBy} onChange={e => setSortBy(e.target.value)}
+                  className="input text-sm px-3 py-2 rounded-xl">
+                  <option value="NEWEST">Newest First</option>
+                  <option value="RATING_DESC">Rating (High to Low)</option>
+                  <option value="PRICE_ASC">Price (Low to High)</option>
+                  <option value="PRICE_DESC">Price (High to Low)</option>
+                  <option value="ROOMS_DESC">Rooms (Most to Least)</option>
                 </select>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1204,7 +1256,7 @@ export default function HotelsManager() {
 
             {loading ? (
               <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1B3A6B]" /></div>
-            ) : filteredHotels.length === 0 ? (
+            ) : sortedHotels.length === 0 ? (
               <div className="bg-white rounded-3xl border border-gray-100 py-16 text-center text-gray-400">
                 <Building2 className="w-14 h-14 mx-auto mb-3 opacity-20" />
                 <p className="font-medium">No properties found</p>
@@ -1225,7 +1277,7 @@ export default function HotelsManager() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {filteredHotels.map(hotel => (
+                    {sortedHotels.map(hotel => (
                       <tr key={hotel.id} className="hover:bg-gray-50/80 group transition-all">
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
@@ -1270,7 +1322,9 @@ export default function HotelsManager() {
                           <StatusBadge status={hotel.status} />
                         </td>
                         <td className="px-5 py-3.5">
-                          <p className="text-xs font-medium text-gray-600 truncate max-w-[100px]">{hotel.ownerName || "Admin"}</p>
+                          <p className="text-xs font-medium text-gray-600 truncate max-w-[150px]" title={hotel.owner_name || hotel.ownerName || "Admin"}>
+                            {hotel.owner_name || hotel.ownerName || "Admin"}
+                          </p>
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1317,7 +1371,7 @@ export default function HotelsManager() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {filteredHotels.map(hotel => (
+                {sortedHotels.map(hotel => (
                   <div key={hotel.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 group">
                     <div className="relative h-44 bg-gray-100 overflow-hidden">
                       {hotel.images?.[0] ? (
@@ -1388,7 +1442,7 @@ export default function HotelsManager() {
                       <h3 className="font-bold text-gray-900">{hotel.name}</h3>
                       <p className="text-xs text-gray-400 mt-0.5">{hotel.type} · {hotel.starRating}★ · {hotel.destinationName || hotel.city}</p>
                       <p className="text-xs text-gray-500 mt-1">{hotel.address}</p>
-                      <p className="text-xs text-gray-400 mt-1">Submitted by: <span className="font-medium text-gray-600">{hotel.ownerName || "Vendor"}</span></p>
+                      <p className="text-xs text-gray-400 mt-1">Submitted by: <span className="font-medium text-gray-600">{hotel.owner_name || hotel.ownerName || "Vendor"}</span></p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button onClick={() => setViewingHotel(hotel)}
@@ -1415,19 +1469,169 @@ export default function HotelsManager() {
         )}
 
         {/* ──────── TAB: BOOKINGS ──────── */}
-        {tab === "bookings" && (
-          <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
-            <div className="p-5 border-b bg-gray-50">
-              <h3 className="font-bold text-gray-700">Hotel Bookings Overview</h3>
-              <p className="text-xs text-gray-400 mt-0.5">All property bookings across the platform</p>
+        {tab === "bookings" && (() => {
+          const BSTATUS: Record<string, { label: string; color: string; bg: string }> = {
+            PENDING: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50" },
+            CONFIRMED: { label: "Confirmed", color: "text-emerald-700", bg: "bg-emerald-50" },
+            CANCELLED: { label: "Cancelled", color: "text-red-700", bg: "bg-red-50" },
+            COMPLETED: { label: "Completed", color: "text-blue-700", bg: "bg-blue-50" },
+          };
+          const PSTATUS: Record<string, { label: string; color: string }> = {
+            PENDING: { label: "Unpaid", color: "text-amber-600" },
+            PAID: { label: "Paid", color: "text-emerald-600" },
+            REFUNDED: { label: "Refunded", color: "text-red-500" },
+          };
+          const filteredBookings = bookings.filter(b => {
+            const matchS = bookingStatusFilter === "ALL" || b.status === bookingStatusFilter;
+            const q = bookingSearch.toLowerCase();
+            const matchQ = !q || (b.guestName || "").toLowerCase().includes(q) ||
+              (b.guestEmail || "").toLowerCase().includes(q) ||
+              (b.hotelName || "").toLowerCase().includes(q) ||
+              String(b.id).includes(q);
+            return matchS && matchQ;
+          });
+
+          const totalRevenue = filteredBookings
+            .filter(b => b.paymentStatus === "PAID")
+            .reduce((s, b) => s + (b.finalPaidAmount || 0), 0);
+
+          const handleBookingStatusChange = async (id: number, status: string) => {
+            await fetch(`${API_URL}/admin/hotel-bookings/${id}`, {
+              method: "PATCH", headers: authHeaders(),
+              body: JSON.stringify({ status }),
+            });
+            fetchBookings();
+          };
+
+          return (
+            <div className="space-y-4">
+              {/* Booking stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[{label:"Total Bookings",val:bookings.length,color:"bg-[#1B3A6B]"},
+                  {label:"Confirmed",val:bookings.filter(b=>b.status==="CONFIRMED").length,color:"bg-emerald-500"},
+                  {label:"Pending",val:bookings.filter(b=>b.status==="PENDING").length,color:"bg-amber-500"},
+                  {label:"Revenue (Paid)",val:`₹${totalRevenue.toLocaleString()}`,color:"bg-violet-500"},
+                ].map((s,i)=>(
+                  <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.color} shrink-0`}>
+                      <BookOpen className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xl font-black text-gray-900">{s.val}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{s.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Search + Filter */}
+              <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-2xl border border-gray-100">
+                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl flex-1 border border-gray-100">
+                  <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input placeholder="Search by guest, email, or hotel..." className="bg-transparent text-sm focus:outline-none w-full"
+                    value={bookingSearch} onChange={e => setBookingSearch(e.target.value)} />
+                </div>
+                <select value={bookingStatusFilter} onChange={e => setBookingStatusFilter(e.target.value)}
+                  className="input text-sm px-3 py-2 rounded-xl">
+                  <option value="ALL">All Statuses</option>
+                  {Object.entries(BSTATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+                <button onClick={fetchBookings} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 shrink-0">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Bookings List */}
+              {bookingsLoading ? (
+                <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1B3A6B]" /></div>
+              ) : filteredBookings.length === 0 ? (
+                <div className="bg-white rounded-3xl border border-gray-100 py-16 text-center text-gray-400">
+                  <BookOpen className="w-14 h-14 mx-auto mb-3 opacity-20" />
+                  <p className="font-medium">No hotel bookings found</p>
+                  <p className="text-sm mt-1">Hotel bookings will appear here once guests make reservations.</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b bg-gray-50">
+                        <th className="px-5 py-3">#ID</th>
+                        <th className="px-5 py-3">Guest</th>
+                        <th className="px-5 py-3">Hotel / Room</th>
+                        <th className="px-5 py-3">Travel Date</th>
+                        <th className="px-5 py-3">Guests</th>
+                        <th className="px-5 py-3">Amount</th>
+                        <th className="px-5 py-3">Payment</th>
+                        <th className="px-5 py-3">Status</th>
+                        <th className="px-5 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredBookings.map(b => {
+                        const bs = BSTATUS[b.status] || { label: b.status, color: "text-gray-600", bg: "bg-gray-100" };
+                        const ps = PSTATUS[b.paymentStatus || "PENDING"] || { label: b.paymentStatus, color: "text-gray-500" };
+                        return (
+                          <tr key={b.id} className="hover:bg-gray-50/80 group transition-all">
+                            <td className="px-5 py-3.5">
+                              <span className="text-xs font-black text-gray-400">#{b.id}</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <p className="text-sm font-bold text-gray-900 truncate max-w-[130px]">{b.guestName || "Guest"}</p>
+                              <p className="text-xs text-gray-400 truncate max-w-[130px]">{b.guestEmail}</p>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <p className="text-sm font-medium text-gray-700 truncate max-w-[150px]">{b.hotelName || "—"}</p>
+                              <p className="text-xs text-gray-400">{b.roomName || "—"}</p>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <p className="text-sm text-gray-700">{b.travelDate ? new Date(b.travelDate).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : "—"}</p>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className="text-sm font-bold text-gray-700">{b.travelersCount || 1}</span>
+                              <span className="text-xs text-gray-400 ml-1">pax</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <p className="text-sm font-black text-[#1B3A6B]">₹{(b.finalPaidAmount || b.totalAmount || 0).toLocaleString()}</p>
+                              <p className={`text-[10px] font-bold ${ps.color}`}>{ps.label}</p>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <p className={`text-[10px] font-bold ${ps.color}`}>{ps.label}</p>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${bs.color} ${bs.bg}`}>{bs.label}</span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {b.status === "PENDING" && (
+                                  <button onClick={() => handleBookingStatusChange(b.id, "CONFIRMED")}
+                                    title="Confirm" className="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-500 transition-colors">
+                                    <CheckCircle className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
+                                  <button onClick={() => handleBookingStatusChange(b.id, "CANCELLED")}
+                                    title="Cancel" className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 transition-colors">
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {b.status === "CONFIRMED" && (
+                                  <button onClick={() => handleBookingStatusChange(b.id, "COMPLETED")}
+                                    title="Mark Complete" className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-500 transition-colors">
+                                    <CheckCircle className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            <div className="p-8 text-center text-gray-400">
-              <BookOpen className="w-14 h-14 mx-auto mb-3 opacity-20" />
-              <p className="font-medium">Bookings will appear here</p>
-              <p className="text-sm mt-1">Once guests book hotels, all reservations will be listed here with guest details, amounts, and status.</p>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ──────── TAB: VENDORS ──────── */}
         {tab === "vendors" && (
@@ -1462,6 +1666,11 @@ export default function HotelsManager() {
                       Revoke
                     </button>
                   )}
+                  <button onClick={() => handleDeleteVendor(vendor.id)}
+                    title="Delete Vendor Request"
+                    className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-colors shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}

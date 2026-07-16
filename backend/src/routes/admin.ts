@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable } from "@workspace/db";
-import { eq, desc, sql, or, and, asc } from "drizzle-orm";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable, bookingsTable } from "@workspace/db";
+import { eq, desc, sql, or, and, asc, inArray } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { logger } from "../lib/logger";
@@ -194,6 +194,37 @@ router.patch("/users/:id", requirePermission("USERS"), async (req: Authenticated
   } catch (e: any) {
     logger.error({ error: e.message }, "Admin user update error");
     res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
+// DELETE /admin/users/:id — delete user account and associated properties (e.g. for rejected vendors)
+router.delete("/users/:id", requirePermission("USERS"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = Number(id);
+
+    // Find all hotels owned by this vendor
+    const userHotels = await db.select({ id: hotelsTable.id }).from(hotelsTable).where(eq(hotelsTable.ownerId, userId));
+    const hotelIds = userHotels.map(h => h.id);
+
+    if (hotelIds.length > 0) {
+      // Delete rooms for these hotels
+      await db.delete(hotelRoomsTable).where(inArray(hotelRoomsTable.hotelId, hotelIds));
+      // Delete hotels
+      await db.delete(hotelsTable).where(eq(hotelsTable.ownerId, userId));
+    }
+
+    // Delete user
+    await db.delete(usersTable).where(eq(usersTable.id, userId));
+
+    // Clear caches
+    await clearCachePattern("cache:/api/hotels*");
+    await clearCachePattern("cache:/api/ota/home*");
+
+    res.json({ message: "User and associated properties deleted successfully" });
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Admin user delete error");
+    res.status(500).json({ error: "Failed to delete user: " + e.message });
   }
 });
 
@@ -2204,6 +2235,52 @@ router.delete("/hotels/:id/rooms/:roomId", requirePermission("PACKAGES"), async 
     res.json({ message: "Room deleted" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete room" });
+  }
+});
+
+// GET /admin/hotel-bookings — all hotel bookings with guest, hotel and room details
+router.get("/hotel-bookings", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const { status, hotelId, limit = "100", offset = "0" } = req.query;
+    const rows = await db.execute(sql`
+      SELECT
+        b.id, b.status, b.payment_status AS "paymentStatus",
+        b.travel_date AS "travelDate", b.travelers_count AS "travelersCount",
+        b.adults_count AS "adultsCount", b.children_count AS "childrenCount",
+        b.total_amount AS "totalAmount", b.final_paid_amount AS "finalPaidAmount",
+        b.meal_plan AS "mealPlan", b.special_requests AS "specialRequests",
+        b.created_at AS "createdAt", b.booking_type AS "bookingType",
+        u.name AS "guestName", u.email AS "guestEmail", u.phone AS "guestPhone",
+        h.name AS "hotelName", h.city AS "hotelCity",
+        r.name AS "roomName", r.type AS "roomType"
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      LEFT JOIN hotels h ON b.hotel_id = h.id
+      LEFT JOIN hotel_rooms r ON b.room_id = r.id
+      WHERE b.booking_type = 'HOTEL'
+        ${status ? sql`AND b.status = ${String(status)}` : sql``}
+        ${hotelId ? sql`AND b.hotel_id = ${Number(hotelId)}` : sql``}
+      ORDER BY b.created_at DESC
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `);
+    res.json(rows.rows);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch hotel bookings");
+    res.status(500).json({ error: "Failed to fetch hotel bookings" });
+  }
+});
+
+// PATCH /admin/hotel-bookings/:id — update booking status
+router.patch("/hotel-bookings/:id", requirePermission("HOTELS"), async (req, res) => {
+  try {
+    const { status, paymentStatus } = req.body;
+    const [updated] = await db.update(bookingsTable)
+      .set({ ...(status && { status }), ...(paymentStatus && { paymentStatus }), updatedAt: new Date() })
+      .where(eq(bookingsTable.id, Number(req.params.id)))
+      .returning();
+    res.json(updated);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update booking" });
   }
 });
 
