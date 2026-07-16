@@ -216,13 +216,22 @@ function HotelListingCard({ hotel, priority = false }: { hotel: Hotel; priority?
   const img = getHotelImageUrl(rawImg, 400, 300, "4:3");
   const hotelUrl = buildHotelUrl(hotel);
 
-  const highlightItems = hotel.highlights && hotel.highlights.length > 0
-    ? hotel.highlights.slice(0, 4)
-    : (hotel.amenities && hotel.amenities.length > 0
-        ? hotel.amenities.slice(0, 4)
-        : FALLBACK_HIGHLIGHTS);
+  const selectedAmenities = hotel.amenities && hotel.amenities.length > 0
+    ? hotel.amenities.slice(0, 4)
+    : ["WIFI", "PARKING", "RESTAURANT", "POOL"];
 
-  const displayAmenities = highlightItems.map(getHighlightIconAndLabel);
+  const displayAmenities = selectedAmenities.map(ame => {
+    const keyStr = String(ame).trim().toUpperCase();
+    const found = COMPREHENSIVE_AMENITIES.find(a => a.key === keyStr || a.label.toUpperCase() === keyStr);
+    if (found) {
+      return { icon: found.icon, label: found.label };
+    }
+    return getHighlightIconAndLabel(String(ame));
+  });
+
+  const displayHighlights = hotel.highlights && hotel.highlights.length > 0
+    ? hotel.highlights.slice(0, 4)
+    : FALLBACK_HIGHLIGHTS;
 
   return (
     <Link
@@ -291,15 +300,30 @@ function HotelListingCard({ hotel, priority = false }: { hotel: Hotel; priority?
           </span>
         </div>
         {displayAmenities && displayAmenities.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2.5 pb-1 whitespace-nowrap w-full scroll-smooth touch-pan-x">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2 whitespace-nowrap w-full scroll-smooth touch-pan-x">
             {displayAmenities.map((info, idx) => {
               const Icon = info.icon;
               return (
-                <span key={`${info.label}-${idx}`} className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/10 shrink-0 select-none transition-colors" title={info.label}>
-                  {Icon && <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent" />}
+                <span key={idx} className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/10 shrink-0 select-none transition-colors" title={info.label}>
+                  {Icon && <Icon className="w-3.5 h-3.5 text-accent" />}
                 </span>
               );
             })}
+          </div>
+        )}
+
+        {/* Hotel Highlights */}
+        {displayHighlights && displayHighlights.length > 0 && (
+          <div className="space-y-0.5 mb-2.5">
+            <p className="text-[7.5px] sm:text-[8px] font-semibold text-accent px-0.5 mb-0.5 uppercase tracking-wider font-sans">Hotel Highlights</p>
+            <div className="grid grid-cols-1 gap-0.5 px-0.5">
+              {displayHighlights.map((h, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px] text-white/95 font-medium leading-tight">
+                  <div className="w-1 h-1 rounded-full bg-accent mt-1.5 shrink-0" />
+                  <span className="line-clamp-1">{h}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <div className="flex items-center justify-between pt-2 border-t border-white/10">
@@ -859,70 +883,99 @@ export default function HotelsClient({
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {hotels.map(hotel => (
-                  <Link
-                    key={hotel.id}
-                    href={buildHotelUrl(hotel)}
-                    className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all flex"
-                  >
-                    <div className="w-36 sm:w-48 h-32 sm:h-36 relative shrink-0 overflow-hidden">
-                      <Image
-                        src={getHotelImageUrl(hotel.primaryImageUrl || hotel.images?.[0], 400, 300, "4:3")}
-                        alt={hotel.name}
-                        fill
-                        sizes="192px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="flex-1 p-3 sm:p-4 flex justify-between items-start min-w-0">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-0.5 mb-1">
-                          {[...Array(5)].map((_, i) => <Star key={i} className={`w-2.5 h-2.5 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />)}
-                          <span className="text-[9px] text-slate-400 ml-1">{hotel.type}</span>
-                        </div>
-                        <h3 className="font-black text-slate-900 group-hover:text-primary transition-colors text-sm leading-tight line-clamp-1">{hotel.name}</h3>
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3 shrink-0 text-accent" /> {hotel.city || hotel.destinationName}
-                        </p>
-                        {(() => {
-                          const items = hotel.highlights && hotel.highlights.length > 0
-                            ? hotel.highlights.slice(0, 4)
-                            : (hotel.amenities && hotel.amenities.length > 0 ? hotel.amenities.slice(0, 4) : FALLBACK_HIGHLIGHTS);
-                          const listAmenities = items.map(getHighlightIconAndLabel);
-                          return listAmenities.length > 0 ? (
-                            <div className="flex gap-1.5 mt-2 flex-wrap">
-                              {listAmenities.map((info, i) => {
+                {hotels.map(hotel => {
+                  const selectedAmenities = hotel.amenities && hotel.amenities.length > 0
+                    ? hotel.amenities.slice(0, 4)
+                    : ["WIFI", "PARKING", "RESTAURANT", "POOL"];
+
+                  const displayAmenities = selectedAmenities.map(ame => {
+                    const keyStr = String(ame).trim().toUpperCase();
+                    const found = COMPREHENSIVE_AMENITIES.find(a => a.key === keyStr || a.label.toUpperCase() === keyStr);
+                    if (found) {
+                      return { icon: found.icon, label: found.label };
+                    }
+                    return getHighlightIconAndLabel(String(ame));
+                  });
+
+                  const displayHighlights = hotel.highlights && hotel.highlights.length > 0
+                    ? hotel.highlights.slice(0, 4)
+                    : FALLBACK_HIGHLIGHTS;
+
+                  return (
+                    <Link
+                      key={hotel.id}
+                      href={buildHotelUrl(hotel)}
+                      className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-lg transition-all flex"
+                    >
+                      <div className="w-36 sm:w-48 h-32 sm:h-36 relative shrink-0 overflow-hidden">
+                        <Image
+                          src={getHotelImageUrl(hotel.primaryImageUrl || hotel.images?.[0], 400, 300, "4:3")}
+                          alt={hotel.name}
+                          fill
+                          sizes="192px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="flex-1 p-3 sm:p-4 flex justify-between items-start min-w-0">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-0.5 mb-1">
+                            {[...Array(5)].map((_, i) => <Star key={i} className={`w-2.5 h-2.5 ${i < hotel.starRating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />)}
+                            <span className="text-[9px] text-slate-400 ml-1">{hotel.type}</span>
+                          </div>
+                          <h3 className="font-black text-slate-900 group-hover:text-primary transition-colors text-sm leading-tight line-clamp-1">{hotel.name}</h3>
+                          <p className="text-xs text-slate-400 flex items-center gap-1 mt-1 mb-2">
+                            <MapPin className="w-3 h-3 shrink-0 text-accent" /> {hotel.city || hotel.destinationName}
+                          </p>
+
+                          {/* Selected Amenities (icons only row) */}
+                          {displayAmenities && displayAmenities.length > 0 && (
+                            <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2 pb-0.5 whitespace-nowrap w-full">
+                              {displayAmenities.map((info, idx) => {
                                 const Icon = info.icon;
                                 return (
-                                  <span key={i} className="inline-flex items-center gap-1 text-[9px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100" title={info.label}>
-                                    {Icon && <Icon className="w-2.5 h-2.5 text-accent" />}
-                                    {info.label}
+                                  <span key={idx} className="inline-flex items-center justify-center w-6 h-6 text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full border border-slate-150 shrink-0 select-none transition-colors" title={info.label}>
+                                    {Icon && <Icon className="w-3.5 h-3.5 text-[#1B3A6B]" />}
                                   </span>
                                 );
                               })}
                             </div>
-                          ) : null;
-                        })()}
+                          )}
+
+                          {/* Hotel Highlights (packages style bullet list) */}
+                          {displayHighlights && displayHighlights.length > 0 && (
+                            <div className="space-y-0.5">
+                              <p className="text-[7.5px] sm:text-[8px] font-semibold text-accent uppercase tracking-wider">Hotel Highlights</p>
+                              <div className="grid grid-cols-1 gap-0.5">
+                                {displayHighlights.map((h, i) => (
+                                  <div key={i} className="flex items-start gap-1.5 text-[8.5px] sm:text-[9px] text-slate-600 font-medium leading-tight">
+                                    <div className="w-1 h-1 rounded-full bg-accent mt-1.5 shrink-0" />
+                                    <span className="line-clamp-1">{h}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right ml-3 shrink-0">
+                          {hotel.minPrice ? (
+                            <>
+                              <p className="text-lg font-black text-primary">₹{hotel.minPrice.toLocaleString()}</p>
+                              <p className="text-[10px] text-slate-400">/night onwards</p>
+                            </>
+                          ) : <p className="text-sm text-slate-400">On request</p>}
+                          {hotel.avgRating && (
+                            <div className="flex items-center justify-end gap-1 mt-1">
+                              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                              <span className="text-xs font-bold">{hotel.avgRating}</span>
+                            </div>
+                          )}
+                          <span className="text-[10px] text-primary font-bold mt-1.5 inline-block">View Details</span>
+                        </div>
                       </div>
-                      <div className="text-right ml-3 shrink-0">
-                        {hotel.minPrice ? (
-                          <>
-                            <p className="text-lg font-black text-primary">₹{hotel.minPrice.toLocaleString()}</p>
-                            <p className="text-[10px] text-slate-400">/night onwards</p>
-                          </>
-                        ) : <p className="text-sm text-slate-400">On request</p>}
-                        {hotel.avgRating && (
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            <span className="text-xs font-bold">{hotel.avgRating}</span>
-                          </div>
-                        )}
-                        <span className="text-[10px] text-primary font-bold mt-1.5 inline-block">View Details</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
 

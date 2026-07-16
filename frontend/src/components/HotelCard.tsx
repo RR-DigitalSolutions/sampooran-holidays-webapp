@@ -85,11 +85,24 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
     return String(val).trim().toUpperCase();
   };
 
-  const highlightItems = hotel.highlights && hotel.highlights.length > 0
+  // Selected Amenities (rendered as circular icons)
+  const selectedAmenities = hotel.amenities && hotel.amenities.length > 0
+    ? hotel.amenities.slice(0, 4)
+    : ["WIFI", "PARKING", "RESTAURANT", "POOL"]; // default fallback amenities
+
+  const displayAmenities = selectedAmenities.map(ame => {
+    const keyStr = String(ame).trim().toUpperCase();
+    const found = COMPREHENSIVE_AMENITIES.find(a => a.key === keyStr || a.label.toUpperCase() === keyStr);
+    if (found) {
+      return { icon: found.icon, label: found.label };
+    }
+    return getHighlightIconAndLabel(String(ame));
+  });
+
+  // Hotel Highlights (rendered below amenities as a list of bullet points)
+  const displayHighlights = hotel.highlights && hotel.highlights.length > 0
     ? hotel.highlights.slice(0, 4)
     : FALLBACK_HIGHLIGHTS;
-
-  const displayAmenities = highlightItems.map(getHighlightIconAndLabel);
 
   return (
     <div className="h-full flex w-full card-mobile-margin card-gpu-fix group hover:-translate-y-1.5 transition-transform duration-300 ease-out">
@@ -157,11 +170,26 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
               {displayAmenities.map((info, index) => {
                 const Icon = info.icon;
                 return (
-                  <span key={`${info.key}-${index}`} className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/10 shrink-0 select-none transition-colors" title={info.label}>
-                    {Icon && <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent" />}
+                  <span key={index} className="inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-white bg-white/10 hover:bg-white/20 rounded-full border border-white/10 shrink-0 select-none transition-colors" title={info.label}>
+                    {Icon && <Icon className="w-3.5 h-3.5 text-accent" />}
                   </span>
                 );
               })}
+            </div>
+          )}
+
+          {/* Hotel Highlights */}
+          {displayHighlights && displayHighlights.length > 0 && (
+            <div className="space-y-0.5 mb-2.5">
+              <p className="text-[7.5px] sm:text-[8px] font-semibold text-accent px-0.5 mb-0.5 uppercase tracking-wider">Hotel Highlights</p>
+              <div className="grid grid-cols-1 gap-0.5 px-0.5">
+                {displayHighlights.map((h, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px] text-white/95 font-medium leading-tight">
+                    <div className="w-1 h-1 rounded-full bg-accent mt-1.5 shrink-0" />
+                    <span className="line-clamp-1">{h}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
