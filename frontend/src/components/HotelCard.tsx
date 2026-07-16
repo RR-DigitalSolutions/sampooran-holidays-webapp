@@ -109,13 +109,13 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
             {hotel.name}
           </h3>
 
-          {/* Amenities */}
+          {/* Amenities — dynamic horizontal scroll row */}
           {displayAmenities && displayAmenities.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2.5 pb-0.5 w-full">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-2.5 pb-1 whitespace-nowrap w-full scroll-smooth touch-pan-x">
               {displayAmenities.map((info, index) => {
                 const Icon = info.icon;
                 return (
-                  <span key={`${info.key}-${index}`} className="inline-flex items-center gap-0.5 sm:gap-1 text-[9px] sm:text-[10px] text-white/85 bg-white/10 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full border border-white/10 shrink-0">
+                  <span key={`${info.key}-${index}`} className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] text-white/85 bg-white/10 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-white/10 shrink-0 select-none">
                     {Icon && <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-accent" />}
                     {info.label}
                   </span>

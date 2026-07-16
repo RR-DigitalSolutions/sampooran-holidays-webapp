@@ -8,7 +8,7 @@ import {
   MessageCircle, Hash, Building, FileText, Clock,
   CheckCircle2, X, AlertCircle, Info, ExternalLink,
   Building2, Link as LinkIcon, Plus, Trash2, GripVertical,
-  Star, Users, Plane, Edit3, ToggleLeft, ToggleRight
+  Star, Users, Plane, Edit3, ToggleLeft, ToggleRight, Check, Truck, Handshake
 } from "lucide-react";
 import { useAuth, API_BASE } from "../context/AuthContext";
 
@@ -323,6 +323,7 @@ export default function Settings() {
     }
   ];
   const [partnerNetwork, setPartnerNetwork] = useState<PartnerCard[]>(DEFAULT_PARTNER_NETWORK);
+  const [expandedCardIdx, setExpandedCardIdx] = useState<number | null>(null);
 
   // ─── Fetch settings on mount ──────────────────────────────────────────────
 
@@ -1151,165 +1152,312 @@ export default function Settings() {
               <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
                 <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
                   <div className="flex items-center gap-3">
-                    <Building className="w-5 h-5 text-[#1B3A6B]" />
+                    <Handshake className="w-5 h-5 text-[#1B3A6B]" />
                     <div>
                       <h3 className="font-bold text-gray-900">Partner Network (Homepage)</h3>
-                      <p className="text-xs text-gray-500">Edit dynamic register & login cards shown in the Partner Network section on Homepage</p>
+                      <p className="text-xs text-gray-500">Edit dynamic registration & login cards shown in the Partner Network section on Homepage</p>
                     </div>
                   </div>
                   <button
-                    onClick={() => setPartnerNetwork([...partnerNetwork, {
-                      title: "", subtitle: "", detail: "", tag: "",
-                      iconName: "Handshake", imageSrc: "", imageAlt: "",
-                      ctaLabel: "", ctaHref: "", secondaryCtaLabel: "", secondaryCtaHref: ""
-                    }])}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 rounded-xl hover:bg-[#1B3A6B]/15 transition-colors"
+                    onClick={() => {
+                      const newCards = [...partnerNetwork, {
+                        title: "", subtitle: "", detail: "", tag: "",
+                        iconName: "Handshake", imageSrc: "", imageAlt: "",
+                        ctaLabel: "", ctaHref: "", secondaryCtaLabel: "", secondaryCtaHref: ""
+                      }];
+                      setPartnerNetwork(newCards);
+                      setExpandedCardIdx(newCards.length - 1); // Auto expand new card
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-md hover:scale-[1.02] active:scale-95 transition-all select-none"
+                    style={{ background: "linear-gradient(135deg, #1B3A6B, #2a519b)", borderRadius: "1rem" }}
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add Program Card
+                    <Plus className="w-4 h-4" /> Add Program Card
                   </button>
                 </div>
-                <div className="p-4 space-y-4">
+                <div className="p-6 space-y-4">
                   {partnerNetwork.length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">No partner cards added yet. Click "Add Program Card" to start.</p>
+                    <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-100 rounded-3xl">
+                      <Handshake className="w-10 h-10 mx-auto mb-3 opacity-30 text-[#1B3A6B]" />
+                      <p className="text-sm font-bold">No partner cards added yet</p>
+                      <p className="text-xs text-gray-300 mt-1">Click "Add Program Card" above to build your first partner block.</p>
                     </div>
                   )}
-                  {partnerNetwork.map((card, idx) => (
-                    <div key={idx} className="border border-gray-100 rounded-2xl p-4 bg-gray-50/30 hover:bg-white transition-all">
-                      <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
-                        <div className="flex items-center gap-2">
-                          <GripVertical className="w-4 h-4 text-gray-300" />
-                          <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Card #{idx + 1}</span>
-                        </div>
-                        <button
-                          onClick={() => setPartnerNetwork(partnerNetwork.filter((_, i) => i !== idx))}
-                          className="p-1 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Title *</label>
-                          <input
-                            value={card.title}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, title: e.target.value } : c))}
-                            placeholder="e.g. Verified Property Listings"
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Subtitle *</label>
-                          <input
-                            value={card.subtitle}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, subtitle: e.target.value } : c))}
-                            placeholder="e.g. Hotel & Resort Partners"
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Detail / Description *</label>
-                          <textarea
-                            rows={2}
-                            value={card.detail}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, detail: e.target.value } : c))}
-                            placeholder="Briefly describe this partner program..."
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] resize-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Tag *</label>
-                          <input
-                            value={card.tag}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, tag: e.target.value } : c))}
-                            placeholder="e.g. Property Vendor"
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Icon *</label>
-                          <select
-                            value={card.iconName}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, iconName: e.target.value } : c))}
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                          >
-                            <option value="Building2">Building2 (Property/Hotel)</option>
-                            <option value="Truck">Truck (Transport/Fleet)</option>
-                            <option value="Handshake">Handshake (Partnerships/B2B)</option>
-                            <option value="Globe">Globe</option>
-                            <option value="Users">Users</option>
-                            <option value="Shield">Shield</option>
-                            <option value="Award">Award</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Image URL *</label>
-                          <input
-                            value={card.imageSrc}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, imageSrc: e.target.value } : c))}
-                            placeholder="https://images.unsplash.com/..."
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1">Image Alt Text *</label>
-                          <input
-                            value={card.imageAlt}
-                            onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, imageAlt: e.target.value } : c))}
-                            placeholder="Describe the image for accessibility..."
-                            className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                          />
-                        </div>
-                      </div>
+                  {partnerNetwork.map((card, idx) => {
+                    const isExpanded = expandedCardIdx === idx;
+                    
+                    // Resolve icon dynamically
+                    let PreviewIcon = Handshake;
+                    if (card.iconName === "Building2") PreviewIcon = Building2;
+                    else if (card.iconName === "Truck") PreviewIcon = Truck;
+                    else if (card.iconName === "Globe") PreviewIcon = Globe;
+                    else if (card.iconName === "Users") PreviewIcon = Users;
+                    else if (card.iconName === "Shield") PreviewIcon = Shield;
+                    else if (card.iconName === "Award") PreviewIcon = Award;
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="border border-indigo-50/50 p-2.5 rounded-xl bg-indigo-50/10 space-y-2">
-                          <h5 className="text-[9px] font-black uppercase text-indigo-600">Primary CTA Action</h5>
-                          <div>
-                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Label *</label>
-                            <input
-                              value={card.ctaLabel}
-                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, ctaLabel: e.target.value } : c))}
-                              placeholder="e.g. Register Property"
-                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Href *</label>
-                            <input
-                              value={card.ctaHref}
-                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, ctaHref: e.target.value } : c))}
-                              placeholder="e.g. /partner/register"
-                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] font-mono"
-                            />
-                          </div>
-                        </div>
+                    return (
+                      <div key={idx} className={`border border-gray-100 rounded-3xl overflow-hidden transition-all duration-300 ${isExpanded ? "bg-white shadow-lg ring-1 ring-slate-100" : "bg-gray-50/50 hover:bg-white hover:shadow-md"}`}>
                         
-                        <div className="border border-slate-100 p-2.5 rounded-xl bg-slate-50/30 space-y-2">
-                          <h5 className="text-[9px] font-black uppercase text-slate-500">Secondary CTA Action</h5>
-                          <div>
-                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Label *</label>
-                            <input
-                              value={card.secondaryCtaLabel}
-                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, secondaryCtaLabel: e.target.value } : c))}
-                              placeholder="e.g. Partner Login"
-                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B]"
-                            />
+                        {/* Master Row Header */}
+                        <div 
+                          onClick={() => setExpandedCardIdx(isExpanded ? null : idx)}
+                          className="px-6 py-4 flex items-center justify-between gap-4 cursor-pointer select-none"
+                        >
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <GripVertical className="w-4 h-4 text-gray-300 shrink-0 cursor-grab" />
+                            
+                            {/* Visual Thumbnail */}
+                            <div className="w-14 h-10 rounded-xl overflow-hidden border border-slate-100 bg-white shrink-0 relative flex items-center justify-center">
+                              {card.imageSrc ? (
+                                <img src={card.imageSrc} className="w-full h-full object-cover" alt="" />
+                              ) : (
+                                <ImageIcon className="w-4 h-4 text-slate-300" />
+                              )}
+                              <div className="absolute -bottom-1 -right-1 bg-[#1B3A6B] text-white p-1 rounded-tl-lg rounded-br-lg shadow-sm">
+                                <PreviewIcon className="w-2.5 h-2.5" />
+                              </div>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-black text-slate-800 text-sm tracking-tight truncate uppercase">
+                                {card.title || <span className="text-gray-300 italic">Untitled Card</span>}
+                              </h4>
+                              <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mt-0.5 truncate">
+                                {card.subtitle || <span className="text-gray-300 italic">No subtitle</span>}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-[8px] uppercase font-bold text-gray-400 mb-1">Button Href *</label>
-                            <input
-                              value={card.secondaryCtaHref}
-                              onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, secondaryCtaHref: e.target.value } : c))}
-                              placeholder="e.g. /partner/login"
-                              className="w-full px-2.5 py-1.5 border border-gray-100 rounded-lg text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] font-mono"
-                            />
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            {card.tag && (
+                              <span className="hidden sm:inline-block bg-[#1B3A6B]/10 text-[#1B3A6B] text-[8px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                {card.tag}
+                              </span>
+                            )}
+                            
+                            {/* Toggle Button */}
+                            <button
+                              type="button"
+                              className={`p-2 rounded-xl text-gray-400 hover:text-primary hover:bg-slate-100 transition-all ${isExpanded ? "bg-slate-100 text-primary rotate-180" : ""}`}
+                              aria-label={isExpanded ? "Collapse card details" : "Expand card details"}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Are you sure you want to remove this card?")) {
+                                  setPartnerNetwork(partnerNetwork.filter((_, i) => i !== idx));
+                                  if (expandedCardIdx === idx) setExpandedCardIdx(null);
+                                }
+                              }}
+                              className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                              title="Delete Card"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
+
+                        {/* Detail Accordion Panel */}
+                        {isExpanded && (
+                          <div className="px-6 pb-6 pt-2 border-t border-slate-50 space-y-5 animate-in fade-in slide-in-from-top-4 duration-300">
+                            
+                            {/* Section 1: General Identity */}
+                            <div className="space-y-4">
+                              <h5 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A6B]" /> Identity & Configuration
+                              </h5>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="md:col-span-2">
+                                  <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Card Title *</label>
+                                  <input
+                                    value={card.title}
+                                    onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, title: e.target.value } : c))}
+                                    placeholder="e.g. Verified Property Listings"
+                                    className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-slate-50/30 transition-all font-semibold text-slate-800"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Subtitle / Subhead *</label>
+                                  <input
+                                    value={card.subtitle}
+                                    onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, subtitle: e.target.value } : c))}
+                                    placeholder="e.g. Hotel & Resort Partners"
+                                    className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-slate-50/30 transition-all font-semibold text-slate-800"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Tag / Badge *</label>
+                                  <input
+                                    value={card.tag}
+                                    onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, tag: e.target.value } : c))}
+                                    placeholder="e.g. Property Vendor"
+                                    className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-slate-50/30 transition-all font-semibold text-slate-800"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Section 2: Program Description */}
+                            <div className="space-y-2">
+                              <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Program Details / Description *</label>
+                              <textarea
+                                rows={3}
+                                value={card.detail}
+                                onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, detail: e.target.value } : c))}
+                                placeholder="Explain features of this vendor network program..."
+                                className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-slate-50/30 transition-all font-medium text-slate-600 resize-none leading-relaxed"
+                              />
+                            </div>
+
+                            {/* Section 3: Media assets & Icons */}
+                            <div className="space-y-4">
+                              <h5 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A6B]" /> Media & Visuals
+                              </h5>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="md:col-span-2 space-y-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Icon Select *</label>
+                                      <select
+                                        value={card.iconName}
+                                        onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, iconName: e.target.value } : c))}
+                                        className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:border-[#1B3A6B] bg-slate-50/30 font-bold text-slate-800"
+                                      >
+                                        <option value="Building2">Building2 (Property/Hotel)</option>
+                                        <option value="Truck">Truck (Transport/Fleet)</option>
+                                        <option value="Handshake">Handshake (Partnerships/B2B)</option>
+                                        <option value="Globe">Globe (General Network)</option>
+                                        <option value="Users">Users (Travelers/Agents)</option>
+                                        <option value="Shield">Shield (Verified Badge)</option>
+                                        <option value="Award">Award (Certificates)</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Cover Image Alt Text *</label>
+                                      <input
+                                        value={card.imageAlt}
+                                        onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, imageAlt: e.target.value } : c))}
+                                        placeholder="SEO alt text e.g. Taxi fleet in mountains"
+                                        className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-slate-50/30 transition-all font-semibold text-slate-800"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[9px] uppercase font-bold text-gray-400 mb-1 ml-1">Cover Image URL *</label>
+                                    <input
+                                      value={card.imageSrc}
+                                      onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, imageSrc: e.target.value } : c))}
+                                      placeholder="https://images.unsplash.com/..."
+                                      className="w-full px-4 py-3 border border-gray-100 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]/10 focus:border-[#1B3A6B] bg-slate-50/30 transition-all font-mono text-slate-700"
+                                    />
+                                  </div>
+                                </div>
+                                
+                                {/* Image Preview Box */}
+                                <div className="flex flex-col items-center justify-center border border-slate-100 bg-slate-50/50 rounded-3xl p-3 relative h-32 md:h-full">
+                                  {card.imageSrc ? (
+                                    <>
+                                      <img src={card.imageSrc} className="w-full h-full object-cover rounded-2xl border border-slate-100" alt=""
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                      <span className="absolute bottom-2 left-2.5 bg-black/60 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Preview</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest text-center">No Cover Image</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Section 4: Action Button Groups */}
+                            <div className="space-y-4">
+                              <h5 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-1 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A6B]" /> Call to Action Configuration
+                              </h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                
+                                {/* Primary Action Card */}
+                                <div className="bg-[#ff8f00]/5 border border-[#ff8f00]/15 rounded-3xl p-5 space-y-4">
+                                  <div className="flex items-center justify-between border-b border-[#ff8f00]/10 pb-2">
+                                    <h6 className="text-[10px] font-black uppercase text-[#ff8f00] tracking-wider flex items-center gap-1">
+                                      <Star className="w-3.5 h-3.5 fill-[#ff8f00] text-[#ff8f00]" /> Primary CTA Action
+                                    </h6>
+                                    <span className="text-[8px] bg-[#ff8f00]/10 text-[#ff8f00] px-2 py-0.5 rounded font-black uppercase tracking-wider">Accent Button</span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="block text-[8px] uppercase font-black text-slate-400 mb-1 ml-0.5">Button Label *</label>
+                                      <input
+                                        value={card.ctaLabel}
+                                        onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, ctaLabel: e.target.value } : c))}
+                                        placeholder="e.g. Register Property"
+                                        className="w-full px-3 py-2 border border-slate-100 rounded-xl text-xs bg-white text-slate-800 focus:outline-none focus:border-[#ff8f00] font-bold"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[8px] uppercase font-black text-slate-400 mb-1 ml-0.5">Redirect URL / Link *</label>
+                                      <input
+                                        value={card.ctaHref}
+                                        onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, ctaHref: e.target.value } : c))}
+                                        placeholder="e.g. /partner/register"
+                                        className="w-full px-3 py-2 border border-slate-100 rounded-xl text-xs bg-white text-slate-800 focus:outline-none focus:border-[#ff8f00] font-mono"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Secondary Action Card */}
+                                <div className="bg-[#1B3A6B]/5 border border-[#1B3A6B]/15 rounded-3xl p-5 space-y-4">
+                                  <div className="flex items-center justify-between border-b border-[#1B3A6B]/10 pb-2">
+                                    <h6 className="text-[10px] font-black uppercase text-[#1B3A6B] tracking-wider flex items-center gap-1">
+                                      <Users className="w-3.5 h-3.5 text-[#1B3A6B]" /> Secondary CTA Action
+                                    </h6>
+                                    <span className="text-[8px] bg-[#1B3A6B]/10 text-[#1B3A6B] px-2 py-0.5 rounded font-black uppercase tracking-wider">Subtle Button</span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="block text-[8px] uppercase font-black text-slate-400 mb-1 ml-0.5">Button Label *</label>
+                                      <input
+                                        value={card.secondaryCtaLabel}
+                                        onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, secondaryCtaLabel: e.target.value } : c))}
+                                        placeholder="e.g. Partner Login"
+                                        className="w-full px-3 py-2 border border-slate-100 rounded-xl text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] font-bold"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-[8px] uppercase font-black text-slate-400 mb-1 ml-0.5">Redirect URL / Link *</label>
+                                      <input
+                                        value={card.secondaryCtaHref}
+                                        onChange={(e) => setPartnerNetwork(partnerNetwork.map((c, i) => i === idx ? { ...c, secondaryCtaHref: e.target.value } : c))}
+                                        placeholder="e.g. /partner/login"
+                                        className="w-full px-3 py-2 border border-slate-100 rounded-xl text-xs bg-white text-slate-800 focus:outline-none focus:border-[#1B3A6B] font-mono"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                              </div>
+                            </div>
+                            
+                            <div className="flex justify-end pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedCardIdx(null)}
+                                className="px-5 py-2.5 rounded-xl border border-gray-150 text-xs font-bold text-gray-500 hover:text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-1.5"
+                              >
+                                <Check className="w-4 h-4 text-emerald-500" /> Done Editing
+                              </button>
+                            </div>
+                            
+                          </div>
+                        )}
+
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
