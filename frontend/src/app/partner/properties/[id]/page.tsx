@@ -9,7 +9,7 @@ import {
   DollarSign, Users, CheckCircle, XCircle, MessageSquare, RefreshCw, Utensils
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
-import { cn } from "@/lib/utils";
+import { cn, getHotelDetailUrl } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
 import { AmenitiesSelector } from "@/components/AmenitiesSelector";
 import { POPULAR_AMENITIES } from "@/lib/amenities-config";
@@ -1438,7 +1438,7 @@ export default function VendorPropertyManagerPage() {
                   Submit for Verification
                 </button>
               )}
-              <Link href={`/hotels/${hotel.slug}`} target="_blank"
+              <Link href={getHotelDetailUrl(hotel)} target="_blank"
                 className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 border border-gray-200 rounded-xl hover:border-[#1B3A6B] text-gray-600 hover:text-[#1B3A6B] transition-colors">
                 <Eye className="w-3.5 h-3.5" /> Preview
               </Link>
@@ -1456,9 +1456,12 @@ export default function VendorPropertyManagerPage() {
               { key: "photos", label: "Photos", icon: ImageIcon },
               { key: "policies", label: "Policies", icon: CheckCircle },
             ].map(t => (
-              <button key={t.key} onClick={() => setTab(t.key as any)}
+              <button key={t.key} onClick={() => {
+                setTab(t.key as any);
+                router.replace(`?tab=${t.key}`, { scroll: false });
+              }}
                 className={cn("flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all",
-                  tab === t.key ? "bg-[#1B3A6B] text-white" : "text-gray-500 hover:bg-gray-100")}>
+                  tab === t.key ? "bg-[#1B3A6B] text-white shadow-sm" : "text-gray-500 hover:bg-gray-100")}>
                 <t.icon className="w-3.5 h-3.5" />
                 {t.label}
                 {t.key === "bookings" && pendingBookings > 0 && (
@@ -2014,13 +2017,13 @@ export default function VendorPropertyManagerPage() {
             </div>
           )}
 
-          {/* â”€â”€â”€ Inventory & Rates Tab â”€â”€â”€ */}
-          {tab === "inventory" && (
+          {/* ─── Dynamic Rates Tab ─── */}
+          {tab === "rates" && (
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="font-bold text-gray-900">Inventory &amp; Rates Calendar</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Set seasonal prices, availability counts, and blackout dates per room type.</p>
+                  <h2 className="font-bold text-gray-900">Dynamic Rates Calendar</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Set base rates, weekend plans, discounts, meal options, and seasonal price overrides per room type.</p>
                 </div>
               </div>
 

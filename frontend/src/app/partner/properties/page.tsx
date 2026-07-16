@@ -8,7 +8,7 @@ import {
   Grid3X3, LayoutList
 } from "lucide-react";
 import { useVendorAuth, vendorAuthHeader } from "@/context/VendorAuthContext";
-import { cn } from "@/lib/utils";
+import { cn, getHotelDetailUrl } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
 import VendorSidebar from "@/components/VendorSidebar";
 
@@ -197,7 +197,7 @@ export default function VendorPropertiesPage() {
                           className="flex-1 flex items-center justify-center gap-1 text-xs font-bold py-2 rounded-md bg-[#1B3A6B]/5 text-[#1B3A6B] hover:bg-[#1B3A6B] hover:text-white transition-all">
                           <Edit2 className="w-3.5 h-3.5" /> Manage
                         </Link>
-                        <Link href={`/hotels/${hotel.slug}`} target="_blank"
+                        <Link href={getHotelDetailUrl(hotel)} target="_blank"
                           className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-200 hover:border-[#1B3A6B] text-gray-400 hover:text-[#1B3A6B] transition-colors">
                           <Eye className="w-3.5 h-3.5" />
                         </Link>
@@ -250,7 +250,7 @@ export default function VendorPropertiesPage() {
                           className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-md bg-[#1B3A6B] text-white hover:bg-[#0f2548] transition-colors">
                           <Edit2 className="w-3 h-3" /> Manage
                         </Link>
-                        <Link href={`/hotels/${hotel.slug}`} target="_blank"
+                        <Link href={getHotelDetailUrl(hotel)} target="_blank"
                           className="p-2 rounded-md border border-gray-200 hover:border-[#1B3A6B] text-gray-400 hover:text-[#1B3A6B] transition-colors">
                           <Eye className="w-3.5 h-3.5" />
                         </Link>

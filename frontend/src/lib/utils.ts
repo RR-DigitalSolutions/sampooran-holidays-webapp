@@ -148,3 +148,20 @@ export function getYouTubeId(url: string | null | undefined) {
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
 }
+
+export function getHotelDetailUrl(hotel: {
+  slug: string;
+  countrySlug?: string | null;
+  stateSlug?: string | null;
+  destinationSlug?: string | null;
+  city?: string | null;
+  customCity?: string | null;
+}) {
+  if (!hotel || !hotel.slug) return "#";
+  const country = hotel.countrySlug || "india";
+  const state = hotel.stateSlug || "himachal-pradesh";
+  const rawCity = hotel.destinationSlug || hotel.city || hotel.customCity || "manali";
+  const cleanCity = rawCity.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^hotels-in-/, "");
+  const city = `hotels-in-${cleanCity}`;
+  return `/hotels/${country}/${state}/${city}/${hotel.slug}`;
+}
