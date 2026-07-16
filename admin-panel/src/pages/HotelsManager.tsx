@@ -49,6 +49,7 @@ interface Hotel {
   destinationName?: string;
   ownerName?: string;
   ownerEmail?: string;
+  owner_role?: string;
   pincode?: string;
   website?: string;
   vendorCommissionPct?: number;
@@ -994,7 +995,7 @@ function PendingCityCard({
 
 // ─── Main Hotel Manager Page ───────────────────────────────────────────────────
 export default function HotelsManager() {
-  const [tab, setTab] = useState<"all" | "pending" | "bookings" | "vendors" | "pending-cities">("all");
+  const [tab, setTab] = useState<"admin-added" | "vendor-added" | "pending" | "bookings" | "vendors" | "pending-cities">("admin-added");
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
@@ -1098,23 +1099,36 @@ export default function HotelsManager() {
     fetchVendors();
   };
 
+  const adminProperties = hotels.filter(h => h.owner_role === "ADMIN" || h.owner_role === "SUPERADMIN" || !h.owner_role);
+  const vendorProperties = hotels.filter(h => h.owner_role === "HOTEL_OWNER");
+  const pendingHotels = hotels.filter(h => h.status === "PENDING");
+
   const filteredHotels = hotels.filter(h => {
     const matchSearch = !search ||
       h.name.toLowerCase().includes(search.toLowerCase()) ||
       (h.city || h.address).toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "ALL" || h.status === filterStatus;
     const matchType = filterType === "ALL" || h.type === filterType;
+
+    // Filter by Admin / Vendor ownership tabs
+    if (tab === "admin-added") {
+      const isOwnerAdmin = h.owner_role === "ADMIN" || h.owner_role === "SUPERADMIN" || !h.owner_role;
+      if (!isOwnerAdmin) return false;
+    } else if (tab === "vendor-added") {
+      const isOwnerVendor = h.owner_role === "HOTEL_OWNER";
+      if (!isOwnerVendor) return false;
+    }
+
     return matchSearch && matchStatus && matchType;
   });
-
-  const pendingHotels = hotels.filter(h => h.status === "PENDING");
 
   // Stats
   const totalApproved = hotels.filter(h => h.status === "APPROVED").length;
   const totalFeatured = hotels.filter(h => h.isFeatured).length;
 
   const TABS = [
-    { key: "all", label: "All Properties", count: hotels.length },
+    { key: "admin-added", label: "Admin Properties", count: adminProperties.length },
+    { key: "vendor-added", label: "Vendor Properties", count: vendorProperties.length },
     { key: "pending", label: "Pending Approval", count: pendingHotels.length, badge: pendingHotels.length > 0 },
     { key: "bookings", label: "Bookings" },
     { key: "vendors", label: "Vendors", count: vendors.length },
@@ -1124,14 +1138,6 @@ export default function HotelsManager() {
   return (
     <AdminLayout title="Hotel Management" subtitle="Full OTA property management — vendors, rooms, inventory, bookings">
       <div className="space-y-6">
-
-        {/* Dropdown visibility redirect banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 items-start shadow-sm">
-          <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-          <div className="text-xs text-blue-800 leading-relaxed">
-            <span className="font-bold">🏨 Hotels Navbar Dropdown Settings:</span> To configure which Countries, States, and Cities appear under the Hotels dropdown menu on the website navbar, go to the <a href="/admin/destinations" className="underline font-black hover:text-blue-900 text-[#1B3A6B]">Destinations Manager</a>. Edit the desired place, state, or country card and check <span className="font-bold">"Show in Hotels Dropdown"</span> box located at the very bottom of the form.
-          </div>
-        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1159,8 +1165,8 @@ export default function HotelsManager() {
           ))}
         </div>
 
-        {/* ──────── TAB: ALL PROPERTIES ──────── */}
-        {tab === "all" && (
+        {/* ──────── TAB: PROPERTIES LIST ──────── */}
+        {(tab === "admin-added" || tab === "vendor-added") && (
           <div className="space-y-4">
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-gray-100">

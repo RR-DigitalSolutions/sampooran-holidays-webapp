@@ -327,7 +327,8 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       starRating: hotelsTable.starRating,
       city: hotelsTable.city,
       startingPrice: hotelsTable.minPrice,
-      highlights: hotelsTable.highlights
+      highlights: hotelsTable.highlights,
+      amenities: hotelsTable.amenities
     })
     .from(hotelsTable)
     .where(and(
@@ -346,7 +347,8 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       starRating: h.starRating || 3,
       city: h.city || "Unknown",
       startingPrice: h.startingPrice || 0,
-      highlights: h.highlights || []
+      highlights: h.highlights || [],
+      amenities: h.amenities || []
     }));
 
     res.json(formattedHotels);

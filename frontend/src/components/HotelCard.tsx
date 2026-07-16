@@ -180,16 +180,13 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
 
           {/* Hotel Highlights */}
           {displayHighlights && displayHighlights.length > 0 && (
-            <div className="space-y-0.5 mb-2.5">
-              <p className="text-[7.5px] sm:text-[8px] font-semibold text-accent px-0.5 mb-0.5 uppercase tracking-wider">Hotel Highlights</p>
-              <div className="grid grid-cols-1 gap-0.5 px-0.5">
-                {displayHighlights.map((h, i) => (
-                  <div key={i} className="flex items-start gap-1.5 text-[8.5px] sm:text-[9.5px] text-white/95 font-medium leading-tight">
-                    <div className="w-1 h-1 rounded-full bg-accent mt-1.5 shrink-0" />
-                    <span className="line-clamp-1">{h}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 gap-0.5 px-0.5 mb-2.5">
+              {displayHighlights.map((h, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-[8px] sm:text-[8.5px] text-white/90 font-normal leading-tight">
+                  <div className="w-1 h-1 rounded-full bg-accent mt-1 shrink-0" />
+                  <span className="line-clamp-1">{h}</span>
+                </div>
+              ))}
             </div>
           )}
 

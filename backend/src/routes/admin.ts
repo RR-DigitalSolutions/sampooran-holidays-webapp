@@ -1327,6 +1327,7 @@ router.get("/hotels", requirePermission("HOTELS"), async (req, res) => {
         h.*,
         u.name   AS owner_name,
         u.email  AS owner_email,
+        u.role   AS owner_role,
         d.name   AS destination_name
       FROM hotels h
       LEFT JOIN users u ON h.owner_id = u.id
@@ -1378,6 +1379,7 @@ router.post("/hotels", requirePermission("HOTELS"), async (req: AuthenticatedReq
 
     const [inserted] = await db.insert(hotelsTable).values(data).returning();
     await clearCachePattern("cache:/api/hotels*");
+    await clearCachePattern("cache:/api/ota/home*");
     res.status(201).json(inserted);
   } catch (e: any) {
     logger.error({ error: e.message }, "Admin hotel create error");
@@ -1427,6 +1429,7 @@ router.patch("/hotels/:id", requirePermission("HOTELS"), async (req: Authenticat
       .returning();
     if (!updated) return res.status(404).json({ error: "Hotel not found" });
     await clearCachePattern("cache:/api/hotels*");
+    await clearCachePattern("cache:/api/ota/home*");
     res.json(updated);
   } catch (e: any) {
     logger.error({ error: e.message }, "Admin hotel update error");
@@ -1441,6 +1444,7 @@ router.delete("/hotels/:id", requirePermission("HOTELS"), async (req, res) => {
     await db.delete(hotelRoomsTable).where(eq(hotelRoomsTable.hotelId, Number(req.params.id)));
     await db.delete(hotelsTable).where(eq(hotelsTable.id, Number(req.params.id)));
     await clearCachePattern("cache:/api/hotels*");
+    await clearCachePattern("cache:/api/ota/home*");
     res.json({ message: "Hotel deleted successfully" });
   } catch (e: any) {
     logger.error({ error: e.message }, "Admin hotel delete error");
