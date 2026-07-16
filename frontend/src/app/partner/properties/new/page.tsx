@@ -393,37 +393,77 @@ export default function AddPropertyPage() {
                     <p className="text-[10px] text-gray-400 mt-1">{form.description.length} / 2000 characters</p>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <label className="block text-xs font-bold text-[#1B3A6B] mb-2">Hotel Highlights (Select up to 4 popular amenities to display as card badges) *</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border border-gray-100 rounded-2xl p-4 bg-slate-50/20 max-h-56 overflow-y-auto no-scrollbar mb-4">
-                      {POPULAR_AMENITIES.map(opt => {
-                        const isChecked = (form.highlights || []).includes(opt.key);
-                        return (
-                          <label key={opt.key} className={`flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-all ${isChecked ? "bg-[#1B3A6B]/5 border-[#1B3A6B]/20 text-[#1B3A6B]" : "bg-white border-slate-100 text-slate-700 hover:bg-slate-50"}`}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                const current = form.highlights || [];
-                                let next;
-                                if (e.target.checked) {
-                                  if (current.length >= 4) {
-                                    alert("You can select a maximum of 4 highlights.");
-                                    return;
-                                  }
-                                  next = [...current, opt.key];
-                                } else {
-                                  next = current.filter(k => k !== opt.key);
-                                }
+                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                    <label className="block text-xs font-bold text-[#1B3A6B] mb-2">Hotel Highlights (Add up to 4 highlights, e.g. "Infinity Pool", "Close to Mall Road") *</label>
+                    
+                    {/* Highlights List (Pills) */}
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {(form.highlights || []).length === 0 ? (
+                        <span className="text-xs text-gray-400 italic">No highlights added yet. Add up to 4.</span>
+                      ) : (
+                        (form.highlights || []).map((highlight: string, idx: number) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/5 px-3 py-1.5 rounded-xl border border-[#1B3A6B]/15">
+                            {highlight}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = (form.highlights || []).filter((_: any, i: number) => i !== idx);
                                 update("highlights", next);
                               }}
-                              className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]"
-                            />
-                            {opt.label}
-                          </label>
-                        );
-                      })}
+                              className="hover:text-red-500 font-bold ml-1 transition-colors text-sm"
+                            >
+                              &times;
+                            </button>
+                          </span>
+                        ))
+                      )}
                     </div>
+
+                    {/* Add Highlight Input Field */}
+                    {(form.highlights || []).length < 4 && (
+                      <div className="flex gap-2">
+                        <input
+                          id="new-highlight-input"
+                          type="text"
+                          placeholder="Type a highlight e.g., Valley View Room"
+                          className="w-full border border-gray-200 rounded-md px-4 py-3 text-sm focus:outline-none focus:border-[#1B3A6B] bg-white h-11"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const val = e.currentTarget.value.trim();
+                              if (val) {
+                                const current = form.highlights || [];
+                                if (current.includes(val)) {
+                                  alert("This highlight is already added.");
+                                  return;
+                                }
+                                update("highlights", [...current, val]);
+                                e.currentTarget.value = "";
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const input = document.getElementById("new-highlight-input") as HTMLInputElement;
+                            const val = input?.value.trim();
+                            if (val) {
+                              const current = form.highlights || [];
+                              if (current.includes(val)) {
+                                alert("This highlight is already added.");
+                                return;
+                              }
+                              update("highlights", [...current, val]);
+                              input.value = "";
+                            }
+                          }}
+                          className="bg-[#1B3A6B] text-white px-4 rounded-md text-xs font-bold hover:bg-[#1B3A6B]/90 shrink-0 h-11 transition-colors"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div>

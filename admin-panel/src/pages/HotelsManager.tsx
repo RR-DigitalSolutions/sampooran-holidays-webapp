@@ -295,37 +295,77 @@ function HotelFormModal({
                 <textarea value={form.description} onChange={e => update("description", e.target.value)}
                   className="input w-full" rows={4} placeholder="About this premium property..." />
               </div>
-              <div className="mt-3">
-                <label className="label text-[#1B3A6B] font-bold">Hotel Highlights (Select up to 4 popular amenities to display as card badges) *</label>
-                <div className="grid grid-cols-2 gap-2.5 border border-slate-100 rounded-2xl p-4 bg-slate-50/20 max-h-56 overflow-y-auto no-scrollbar">
-                  {POPULAR_AMENITIES.map(opt => {
-                    const isChecked = (form.highlights || []).includes(opt.key);
-                    return (
-                      <label key={opt.key} className={`flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl border cursor-pointer select-none transition-all ${isChecked ? "bg-[#1B3A6B]/5 border-[#1B3A6B]/20 text-[#1B3A6B]" : "bg-white border-slate-100 text-slate-700 hover:bg-slate-50"}`}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            const current = form.highlights || [];
-                            let next;
-                            if (e.target.checked) {
-                              if (current.length >= 4) {
-                                alert("You can select a maximum of 4 highlights.");
-                                return;
-                              }
-                              next = [...current, opt.key];
-                            } else {
-                              next = current.filter(k => k !== opt.key);
-                            }
+              <div className="mt-3 space-y-2">
+                <label className="label text-[#1B3A6B] font-bold">Hotel Highlights (Add up to 4 highlights, e.g. "Infinity Pool", "Close to Mall Road") *</label>
+                
+                {/* Highlights List (Pills) */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(form.highlights || []).length === 0 ? (
+                    <span className="text-xs text-gray-400 italic">No highlights added yet. Add up to 4.</span>
+                  ) : (
+                    (form.highlights || []).map((highlight: string, idx: number) => (
+                      <span key={idx} className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/5 px-3 py-1.5 rounded-xl border border-[#1B3A6B]/15">
+                        {highlight}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = (form.highlights || []).filter((_: any, i: number) => i !== idx);
                             update("highlights", next);
                           }}
-                          className="rounded border-slate-300 text-[#1B3A6B] focus:ring-[#1B3A6B]"
-                        />
-                        {opt.label}
-                      </label>
-                    );
-                  })}
+                          className="hover:text-red-500 font-bold ml-1 transition-colors text-sm"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))
+                  )}
                 </div>
+
+                {/* Add Highlight Input Field */}
+                {(form.highlights || []).length < 4 && (
+                  <div className="flex gap-2">
+                    <input
+                      id="admin-highlight-input"
+                      type="text"
+                      placeholder="Type a highlight e.g., Valley View Room"
+                      className="input flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const val = e.currentTarget.value.trim();
+                          if (val) {
+                            const current = form.highlights || [];
+                            if (current.includes(val)) {
+                              alert("This highlight is already added.");
+                              return;
+                            }
+                            update("highlights", [...current, val]);
+                            e.currentTarget.value = "";
+                          }
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById("admin-highlight-input") as HTMLInputElement;
+                        const val = input?.value.trim();
+                        if (val) {
+                          const current = form.highlights || [];
+                          if (current.includes(val)) {
+                            alert("This highlight is already added.");
+                            return;
+                          }
+                          update("highlights", [...current, val]);
+                          input.value = "";
+                        }
+                      }}
+                      className="btn bg-[#1B3A6B] text-white px-4 rounded-xl text-xs font-bold hover:bg-[#1B3A6B]/90 shrink-0"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
