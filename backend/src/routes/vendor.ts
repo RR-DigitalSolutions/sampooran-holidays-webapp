@@ -576,24 +576,67 @@ router.post("/hotels/:id/inventory", async (req: AuthenticatedRequest, res: Resp
       return res.status(400).json({ error: "roomId, startDate, endDate are required" });
     }
 
-    // Generate date range
+    const [room] = await db.select().from(hotelRoomsTable)
+      .where(eq(hotelRoomsTable.id, Number(roomId)))
+      .limit(1);
+    if (!room) return res.status(404).json({ error: "Room type not found" });
+
+    // Fetch existing records for this room type and date range to merge partial updates
+    const existingRecords = await db.select().from(hotelRoomInventoryTable)
+      .where(and(
+        eq(hotelRoomInventoryTable.roomId, Number(roomId)),
+        gte(hotelRoomInventoryTable.date, startDate as string),
+        lte(hotelRoomInventoryTable.date, endDate as string)
+      ));
+
+    // Generate date range and merge values
     const start = new Date(startDate);
     const end = new Date(endDate);
     const records: any[] = [];
     const cursor = new Date(start);
     while (cursor <= end) {
+      const dateStr = cursor.toISOString().split("T")[0];
+      const existing = existingRecords.find(r => r.date.split("T")[0] === dateStr);
+
+      const finalAvailableCount = availableCount !== undefined
+        ? (availableCount === null ? room.totalRooms : Number(availableCount))
+        : (existing ? Number(existing.availableCount) : room.totalRooms);
+
+      const finalIsBlocked = isBlocked !== undefined
+        ? Boolean(isBlocked)
+        : (existing ? Boolean(existing.isBlocked) : false);
+
+      const finalPriceOverride = priceOverride !== undefined
+        ? (priceOverride === null || priceOverride === "" ? null : Number(priceOverride))
+        : (existing ? existing.priceOverride : null);
+
+      const finalDiscountType = discountType !== undefined
+        ? discountType
+        : (existing ? existing.discountType : room.discountType || 'PERCENT');
+
+      const finalDiscountPercent = discountPercent !== undefined
+        ? Number(discountPercent)
+        : (existing ? Number(existing.discountPercent) : Number(room.discountPercent || 0));
+
+      const finalDiscountFlat = discountFlat !== undefined
+        ? Number(discountFlat)
+        : (existing ? Number(existing.discountFlat) : Number(room.discountFlat || 0));
+
+      const finalCustomPricing = customPricing !== undefined
+        ? (customPricing === null ? null : (typeof customPricing === 'string' ? customPricing : JSON.stringify(customPricing)))
+        : (existing ? existing.customPricing : null);
+
       records.push({
         roomId: Number(roomId),
         hotelId,
-        date: cursor.toISOString().split("T")[0],
-        availableCount: availableCount ?? 0,
-        priceOverride: priceOverride ?? null,
-        isBlocked: isBlocked ?? false,
-        discountType: discountType ?? 'PERCENT',
-        discountPercent: discountPercent ? Number(discountPercent) : 0,
-        discountFlat: discountFlat ? Number(discountFlat) : 0,
-        customPricing: customPricing ? (typeof customPricing === 'string' ? customPricing : JSON.stringify(customPricing)) : null,
-        updatedAt: new Date(),
+        date: dateStr,
+        availableCount: finalAvailableCount,
+        priceOverride: finalPriceOverride,
+        isBlocked: finalIsBlocked,
+        discountType: finalDiscountType,
+        discountPercent: finalDiscountPercent,
+        discountFlat: finalDiscountFlat,
+        customPricing: finalCustomPricing,
       });
       cursor.setDate(cursor.getDate() + 1);
     }

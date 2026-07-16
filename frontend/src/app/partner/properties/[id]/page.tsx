@@ -628,7 +628,7 @@ export default function VendorPropertyManagerPage() {
   const searchParams = useSearchParams();
   const hotelId = Number(params?.id);
 
-  const [tab, setTab] = useState<"overview" | "rooms" | "inventory" | "bookings" | "policies" | "photos">((searchParams?.get("tab") as any) || "overview");
+  const [tab, setTab] = useState<"overview" | "rooms" | "rates" | "inventory" | "bookings" | "policies" | "photos">((searchParams?.get("tab") as any) || "overview");
   const [hotel, setHotel] = useState<any>(null);
   const [rooms, setRooms] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
@@ -837,7 +837,7 @@ export default function VendorPropertyManagerPage() {
   }, [token, hotelId, selectedRoomForInv, currentCalendarMonth]);
 
   useEffect(() => {
-    if (tab === "inventory") fetchInventory();
+    if (tab === "inventory" || tab === "rates") fetchInventory();
   }, [tab, fetchInventory]);
 
   const saveHotelField = async (field: string, value: any) => {
@@ -1087,7 +1087,7 @@ export default function VendorPropertyManagerPage() {
     }
   };
 
-  const renderCalendar = () => {
+  const renderCalendar = (viewMode: "rates" | "inventory") => {
     if (!selectedRoomForInv) return null;
     const year = currentCalendarMonth.getFullYear();
     const month = currentCalendarMonth.getMonth();
@@ -1158,7 +1158,7 @@ export default function VendorPropertyManagerPage() {
       const STYLES: Record<StatusKey, { cell: string; dayNum: string; badge: string; badgeText: string }> = {
         past: { cell: "bg-gray-50 border-gray-100 opacity-50 cursor-default", dayNum: "text-gray-300", badge: "", badgeText: "" },
         today: { cell: "bg-blue-50 border-blue-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-blue-700 bg-blue-200 rounded-full w-5 h-5 flex items-center justify-center text-[10px]", badge: "bg-blue-600", badgeText: "Today" },
-        blocked: { cell: "bg-rose-50/70 border-rose-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-rose-700", badge: "bg-rose-500", badgeText: "Blocked" },
+        blocked: { cell: "bg-rose-50/70 border-rose-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-rose-700", badge: "bg-rose-500", badgeText: "Stop Sales" },
         soldout: { cell: "bg-slate-100 border-slate-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-slate-500", badge: "bg-slate-500", badgeText: "Sold Out" },
         lowstock: { cell: "bg-amber-50 border-amber-300 cursor-pointer hover:shadow-md hover:-translate-y-0.5", dayNum: "text-amber-950", badge: "bg-amber-500", badgeText: `${availableCount} Left!` },
         session: { cell: "bg-amber-50/70 border-amber-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400", dayNum: "text-amber-950", badge: "bg-amber-500", badgeText: "Session" },
@@ -1226,47 +1226,87 @@ export default function VendorPropertyManagerPage() {
             )}
           </div>
 
-          {/* Row 2: Price with strikethrough and discounted */}
-          <div className="px-2 flex-1 flex flex-col justify-center">
-            {!isBlocked && !isPast ? (
-              <>
-                {hasDiscount ? (
-                  <>
-                    <span className="text-[9px] text-gray-400 line-through leading-none">₹{price.toLocaleString()}</span>
-                    <span className="text-[12px] font-black text-emerald-700 leading-tight mt-0.5">
-                      ₹{Math.round(discountedPrice).toLocaleString()}
+          {/* Row 2: Price or Allotment */}
+          {viewMode === "rates" ? (
+            <div className="px-2 flex-1 flex flex-col justify-center">
+              {!isBlocked && !isPast ? (
+                <>
+                  {hasDiscount ? (
+                    <>
+                      <span className="text-[9px] text-gray-400 line-through leading-none">₹{price.toLocaleString()}</span>
+                      <span className="text-[12px] font-black text-emerald-700 leading-tight mt-0.5">
+                        ₹{Math.round(discountedPrice).toLocaleString()}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[12px] font-black text-gray-800 leading-tight">
+                      ₹{price.toLocaleString()}
                     </span>
-                  </>
+                  )}
+                  <span className="text-[8px] text-gray-400 leading-none mt-0.5">/night</span>
+                </>
+              ) : (
+                <span className="text-[9px] italic text-rose-500 font-bold opacity-80">
+                  {isBlocked ? "Closed (Stop Sales)" : "No Rates"}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="px-2 flex-1 flex flex-col justify-center">
+              {!isPast ? (
+                isBlocked ? (
+                  <span className="text-[9px] font-black text-rose-600 bg-rose-50 border border-rose-100 rounded px-1.5 py-1 text-center leading-none">
+                    STOP SALES
+                  </span>
                 ) : (
-                  <span className="text-[12px] font-black text-gray-800 leading-tight">
-                    ₹{price.toLocaleString()}
+                  <div className="text-center">
+                    <span className={cn(
+                      "text-[12px] font-black px-2 py-0.5 rounded-full leading-none inline-block",
+                      availableCount === 0 ? "bg-slate-100 text-slate-600" :
+                      availableCount <= 2 ? "bg-amber-100 text-amber-800" :
+                      "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                    )}>
+                      {availableCount} Rooms
+                    </span>
+                    <span className="text-[8px] text-gray-400 block mt-1">available</span>
+                  </div>
+                )
+              ) : (
+                <span className="text-[9px] italic text-gray-400 text-center">Past</span>
+              )}
+            </div>
+          )}
+
+          {/* Row 3: Discount details or Progress bar */}
+          <div className="px-2 pb-2 flex items-end justify-between gap-1">
+            {viewMode === "rates" ? (
+              <>
+                {!isPast && !isBlocked && discountBadge && (
+                  <span className="text-[7px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full leading-none">
+                    {discountBadge}
                   </span>
                 )}
-                <span className="text-[8px] text-gray-400 leading-none mt-0.5">/night</span>
+                {!isPast && !isBlocked && inv?.customPricing && (
+                  <span className="text-[7px] font-black text-[#1B3A6B] bg-blue-50 border border-blue-100 px-1 py-0.5 rounded leading-none shrink-0" title="Custom pricing override active">
+                    ⚡ Custom
+                  </span>
+                )}
               </>
             ) : (
-              <span className="text-[9px] italic text-current opacity-50">
-                {isBlocked ? "Blocked" : "Sold Out"}
-              </span>
-            )}
-          </div>
-
-          {/* Row 3: Discount detail badge + rooms count */}
-          <div className="px-2 pb-2 flex items-end justify-between gap-1">
-            {!isPast && !isBlocked && discountBadge && (
-              <span className="text-[7px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full leading-none">
-                {discountBadge}
-              </span>
-            )}
-            {!isPast && !isBlocked && inv?.customPricing && (
-              <span className="text-[7px] font-black text-[#1B3A6B] bg-blue-50 border border-blue-100 px-1 py-0.5 rounded leading-none shrink-0" title="Custom pricing override active">
-                ⚡ Rates
-              </span>
-            )}
-            {!isPast && !isBlocked && (
-              <span className="text-[7px] text-gray-400 font-bold ml-auto">
-                {availableCount > 0 ? `${availableCount}/${baseTotalRooms}` : "0"}
-              </span>
+              <>
+                {!isPast && !isBlocked && (
+                  <div className="w-full bg-gray-100 h-1 rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        availableCount === 0 ? "bg-slate-300" :
+                        availableCount <= 2 ? "bg-amber-400" : "bg-emerald-500"
+                      )}
+                      style={{ width: `${Math.min(100, (availableCount / baseTotalRooms) * 100)}%` }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1276,20 +1316,19 @@ export default function VendorPropertyManagerPage() {
     return days;
   };
 
-  const handleBulkUpdateInventory = async (e: React.FormEvent) => {
+  const handleBulkUpdateRates = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoomForInv || !invStartDate || !invEndDate) return alert("Select room and date range.");
     setSavingInv(true);
     try {
-      const isBlockedSubmit = invRateType === "stop_sales";
       const customPricing = {
         rateType: invRateType,
-        weekendPrice: !isBlockedSubmit && invWeekendPrice ? parseInt(invWeekendPrice, 10) : null,
-        weekendDays: !isBlockedSubmit ? invWeekendDays : [],
-        extraAdultPrice: !isBlockedSubmit && invExtraAdultPrice ? parseInt(invExtraAdultPrice, 10) : null,
-        extraChildWithBedPrice: !isBlockedSubmit && invExtraChildWithBedPrice ? parseInt(invExtraChildWithBedPrice, 10) : null,
-        extraChildWithoutBedPrice: !isBlockedSubmit && invExtraChildWithoutBedPrice ? parseInt(invExtraChildWithoutBedPrice, 10) : null,
-        mealPlanOptions: !isBlockedSubmit ? invMealPlanOptions : [],
+        weekendPrice: invWeekendPrice ? parseInt(invWeekendPrice, 10) : null,
+        weekendDays: invWeekendDays,
+        extraAdultPrice: invExtraAdultPrice ? parseInt(invExtraAdultPrice, 10) : null,
+        extraChildWithBedPrice: invExtraChildWithBedPrice ? parseInt(invExtraChildWithBedPrice, 10) : null,
+        extraChildWithoutBedPrice: invExtraChildWithoutBedPrice ? parseInt(invExtraChildWithoutBedPrice, 10) : null,
+        mealPlanOptions: invMealPlanOptions,
       };
 
       const res = await fetch(`${API_BASE}/vendor/hotels/${hotelId}/inventory`, {
@@ -1299,13 +1338,41 @@ export default function VendorPropertyManagerPage() {
           roomId: selectedRoomForInv,
           startDate: invStartDate,
           endDate: invEndDate,
-          availableCount: isBlockedSubmit ? 0 : parseInt(invAvailableCount, 10),
-          priceOverride: isBlockedSubmit ? null : (invPriceOverride ? parseInt(invPriceOverride, 10) : null),
-          isBlocked: isBlockedSubmit,
-          discountType: isBlockedSubmit ? "PERCENT" : invDiscountType,
-          discountPercent: isBlockedSubmit ? 0 : (parseInt(invDiscountPercent, 10) || 0),
-          discountFlat: isBlockedSubmit ? 0 : (parseInt(invDiscountFlat, 10) || 0),
+          priceOverride: invPriceOverride ? parseInt(invPriceOverride, 10) : null,
+          discountType: invDiscountType,
+          discountPercent: parseInt(invDiscountPercent, 10) || 0,
+          discountFlat: parseInt(invDiscountFlat, 10) || 0,
           customPricing,
+        }),
+      });
+      if (res.ok) {
+        alert("Rates updated successfully!");
+        fetchInventory();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update rates.");
+      }
+    } catch {
+      alert("Error updating rates.");
+    } finally {
+      setSavingInv(false);
+    }
+  };
+
+  const handleBulkUpdateInventory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRoomForInv || !invStartDate || !invEndDate) return alert("Select room and date range.");
+    setSavingInv(true);
+    try {
+      const res = await fetch(`${API_BASE}/vendor/hotels/${hotelId}/inventory`, {
+        method: "POST",
+        headers: vendorAuthHeader(token),
+        body: JSON.stringify({
+          roomId: selectedRoomForInv,
+          startDate: invStartDate,
+          endDate: invEndDate,
+          availableCount: invIsBlocked ? 0 : parseInt(invAvailableCount, 10),
+          isBlocked: invIsBlocked,
         }),
       });
       if (res.ok) {
@@ -1383,7 +1450,8 @@ export default function VendorPropertyManagerPage() {
             {[
               { key: "overview", label: "Overview", icon: Settings },
               { key: "rooms", label: `Rooms (${rooms.length})`, icon: Bed },
-              { key: "inventory", label: "Inventory & Rates", icon: Calendar },
+              { key: "rates", label: "Dynamic Rates", icon: DollarSign },
+              { key: "inventory", label: "Room Inventory", icon: Calendar },
               { key: "bookings", label: `Bookings${pendingBookings > 0 ? ` (${pendingBookings} pending)` : ""}`, icon: BookOpen },
               { key: "photos", label: "Photos", icon: ImageIcon },
               { key: "policies", label: "Policies", icon: CheckCircle },
@@ -1960,9 +2028,9 @@ export default function VendorPropertyManagerPage() {
                 {/* ── Bulk Update Form ── */}
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full">
                   <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#1B3A6B]" /> Bulk Rate &amp; Availability Update
+                    <DollarSign className="w-4 h-4 text-[#1B3A6B]" /> Bulk Rate Update
                   </h3>
-                  <form onSubmit={handleBulkUpdateInventory} className="space-y-3">
+                  <form onSubmit={handleBulkUpdateRates} className="space-y-3">
                     {/* Compact Top Row: Room, Rate Type, Session Price, Discount */}
                     <div className="grid grid-cols-1 xl:grid-cols-4 gap-2">
                       <div>
@@ -2034,8 +2102,8 @@ export default function VendorPropertyManagerPage() {
                       </div>
                     </div>
 
-                    {/* Dates + Availability row */}
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 mt-2">
+                    {/* Dates row — rates only needs start/end */}
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 mt-2">
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Date</label>
                         <input aria-label="Start Date" title="Start Date" type="date" required value={invStartDate} onChange={e => setInvStartDate(e.target.value)}
@@ -2046,12 +2114,6 @@ export default function VendorPropertyManagerPage() {
                         <input aria-label="End Date" title="End Date" type="date" required value={invEndDate} onChange={e => setInvEndDate(e.target.value)}
                           className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Daily Rooms Available</label>
-                        <input aria-label="Daily Available Rooms" title="Daily Available Rooms" type="number" required min="0" value={invAvailableCount} onChange={e => setInvAvailableCount(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
-                      </div>
-                      {/* price override moved to the top row to avoid duplicate inputs */}
                     </div>
 
                     <div className="mt-1 space-y-1">
@@ -2204,7 +2266,7 @@ export default function VendorPropertyManagerPage() {
                     <div className="flex justify-stretch pt-1">
                       <button type="submit" disabled={savingInv}
                         className="w-full px-5 py-2 bg-[#1B3A6B] text-white rounded-xl text-sm font-bold hover:bg-[#0f2548] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
-                        {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Updating...</> : <><Calendar className="w-4 h-4" /> Update Calendar</>}
+                        {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Saving Rates...</> : <><DollarSign className="w-4 h-4" /> Apply Rate Plan</>}
                       </button>
                     </div>
                   </form>
@@ -2214,9 +2276,9 @@ export default function VendorPropertyManagerPage() {
                 <div className="bg-white rounded-2xl border border-gray-100 p-5 w-full min-w-0">
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <h3 className="font-bold text-gray-900 text-sm">Availability &amp; Rate Calendar</h3>
+                      <h3 className="font-bold text-gray-900 text-sm">💰 Dynamic Rate Calendar</h3>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {selectedRoomForInv ? "Click any date to prefill the update form" : "Select a room type to view its calendar"}
+                        {selectedRoomForInv ? "Click any date to pre-fill the rate form" : "Select a room type to view its rate calendar"}
                       </p>
                     </div>
                     {selectedRoomForInv && (
@@ -2269,7 +2331,7 @@ export default function VendorPropertyManagerPage() {
                             {day}
                           </div>
                         ))}
-                        {renderCalendar()}
+                        {renderCalendar("rates")}
                       </div>
 
                       {/* Calendar Legend */}
@@ -2298,6 +2360,164 @@ export default function VendorPropertyManagerPage() {
                       <Calendar className="w-12 h-12 text-gray-200 mb-3" />
                       <p className="text-gray-500 font-medium text-sm">No room selected</p>
                       <p className="text-gray-400 text-xs mt-1">Select a room type in the form to view its rate calendar</p>
+                    </div>
+                  )}
+                </div>
+              </div>{/* flex row end */}
+            </div>
+          )}
+
+          {/* ─── Room Inventory Tab ─── */}
+          {tab === "inventory" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold text-gray-900 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#1B3A6B]" /> Room Inventory Management</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Control daily room availability, set stop-sales, and manage allotment quotas per room type.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 items-start">
+                {/* ── Bulk Inventory Update Form ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full">
+                  <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#1B3A6B]" /> Bulk Inventory / Stop Sales Update
+                  </h3>
+                  <form onSubmit={handleBulkUpdateInventory} className="space-y-3">
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Room Type *</label>
+                        <select aria-label="Select Room Type" title="Select Room Type" required value={selectedRoomForInv}
+                          onChange={e => {
+                            const roomIdVal = e.target.value;
+                            setSelectedRoomForInv(roomIdVal);
+                            const r = rooms.find(x => String(x.id) === roomIdVal);
+                            if (r) setInvAvailableCount(String(r.totalRooms));
+                          }}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]">
+                          <option value="" disabled>-- Select a room --</option>
+                          {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Quota: {r.totalRooms})</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Rooms Available (Daily)</label>
+                        <input aria-label="Daily Available Rooms" title="Daily Available Rooms" type="number" required min="0"
+                          value={invAvailableCount} onChange={e => setInvAvailableCount(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+                      <div className="flex flex-col justify-end">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Stop Sales</label>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={invIsBlocked} onChange={e => setInvIsBlocked(e.target.checked)}
+                            className="w-4 h-4 rounded accent-rose-600" />
+                          <span className="text-xs font-bold text-rose-700">Block All Bookings (Stop Sale)</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Date</label>
+                        <input aria-label="Start Date" title="Start Date" type="date" required value={invStartDate} onChange={e => setInvStartDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">End Date</label>
+                        <input aria-label="End Date" title="End Date" type="date" required value={invEndDate} onChange={e => setInvEndDate(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                      </div>
+                    </div>
+
+                    {invIsBlocked && (
+                      <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-rose-800 uppercase tracking-wide">Stop Sales Active</p>
+                          <p className="text-[11px] text-rose-600 mt-1 font-medium leading-relaxed">
+                            All booking requests will be blocked for this room type during the selected date range. This does not affect rates.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-stretch pt-1">
+                      <button type="submit" disabled={savingInv}
+                        className="w-full px-5 py-2 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+                        {savingInv ? <><RefreshCw className="w-4 h-4 animate-spin" /> Updating...</> : <><Calendar className="w-4 h-4" /> Update Inventory</>}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* ── Right: Inventory Calendar ── */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 w-full min-w-0">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-sm">📦 Room Availability Calendar</h3>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {selectedRoomForInv ? "Click any date to pre-fill the inventory form" : "Select a room type to view availability"}
+                      </p>
+                    </div>
+                    {selectedRoomForInv && (
+                      <div className="flex items-center gap-2">
+                        <button type="button"
+                          onClick={() => {
+                            const today = new Date();
+                            const minMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                            const prev = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() - 1, 1);
+                            if (prev >= minMonth) setCurrentCalendarMonth(prev);
+                          }}
+                          disabled={currentCalendarMonth.getFullYear() === new Date().getFullYear() && currentCalendarMonth.getMonth() === new Date().getMonth()}
+                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors">
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-sm font-bold text-gray-800 min-w-32 text-center">
+                          {currentCalendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                        </span>
+                        <button type="button"
+                          onClick={() => {
+                            const today = new Date();
+                            const maxMonth = new Date(today.getFullYear(), today.getMonth() + 11, 1);
+                            const next = new Date(currentCalendarMonth.getFullYear(), currentCalendarMonth.getMonth() + 1, 1);
+                            if (next <= maxMonth) setCurrentCalendarMonth(next);
+                          }}
+                          disabled={currentCalendarMonth.getFullYear() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getFullYear() && currentCalendarMonth.getMonth() === new Date(new Date().getFullYear(), new Date().getMonth() + 11, 1).getMonth()}
+                          className="p-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors">
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedRoomForInv ? (
+                    <>
+                      <div className="grid grid-cols-7 gap-1.5 mb-4">
+                        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(day => (
+                          <div key={day} className="text-center text-[10px] font-black text-gray-400 uppercase py-1 select-none">{day}</div>
+                        ))}
+                        {renderCalendar("inventory")}
+                      </div>
+                      {/* Inventory Legend */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-4 mt-3 border-t border-gray-100">
+                        {[
+                          { color: "bg-emerald-50 border-emerald-100", text: "Available" },
+                          { color: "bg-amber-50 border-amber-300", text: "Low Stock (≤2)" },
+                          { color: "bg-slate-100 border-slate-200", text: "Sold Out" },
+                          { color: "bg-rose-50/70 border-rose-200", text: "Stop Sales" },
+                          { color: "bg-gray-50 border-gray-100 opacity-60", text: "Past" },
+                        ].map(item => (
+                          <div key={item.text} className="flex items-center gap-1.5">
+                            <span className={`w-3.5 h-3.5 rounded border ${item.color}`} />
+                            <span className="text-[9px] font-bold text-gray-500">{item.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Calendar className="w-12 h-12 text-gray-200 mb-3" />
+                      <p className="text-gray-500 font-medium text-sm">No room selected</p>
+                      <p className="text-gray-400 text-xs mt-1">Select a room type in the form to view its availability calendar</p>
                     </div>
                   )}
                 </div>

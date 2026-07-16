@@ -23,7 +23,7 @@ export function AttractionActivityModal({
   const rawImages = data.images && Array.isArray(data.images) ? data.images : [];
   const cover = data.coverImage || data.image || data.imageUrl || (rawImages.length > 0 ? rawImages[0] : null);
   const allImages = cover
-    ? [cover, ...rawImages.filter(img => img !== cover)].filter(Boolean)
+    ? [cover, ...rawImages.filter((img: string) => img !== cover)].filter(Boolean)
     : rawImages;
 
   const highlights = Array.isArray(data.highlights) ? data.highlights : [];
