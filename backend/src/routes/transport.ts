@@ -109,97 +109,7 @@ router.get("/transport", cacheMiddleware(30), async (req: Request, res: Response
 //       This guard also prevents keyword slugs from hitting the DB unnecessarily.
 // ─────────────────────────────────────────────────────────────────────────────
 const TRANSPORT_KEYWORD_SLUGS = new Set(["routes", "types", "mega-menu", "my-bookings", "book"]);
-router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Response) => {
-  try {
-    const slug = req.params.slug as string;
-
-    // Pass-through guard for keyword paths that should be handled by their own routes
-    if (TRANSPORT_KEYWORD_SLUGS.has(slug)) {
-      return res.status(404).json({ error: "Vehicle not found" });
-    }
-
-    const vehicleResult = await db.execute(sql`
-      SELECT
-        tv.*,
-        u.name AS owner_name, u.vendor_business_name,
-        tv_v.business_name, tv_v.phone AS vendor_phone,
-        tv_v.email AS vendor_email, tv_v.logo_url AS vendor_logo,
-        tv_v.description AS vendor_desc, tv_v.operating_since,
-        COALESCE(d.name, tv.custom_city) AS city_name,
-        s.name AS state_name,
-        c.name AS country_name
-      FROM transport_vehicles tv
-      LEFT JOIN transport_vendors tv_v ON tv.vendor_id = tv_v.id
-      LEFT JOIN users u ON tv.owner_id = u.id
-      LEFT JOIN destinations d ON tv.destination_id = d.id
-      LEFT JOIN states s ON tv.state_id = s.id
-      LEFT JOIN countries c ON tv.country_id = c.id
-      WHERE tv.slug = ${slug} AND tv.status = 'APPROVED'
-      LIMIT 1
-    `) as any;
-
-    if (!vehicleResult?.rows?.[0]) return res.status(404).json({ error: "Vehicle not found" });
-    const v = vehicleResult.rows[0];
-
-    // Fetch pricing rules
-    const pricing = await db
-      .select()
-      .from(transportPricingRulesTable)
-      .where(and(
-        eq(transportPricingRulesTable.vehicleId, v.id),
-        eq(transportPricingRulesTable.isActive, true)
-      ))
-      .orderBy(asc(transportPricingRulesTable.displayOrder));
-
-    // Fetch assigned driver (basic info only for users)
-    const [driver] = await db
-      .select({
-        id: transportDriversTable.id,
-        name: transportDriversTable.name,
-        photoUrl: transportDriversTable.photoUrl,
-        experienceYears: transportDriversTable.experienceYears,
-        languagesKnown: transportDriversTable.languagesKnown,
-        rating: transportDriversTable.rating,
-        totalTrips: transportDriversTable.totalTrips,
-        isVerified: transportDriversTable.isVerified,
-      })
-      .from(transportDriversTable)
-      .where(and(
-        eq(transportDriversTable.vehicleId, v.id),
-        eq(transportDriversTable.isAvailable, true)
-      ))
-      .limit(1);
-
-    // Fetch reviews
-    const reviews = await db.execute(sql`
-      SELECT tr.*, u.name AS user_name
-      FROM transport_reviews tr
-      LEFT JOIN users u ON tr.user_id = u.id
-      WHERE tr.vehicle_id = ${v.id} AND tr.admin_approved = true
-      ORDER BY tr.created_at DESC
-      LIMIT 10
-    `);
-
-    // Avg rating — db.execute() returns {rows:[...]} directly
-    const ratingResult = await db.execute(sql`
-      SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) AS review_count
-      FROM transport_reviews WHERE vehicle_id = ${v.id} AND admin_approved = true
-    `) as any;
-    const ratingRow = ratingResult?.rows?.[0] || {};
-
-    res.json({
-      ...v,
-      pricing,
-      driver: driver || null,
-      reviews: reviews.rows,
-      avgRating:   Number(ratingRow.avg_rating   || 0),
-      reviewCount: Number(ratingRow.review_count || 0),
-    });
-  } catch (error: any) {
-    logger.error({ error: error.message }, "Vehicle detail error");
-    res.status(500).json({ error: "Failed to fetch vehicle" });
-  }
-});
+// NOTE: The /transport/:slug route was moved to the bottom of the file to prevent Express routing conflicts with static routes like mega-menu, routes, types, and my-bookings.
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -545,5 +455,99 @@ router.get("/transport/mega-menu", async (_req: Request, res: Response): Promise
     res.status(500).json({ error: "Failed to generate transport mega menu" });
   }
 });
+
+// GET /api/transport/:slug - parameterized route declared at the bottom to avoid blocking static routes
+router.get("/transport/:slug", cacheMiddleware(60), async (req: Request, res: Response) => {
+  try {
+    const slug = req.params.slug as string;
+
+    // Pass-through guard for keyword paths that should be handled by their own routes
+    if (TRANSPORT_KEYWORD_SLUGS.has(slug)) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+
+    const vehicleResult = await db.execute(sql`
+      SELECT
+        tv.*,
+        u.name AS owner_name, u.vendor_business_name,
+        tv_v.business_name, tv_v.phone AS vendor_phone,
+        tv_v.email AS vendor_email, tv_v.logo_url AS vendor_logo,
+        tv_v.description AS vendor_desc, tv_v.operating_since,
+        COALESCE(d.name, tv.custom_city) AS city_name,
+        s.name AS state_name,
+        c.name AS country_name
+      FROM transport_vehicles tv
+      LEFT JOIN transport_vendors tv_v ON tv.vendor_id = tv_v.id
+      LEFT JOIN users u ON tv.owner_id = u.id
+      LEFT JOIN destinations d ON tv.destination_id = d.id
+      LEFT JOIN states s ON tv.state_id = s.id
+      LEFT JOIN countries c ON tv.country_id = c.id
+      WHERE tv.slug = ${slug} AND tv.status = 'APPROVED'
+      LIMIT 1
+    `) as any;
+
+    if (!vehicleResult?.rows?.[0]) return res.status(404).json({ error: "Vehicle not found" });
+    const v = vehicleResult.rows[0];
+
+    // Fetch pricing rules
+    const pricing = await db
+      .select()
+      .from(transportPricingRulesTable)
+      .where(and(
+        eq(transportPricingRulesTable.vehicleId, v.id),
+        eq(transportPricingRulesTable.isActive, true)
+      ))
+      .orderBy(asc(transportPricingRulesTable.displayOrder));
+
+    // Fetch assigned driver (basic info only for users)
+    const [driver] = await db
+      .select({
+        id: transportDriversTable.id,
+        name: transportDriversTable.name,
+        photoUrl: transportDriversTable.photoUrl,
+        experienceYears: transportDriversTable.experienceYears,
+        languagesKnown: transportDriversTable.languagesKnown,
+        rating: transportDriversTable.rating,
+        totalTrips: transportDriversTable.totalTrips,
+        isVerified: transportDriversTable.isVerified,
+      })
+      .from(transportDriversTable)
+      .where(and(
+        eq(transportDriversTable.vehicleId, v.id),
+        eq(transportDriversTable.isAvailable, true)
+      ))
+      .limit(1);
+
+    // Fetch reviews
+    const reviews = await db.execute(sql`
+      SELECT tr.*, u.name AS user_name
+      FROM transport_reviews tr
+      LEFT JOIN users u ON tr.user_id = u.id
+      WHERE tr.vehicle_id = ${v.id} AND tr.admin_approved = true
+      ORDER BY tr.created_at DESC
+      LIMIT 10
+    `);
+
+    // Avg rating — db.execute() returns {rows:[...]} directly
+    const ratingResult = await db.execute(sql`
+      SELECT ROUND(AVG(rating)::numeric, 1) AS avg_rating, COUNT(*) AS review_count
+      FROM transport_reviews WHERE vehicle_id = ${v.id} AND admin_approved = true
+    `) as any;
+    const ratingRow = ratingResult?.rows?.[0] || {};
+
+    res.json({
+      ...v,
+      pricing,
+      driver: driver || null,
+      reviews: reviews.rows,
+      avgRating:   Number(ratingRow.avg_rating   || 0),
+      reviewCount: Number(ratingRow.review_count || 0),
+    });
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Vehicle detail error");
+    res.status(500).json({ error: "Failed to fetch vehicle" });
+  }
+});
+
 
 export default router;

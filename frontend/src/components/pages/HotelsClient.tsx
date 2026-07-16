@@ -60,6 +60,7 @@ function correctTypo(query: string): string {
 }
 import { cn, getHotelImageUrl } from "@/lib/utils";
 import { getApiUrl } from "@/lib/api-url";
+import { COMPREHENSIVE_AMENITIES } from "@/lib/amenities-config";
 import SmartSearchBar from "@/components/SmartSearchBar";
 import { motion, AnimatePresence } from "framer-motion";
 

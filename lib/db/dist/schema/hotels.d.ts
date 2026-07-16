@@ -471,6 +471,49 @@ export declare const hotelsTable: import("drizzle-orm/pg-core").PgTableWithColum
             }, {}, {}, import("drizzle-orm").ColumnBuilderExtraConfig>;
             size: undefined;
         }>;
+        highlights: import("drizzle-orm/pg-core").PgColumn<{
+            name: "highlights";
+            tableName: "hotels";
+            dataType: "array";
+            columnType: "PgArray";
+            data: string[];
+            driverParam: string | string[];
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: import("drizzle-orm").Column<{
+                name: "highlights";
+                tableName: "hotels";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                driverParam: string;
+                notNull: false;
+                hasDefault: false;
+                isPrimaryKey: false;
+                isAutoincrement: false;
+                hasRuntimeDefault: false;
+                enumValues: [string, ...string[]];
+                baseColumn: never;
+                identity: undefined;
+                generated: undefined;
+            }, {}, {}>;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            baseBuilder: import("drizzle-orm/pg-core").PgColumnBuilder<{
+                name: "highlights";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                enumValues: [string, ...string[]];
+                driverParam: string;
+            }, {}, {}, import("drizzle-orm").ColumnBuilderExtraConfig>;
+            size: undefined;
+        }>;
         images: import("drizzle-orm/pg-core").PgColumn<{
             name: "images";
             tableName: "hotels";
@@ -3028,6 +3071,7 @@ export declare const insertHotelSchema: z.ZodObject<{
     faqs: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
     totalRooms: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     amenities: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    highlights: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     minPrice: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     bookingType: z.ZodOptional<z.ZodString>;
@@ -3054,6 +3098,7 @@ export declare const insertHotelRoomSchema: z.ZodObject<{
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     totalRooms: z.ZodOptional<z.ZodInt>;
     amenities: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+    highlights: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
     images: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     hotelId: z.ZodInt;
     bedType: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -3081,7 +3126,6 @@ export declare const insertHotelRoomSchema: z.ZodObject<{
     refundable: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     cancellationHours: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     viewType: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    highlights: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
     facilities: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
     isActive: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
 }, {
