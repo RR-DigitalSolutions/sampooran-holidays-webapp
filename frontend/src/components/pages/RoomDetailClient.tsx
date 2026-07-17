@@ -800,7 +800,7 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
   ].filter(Boolean) as string[];
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans overflow-x-hidden">
+    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
       {/* ─── Breadcrumb Section (Navbar Offset Included) ─────────── */}
       <div className="container mx-auto px-4 pt-16 pb-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -1172,7 +1172,8 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
 
 {/* RIGHT: Booking Engine (sticky) */}
         <div className="hidden lg:block lg:w-[380px] shrink-0">
-          <div className="lg:sticky lg:top-[80px] space-y-3">
+          <div className="lg:sticky lg:top-[80px] lg:self-start">
+            <div className="lg:max-h-[calc(100vh-96px)] lg:overflow-y-auto space-y-3 scrollbar-thin">
             
             {/* Card 1: Rate Calendar Card */}
             <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs space-y-3">
@@ -1501,11 +1502,12 @@ export default function RoomDetailClient({ slug, roomId }: { slug: string; roomI
                   </div>
                 ))}
               </div>
-            </div>
+              </div>
+            </div>{/* end inner scroll wrapper */}
 
-          </div>
-        </div>
-      </div>
+          </div>{/* end sticky wrapper */}
+        </div>{/* end lg:w-[380px] */}
+      </div>{/* end container flex row */}
 
       {/* ─── Fullscreen Gallery Modal ────────────────────────────────── */}
       {galleryOpen && (

@@ -397,7 +397,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans overflow-x-hidden">
+    <div className="bg-slate-50 min-h-screen pb-24 text-slate-900 font-sans">
       {/* ─── Breadcrumb Section (Navbar Offset Included) ─────────── */}
       <div className="container mx-auto px-4 pt-16 pb-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
@@ -1099,7 +1099,8 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
         </div>
 
         {/* 3. SIDEBAR SECTION (Map + Booking Widget) */}
-        <div className="w-full lg:w-[400px] space-y-4 lg:sticky lg:top-[80px] lg:h-fit z-20">
+        <div className="w-full lg:w-[400px] shrink-0 lg:sticky lg:top-[80px] lg:self-start z-20">
+          <div className="space-y-4 lg:max-h-[calc(100vh-100px)] lg:overflow-y-auto lg:pr-0.5 scrollbar-thin">
           {/* Map Card — compact & sticky above booking widget */}
           <Card className="shadow-sm border border-slate-100 rounded-xl overflow-hidden bg-white p-2.5">
             <h4 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
@@ -1320,7 +1321,7 @@ export default function HotelDetailClient({ slug, breadcrumbs }: { slug: string;
               </button>
             </div>
           </Card>
-
+          </div>{/* end inner scroll wrapper */}
 
         </div>
       </div>
