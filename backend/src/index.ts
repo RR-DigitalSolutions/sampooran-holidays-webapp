@@ -707,6 +707,9 @@ io.on("connection", async (socket) => {
         return;
       }
 
+      // Echo user message immediately back to client so user message appears right away!
+      if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
+
       // ── 6. Bot processing for guest messages ──────────────────────────────
       if (!conversation.botEscalated) {
         const botResult = processBotMessage(
@@ -722,6 +725,10 @@ io.on("connection", async (socket) => {
           category: botResult.category || conversation.category,
           botState: botResult.newState,
         };
+
+        if (botResult.urgency === "URGENT") {
+          updateData.priority = "URGENT";
+        }
 
         if (botResult.shouldBlock) {
           updateData.status = "SPAM";
@@ -744,8 +751,21 @@ io.on("connection", async (socket) => {
           .set(updateData)
           .where(eq(conversationsTable.id, conversation.id));
 
-        // Send bot reply to guest (only if there's a message)
+        // Natural typing delay & bot reply
         if (botResult.message && !botResult.shouldBlock) {
+          // Emit typing indicator to guest session
+          if (msg.sessionId) {
+            io.to(`session:${msg.sessionId}`).emit("chat:typing_bot", { isTyping: true });
+          }
+
+          // Delay for natural feel
+          const delayMs = botResult.typingDelayMs || 1500;
+          await new Promise((res) => setTimeout(res, delayMs));
+
+          if (msg.sessionId) {
+            io.to(`session:${msg.sessionId}`).emit("chat:typing_bot", { isTyping: false });
+          }
+
           const [botMsg] = await db.insert(messagesTable).values({
             conversationId: conversation.id,
             senderId: null,
@@ -781,13 +801,8 @@ io.on("connection", async (socket) => {
           });
           logger.info({ convId: conversation.id, category: botResult.category }, "Bot escalated to human");
         }
-
-        // Echo the user's own message back to their session (for optimistic UI reconciliation)
-        if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
-
       } else {
         // Already escalated — conversation is with human agent
-        if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
         io.to("supervisors").emit("chat:message", userPayload);
         io.to("admins").emit("chat:message", userPayload);
         if (conversation.assignedStaffId) {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, conversationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { processSignupBonus } from "../lib/rewards";
 import { logger } from "../lib/logger";
@@ -222,6 +222,72 @@ router.get("/vendor/me", authenticate, async (req: AuthenticatedRequest, res) =>
     res.json(safe);
   } catch (error) {
     res.status(401).json({ error: "Invalid token" });
+  }
+});
+
+// IN-CHAT REGISTER / LOGIN — allows guests to create password / login right from the Chat Widget!
+router.post("/chat-register", authLimiter, async (req, res) => {
+  try {
+    const { name, email, password, phoneNumber, isB2B, companyName, sessionId } = req.body;
+    if (!email || !password) return res.status(400).json({ error: "Email and password are required" });
+
+    // 1. Check if user already exists
+    let [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+    if (user) {
+      // User exists — verify password
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) return res.status(401).json({ error: "Incorrect password for this email." });
+    } else {
+      // Create new user (Client or B2B Partner)
+      const passwordHash = await bcrypt.hash(password, 10);
+      const referralCode = generateReferralCode();
+      const role = isB2B ? "AGENT" : "USER";
+
+      [user] = await db.insert(usersTable).values({
+        name: name || email.split("@")[0],
+        email,
+        phoneNumber: phoneNumber || null,
+        passwordHash,
+        role,
+        referralCode,
+        companyName: companyName || null,
+        badge: isB2B ? "BRONZE" : null,
+      }).returning();
+
+      // Trigger ₹1,000 signup bonus
+      await processSignupBonus(user.id);
+      sendWelcomeEmail(user.email, user.name, user.role);
+    }
+
+    // Link current conversation session to user ID
+    if (sessionId) {
+      await db.update(conversationsTable)
+        .set({
+          userId: user.id,
+          guestName: user.name,
+          guestEmail: user.email,
+          guestPhone: user.phoneNumber || undefined,
+        })
+        .where(eq(conversationsTable.guestSessionId, sessionId));
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
+    const { passwordHash: _, ...safeUser } = user;
+    res.json({
+      user: safeUser,
+      token,
+      isNew: !user,
+      message: `Welcome aboard, ${user.name}! Your account is active.`,
+    });
+  } catch (error: any) {
+    logger.error({ error: error.message }, "In-chat registration error");
+    res.status(500).json({ error: "Account registration failed: " + error.message });
   }
 });
 

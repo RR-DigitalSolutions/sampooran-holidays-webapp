@@ -306,6 +306,24 @@ export default function SupportPage() {
     setCategoryDrop(false);
   };
 
+  /* ── Takeover Chat (Stop AI Replies) ────────────────────────────────── */
+  const handleTakeover = async () => {
+    if (!selected) return;
+    try {
+      const res = await fetch(`${API}/admin/conversations/${selected.id}/takeover`, {
+        method: "POST", headers: authHeaders(),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSelected(s => s ? { ...s, ...updated, status: "OPEN", botEscalated: true } : s);
+        setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, status: "OPEN", botEscalated: true } : c));
+        if (updated.systemMessage) {
+          setMessages(prev => [...prev, updated.systemMessage]);
+        }
+      }
+    } catch {}
+  };
+
   /* ── Ban guest ──────────────────────────────────────────────────────── */
   const handleBan = async () => {
     if (!selected || !isSupervisor) return;
@@ -351,10 +369,49 @@ export default function SupportPage() {
 
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
+  /* ── Stats ───────────────────────────────────────────────────────────── */
+  const totalBot    = extConvs.filter(c => c.status === "BOT").length;
+  const totalOpen   = extConvs.filter(c => c.status === "OPEN" || c.status === "ASSIGNED").length;
+  const totalUrgent = extConvs.filter(c => c.priority === "URGENT").length;
+  const totalClosed = extConvs.filter(c => c.status === "CLOSED").length;
+
   /* ── Render ──────────────────────────────────────────────────────────── */
   return (
-    <AdminLayout title="Live Support CRM" subtitle="AI-powered chat management with department routing">
-      <div className="flex h-[calc(100vh-148px)] min-h-[520px] bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xl">
+    <AdminLayout title="Live Support CRM" subtitle="Sampooran Holidays SOP Chat & Department Routing">
+      <div className="space-y-4">
+        {/* KPI Stats Header Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AI Bot Active</p>
+              <p className="text-xl font-black text-amber-600 mt-0.5">{totalBot}</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">🤖</div>
+          </div>
+          <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Open / Escalated</p>
+              <p className="text-xl font-black text-emerald-600 mt-0.5">{totalOpen}</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">💬</div>
+          </div>
+          <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Urgent Tickets</p>
+              <p className="text-xl font-black text-red-600 mt-0.5">{totalUrgent}</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold">🚨</div>
+          </div>
+          <div className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Closed</p>
+              <p className="text-xl font-black text-gray-500 mt-0.5">{totalClosed}</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center font-bold">✅</div>
+          </div>
+        </div>
+
+        <div className="flex h-[calc(100vh-210px)] min-h-[520px] bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xl">
 
         {/* ════════════════════════════════════════════════════════════
             SIDEBAR
@@ -574,6 +631,17 @@ export default function SupportPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* Takeover button (Stop AI replies) */}
+                {selected.status !== "CLOSED" && (!selected.botEscalated || selected.status === "BOT") && (
+                  <button
+                    onClick={handleTakeover}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-white text-[10px] font-bold hover:bg-amber-600 transition shadow-sm"
+                    title="Stop AI replies and take over live chat"
+                  >
+                    ⚡ Stop AI & Takeover
+                  </button>
+                )}
 
                 {/* Priority dropdown (supervisor only) */}
                 {isSupervisor && selected.status !== "CLOSED" && (
@@ -809,8 +877,32 @@ export default function SupportPage() {
 
             {/* ── Panel: Requirements Brief ────────────────────────────── */}
             {sidebarPanel === "requirements" && (
-              <div className="flex-1 overflow-y-auto p-5 bg-[#f9fafb]">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 overflow-y-auto p-5 bg-[#f9fafb] space-y-4">
+                {/* Customer Profile Card */}
+                <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Client Profile</h4>
+                    <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-full border",
+                      selected.userId && selected.userId > 0
+                        ? selected.category === "B2B"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-sky-50 text-sky-700 border-sky-200"
+                        : "bg-gray-50 text-gray-500 border-gray-200"
+                    )}>
+                      {selected.userId && selected.userId > 0
+                        ? selected.category === "B2B" ? "🤝 Registered B2B Partner" : "👤 Registered Traveler"
+                        : "⚠️ Guest (Unregistered)"}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-700 space-y-1 pt-1">
+                    <p><span className="font-semibold text-gray-500">Name:</span> {selected.guestName || "N/A"}</p>
+                    <p><span className="font-semibold text-gray-500">Email:</span> {selected.guestEmail || "N/A"}</p>
+                    <p><span className="font-semibold text-gray-500">Phone:</span> {selected.guestPhone || "N/A"}</p>
+                    {selected.userId ? <p><span className="font-semibold text-gray-500">User ID:</span> #{selected.userId}</p> : null}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-2">
                   <ClipboardList className="w-4 h-4 text-violet-500" />
                   <h3 className="font-bold text-sm text-gray-800">AI-Collected Requirements</h3>
                   <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border ml-auto",
@@ -859,6 +951,7 @@ export default function SupportPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
-  );
+    </div>
+  </AdminLayout>
+);
 }

@@ -1832,6 +1832,39 @@ router.patch("/conversations/:id/assign", async (req: AuthenticatedRequest, res)
   }
 });
 
+// POST /admin/conversations/:id/takeover — Admin/Staff stops AI bot and takes over live chat
+router.post("/conversations/:id/takeover", async (req: AuthenticatedRequest, res) => {
+  try {
+    const convId = Number(req.params.id);
+    const staffId = req.user!.id;
+    const [staff] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, staffId)).limit(1);
+    const staffName = staff?.name || req.user?.email || "Support Specialist";
+
+    const [updated] = await db
+      .update(conversationsTable)
+      .set({
+        status: "OPEN",
+        botEscalated: true,
+        assignedStaffId: staffId,
+        botState: "ESCALATED",
+      })
+      .where(eq(conversationsTable.id, convId))
+      .returning();
+
+    // Insert system notification message in chat
+    const [sysMsg] = await db.insert(messagesTable).values({
+      conversationId: convId,
+      senderId: staffId,
+      senderRole: "ADMIN",
+      content: `💬 ${staffName} from Sampooran Holidays has joined the chat and taken over from AI. How can I assist you today?`,
+    }).returning();
+
+    res.json({ ...updated, systemMessage: sysMsg, staffName });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to takeover conversation: " + e.message });
+  }
+});
+
 // PATCH /admin/conversations/:id/category — set category
 router.patch("/conversations/:id/category", async (req: AuthenticatedRequest, res) => {
   try {

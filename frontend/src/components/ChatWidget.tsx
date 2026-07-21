@@ -129,6 +129,7 @@ export default function ChatWidget() {
   const [input, setInput]             = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
+  const [botTyping, setBotTyping]     = useState(false);
   const [unread, setUnread]           = useState(0);
   const [isEscalated, setIsEscalated] = useState(false); // bot → human
   const [category, setCategory]       = useState<string | null>(null);
@@ -139,6 +140,7 @@ export default function ChatWidget() {
   const socketRef      = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const botTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionId      = useRef<string>("");
 
   /* ── Drag Constraints ─────────────────────────────────────────────────── */
@@ -169,7 +171,7 @@ export default function ChatWidget() {
   /* ── Auto-scroll ──────────────────────────────────────────────────────── */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, agentTyping]);
+  }, [messages, agentTyping, botTyping]);
 
   /* ── Unread badge ─────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -208,6 +210,9 @@ export default function ChatWidget() {
     socket.on("disconnect", () => setIsConnected(false));
 
     socket.on("chat:message", (msg: Message) => {
+      // Hide bot typing indicator when bot message arrives
+      setBotTyping(false);
+
       // Deduplicate optimistic messages
       setMessages(prev => {
         const filtered = prev.filter(m => !(m.local && msgText(m) === msgText(msg)));
@@ -230,8 +235,14 @@ export default function ChatWidget() {
         showBrowserNotif("Sampooran Holidays Support", body);
         setLatestToast({ title: "Agent Connected", body });
         setTimeout(() => setLatestToast(null), 5000);
-      } else if (msg.isBot || msg.senderRole === "BOT") {
-        // Bot message — no ping, but scroll
+      }
+    });
+
+    socket.on("chat:typing_bot", (data: { isTyping: boolean }) => {
+      setBotTyping(data.isTyping);
+      if (data.isTyping) {
+        if (botTypingTimerRef.current) clearTimeout(botTypingTimerRef.current);
+        botTypingTimerRef.current = setTimeout(() => setBotTyping(false), 5000);
       }
     });
 
@@ -253,15 +264,54 @@ export default function ChatWidget() {
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [step]);
 
+  const [password, setPassword]       = useState("");
+  const [isB2B, setIsB2B]             = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [wantRegister, setWantRegister] = useState(false);
+  const [userAccount, setUserAccount]   = useState<any>(null);
+
   /* ── Form Submit ──────────────────────────────────────────────────────── */
-  const handleFormSubmit = () => {
+  const handleFormSubmit = async () => {
     if (!guest.name.trim() || !guest.phone.trim() || !guest.email.trim()) {
-      setFormErr("Please fill all fields."); return;
+      setFormErr("Please fill all required fields."); return;
     }
     if (!/^\d{10}$/.test(guest.phone.replace(/\s/g, ""))) {
       setFormErr("Enter a valid 10-digit phone number."); return;
     }
     if (!agreed) { setFormErr("Please accept the privacy policy to continue."); return; }
+
+    // If password provided or register requested, perform in-chat registration / login
+    if (wantRegister || password.trim()) {
+      if (!password.trim()) { setFormErr("Please enter a password to register."); return; }
+      try {
+        const res = await fetch(`${API_URL}/auth/chat-register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: guest.name,
+            email: guest.email,
+            phoneNumber: guest.phone,
+            password: password,
+            isB2B: isB2B,
+            companyName: companyName,
+            sessionId: sessionId.current,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setFormErr(data.error || "Registration failed");
+          return;
+        }
+        if (data.token) {
+          localStorage.setItem("sh_token", data.token);
+          setUserAccount(data.user);
+        }
+      } catch (err: any) {
+        setFormErr("Network error during registration.");
+        return;
+      }
+    }
+
     localStorage.setItem("chat_guest_info", JSON.stringify(guest));
     setFormErr("");
     requestNotifPermission();
@@ -412,6 +462,42 @@ export default function ChatWidget() {
                       onChange={e => setGuest(g => ({ ...g, email: e.target.value }))}
                       className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10 transition"
                     />
+
+                    {/* Registration Toggle */}
+                    <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 flex flex-col gap-2">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                          🎁 Save Itinerary & Get ₹1,000 Bonus
+                        </span>
+                        <input type="checkbox" checked={wantRegister}
+                          onChange={e => setWantRegister(e.target.checked)}
+                          className="w-4 h-4 rounded accent-[#1B3A6B] cursor-pointer"
+                        />
+                      </label>
+                      {wantRegister && (
+                        <div className="flex flex-col gap-2 pt-1">
+                          <input type="password" placeholder="Create Account Password *"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#1B3A6B]"
+                          />
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={isB2B}
+                              onChange={e => setIsB2B(e.target.checked)}
+                              className="w-3.5 h-3.5 rounded accent-[#1B3A6B] cursor-pointer"
+                            />
+                            <span className="text-[11px] font-semibold text-slate-700">Register as B2B Partner / Agency</span>
+                          </label>
+                          {isB2B && (
+                            <input type="text" placeholder="Company / Agency Name *"
+                              value={companyName}
+                              onChange={e => setCompanyName(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-[#1B3A6B]"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {formErr && <p className="text-xs text-red-500 font-medium -mt-1">{formErr}</p>}
@@ -547,7 +633,26 @@ export default function ChatWidget() {
                       );
                     })}
 
-                    {/* Typing indicator */}
+                    {/* Bot Typing indicator */}
+                    {botTyping && (
+                      <div className="flex items-start">
+                        <div className="bg-amber-50/80 rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm flex items-center gap-2 border border-amber-100/80">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                          <div className="flex items-center gap-1">
+                            {[0, 1, 2].map(i => (
+                              <motion.span key={i}
+                                className="w-1.5 h-1.5 rounded-full bg-amber-500"
+                                animate={{ y: [0, -4, 0] }}
+                                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-amber-700 font-medium">Sampoorna is typing…</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Agent Typing indicator */}
                     {agentTyping && (
                       <div className="flex items-start">
                         <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-2 border border-slate-100">
