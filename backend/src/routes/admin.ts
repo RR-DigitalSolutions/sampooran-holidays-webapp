@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable, bookingsTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable, bookingsTable, chatAgentsTable, chatNotesTable, chatBlocklistTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc, inArray } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -81,9 +81,21 @@ router.post("/auth/login", async (req, res) => {
       .where(or(eq(usersTable.email, username), eq(usersTable.name, username)))
       .limit(1);
 
-    const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN"];
+    // Allowed roles for admin panel access:
+    // - SUPERADMIN: Full access to everything
+    // - ADMIN: Access controlled by adminPermissions JSON
+    // - AGENT (with SUPPORT permission): Only Support page + their assigned chats
+    const ALLOWED_ROLES = ["ADMIN", "SUPERADMIN", "AGENT"];
     if (!user || !ALLOWED_ROLES.includes(user.role)) {
-      return res.status(401).json({ error: "Access denied. Not an administrator." });
+      return res.status(401).json({ error: "Access denied. You are not authorized to access this panel." });
+    }
+
+    // For AGENT role, verify they have SUPPORT permission
+    if (user.role === "AGENT") {
+      const perms: string[] = JSON.parse(user.adminPermissions || '[]');
+      if (!perms.includes("SUPPORT") && !perms.includes("ALL")) {
+        return res.status(401).json({ error: "Access denied. No support permissions assigned." });
+      }
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
@@ -119,7 +131,7 @@ router.post("/auth/login", async (req, res) => {
 // All routes below require authentication
 // ─────────────────────────────────────────────────────────────
 router.use(authenticate);
-router.use(authorize(["ADMIN", "SUPERADMIN"]));
+router.use(authorize(["ADMIN", "SUPERADMIN", "AGENT"]));
 
 // GET /admin/me — current admin profile
 router.get("/me", async (req: AuthenticatedRequest, res) => {
@@ -1787,22 +1799,225 @@ router.patch("/conversations/:id/status", async (req: AuthenticatedRequest, res)
   }
 });
 
-// PATCH /admin/conversations/:id/assign — staff claims or assigns a conversation
+// PATCH /admin/conversations/:id/assign — supervisor assigns to staff or vendor
 router.patch("/conversations/:id/assign", async (req: AuthenticatedRequest, res) => {
+  // Only supervisors (SUPERADMIN or ADMIN with ALL permission) can assign
+  const perms: string[] = JSON.parse(req.user?.adminPermissions || '["ALL"]');
+  const isSupervisor = req.user?.role === "SUPERADMIN" || perms.includes("ALL");
+  if (!isSupervisor) {
+    return res.status(403).json({ error: "Only supervisors can assign conversations." });
+  }
   try {
-    const staffId = req.body.staffId ?? req.user!.id; // assign to self if no staffId provided
+    const { staffId, vendorId, department } = req.body;
+    const updateData: Record<string, any> = { status: "ASSIGNED" };
+    if (staffId)    updateData.assignedStaffId  = Number(staffId);
+    if (vendorId)   updateData.assignedVendorId = Number(vendorId);
+    if (department) updateData.assignedDepartment = department;
+
     const [updated] = await db
       .update(conversationsTable)
-      .set({ assignedStaffId: staffId })
+      .set(updateData)
       .where(eq(conversationsTable.id, Number(req.params.id)))
       .returning();
-    
+
     // Get staff name for response
-    const [staff] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, staffId)).limit(1);
-    res.json({ ...updated, assignedStaffName: staff?.name || "Unknown" });
+    let assignedName = "Unknown";
+    if (staffId) {
+      const [staff] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, Number(staffId))).limit(1);
+      assignedName = staff?.name || "Unknown";
+    }
+    res.json({ ...updated, assignedStaffName: assignedName });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to assign conversation" });
   }
+});
+
+// PATCH /admin/conversations/:id/category — set category
+router.patch("/conversations/:id/category", async (req: AuthenticatedRequest, res) => {
+  try {
+    const { category } = req.body;
+    const VALID = ["TOUR", "HOTEL", "TAXI", "B2B", "B2C", "GENERAL"];
+    if (!VALID.includes(category)) return res.status(400).json({ error: "Invalid category" });
+    const [updated] = await db.update(conversationsTable)
+      .set({ category })
+      .where(eq(conversationsTable.id, Number(req.params.id)))
+      .returning();
+    res.json(updated);
+  } catch { res.status(500).json({ error: "Failed to update category" }); }
+});
+
+// PATCH /admin/conversations/:id/priority — set priority
+router.patch("/conversations/:id/priority", async (req: AuthenticatedRequest, res) => {
+  try {
+    const { priority } = req.body;
+    const VALID = ["LOW", "NORMAL", "HIGH", "URGENT"];
+    if (!VALID.includes(priority)) return res.status(400).json({ error: "Invalid priority" });
+    const [updated] = await db.update(conversationsTable)
+      .set({ priority })
+      .where(eq(conversationsTable.id, Number(req.params.id)))
+      .returning();
+    res.json(updated);
+  } catch { res.status(500).json({ error: "Failed to update priority" }); }
+});
+
+// POST /admin/conversations/:id/notes — add internal staff note
+router.post("/conversations/:id/notes", async (req: AuthenticatedRequest, res) => {
+  try {
+    const { content } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: "Note content required" });
+    const [note] = await db.insert(chatNotesTable).values({
+      conversationId: Number(req.params.id),
+      authorId: req.user!.id,
+      authorName: req.user!.email,
+      content: content.trim(),
+    }).returning();
+    res.status(201).json(note);
+  } catch { res.status(500).json({ error: "Failed to add note" }); }
+});
+
+// GET /admin/conversations/:id/notes — fetch internal notes
+router.get("/conversations/:id/notes", async (req: AuthenticatedRequest, res) => {
+  try {
+    const notes = await db.select().from(chatNotesTable)
+      .where(eq(chatNotesTable.conversationId, Number(req.params.id)))
+      .orderBy(asc(chatNotesTable.createdAt));
+    res.json(notes);
+  } catch { res.status(500).json({ error: "Failed to fetch notes" }); }
+});
+
+// POST /admin/conversations/:id/ban — ban a guest session/phone/email
+router.post("/conversations/:id/ban", async (req: AuthenticatedRequest, res) => {
+  const perms: string[] = JSON.parse(req.user?.adminPermissions || '["ALL"]');
+  const isSupervisor = req.user?.role === "SUPERADMIN" || perms.includes("ALL");
+  if (!isSupervisor) return res.status(403).json({ error: "Only supervisors can ban guests." });
+  try {
+    const { type, value, reason } = req.body; // type: SESSION | PHONE | EMAIL
+    if (!type || !value) return res.status(400).json({ error: "type and value are required" });
+    const [entry] = await db.insert(chatBlocklistTable).values({
+      type, value, reason: reason || "Banned by admin",
+      blockedBy: req.user!.id,
+    }).returning();
+    // Also update conversation status to SPAM
+    await db.update(conversationsTable)
+      .set({ status: "SPAM", isBanned: true })
+      .where(eq(conversationsTable.id, Number(req.params.id)));
+    res.status(201).json(entry);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to ban guest: " + e.message });
+  }
+});
+
+// GET /admin/blocklist — list all banned sessions/phones/emails
+router.get("/blocklist", async (req: AuthenticatedRequest, res) => {
+  try {
+    const list = await db.select().from(chatBlocklistTable).orderBy(desc(chatBlocklistTable.createdAt));
+    res.json(list);
+  } catch { res.status(500).json({ error: "Failed to fetch blocklist" }); }
+});
+
+// DELETE /admin/blocklist/:id — unban
+router.delete("/blocklist/:id", async (req: AuthenticatedRequest, res) => {
+  const perms: string[] = JSON.parse(req.user?.adminPermissions || '["ALL"]');
+  const isSupervisor = req.user?.role === "SUPERADMIN" || perms.includes("ALL");
+  if (!isSupervisor) return res.status(403).json({ error: "Only supervisors can unban." });
+  try {
+    await db.delete(chatBlocklistTable).where(eq(chatBlocklistTable.id, Number(req.params.id)));
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: "Failed to unban" }); }
+});
+
+// ─────────────────────────────────────────────────────────────
+// CHAT AGENT MANAGEMENT
+// Only SUPERADMIN can create/manage chat agents
+// ─────────────────────────────────────────────────────────────
+
+// GET /admin/chat-agents — list all chat agents
+router.get("/chat-agents", async (req: AuthenticatedRequest, res) => {
+  try {
+    const agents = await db
+      .select({
+        id: chatAgentsTable.id,
+        userId: chatAgentsTable.userId,
+        department: chatAgentsTable.department,
+        isSupervisor: chatAgentsTable.isSupervisor,
+        isAvailable: chatAgentsTable.isAvailable,
+        maxConcurrentChats: chatAgentsTable.maxConcurrentChats,
+        displayName: chatAgentsTable.displayName,
+        createdAt: chatAgentsTable.createdAt,
+        name: usersTable.name,
+        email: usersTable.email,
+        role: usersTable.role,
+      })
+      .from(chatAgentsTable)
+      .innerJoin(usersTable, eq(chatAgentsTable.userId, usersTable.id))
+      .orderBy(desc(chatAgentsTable.createdAt));
+    res.json(agents);
+  } catch { res.status(500).json({ error: "Failed to fetch chat agents" }); }
+});
+
+// POST /admin/chat-agents — assign a staff user as chat agent with department
+router.post("/chat-agents", async (req: AuthenticatedRequest, res) => {
+  if (req.user?.role !== "SUPERADMIN") {
+    return res.status(403).json({ error: "Only SUPERADMIN can manage chat agents." });
+  }
+  try {
+    const { userId, department, isSupervisor, maxConcurrentChats, displayName } = req.body;
+    if (!userId || !department) return res.status(400).json({ error: "userId and department are required" });
+    // Verify user exists
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, Number(userId))).limit(1);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    // Ensure they have SUPPORT permission
+    const perms: string[] = JSON.parse(user.adminPermissions || '[]');
+    if (!perms.includes("SUPPORT") && !perms.includes("ALL")) {
+      // Auto-add SUPPORT permission
+      perms.push("SUPPORT");
+      await db.update(usersTable)
+        .set({ adminPermissions: JSON.stringify(perms) })
+        .where(eq(usersTable.id, Number(userId)));
+    }
+    const [agent] = await db.insert(chatAgentsTable).values({
+      userId: Number(userId),
+      department,
+      isSupervisor: Boolean(isSupervisor),
+      maxConcurrentChats: maxConcurrentChats || 5,
+      displayName: displayName || user.name,
+    }).returning();
+    res.status(201).json(agent);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to create chat agent: " + e.message });
+  }
+});
+
+// PATCH /admin/chat-agents/:id — update agent config
+router.patch("/chat-agents/:id", async (req: AuthenticatedRequest, res) => {
+  if (req.user?.role !== "SUPERADMIN") {
+    return res.status(403).json({ error: "Only SUPERADMIN can manage chat agents." });
+  }
+  try {
+    const { department, isSupervisor, isAvailable, maxConcurrentChats, displayName } = req.body;
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (department !== undefined)         updateData.department         = department;
+    if (isSupervisor !== undefined)       updateData.isSupervisor       = Boolean(isSupervisor);
+    if (isAvailable !== undefined)        updateData.isAvailable        = Boolean(isAvailable);
+    if (maxConcurrentChats !== undefined) updateData.maxConcurrentChats = Number(maxConcurrentChats);
+    if (displayName !== undefined)        updateData.displayName        = displayName;
+    const [updated] = await db.update(chatAgentsTable)
+      .set(updateData)
+      .where(eq(chatAgentsTable.id, Number(req.params.id)))
+      .returning();
+    res.json(updated);
+  } catch { res.status(500).json({ error: "Failed to update agent" }); }
+});
+
+// DELETE /admin/chat-agents/:id — remove agent assignment
+router.delete("/chat-agents/:id", async (req: AuthenticatedRequest, res) => {
+  if (req.user?.role !== "SUPERADMIN") {
+    return res.status(403).json({ error: "Only SUPERADMIN can manage chat agents." });
+  }
+  try {
+    await db.delete(chatAgentsTable).where(eq(chatAgentsTable.id, Number(req.params.id)));
+    res.json({ success: true });
+  } catch { res.status(500).json({ error: "Failed to delete agent" }); }
 });
 
 // ─────────────────────────────────────────────────────────────

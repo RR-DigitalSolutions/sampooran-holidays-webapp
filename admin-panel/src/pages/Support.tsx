@@ -1,20 +1,88 @@
 /**
- * Live Support Page — uses global ChatContext for Socket.io connection.
- * Staff can see all conversations and reply in real-time like WhatsApp.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Sampooran Holidays CRM — Advanced Live Support Dashboard v2.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * RBAC Architecture:
+ *  - SUPERADMIN / ADMIN(ALL) = Supervisor: sees ALL conversations, can assign
+ *  - ADMIN(SUPPORT) / AGENT(SUPPORT) = Agent: sees only ASSIGNED conversations
+ *
+ * Features:
+ *  - Department tabs filter (All | Tours | Hotels | Taxi | B2B | B2C)
+ *  - Priority badges (🔴 Urgent | 🟠 High | 🟡 Normal | 🟢 Low)
+ *  - Category badges per conversation
+ *  - Bot requirement summary panel (what AI collected)
+ *  - Quick Assign dropdown (to department agent)
+ *  - Spam/Ban controls (supervisor only)
+ *  - Internal notes (staff-only, not visible to guest)
+ *  - Status filters (Open | Assigned | Bot | Closed | Spam)
+ *  - Real-time chat with agent-role awareness
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 import AdminLayout from "../components/AdminLayout";
 import {
-  MessageSquare, Send, Search,
-  CheckCheck, Check, XCircle, Phone, Mail, RefreshCw
+  MessageSquare, Send, Search, CheckCheck, Check,
+  XCircle, Phone, Mail, RefreshCw, User2, Bot, Headset,
+  Tag, Shield, AlertTriangle, ChevronDown, ClipboardList,
+  StickyNote, PlusCircle, ChevronRight, Filter,
 } from "lucide-react";
 import { useAuth, API_BASE } from "../context/AuthContext";
 import { useChatContext, ChatMsg, Conversation } from "../context/ChatContext";
 import { cn } from "@/lib/utils";
 
-/* ─── Helpers ────────────────────────────────────────────────── */
+/* ── Constants ─────────────────────────────────────────────────────────────── */
 const API = `${API_BASE}/api`;
 
+const DEPARTMENTS = [
+  { key: "ALL",     label: "All",        emoji: "💬" },
+  { key: "TOUR",    label: "Tours",      emoji: "🏔️" },
+  { key: "HOTEL",   label: "Hotels",     emoji: "🏨" },
+  { key: "TAXI",    label: "Transport",  emoji: "🚗" },
+  { key: "B2B",     label: "B2B",        emoji: "🤝" },
+  { key: "B2C",     label: "B2C",        emoji: "👤" },
+  { key: "GENERAL", label: "General",    emoji: "💡" },
+] as const;
+
+const PRIORITIES = [
+  { key: "URGENT", label: "Urgent", color: "text-red-600 bg-red-50 border-red-200" },
+  { key: "HIGH",   label: "High",   color: "text-orange-600 bg-orange-50 border-orange-200" },
+  { key: "NORMAL", label: "Normal", color: "text-sky-600 bg-sky-50 border-sky-200" },
+  { key: "LOW",    label: "Low",    color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+];
+
+const STATUS_FILTERS = ["ALL", "BOT", "OPEN", "ASSIGNED", "CLOSED", "SPAM"] as const;
+type StatusFilter = typeof STATUS_FILTERS[number];
+
+const PRIORITY_EMOJI: Record<string, string> = { URGENT: "🔴", HIGH: "🟠", NORMAL: "🟡", LOW: "🟢" };
+
+const CATEGORY_COLORS: Record<string, string> = {
+  TOUR:    "text-violet-700 bg-violet-50 border-violet-200",
+  HOTEL:   "text-sky-700 bg-sky-50 border-sky-200",
+  TAXI:    "text-amber-700 bg-amber-50 border-amber-200",
+  B2B:     "text-emerald-700 bg-emerald-50 border-emerald-200",
+  B2C:     "text-pink-700 bg-pink-50 border-pink-200",
+  GENERAL: "text-slate-600 bg-slate-50 border-slate-200",
+};
+
+/* ── Extended Conversation type ──────────────────────────────────────────── */
+interface ExtConversation extends Conversation {
+  category?: string;
+  priority?: string;
+  assignedDepartment?: string;
+  assignedStaffId?: number | null;
+  assignedVendorId?: number | null;
+  botEscalated?: boolean;
+  requirementData?: Record<string, string> | null;
+  spamScore?: number;
+  isBanned?: boolean;
+  tags?: string[];
+}
+
+interface Note { id: number; content: string; authorName: string; createdAt: string; }
+interface Agent { id: number; userId: number; name: string; email: string; department: string; isSupervisor: boolean; isAvailable: boolean; displayName?: string; }
+
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
 function getToken(): string {
   try { return JSON.parse(localStorage.getItem("sh_admin_token") || "{}").token || ""; }
   catch { return ""; }
@@ -24,10 +92,9 @@ function authHeaders(): Record<string, string> {
   return { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` };
 }
 
-function formatTime(iso?: string) {
+function formatTime(iso?: string | null) {
   if (!iso) return "";
-  const d = new Date(iso);
-  const now = new Date();
+  const d = new Date(iso), now = new Date();
   if (d.toDateString() === now.toDateString())
     return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -35,42 +102,61 @@ function formatTime(iso?: string) {
 
 function msgText(m: ChatMsg) { return m.content || m.text || ""; }
 
-/* ─── Component ──────────────────────────────────────────────── */
+/* ── Component ───────────────────────────────────────────────────────────── */
 export default function SupportPage() {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const { conversations, setConversations, socket, isConnected, fetchConversations } = useChatContext();
 
-  const [selected, setSelected] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [input, setInput] = useState("");
-  const [guestTyping, setGuestTyping] = useState(false);
-  const [loadingMsgs, setLoadingMsgs] = useState(false);
-  const [search, setSearch] = useState("");
+  const [selected, setSelected]           = useState<ExtConversation | null>(null);
+  const [messages, setMessages]           = useState<ChatMsg[]>([]);
+  const [input, setInput]                 = useState("");
+  const [guestTyping, setGuestTyping]     = useState(false);
+  const [loadingMsgs, setLoadingMsgs]     = useState(false);
+  const [search, setSearch]               = useState("");
+  const [deptFilter, setDeptFilter]       = useState<string>("ALL");
+  const [statusFilter, setStatusFilter]   = useState<StatusFilter>("ALL");
+  const [showRequirements, setShowReq]    = useState(false);
+  const [agents, setAgents]               = useState<Agent[]>([]);
+  const [notes, setNotes]                 = useState<Note[]>([]);
+  const [newNote, setNewNote]             = useState("");
+  const [addingNote, setAddingNote]       = useState(false);
+  const [assignDropdown, setAssignDrop]   = useState(false);
+  const [priorityDrop, setPriorityDrop]   = useState(false);
+  const [categoryDrop, setCategoryDrop]   = useState(false);
+  const [banConfirm, setBanConfirm]       = useState(false);
+  const [sidebarPanel, setSidebarPanel]   = useState<"chat" | "notes" | "requirements">("chat");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selectedRef = useRef<Conversation | null>(null);
-  selectedRef.current = selected;
+  const selectedRef    = useRef<ExtConversation | null>(null);
+  selectedRef.current  = selected;
 
-  // Auto scroll
+  // Detect role: supervisor (sees all) vs agent (sees only assigned)
+  const perms: string[] = JSON.parse((user as any)?.permissions ? JSON.stringify((user as any)?.permissions) : "[]");
+  const isSupervisor = isSuperAdmin || perms.includes("ALL");
+
+  /* ── Auto scroll ────────────────────────────────────────────────────── */
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, guestTyping]);
+
+  /* ── Load agents for assignment dropdown ────────────────────────────── */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, guestTyping]);
+    fetch(`${API}/admin/chat-agents`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setAgents(data); })
+      .catch(() => {});
+  }, []);
 
-  // Listen to incoming messages from the global socket and route to this conversation
+  /* ── Socket events ──────────────────────────────────────────────────── */
   useEffect(() => {
     if (!socket) return;
 
     const onMessage = (msg: ChatMsg) => {
       const cur = selectedRef.current;
       if (!cur || msg.conversationId !== cur.id) return;
-
       setMessages(prev => {
-        // Remove matching optimistic message
         const filtered = prev.filter(m => !(m.local && msgText(m) === msgText(msg)));
         return [...filtered, msg];
       });
-      // Clear unread for open conversation
       setConversations(prev => prev.map(c => c.id === cur.id ? { ...c, unreadCount: 0 } : c));
     };
 
@@ -83,16 +169,34 @@ export default function SupportPage() {
       }
     };
 
-    socket.on("chat:message", onMessage);
-    socket.on("chat:typing", onTyping);
+    const onNewConv = (conv: ExtConversation) => {
+      setConversations(prev => {
+        const exists = prev.find(c => c.id === conv.id);
+        if (exists) return prev.map(c => c.id === conv.id ? { ...c, ...conv } : c);
+        return [conv as Conversation, ...prev];
+      });
+    };
+
+    const onConvUpdated = (conv: ExtConversation) => {
+      setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, ...conv } : c));
+      if (selectedRef.current?.id === conv.id) setSelected(s => s ? { ...s, ...conv } : s);
+    };
+
+    socket.on("chat:message",              onMessage);
+    socket.on("chat:typing",               onTyping);
+    socket.on("chat:new_conversation",     onNewConv);
+    socket.on("chat:conversation_updated", onConvUpdated);
+
     return () => {
-      socket.off("chat:message", onMessage);
-      socket.off("chat:typing", onTyping);
+      socket.off("chat:message",              onMessage);
+      socket.off("chat:typing",               onTyping);
+      socket.off("chat:new_conversation",     onNewConv);
+      socket.off("chat:conversation_updated", onConvUpdated);
     };
   }, [socket, setConversations]);
 
-  // Load message history when a conversation is selected
-  const loadMessages = useCallback(async (conv: Conversation) => {
+  /* ── Load messages ──────────────────────────────────────────────────── */
+  const loadMessages = useCallback(async (conv: ExtConversation) => {
     setLoadingMsgs(true);
     setMessages([]);
     try {
@@ -101,11 +205,27 @@ export default function SupportPage() {
         setMessages(await res.json());
         setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unreadCount: 0 } : c));
       }
-    } catch (_) {}
+    } catch {}
     setLoadingMsgs(false);
   }, [setConversations]);
 
-  // Emit admin typing to guest
+  /* ── Load notes ─────────────────────────────────────────────────────── */
+  const loadNotes = useCallback(async (convId: number) => {
+    try {
+      const res = await fetch(`${API}/admin/conversations/${convId}/notes`, { headers: authHeaders() });
+      if (res.ok) setNotes(await res.json());
+    } catch {}
+  }, []);
+
+  const handleSelectConv = (conv: ExtConversation) => {
+    setSelected(conv);
+    loadMessages(conv);
+    loadNotes(conv.id);
+    setSidebarPanel("chat");
+    setAssignDrop(false);
+  };
+
+  /* ── Typing emitter ─────────────────────────────────────────────────── */
   const emitAdminTyping = useCallback((isTyping: boolean) => {
     if (!selected || !socket) return;
     socket.emit("admin:typing", {
@@ -116,64 +236,134 @@ export default function SupportPage() {
     });
   }, [selected, socket]);
 
+  /* ── Send message ───────────────────────────────────────────────────── */
   const handleSend = () => {
     const text = input.trim();
     if (!text || !selected || !socket) return;
-
-    // Optimistic message
     const optimistic: ChatMsg = {
-      senderRole: "ADMIN",
-      content: text,
-      text,
-      createdAt: new Date().toISOString(),
-      conversationId: selected.id,
-      local: true,
+      senderRole: "ADMIN", content: text, text,
+      createdAt: new Date().toISOString(), conversationId: selected.id, local: true,
     };
     setMessages(prev => [...prev, optimistic]);
     setInput("");
     emitAdminTyping(false);
-
     socket.emit("chat:message", {
-      userId: selected.userId || 0,
-      sessionId: selected.guestSessionId,
-      senderId: user?.id,
-      role: "ADMIN",
-      text,
-      conversationId: selected.id,
+      userId: selected.userId || 0, sessionId: selected.guestSessionId,
+      senderId: user?.id, role: "ADMIN", text, conversationId: selected.id,
     });
-
-    // Update sidebar last message
     setConversations(prev => prev.map(c =>
       c.id === selected.id ? { ...c, lastMessage: text, lastMessageRole: "ADMIN", lastMessageAt: new Date().toISOString() } : c
     ));
   };
 
+  /* ── Close conversation ─────────────────────────────────────────────── */
   const handleClose = async (id: number) => {
     await fetch(`${API}/admin/conversations/${id}/status`, {
-      method: "PATCH", headers: authHeaders(),
-      body: JSON.stringify({ status: "CLOSED" }),
+      method: "PATCH", headers: authHeaders(), body: JSON.stringify({ status: "CLOSED" }),
     });
     setConversations(prev => prev.map(c => c.id === id ? { ...c, status: "CLOSED" } : c));
-    if (selected?.id === id) setSelected(prev => prev ? { ...prev, status: "CLOSED" } : null);
+    if (selected?.id === id) setSelected(s => s ? { ...s, status: "CLOSED" } : null);
   };
 
-  const filtered = conversations.filter(c =>
-    (c.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
-    (c.guestEmail || "").toLowerCase().includes(search.toLowerCase()) ||
-    (c.guestPhone || "").includes(search)
-  );
+  /* ── Assign to agent ────────────────────────────────────────────────── */
+  const handleAssign = async (agent: Agent) => {
+    if (!selected || !isSupervisor) return;
+    try {
+      const res = await fetch(`${API}/admin/conversations/${selected.id}/assign`, {
+        method: "PATCH", headers: authHeaders(),
+        body: JSON.stringify({ staffId: agent.userId, department: agent.department }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSelected(s => s ? { ...s, ...updated, assignedStaffName: agent.displayName || agent.name } : s);
+        setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, ...updated } : c));
+        // Also emit via socket for real-time
+        socket?.emit("chat:assign", { conversationId: selected.id, staffId: agent.userId, department: agent.department });
+      }
+    } catch {}
+    setAssignDrop(false);
+  };
+
+  /* ── Set priority ───────────────────────────────────────────────────── */
+  const handlePriority = async (priority: string) => {
+    if (!selected) return;
+    await fetch(`${API}/admin/conversations/${selected.id}/priority`, {
+      method: "PATCH", headers: authHeaders(), body: JSON.stringify({ priority }),
+    });
+    setSelected(s => s ? { ...s, priority } : s);
+    setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, priority: priority as any } : c));
+    setPriorityDrop(false);
+  };
+
+  /* ── Set category ───────────────────────────────────────────────────── */
+  const handleCategory = async (category: string) => {
+    if (!selected) return;
+    await fetch(`${API}/admin/conversations/${selected.id}/category`, {
+      method: "PATCH", headers: authHeaders(), body: JSON.stringify({ category }),
+    });
+    setSelected(s => s ? { ...s, category } : s);
+    setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, category: category as any } : c));
+    setCategoryDrop(false);
+  };
+
+  /* ── Ban guest ──────────────────────────────────────────────────────── */
+  const handleBan = async () => {
+    if (!selected || !isSupervisor) return;
+    await fetch(`${API}/admin/conversations/${selected.id}/ban`, {
+      method: "POST", headers: authHeaders(),
+      body: JSON.stringify({ type: "SESSION", value: selected.guestSessionId, reason: "Banned via Support Dashboard" }),
+    });
+    setSelected(s => s ? { ...s, status: "SPAM", isBanned: true } : s);
+    setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, status: "SPAM" } : c));
+    setBanConfirm(false);
+  };
+
+  /* ── Add note ───────────────────────────────────────────────────────── */
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !selected || addingNote) return;
+    setAddingNote(true);
+    try {
+      const res = await fetch(`${API}/admin/conversations/${selected.id}/notes`, {
+        method: "POST", headers: authHeaders(), body: JSON.stringify({ content: newNote }),
+      });
+      if (res.ok) {
+        const note = await res.json();
+        setNotes(prev => [...prev, note]);
+        setNewNote("");
+      }
+    } catch {}
+    setAddingNote(false);
+  };
+
+  /* ── Filtered conversations ─────────────────────────────────────────── */
+  const extConvs = conversations as ExtConversation[];
+
+  const filtered = extConvs.filter(c => {
+    const matchSearch = (
+      (c.guestName || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.guestEmail || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.guestPhone || "").includes(search)
+    );
+    const matchDept = deptFilter === "ALL" || c.category === deptFilter || c.assignedDepartment === deptFilter;
+    const matchStatus = statusFilter === "ALL" || c.status === statusFilter;
+    return matchSearch && matchDept && matchStatus;
+  });
+
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
+  /* ── Render ──────────────────────────────────────────────────────────── */
   return (
-    <AdminLayout title="Live Support" subtitle="Real-time chat with travelers — WhatsApp style">
+    <AdminLayout title="Live Support CRM" subtitle="AI-powered chat management with department routing">
       <div className="flex h-[calc(100vh-148px)] min-h-[520px] bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xl">
 
-        {/* ── Sidebar ─────────────────────────────────────────── */}
-        <div className="w-[280px] xl:w-[310px] border-r border-gray-100 flex flex-col shrink-0 bg-gray-50/50">
+        {/* ════════════════════════════════════════════════════════════
+            SIDEBAR
+            ════════════════════════════════════════════════════════════ */}
+        <div className="w-[300px] xl:w-[330px] border-r border-gray-100 flex flex-col shrink-0 bg-gray-50/50">
 
           {/* Sidebar Header */}
-          <div className="p-4 border-b border-gray-100 bg-white">
-            <div className="flex items-center justify-between mb-3">
+          <div className="p-4 border-b border-gray-100 bg-white space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="font-black text-sm text-gray-900">Conversations</h2>
                 {totalUnread > 0 && (
@@ -193,6 +383,8 @@ export default function SupportPage() {
                 </button>
               </div>
             </div>
+
+            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
@@ -202,6 +394,40 @@ export default function SupportPage() {
                 className="w-full pl-8 pr-3 py-2 rounded-xl text-xs border border-gray-200 focus:outline-none focus:border-primary bg-white"
               />
             </div>
+
+            {/* Department tabs */}
+            <div className="flex gap-1 flex-wrap">
+              {DEPARTMENTS.map(dept => (
+                <button
+                  key={dept.key}
+                  onClick={() => setDeptFilter(dept.key)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all",
+                    deptFilter === dept.key
+                      ? "bg-[#1B3A6B] text-white border-[#1B3A6B]"
+                      : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  {dept.emoji} {dept.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Status filter pills */}
+            <div className="flex gap-1 flex-wrap">
+              {STATUS_FILTERS.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-all",
+                    statusFilter === s ? "bg-[#1B3A6B] text-white border-transparent" : "text-gray-400 border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Conversation list */}
@@ -209,14 +435,16 @@ export default function SupportPage() {
             {filtered.length === 0 && (
               <div className="p-8 text-center text-gray-400">
                 <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                <p className="text-xs font-bold">No conversations yet</p>
-                <p className="text-[10px] mt-1 opacity-60">Waiting for visitors to start a chat…</p>
+                <p className="text-xs font-bold">No conversations</p>
+                <p className="text-[10px] mt-1 opacity-60">
+                  {isSupervisor ? "Waiting for escalated chats…" : "No conversations assigned to you yet."}
+                </p>
               </div>
             )}
             {filtered.map(conv => (
               <button
                 key={conv.id}
-                onClick={() => { setSelected(conv); loadMessages(conv); }}
+                onClick={() => handleSelectConv(conv)}
                 className={cn(
                   "w-full text-left px-4 py-3.5 flex items-start gap-3 transition-all hover:bg-gray-50 border-b border-gray-50",
                   selected?.id === conv.id && "bg-primary/5 border-r-[3px] border-r-primary"
@@ -225,10 +453,13 @@ export default function SupportPage() {
                 {/* Avatar */}
                 <div className="relative shrink-0 mt-0.5">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center font-black text-sm">
-                    {(conv.guestName || "G")[0].toUpperCase()}
+                    {conv.botEscalated ? (conv.guestName || "G")[0].toUpperCase() : <Bot className="w-4 h-4" />}
                   </div>
                   {conv.status === "OPEN" && (
                     <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+                  )}
+                  {conv.status === "SPAM" && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white" />
                   )}
                 </div>
 
@@ -239,8 +470,30 @@ export default function SupportPage() {
                     </p>
                     <span className="text-[9px] text-gray-400 shrink-0">{formatTime(conv.lastMessageAt)}</span>
                   </div>
+                  <div className="flex items-center gap-1 flex-wrap mb-0.5">
+                    {/* Priority */}
+                    {conv.priority && conv.priority !== "NORMAL" && (
+                      <span className="text-[9px]">{PRIORITY_EMOJI[conv.priority]}</span>
+                    )}
+                    {/* Category */}
+                    {conv.category && conv.category !== "GENERAL" && (
+                      <span className={cn("text-[8px] font-bold px-1.5 py-0.5 rounded-full border", CATEGORY_COLORS[conv.category])}>
+                        {conv.category}
+                      </span>
+                    )}
+                    {/* Status */}
+                    <span className={cn(
+                      "text-[8px] font-bold px-1.5 py-0.5 rounded-full border",
+                      conv.status === "OPEN" ? "text-emerald-700 bg-emerald-50 border-emerald-200" :
+                      conv.status === "BOT" ? "text-amber-700 bg-amber-50 border-amber-200" :
+                      conv.status === "ASSIGNED" ? "text-sky-700 bg-sky-50 border-sky-200" :
+                      conv.status === "SPAM" ? "text-red-700 bg-red-50 border-red-200" :
+                      "text-gray-500 bg-gray-50 border-gray-200"
+                    )}>
+                      {conv.status === "BOT" ? "🤖 Bot" : conv.status}
+                    </span>
+                  </div>
                   <p className={cn("text-[11px] truncate", (conv.unreadCount || 0) > 0 ? "text-gray-800 font-semibold" : "text-gray-400")}>
-                    {conv.lastMessageRole === "ADMIN" && <span className="text-primary/60">You: </span>}
                     {conv.lastMessage || "Conversation started"}
                   </p>
                 </div>
@@ -255,7 +508,9 @@ export default function SupportPage() {
           </div>
         </div>
 
-        {/* ── Chat Area ──────────────────────────────────────────── */}
+        {/* ════════════════════════════════════════════════════════════
+            MAIN CHAT AREA
+            ════════════════════════════════════════════════════════════ */}
         {selected ? (
           <div className="flex-1 flex flex-col min-w-0">
 
@@ -268,10 +523,20 @@ export default function SupportPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-sm text-gray-900 truncate">{selected.guestName || `Chat #${selected.id}`}</h3>
-                    <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-full shrink-0",
-                      selected.status === "OPEN" ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500")}>
-                      {selected.status}
-                    </span>
+                    {/* Priority badge */}
+                    {selected.priority && (
+                      <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-full border shrink-0",
+                        PRIORITIES.find(p => p.key === selected.priority)?.color || "text-gray-500 bg-gray-50 border-gray-200")}>
+                        {PRIORITY_EMOJI[selected.priority]} {selected.priority}
+                      </span>
+                    )}
+                    {/* Category badge */}
+                    {selected.category && (
+                      <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-full border shrink-0",
+                        CATEGORY_COLORS[selected.category])}>
+                        {selected.category}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {selected.guestPhone && (
@@ -284,102 +549,312 @@ export default function SupportPage() {
                         <Mail className="w-3 h-3" /> {selected.guestEmail}
                       </a>
                     )}
+                    {selected.spamScore != null && selected.spamScore > 40 && (
+                      <span className="flex items-center gap-1 text-[10px] text-amber-600">
+                        <AlertTriangle className="w-3 h-3" /> Spam score: {selected.spamScore}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {selected.status === "OPEN" && (
-                <button
-                  onClick={() => handleClose(selected.id)}
-                  className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-red-600 bg-red-50 px-3 py-2 rounded-xl hover:bg-red-100 transition-colors border border-red-100"
-                >
-                  <XCircle className="w-3.5 h-3.5" /> Close
-                </button>
-              )}
-            </div>
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2.5 bg-[#eef1f8]">
-              {loadingMsgs && (
-                <div className="flex justify-center py-10">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                {/* Panel toggle */}
+                <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                  {(["chat", "notes", "requirements"] as const).map(panel => (
+                    <button
+                      key={panel}
+                      onClick={() => setSidebarPanel(panel)}
+                      className={cn("px-3 py-1.5 text-[10px] font-bold capitalize transition-all",
+                        sidebarPanel === panel ? "bg-[#1B3A6B] text-white" : "text-gray-500 hover:bg-gray-50")}
+                    >
+                      {panel === "chat" ? "💬 Chat" : panel === "notes" ? "📝 Notes" : "📋 Brief"}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {!loadingMsgs && messages.length === 0 && (
-                <div className="text-center py-12 text-gray-400">
-                  <p className="text-xs">No messages yet. Be the first to say hello!</p>
-                </div>
-              )}
 
-              {messages.map((msg, i) => {
-                const isMe = msg.senderRole === "ADMIN";
-                const text = msgText(msg);
-                if (!text) return null;
-                return (
-                  <div key={i} className={cn("flex", isMe ? "justify-end" : "justify-start")}>
-                    <div className={cn(
-                      "max-w-[70%] px-4 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
-                      isMe ? "bg-[#1B3A6B] text-white rounded-tr-sm" : "bg-white text-gray-800 rounded-tl-sm border border-gray-100"
-                    )}>
-                      <p>{text}</p>
-                      <div className={cn("flex items-center gap-1 mt-1 justify-end", isMe ? "text-white/60" : "text-gray-400")}>
-                        <span className="text-[9px]">{formatTime(msg.createdAt)}</span>
-                        {isMe && (msg.local
-                          ? <Check className="w-3 h-3 opacity-50" />
-                          : <CheckCheck className="w-3 h-3 opacity-70" />
+                {/* Priority dropdown (supervisor only) */}
+                {isSupervisor && selected.status !== "CLOSED" && (
+                  <div className="relative">
+                    <button
+                      onClick={() => { setPriorityDrop(d => !d); setCategoryDrop(false); setAssignDrop(false); }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition"
+                    >
+                      {PRIORITY_EMOJI[selected.priority || "NORMAL"]} Priority <ChevronDown className="w-3 h-3" />
+                    </button>
+                    {priorityDrop && (
+                      <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[130px]">
+                        {PRIORITIES.map(p => (
+                          <button key={p.key} onClick={() => handlePriority(p.key)}
+                            className={cn("w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2",
+                              selected.priority === p.key && "bg-primary/5 font-bold text-primary")}>
+                            {PRIORITY_EMOJI[p.key]} {p.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Category dropdown (supervisor only) */}
+                {isSupervisor && selected.status !== "CLOSED" && (
+                  <div className="relative">
+                    <button
+                      onClick={() => { setCategoryDrop(d => !d); setPriorityDrop(false); setAssignDrop(false); }}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition"
+                    >
+                      <Tag className="w-3 h-3" /> Category <ChevronDown className="w-3 h-3" />
+                    </button>
+                    {categoryDrop && (
+                      <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[140px]">
+                        {["TOUR", "HOTEL", "TAXI", "B2B", "B2C", "GENERAL"].map(cat => (
+                          <button key={cat} onClick={() => handleCategory(cat)}
+                            className={cn("w-full text-left px-3 py-2 text-xs hover:bg-gray-50",
+                              selected.category === cat && "bg-primary/5 font-bold text-primary")}>
+                            {DEPARTMENTS.find(d => d.key === cat)?.emoji} {cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Assign dropdown (supervisor only) */}
+                {isSupervisor && selected.status !== "CLOSED" && selected.botEscalated && (
+                  <div className="relative">
+                    <button
+                      onClick={() => { setAssignDrop(d => !d); setPriorityDrop(false); setCategoryDrop(false); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1B3A6B] text-white text-[10px] font-bold hover:bg-[#1B3A6B]/90 transition-all"
+                    >
+                      <User2 className="w-3 h-3" /> Assign <ChevronDown className="w-3 h-3" />
+                    </button>
+                    {assignDropdown && (
+                      <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[200px] max-h-[220px] overflow-y-auto">
+                        {agents.length === 0 ? (
+                          <p className="px-4 py-3 text-xs text-gray-400 text-center">No chat agents configured</p>
+                        ) : (
+                          agents.map(agent => (
+                            <button key={agent.id} onClick={() => handleAssign(agent)}
+                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0">
+                                {(agent.displayName || agent.name || "?")[0].toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-800 truncate">{agent.displayName || agent.name}</p>
+                                <p className="text-[9px] text-gray-400">{agent.department} {agent.isSupervisor ? "· Supervisor" : ""}</p>
+                              </div>
+                              {agent.isAvailable && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                            </button>
+                          ))
                         )}
                       </div>
-                    </div>
+                    )}
                   </div>
-                );
-              })}
+                )}
 
-              {/* Typing indicator */}
-              {guestTyping && (
-                <div className="flex items-start">
-                  <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 border border-gray-100">
-                    {[0, 1, 2].map(j => (
-                      <span key={j} className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: `${j * 0.15}s` }} />
-                    ))}
+                {/* Close button */}
+                {selected.status === "OPEN" || selected.status === "ASSIGNED" ? (
+                  <button
+                    onClick={() => handleClose(selected.id)}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors border border-red-100"
+                  >
+                    <XCircle className="w-3.5 h-3.5" /> Close
+                  </button>
+                ) : null}
+
+                {/* Ban button (supervisor only) */}
+                {isSupervisor && selected.status !== "SPAM" && selected.status !== "CLOSED" && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setBanConfirm(b => !b)}
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-red-600 px-3 py-1.5 rounded-xl hover:bg-red-50 transition border border-transparent hover:border-red-100"
+                      title="Ban guest session"
+                    >
+                      <Shield className="w-3.5 h-3.5" /> Ban
+                    </button>
+                    {banConfirm && (
+                      <div className="absolute right-0 top-8 z-20 bg-white border border-red-100 rounded-xl shadow-xl p-4 w-[200px]">
+                        <p className="text-xs font-bold text-red-700 mb-3">Ban this guest session?</p>
+                        <p className="text-[10px] text-gray-500 mb-3">They will be permanently blocked from chatting.</p>
+                        <div className="flex gap-2">
+                          <button onClick={handleBan} className="flex-1 bg-red-600 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-red-700 transition">
+                            Ban
+                          </button>
+                          <button onClick={() => setBanConfirm(false)} className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-1.5 rounded-lg hover:bg-gray-200 transition">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
+                )}
+              </div>
             </div>
 
-            {/* Input */}
-            {selected.status === "OPEN" ? (
-              <div className="px-4 py-3 bg-white border-t border-gray-100 flex items-center gap-3 shrink-0">
-                <input
-                  value={input}
-                  onChange={e => { setInput(e.target.value); emitAdminTyping(true); }}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder={`Reply to ${selected.guestName || "visitor"}…`}
-                  className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || !isConnected}
-                  className="w-10 h-10 rounded-full bg-[#1B3A6B] text-white flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+            {/* ── Panel: Chat ─────────────────────────────────────────── */}
+            {sidebarPanel === "chat" && (
+              <>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-2.5 bg-[#eef1f8]">
+                  {loadingMsgs && <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}
+                  {!loadingMsgs && messages.length === 0 && <div className="text-center py-12 text-gray-400"><p className="text-xs">No messages yet.</p></div>}
+
+                  {messages.map((msg, i) => {
+                    const isMe  = msg.senderRole === "ADMIN" || msg.senderRole === "AGENT";
+                    const isBot = msg.senderRole === "BOT" || msg.isBot;
+                    const text  = msgText(msg);
+                    if (!text) return null;
+                    return (
+                      <div key={i} className={cn("flex flex-col gap-0.5", isMe ? "items-end" : "items-start")}>
+                        {/* Role label */}
+                        {!isMe && (
+                          <div className="flex items-center gap-1 px-1">
+                            {isBot ? <><Bot className="w-3 h-3 text-amber-500" /><span className="text-[9px] text-amber-600 font-bold">AI BOT</span></> : <><User2 className="w-3 h-3 text-slate-500" /><span className="text-[9px] text-slate-500 font-bold">GUEST</span></>}
+                          </div>
+                        )}
+                        <div className={cn("max-w-[70%] px-4 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
+                          isMe ? "bg-[#1B3A6B] text-white rounded-tr-sm" :
+                          isBot ? "bg-amber-50 text-slate-700 rounded-tl-sm border border-amber-100" :
+                          "bg-white text-gray-800 rounded-tl-sm border border-gray-100")}>
+                          <p className="whitespace-pre-line">{text}</p>
+                          <div className={cn("flex items-center gap-1 mt-1 justify-end", isMe ? "text-white/60" : "text-gray-400")}>
+                            <span className="text-[9px]">{formatTime(msg.createdAt)}</span>
+                            {isMe && (msg.local ? <Check className="w-3 h-3 opacity-50" /> : <CheckCheck className="w-3 h-3 opacity-70" />)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {guestTyping && (
+                    <div className="flex items-start">
+                      <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-1.5 border border-gray-100">
+                        {[0, 1, 2].map(j => <span key={j} className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: `${j * 0.15}s` }} />)}
+                        <span className="text-[9px] text-gray-400 ml-1">Guest typing…</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                {(selected.status === "OPEN" || selected.status === "ASSIGNED") ? (
+                  <div className="px-4 py-3 bg-white border-t border-gray-100 flex items-center gap-3 shrink-0">
+                    <input
+                      value={input}
+                      onChange={e => { setInput(e.target.value); emitAdminTyping(true); }}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                      placeholder={`Reply to ${selected.guestName || "guest"}…`}
+                      className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() || !isConnected}
+                      className="w-10 h-10 rounded-full bg-[#1B3A6B] text-white flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 text-center">
+                    <p className="text-xs text-gray-400 font-semibold">
+                      {selected.status === "BOT" ? "🤖 AI Bot is handling this conversation." : "This conversation is closed."}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ── Panel: Notes ────────────────────────────────────────── */}
+            {sidebarPanel === "notes" && (
+              <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden bg-[#f9fafb]">
+                <div className="flex items-center gap-2">
+                  <StickyNote className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-bold text-sm text-gray-800">Internal Staff Notes</h3>
+                  <span className="text-[10px] text-gray-400">(Not visible to guest)</span>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-3">
+                  {notes.length === 0 && <p className="text-xs text-gray-400 text-center py-8">No notes yet. Add your first note below.</p>}
+                  {notes.map(note => (
+                    <div key={note.id} className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                      <p className="text-xs text-gray-700 leading-relaxed">{note.content}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[10px] text-gray-400">{note.authorName}</span>
+                        <span className="text-[10px] text-gray-300">•</span>
+                        <span className="text-[10px] text-gray-400">{formatTime(note.createdAt)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <textarea
+                    value={newNote}
+                    onChange={e => setNewNote(e.target.value)}
+                    placeholder="Add an internal note…"
+                    rows={3}
+                    className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-primary resize-none"
+                  />
+                  <button
+                    onClick={handleAddNote}
+                    disabled={!newNote.trim() || addingNote}
+                    className="px-4 bg-[#1B3A6B] text-white rounded-xl text-xs font-bold hover:bg-[#1B3A6B]/90 disabled:opacity-40 transition shrink-0"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            ) : (
-              <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 text-center">
-                <p className="text-xs text-gray-400 font-semibold">This conversation is closed.</p>
+            )}
+
+            {/* ── Panel: Requirements Brief ────────────────────────────── */}
+            {sidebarPanel === "requirements" && (
+              <div className="flex-1 overflow-y-auto p-5 bg-[#f9fafb]">
+                <div className="flex items-center gap-2 mb-4">
+                  <ClipboardList className="w-4 h-4 text-violet-500" />
+                  <h3 className="font-bold text-sm text-gray-800">AI-Collected Requirements</h3>
+                  <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full border ml-auto",
+                    selected.category ? CATEGORY_COLORS[selected.category] : "text-gray-400 border-gray-200 bg-gray-50")}>
+                    {selected.category || "GENERAL"}
+                  </span>
+                </div>
+
+                {selected.requirementData && Object.keys(selected.requirementData).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(selected.requirementData).map(([key, val]) => (
+                      <div key={key} className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">
+                          {key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())}
+                        </p>
+                        <p className="text-sm text-gray-800 font-semibold">{val}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Bot className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                    <p className="text-xs text-gray-400">
+                      {selected.botEscalated
+                        ? "No structured requirements were collected before escalation."
+                        : "Bot is still collecting requirements from the guest."}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
         ) : (
           /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center bg-[#eef1f8] text-gray-400">
             <div className="w-20 h-20 rounded-3xl bg-white shadow-lg flex items-center justify-center mb-5 border border-gray-100">
-              <MessageSquare className="w-10 h-10 opacity-10" />
+              <Headset className="w-10 h-10 opacity-10" />
             </div>
             <p className="text-sm font-black text-gray-700">Select a conversation</p>
-            <p className="text-xs mt-2 max-w-[220px] text-center leading-relaxed text-gray-400">
-              Pick a chat from the sidebar to start replying in real-time.
+            <p className="text-xs mt-2 max-w-[240px] text-center leading-relaxed text-gray-400">
+              {isSupervisor
+                ? "Pick a chat from the sidebar. Assign it to a department agent to handle."
+                : "Pick a chat assigned to you to start replying."}
             </p>
           </div>
         )}

@@ -300,11 +300,11 @@ export declare const insertInquirySchema: z.ZodObject<{
     packageId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     phone: z.ZodString;
     email: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    vendorId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     hotelId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     roomId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     inquiryType: z.ZodString;
     transportId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    vendorId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     destination: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     travelDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     numberOfPersons: z.ZodOptional<z.ZodNullable<z.ZodInt>>;

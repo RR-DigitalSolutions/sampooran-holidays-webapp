@@ -3833,6 +3833,7 @@ export declare const transportServicesTable: import("drizzle-orm/pg-core").PgTab
     dialect: "pg";
 }>;
 export declare const insertTransportVendorSchema: z.ZodObject<{
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     userId: z.ZodInt;
     businessName: z.ZodString;
     businessType: z.ZodOptional<z.ZodString>;
@@ -3858,7 +3859,6 @@ export declare const insertTransportVendorSchema: z.ZodObject<{
     bankIfscCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     bankName: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     logoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     adminNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     commissionPct: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, {
@@ -3870,12 +3870,16 @@ export type TransportVendor = typeof transportVendorsTable.$inferSelect;
 export declare const insertTransportVehicleSchema: z.ZodObject<{
     name: z.ZodString;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    displayOrder: z.ZodOptional<z.ZodInt>;
+    metaTitle: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    metaDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isFeatured: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    countryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    stateId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    destinationId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     adminNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     vendorId: z.ZodInt;
     ownerId: z.ZodInt;
-    destinationId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    stateId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    countryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     destinationSlug: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     stateSlug: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     countrySlug: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -3907,10 +3911,6 @@ export declare const insertTransportVehicleSchema: z.ZodObject<{
     minPrice: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     advanceBookingHours: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     maxPassengers: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    isFeatured: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-    displayOrder: z.ZodOptional<z.ZodInt>;
-    metaTitle: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    metaDescription: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};
@@ -3919,6 +3919,7 @@ export type InsertTransportVehicle = z.infer<typeof insertTransportVehicleSchema
 export type TransportVehicle = typeof transportVehiclesTable.$inferSelect;
 export declare const insertTransportDriverSchema: z.ZodObject<{
     name: z.ZodString;
+    rating: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     phone: z.ZodString;
     alternatePhone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     vendorId: z.ZodInt;
@@ -3931,7 +3932,6 @@ export declare const insertTransportDriverSchema: z.ZodObject<{
     languagesKnown: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     isAvailable: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     isVerified: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-    rating: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     totalTrips: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
 }, {
     out: {};
@@ -3981,10 +3981,12 @@ export declare const insertTransportBookingSchema: z.ZodObject<{
 export type InsertTransportBooking = z.infer<typeof insertTransportBookingSchema>;
 export type TransportBooking = typeof transportBookingsTable.$inferSelect;
 export declare const insertTransportPricingRuleSchema: z.ZodObject<{
-    includes: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     name: z.ZodString;
-    vendorId: z.ZodInt;
+    includes: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     displayOrder: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    isActive: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
+    price: z.ZodNumber;
+    vendorId: z.ZodInt;
     vehicleId: z.ZodInt;
     startDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     endDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -3992,12 +3994,10 @@ export declare const insertTransportPricingRuleSchema: z.ZodObject<{
     fromCity: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     toCity: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     estimatedDistanceKm: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    price: z.ZodNumber;
     priceType: z.ZodOptional<z.ZodString>;
     isRoundTrip: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     roundTripPrice: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     excludes: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
-    isActive: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
 }, {
     out: {};
     in: {};
@@ -4005,11 +4005,11 @@ export declare const insertTransportPricingRuleSchema: z.ZodObject<{
 export type InsertTransportPricingRule = z.infer<typeof insertTransportPricingRuleSchema>;
 export type TransportPricingRule = typeof transportPricingRulesTable.$inferSelect;
 export declare const insertTransportReviewSchema: z.ZodObject<{
+    rating: z.ZodInt;
     userId: z.ZodInt;
     vendorId: z.ZodInt;
     vehicleId: z.ZodInt;
     isVerified: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
-    rating: z.ZodInt;
     bookingId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     title: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     comment: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -4025,8 +4025,10 @@ export declare const insertTransportReviewSchema: z.ZodObject<{
 export type InsertTransportReview = z.infer<typeof insertTransportReviewSchema>;
 export type TransportReview = typeof transportReviewsTable.$inferSelect;
 export declare const insertTransportRouteSchema: z.ZodObject<{
+    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     displayOrder: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    highlights: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
     from: z.ZodString;
     to: z.ZodString;
     fromSlug: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -4034,8 +4036,6 @@ export declare const insertTransportRouteSchema: z.ZodObject<{
     distance: z.ZodInt;
     estimatedTime: z.ZodString;
     startingPrice: z.ZodNumber;
-    highlights: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
-    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isPopular: z.ZodOptional<z.ZodBoolean>;
 }, {
     out: {};
@@ -4045,14 +4045,14 @@ export type InsertTransportRoute = z.infer<typeof insertTransportRouteSchema>;
 export type TransportRoute = typeof transportRoutesTable.$inferSelect;
 export declare const insertTransportServiceSchema: z.ZodObject<{
     name: z.ZodString;
+    slug: z.ZodString;
+    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodOptional<z.ZodString>;
     ownerId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    slug: z.ZodString;
     type: z.ZodString;
     isAC: z.ZodOptional<z.ZodNullable<z.ZodBoolean>>;
     features: z.ZodOptional<z.ZodNullable<z.ZodArray<z.ZodString>>>;
-    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     vehicleModel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     capacity: z.ZodInt;
     pricePerKm: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;

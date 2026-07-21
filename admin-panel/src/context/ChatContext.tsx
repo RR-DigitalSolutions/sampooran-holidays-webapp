@@ -27,19 +27,34 @@ export interface Conversation {
   lastMessage?: string;
   lastMessageRole?: string;
   unreadCount?: number;
+  // v2 fields
+  category?: string;           // TOUR | HOTEL | TAXI | B2B | B2C | GENERAL
+  priority?: string;           // LOW | NORMAL | HIGH | URGENT
+  assignedDepartment?: string;
+  assignedStaffId?: number | null;
+  assignedVendorId?: number | null;
+  botEscalated?: boolean;
+  botState?: string;
+  requirementData?: Record<string, string> | null;
+  spamScore?: number;
+  isBanned?: boolean;
+  tags?: string[];
 }
 
 export interface ChatMsg {
   id?: number;
   conversationId?: number;
   senderId?: number | null;
-  senderRole: string;
+  senderRole: string;   // 'USER' | 'BOT' | 'ADMIN' | 'AGENT' | 'SYSTEM'
   content?: string;
   text?: string;
   createdAt?: string;
   local?: boolean;
+  isBot?: boolean;
   guestName?: string;
   sessionId?: string;
+  quickReplies?: Array<{ id: string; label: string; value: string }>;
+  metadata?: string | null;
 }
 
 interface ChatContextValue {
@@ -173,8 +188,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     socket.on("connect", () => {
       setIsConnected(true);
-      socket.emit("admin:join");
-      fetchConversations(); // load fresh conversations on connect
+      // Send agent's own user ID so the server can assign correct department room
+      socket.emit("admin:join", { agentId: user.id });
+      fetchConversations();
     });
 
     socket.on("disconnect", () => setIsConnected(false));
@@ -212,14 +228,34 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     socket.on("chat:new_conversation", (conv: Conversation) => {
       playPing();
-      const toastMsg = `🔔 New chat from ${conv.guestName || "a visitor"} — ${conv.guestPhone || ""}`;
+      const dept = (conv as any).category || "";
+      const toastMsg = `🔔 New ${dept || "chat"} inquiry from ${conv.guestName || "a visitor"} — ${conv.guestPhone || ""}`;
       showToast(toastMsg);
       showBrowserNotif(
-        `New chat started!`,
+        `New ${dept} inquiry!`,
         `${conv.guestName || "A visitor"} wants to talk. ${conv.guestPhone || ""}`
       );
       setConversations(prev => {
         if (prev.find(c => c.id === conv.id)) return prev;
+        return [{ ...conv, unreadCount: 1 }, ...prev];
+      });
+    });
+
+    // When supervisor assigns/updates a conversation
+    socket.on("chat:conversation_updated", (conv: Conversation) => {
+      setConversations(prev =>
+        prev.map(c => c.id === conv.id ? { ...c, ...conv } : c)
+      );
+    });
+
+    // When this agent is directly assigned a conversation
+    socket.on("chat:assigned", (conv: Conversation) => {
+      playPing();
+      showToast(`📌 Conversation assigned to you: ${conv.guestName || `Chat #${conv.id}`}`);
+      setConversations(prev => {
+        if (prev.find(c => c.id === conv.id)) {
+          return prev.map(c => c.id === conv.id ? { ...c, ...conv, unreadCount: (c.unreadCount || 0) + 1 } : c);
+        }
         return [{ ...conv, unreadCount: 1 }, ...prev];
       });
     });

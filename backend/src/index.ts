@@ -2,12 +2,13 @@ import { Server as SocketIOServer } from "socket.io";
 import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
-import { db, messagesTable, conversationsTable } from "@workspace/db";
-import { eq, sql, and } from "drizzle-orm";
+import { db, messagesTable, conversationsTable, chatAgentsTable, chatBlocklistTable, chatNotesTable } from "@workspace/db";
+import { eq, sql, and, desc } from "drizzle-orm";
 import { seedAdmin } from "./lib/seedAdmin";
 import { warmCache } from "./lib/cache";
 import { getMongoDB, ensureMongoIndexes, closeMongoDB } from "./lib/mongodb";
 import { runInitialSync } from "./lib/mongoSync";
+import { processBotMessage, getBotSession, createBotSession } from "./lib/chatBot";
 
 /**
  * Safe startup migration: creates travel_guides table if it doesn't exist yet.
@@ -174,8 +175,112 @@ async function runStartupMigrations() {
 
     logger.info("✅ Startup migration: travel_guides, packages, and calendar tables ready");
   } catch (err: any) {
-    // Table already exists or non-critical — log but don't crash server
     logger.warn({ err: err.message }, "Startup migration warning (non-fatal)");
+  }
+}
+
+/**
+ * Chat System v2 Migrations — idempotent, safe to run every restart.
+ * Adds all new columns and tables for the Smart Chat & CRM system.
+ */
+async function runChatMigrations() {
+  try {
+    // ── Extend conversations table ─────────────────────────────────────────
+    const convCols: [string, string][] = [
+      ["assigned_vendor_id",  "INTEGER"],
+      ["assigned_department", "TEXT DEFAULT 'UNASSIGNED'"],
+      ["category",            "TEXT DEFAULT 'GENERAL'"],
+      ["priority",            "TEXT DEFAULT 'NORMAL'"],
+      ["bot_state",           "TEXT DEFAULT 'GREETING'"],
+      ["bot_handled",         "BOOLEAN DEFAULT false"],
+      ["bot_escalated",       "BOOLEAN DEFAULT false"],
+      ["requirement_data",    "JSONB"],
+      ["spam_score",          "INTEGER DEFAULT 0"],
+      ["is_banned",           "BOOLEAN DEFAULT false"],
+      ["tags",                "TEXT[]"],
+      ["closed_at",           "TIMESTAMP"],
+    ];
+    for (const [col, def] of convCols) {
+      const check = await db.execute(sql`
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='conversations' AND column_name=${col}
+      `);
+      if (check.rowCount === 0) {
+        await db.execute(sql.raw(`ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ${col} ${def}`));
+      }
+    }
+    // Migrate old status values: "OPEN" stays, anything without bot_escalated set is now BOT
+    await db.execute(sql`
+      UPDATE conversations
+      SET status = 'OPEN'
+      WHERE status NOT IN ('BOT', 'OPEN', 'ASSIGNED', 'CLOSED', 'SPAM')
+    `);
+
+    // ── Extend messages table ──────────────────────────────────────────────
+    const msgCheck = await db.execute(sql`
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name='messages' AND column_name='metadata'
+    `);
+    if (msgCheck.rowCount === 0) {
+      await db.execute(sql`ALTER TABLE messages ADD COLUMN IF NOT EXISTS metadata JSONB`);
+    }
+    // Add BOT to valid senderRole values (text column, no enum)
+    // Already fine — just document.
+
+    // ── Create chat_agents table ───────────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS chat_agents (
+        id                   SERIAL PRIMARY KEY,
+        user_id              INTEGER NOT NULL UNIQUE,
+        department           TEXT NOT NULL DEFAULT 'GENERAL',
+        is_supervisor        BOOLEAN DEFAULT false,
+        is_available         BOOLEAN DEFAULT true,
+        max_concurrent_chats INTEGER DEFAULT 5,
+        display_name         TEXT,
+        created_at           TIMESTAMP DEFAULT NOW(),
+        updated_at           TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_chat_agents_user ON chat_agents(user_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_chat_agents_dept ON chat_agents(department)`);
+
+    // ── Create chat_notes table (internal staff notes) ────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS chat_notes (
+        id              SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL,
+        author_id       INTEGER NOT NULL,
+        author_name     TEXT,
+        content         TEXT NOT NULL,
+        created_at      TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_chat_notes_conv ON chat_notes(conversation_id)`);
+
+    // ── Create chat_blocklist table ───────────────────────────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS chat_blocklist (
+        id         SERIAL PRIMARY KEY,
+        type       TEXT NOT NULL,
+        value      TEXT NOT NULL UNIQUE,
+        reason     TEXT,
+        blocked_by INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_chat_blocklist_val ON chat_blocklist(value)`);
+
+    // ── Performance indexes for support dashboard queries ─────────────────
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_status ON conversations(status)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_dept ON conversations(assigned_department)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_staff ON conversations(assigned_staff_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_category ON conversations(category)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_spam ON conversations(spam_score)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_conv_last_msg ON conversations(last_message_at DESC)`);
+
+    logger.info("✅ Chat System v2 migrations complete");
+  } catch (err: any) {
+    logger.warn({ err: err.message }, "Chat migration warning (non-fatal)");
   }
 }
 
@@ -387,102 +492,362 @@ if (Number.isNaN(port) || port <= 0) {
 
 const server = createServer(app);
 
-// Initialize Socket.io
+// ─── Socket.io: Secure CORS (never wildcard in production) ───────────────────
+const ALLOWED_WS_ORIGINS = (
+  process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()).filter(Boolean)
+    : []
+).concat([
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+  "http://localhost:5175",
+  "https://sampooran-admin.pages.dev",
+  "https://sampooranholidays.com",
+  "https://www.sampooranholidays.com",
+  "https://sampooran-holidays-webapp-frontend.vercel.app",
+]);
+
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "*", // Restrict this in production
-    methods: ["GET", "POST"]
-  }
+    origin: (origin, cb) => {
+      if (!origin || ALLOWED_WS_ORIGINS.includes(origin) || process.env.NODE_ENV !== "production") {
+        return cb(null, true);
+      }
+      logger.warn({ origin }, "Socket.io CORS rejected");
+      cb(new Error("WS CORS rejected"));
+    },
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  // Performance: allow both transports, prefer websocket
+  transports: ["websocket", "polling"],
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
-io.on("connection", (socket) => {
-  logger.info({ socketId: socket.id }, "New client connected to Live Chat");
-
-  const userId = socket.handshake.query.userId as string;
-  const sessionId = socket.handshake.query.sessionId as string; // guest identifier
-
-  // Join rooms: named user room (if logged in) OR session room (guest)
-  if (userId) {
-    socket.join(`user:${userId}`);
+// ─── Per-session message rate limiter (in-memory) ────────────────────────────
+// For horizontal scale: replace with Redis sorted set ZADD/ZCOUNT pattern
+const sessionMsgTimestamps = new Map<string, number[]>();
+function checkRateLimit(key: string, maxPerMinute = 30): boolean {
+  const now = Date.now();
+  const timestamps = (sessionMsgTimestamps.get(key) || []).filter(t => now - t < 60_000);
+  timestamps.push(now);
+  sessionMsgTimestamps.set(key, timestamps);
+  return timestamps.length <= maxPerMinute;
+}
+// Cleanup stale rate limit entries every 5 minutes
+setInterval(() => {
+  const cutoff = Date.now() - 65_000;
+  for (const [k, ts] of sessionMsgTimestamps.entries()) {
+    if (ts.every(t => t < cutoff)) sessionMsgTimestamps.delete(k);
   }
-  if (sessionId) {
-    socket.join(`session:${sessionId}`);
-  }
+}, 5 * 60 * 1000);
 
-  // Admin joins the shared admin room
-  socket.on("admin:join", () => {
-    socket.join("admins");
-    logger.info({ socketId: socket.id }, "Admin joined support room");
+// ─── Socket.io Connection Handler ────────────────────────────────────────────
+io.on("connection", async (socket) => {
+  logger.info({ socketId: socket.id }, "New WS client connected");
+
+  const userId    = socket.handshake.query.userId as string;
+  const sessionId = socket.handshake.query.sessionId as string;
+  const agentId   = socket.handshake.query.agentId as string; // staff/agent login
+
+  // ── Guest room ────────────────────────────────────────────────────────────
+  if (sessionId) socket.join(`session:${sessionId}`);
+
+  // ── Logged-in user room ───────────────────────────────────────────────────
+  if (userId) socket.join(`user:${userId}`);
+
+  // ── Staff / Admin join: supervisor OR department-specific room ────────────
+  socket.on("admin:join", async (data?: { agentId?: number }) => {
+    try {
+      const staffId = data?.agentId || (userId ? Number(userId) : null);
+      if (!staffId) {
+        // Unauthenticated — join generic supervisors room (backward compat)
+        socket.join("supervisors");
+        // Legacy support
+        socket.join("admins");
+        return;
+      }
+
+      // Look up this agent's department assignment
+      const [agentRecord] = await db
+        .select()
+        .from(chatAgentsTable)
+        .where(eq(chatAgentsTable.userId, staffId))
+        .limit(1);
+
+      if (!agentRecord || agentRecord.isSupervisor) {
+        // Supervisor: joins supervisor room (sees ALL conversations)
+        socket.join("supervisors");
+        socket.join("admins"); // legacy
+        logger.info({ staffId }, "Supervisor joined chat");
+      } else {
+        // Department agent: joins their department room AND personal room
+        socket.join(`dept:${agentRecord.department}`);
+        socket.join(`agent:${staffId}`);
+        logger.info({ staffId, dept: agentRecord.department }, "Agent joined dept room");
+      }
+    } catch (err) {
+      // Fallback for unauthenticated or error cases
+      socket.join("supervisors");
+      socket.join("admins");
+    }
   });
 
-  // Typing indicator — relay to admin room
+  // ── Guest typing → supervisors + assigned agent ───────────────────────────
   socket.on("chat:typing", (data: { sessionId?: string; userId?: string; isTyping: boolean }) => {
-    io.to("admins").emit("chat:typing", data);
+    io.to("supervisors").emit("chat:typing", data);
+    // Also notify the assigned agent if known
+    if (data.sessionId) {
+      // Supervisor will be notified — agent is notified when conversation is open
+      io.to("admins").emit("chat:typing", data);
+    }
   });
 
-  // Admin typing indicator — relay to user/session room
-  socket.on("admin:typing", (data: { conversationId: number; targetSessionId?: string; targetUserId?: string; isTyping: boolean }) => {
-    if (data.targetUserId) io.to(`user:${data.targetUserId}`).emit("chat:typing_admin", data);
+  // ── Staff typing → guest ──────────────────────────────────────────────────
+  socket.on("admin:typing", (data: {
+    conversationId: number;
+    targetSessionId?: string;
+    targetUserId?: string;
+    isTyping: boolean;
+  }) => {
+    if (data.targetUserId)    io.to(`user:${data.targetUserId}`).emit("chat:typing_admin", data);
     if (data.targetSessionId) io.to(`session:${data.targetSessionId}`).emit("chat:typing_admin", data);
   });
 
+  // ── Main message handler ──────────────────────────────────────────────────
   socket.on("chat:message", async (msg) => {
     try {
-      const guestId = msg.sessionId ? `guest_${msg.sessionId}` : null;
-      const resolvedUserId = msg.userId ? Number(msg.userId) : null;
+      const rateKey = msg.sessionId || msg.userId || socket.id;
 
-      // 1. Find or create conversation by userId OR sessionId stored in metadata
-      let [conversation] = resolvedUserId
+      // ── 1. Rate limiting ───────────────────────────────────────────────────
+      if (!checkRateLimit(rateKey, 30)) {
+        socket.emit("chat:error", {
+          code: "RATE_LIMITED",
+          message: "You are sending messages too quickly. Please wait a moment.",
+        });
+        return;
+      }
+
+      const resolvedUserId = msg.userId ? Number(msg.userId) : null;
+      const isAdmin = ["ADMIN", "SUPERADMIN", "AGENT"].includes(msg.role);
+
+      // ── 2. Find or create conversation ────────────────────────────────────
+      let [conversation] = resolvedUserId && !msg.sessionId
         ? await db.select().from(conversationsTable).where(eq(conversationsTable.userId, resolvedUserId)).limit(1)
-        : await db.select().from(conversationsTable).where(eq(conversationsTable.guestSessionId, msg.sessionId)).limit(1);
+        : await db.select().from(conversationsTable).where(eq(conversationsTable.guestSessionId, msg.sessionId || "")).limit(1);
 
       const isNew = !conversation;
+
       if (!conversation) {
         [conversation] = await db.insert(conversationsTable).values({
           userId: resolvedUserId || 0,
           guestSessionId: msg.sessionId || null,
-          guestName: msg.guestName || null,
+          guestName:  msg.guestName  || null,
           guestPhone: msg.guestPhone || null,
           guestEmail: msg.guestEmail || null,
-          status: "OPEN",
+          status: "BOT",
+          botState: "GREETING",
         }).returning();
       }
 
-      // 2. Save message
-      const [newMsg] = await db.insert(messagesTable).values({
+      // ── 3. Spam / blocklist check for guest messages ───────────────────────
+      if (!isAdmin && msg.sessionId) {
+        const [blockEntry] = await db
+          .select()
+          .from(chatBlocklistTable)
+          .where(eq(chatBlocklistTable.value, msg.sessionId))
+          .limit(1);
+        if (blockEntry) {
+          socket.emit("chat:error", { code: "BLOCKED", message: "Your session has been blocked. Contact support@sampooranholidays.com" });
+          return;
+        }
+        // Also check phone/email
+        if (msg.guestPhone) {
+          const [phoneBan] = await db.select().from(chatBlocklistTable)
+            .where(eq(chatBlocklistTable.value, msg.guestPhone)).limit(1);
+          if (phoneBan) {
+            socket.emit("chat:error", { code: "BLOCKED", message: "Access restricted." });
+            return;
+          }
+        }
+      }
+
+      // ── 4. Save user/admin message ─────────────────────────────────────────
+      const [savedUserMsg] = await db.insert(messagesTable).values({
         conversationId: conversation.id,
         senderId: resolvedUserId,
-        senderRole: msg.role || "USER",
-        content: msg.text,
+        senderRole: isAdmin ? (msg.role || "ADMIN") : "USER",
+        content: msg.text || "",
       }).returning();
 
-      // 3. Update lastMessageAt
-      await db.update(conversationsTable)
-        .set({ lastMessageAt: new Date() })
-        .where(eq(conversationsTable.id, conversation.id));
-
-      const payload = {
-        ...newMsg,
-        text: newMsg.content,
+      const userPayload = {
+        ...savedUserMsg,
+        text: savedUserMsg.content,
         conversationId: conversation.id,
         guestName: conversation.guestName,
         sessionId: msg.sessionId,
+        isBot: false,
       };
 
-      // 4. Broadcast to user room, session room, and all admins
-      if (resolvedUserId) io.to(`user:${resolvedUserId}`).emit("chat:message", payload);
-      if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", payload);
-      io.to("admins").emit("chat:message", payload);
-
-      // 5. Notify admins of a new conversation
-      if (isNew) {
-        io.to("admins").emit("chat:new_conversation", {
-          ...conversation,
-          lastMessage: msg.text,
-        });
+      // ── 5. Admin/agent reply — broadcast and return ────────────────────────
+      if (isAdmin) {
+        if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
+        if (resolvedUserId && msg.userId) io.to(`user:${msg.userId}`).emit("chat:message", userPayload);
+        io.to("supervisors").emit("chat:message", userPayload);
+        io.to("admins").emit("chat:message", userPayload);
+        // Notify assigned agent
+        if (conversation.assignedStaffId) {
+          io.to(`agent:${conversation.assignedStaffId}`).emit("chat:message", userPayload);
+        }
+        await db.update(conversationsTable)
+          .set({ lastMessageAt: new Date() })
+          .where(eq(conversationsTable.id, conversation.id));
+        return;
       }
+
+      // ── 6. Bot processing for guest messages ──────────────────────────────
+      if (!conversation.botEscalated) {
+        const botResult = processBotMessage(
+          msg.sessionId || String(conversation.id),
+          msg.text || "",
+          msg.guestName || conversation.guestName || "Guest"
+        );
+
+        // Update conversation with bot's assessment
+        const updateData: Record<string, any> = {
+          lastMessageAt: new Date(),
+          spamScore: botResult.spamScore,
+          category: botResult.category || conversation.category,
+          botState: botResult.newState,
+        };
+
+        if (botResult.shouldBlock) {
+          updateData.status = "SPAM";
+          updateData.isBanned = true;
+          // Add to blocklist
+          await db.insert(chatBlocklistTable).values({
+            type: "SESSION",
+            value: msg.sessionId || "",
+            reason: `Auto-blocked: spam score ${botResult.spamScore}`,
+          }).onConflictDoNothing();
+        } else if (botResult.shouldEscalate) {
+          updateData.botEscalated = true;
+          updateData.status = "OPEN";
+          updateData.requirementData = botResult.requirementData;
+          updateData.category = botResult.category;
+          updateData.assignedDepartment = "UNASSIGNED";
+        }
+
+        await db.update(conversationsTable)
+          .set(updateData)
+          .where(eq(conversationsTable.id, conversation.id));
+
+        // Send bot reply to guest (only if there's a message)
+        if (botResult.message && !botResult.shouldBlock) {
+          const [botMsg] = await db.insert(messagesTable).values({
+            conversationId: conversation.id,
+            senderId: null,
+            senderRole: "BOT",
+            content: botResult.message,
+            metadata: botResult.quickReplies ? JSON.stringify({ quickReplies: botResult.quickReplies }) : null,
+          }).returning();
+
+          const botPayload = {
+            ...botMsg,
+            text: botMsg.content,
+            conversationId: conversation.id,
+            isBot: true,
+            quickReplies: botResult.quickReplies,
+          };
+
+          if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", botPayload);
+        }
+
+        // Notify supervisors when bot escalates to human
+        if (botResult.shouldEscalate) {
+          const freshConv = { ...conversation, ...updateData };
+          io.to("supervisors").emit("chat:new_conversation", {
+            ...freshConv,
+            lastMessage: msg.text,
+            requirementData: botResult.requirementData,
+            category: botResult.category,
+            status: "OPEN",
+          });
+          io.to("admins").emit("chat:new_conversation", {
+            ...freshConv,
+            lastMessage: msg.text,
+          });
+          logger.info({ convId: conversation.id, category: botResult.category }, "Bot escalated to human");
+        }
+
+        // Echo the user's own message back to their session (for optimistic UI reconciliation)
+        if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
+
+      } else {
+        // Already escalated — conversation is with human agent
+        if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
+        io.to("supervisors").emit("chat:message", userPayload);
+        io.to("admins").emit("chat:message", userPayload);
+        if (conversation.assignedStaffId) {
+          io.to(`agent:${conversation.assignedStaffId}`).emit("chat:message", userPayload);
+        }
+        if (conversation.assignedVendorId) {
+          io.to(`vendor:${conversation.assignedVendorId}`).emit("chat:message", userPayload);
+        }
+        await db.update(conversationsTable)
+          .set({ lastMessageAt: new Date() })
+          .where(eq(conversationsTable.id, conversation.id));
+      }
+
+      // ── 7. Notify admins of a brand new conversation ──────────────────────
+      if (isNew && !conversation.botEscalated) {
+        // New conversation — only log, bot will handle first
+        logger.info({ convId: conversation.id }, "New chat conversation started — bot handling");
+      }
+
     } catch (error) {
       logger.error({ error }, "Error processing chat message");
+      socket.emit("chat:error", { code: "SERVER_ERROR", message: "Something went wrong. Please try again." });
+    }
+  });
+
+  // ── Supervisor assigns conversation to agent/vendor ────────────────────────
+  socket.on("chat:assign", async (data: {
+    conversationId: number;
+    staffId?: number;
+    vendorId?: number;
+    department?: string;
+  }) => {
+    try {
+      const updateData: Record<string, any> = {
+        status: "ASSIGNED",
+        assignedDepartment: data.department || "GENERAL",
+      };
+      if (data.staffId)  updateData.assignedStaffId  = data.staffId;
+      if (data.vendorId) updateData.assignedVendorId = data.vendorId;
+
+      const [updated] = await db
+        .update(conversationsTable)
+        .set(updateData)
+        .where(eq(conversationsTable.id, data.conversationId))
+        .returning();
+
+      // Notify the assigned agent/vendor
+      if (data.staffId) {
+        io.to(`agent:${data.staffId}`).emit("chat:assigned", updated);
+      }
+      if (data.vendorId) {
+        io.to(`vendor:${data.vendorId}`).emit("chat:assigned", updated);
+      }
+
+      // Notify all supervisors of the assignment change
+      io.to("supervisors").emit("chat:conversation_updated", updated);
+      io.to("admins").emit("chat:conversation_updated", updated);
+
+    } catch (err) {
+      logger.error({ err }, "Error assigning conversation");
     }
   });
 
@@ -836,6 +1201,8 @@ server.listen(port, () => {
   runHotelMigrations();
   // OTA Transport system — create transport tables (idempotent).
   runTransportMigrations();
+  // Chat System v2 — create chat agents, notes, blocklist tables + new columns.
+  runChatMigrations();
   // Start the daily pricing calendar alert scheduler
   startRateExpiryCheckScheduler();
   // ⚡ Pre-warm Redis cache for the top public routes after startup
