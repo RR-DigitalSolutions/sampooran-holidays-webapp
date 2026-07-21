@@ -264,6 +264,15 @@ export default function ChatWidget() {
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [step]);
 
+  /* ── 30s Heartbeat for online status ───────────────────────────────── */
+  useEffect(() => {
+    if (step !== "chat") return;
+    const interval = setInterval(() => {
+      socketRef.current?.emit("chat:heartbeat", { sessionId: sessionId.current });
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [step]);
+
   const [password, setPassword]       = useState("");
   const [isB2B, setIsB2B]             = useState(false);
   const [companyName, setCompanyName] = useState("");

@@ -369,6 +369,17 @@ export default function SupportPage() {
 
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
 
+  /* ── Client Online Status (300s threshold) ──────────────────────────── */
+  const getClientStatus = (conv: ExtConversation) => {
+    if (conv.status === "CLOSED" || conv.status === "SPAM") return { isOnline: false, text: conv.status };
+    if (!conv.lastMessageAt) return { isOnline: false, text: "Offline" };
+    const lastActive = new Date(conv.lastMessageAt).getTime();
+    const diffSec = (Date.now() - lastActive) / 1000;
+    if (diffSec <= 300) return { isOnline: true, text: "Online" };
+    const mins = Math.floor(diffSec / 60);
+    return { isOnline: false, text: `Away (${mins > 60 ? Math.floor(mins / 60) + 'h' : mins + 'm'})` };
+  };
+
   /* ── Stats ───────────────────────────────────────────────────────────── */
   const totalBot    = extConvs.filter(c => c.status === "BOT").length;
   const totalOpen   = extConvs.filter(c => c.status === "OPEN" || c.status === "ASSIGNED").length;
@@ -498,70 +509,74 @@ export default function SupportPage() {
                 </p>
               </div>
             )}
-            {filtered.map(conv => (
-              <button
-                key={conv.id}
-                onClick={() => handleSelectConv(conv)}
-                className={cn(
-                  "w-full text-left px-4 py-3.5 flex items-start gap-3 transition-all hover:bg-gray-50 border-b border-gray-50",
-                  selected?.id === conv.id && "bg-primary/5 border-r-[3px] border-r-primary"
-                )}
-              >
-                {/* Avatar */}
-                <div className="relative shrink-0 mt-0.5">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center font-black text-sm">
-                    {conv.botEscalated ? (conv.guestName || "G")[0].toUpperCase() : <Bot className="w-4 h-4" />}
-                  </div>
-                  {conv.status === "OPEN" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+            {filtered.map(conv => {
+              const statusInfo = getClientStatus(conv);
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => handleSelectConv(conv)}
+                  className={cn(
+                    "w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition-all hover:bg-gray-50 border-b border-gray-50 relative",
+                    conv.priority === "URGENT" && "border-l-4 border-l-red-500",
+                    conv.priority === "HIGH" && "border-l-4 border-l-orange-500",
+                    conv.priority === "NORMAL" && "border-l-4 border-l-sky-400",
+                    conv.priority === "LOW" && "border-l-4 border-l-emerald-400",
+                    selected?.id === conv.id && "bg-primary/5 border-r-2 border-r-primary"
                   )}
-                  {conv.status === "SPAM" && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <p className={cn("text-xs truncate", (conv.unreadCount || 0) > 0 ? "font-black text-gray-900" : "font-bold text-gray-700")}>
-                      {conv.guestName || `Chat #${conv.id}`}
-                    </p>
-                    <span className="text-[9px] text-gray-400 shrink-0">{formatTime(conv.lastMessageAt)}</span>
-                  </div>
-                  <div className="flex items-center gap-1 flex-wrap mb-0.5">
-                    {/* Priority */}
-                    {conv.priority && conv.priority !== "NORMAL" && (
-                      <span className="text-[9px]">{PRIORITY_EMOJI[conv.priority]}</span>
+                >
+                  {/* Avatar */}
+                  <div className="relative shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 text-primary flex items-center justify-center font-black text-xs">
+                      {conv.botEscalated ? (conv.guestName || "G")[0].toUpperCase() : <Bot className="w-3.5 h-3.5" />}
+                    </div>
+                    {statusInfo.isOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
                     )}
-                    {/* Category */}
-                    {conv.category && conv.category !== "GENERAL" && (
-                      <span className={cn("text-[8px] font-bold px-1.5 py-0.5 rounded-full border", CATEGORY_COLORS[conv.category])}>
-                        {conv.category}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <p className={cn("text-[11px] truncate", (conv.unreadCount || 0) > 0 ? "font-black text-gray-900" : "font-bold text-gray-700")}>
+                        {conv.guestName || `Chat #${conv.id}`}
+                      </p>
+                      <span className="text-[8px] text-gray-400 shrink-0">{formatTime(conv.lastMessageAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap mb-0.5">
+                      {/* Priority */}
+                      {conv.priority && conv.priority !== "NORMAL" && (
+                        <span className="text-[8px]">{PRIORITY_EMOJI[conv.priority]}</span>
+                      )}
+                      {/* Category */}
+                      {conv.category && (
+                        <span className={cn("text-[8px] font-bold px-1.5 py-0.2 rounded-full border", CATEGORY_COLORS[conv.category])}>
+                          {conv.category}
+                        </span>
+                      )}
+                      {/* Status */}
+                      <span className={cn(
+                        "text-[8px] font-bold px-1.5 py-0.2 rounded-full border",
+                        conv.status === "OPEN" ? "text-emerald-700 bg-emerald-50 border-emerald-200" :
+                        conv.status === "BOT" ? "text-amber-700 bg-amber-50 border-amber-200" :
+                        conv.status === "ASSIGNED" ? "text-sky-700 bg-sky-50 border-sky-200" :
+                        conv.status === "SPAM" ? "text-red-700 bg-red-50 border-red-200" :
+                        "text-gray-500 bg-gray-50 border-gray-200"
+                      )}>
+                        {conv.status === "BOT" ? "🤖 Bot" : conv.status}
                       </span>
-                    )}
-                    {/* Status */}
-                    <span className={cn(
-                      "text-[8px] font-bold px-1.5 py-0.5 rounded-full border",
-                      conv.status === "OPEN" ? "text-emerald-700 bg-emerald-50 border-emerald-200" :
-                      conv.status === "BOT" ? "text-amber-700 bg-amber-50 border-amber-200" :
-                      conv.status === "ASSIGNED" ? "text-sky-700 bg-sky-50 border-sky-200" :
-                      conv.status === "SPAM" ? "text-red-700 bg-red-50 border-red-200" :
-                      "text-gray-500 bg-gray-50 border-gray-200"
-                    )}>
-                      {conv.status === "BOT" ? "🤖 Bot" : conv.status}
-                    </span>
+                    </div>
+                    <p className={cn("text-[10px] truncate", (conv.unreadCount || 0) > 0 ? "text-gray-800 font-semibold" : "text-gray-400")}>
+                      {conv.lastMessage || "Conversation started"}
+                    </p>
                   </div>
-                  <p className={cn("text-[11px] truncate", (conv.unreadCount || 0) > 0 ? "text-gray-800 font-semibold" : "text-gray-400")}>
-                    {conv.lastMessage || "Conversation started"}
-                  </p>
-                </div>
 
-                {(conv.unreadCount || 0) > 0 && (
-                  <span className="shrink-0 min-w-[18px] h-[18px] px-1 bg-primary rounded-full text-white text-[9px] font-black flex items-center justify-center mt-1">
-                    {conv.unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
+                  {(conv.unreadCount || 0) > 0 && (
+                    <span className="shrink-0 min-w-[16px] h-[16px] px-1 bg-primary rounded-full text-white text-[8px] font-black flex items-center justify-center mt-1">
+                      {conv.unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -569,195 +584,206 @@ export default function SupportPage() {
             MAIN CHAT AREA
             ════════════════════════════════════════════════════════════ */}
         {selected ? (
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 bg-white">
 
-            {/* Chat Header */}
-            <div className="px-5 py-3 bg-white border-b border-gray-100 flex items-center justify-between gap-3 shrink-0 shadow-sm">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-black text-sm flex items-center justify-center shrink-0">
-                  {(selected.guestName || "G")[0].toUpperCase()}
+            {/* Chat Header — Clean 2-Row Non-Overlapping Layout */}
+            <div className="bg-white border-b border-gray-100 shrink-0 shadow-sm">
+              {/* Row 1: Profile & Actions */}
+              <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-gray-50 flex-wrap">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center shrink-0">
+                    {(selected.guestName || "G")[0].toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="font-extrabold text-xs text-gray-900 truncate">{selected.guestName || `Chat #${selected.id}`}</h3>
+                      {/* Client Online Status */}
+                      {(() => {
+                        const st = getClientStatus(selected);
+                        return (
+                          <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 border shrink-0",
+                            st.isOnline ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-500 border-gray-200")}>
+                            <span className={cn("w-1.5 h-1.5 rounded-full", st.isOnline ? "bg-emerald-500 animate-pulse" : "bg-gray-400")} />
+                            {st.text}
+                          </span>
+                        );
+                      })()}
+                      {/* Priority */}
+                      {selected.priority && (
+                        <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0",
+                          PRIORITIES.find(p => p.key === selected.priority)?.color || "text-gray-500 bg-gray-50 border-gray-200")}>
+                          {PRIORITY_EMOJI[selected.priority]} {selected.priority}
+                        </span>
+                      )}
+                      {/* Category */}
+                      {selected.category && (
+                        <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full border shrink-0", CATEGORY_COLORS[selected.category])}>
+                          {selected.category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-sm text-gray-900 truncate">{selected.guestName || `Chat #${selected.id}`}</h3>
-                    {/* Priority badge */}
-                    {selected.priority && (
-                      <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-full border shrink-0",
-                        PRIORITIES.find(p => p.key === selected.priority)?.color || "text-gray-500 bg-gray-50 border-gray-200")}>
-                        {PRIORITY_EMOJI[selected.priority]} {selected.priority}
-                      </span>
-                    )}
-                    {/* Category badge */}
-                    {selected.category && (
-                      <span className={cn("text-[9px] font-black px-2 py-0.5 rounded-full border shrink-0",
-                        CATEGORY_COLORS[selected.category])}>
-                        {selected.category}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    {selected.guestPhone && (
-                      <a href={`tel:${selected.guestPhone}`} className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-primary transition-colors">
-                        <Phone className="w-3 h-3" /> {selected.guestPhone}
-                      </a>
-                    )}
-                    {selected.guestEmail && (
-                      <a href={`mailto:${selected.guestEmail}`} className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-primary transition-colors">
-                        <Mail className="w-3 h-3" /> {selected.guestEmail}
-                      </a>
-                    )}
-                    {selected.spamScore != null && selected.spamScore > 40 && (
-                      <span className="flex items-center gap-1 text-[10px] text-amber-600">
-                        <AlertTriangle className="w-3 h-3" /> Spam score: {selected.spamScore}
-                      </span>
-                    )}
-                  </div>
+
+                {/* Actions Toolbar */}
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  {/* Takeover button */}
+                  {selected.status !== "CLOSED" && (!selected.botEscalated || selected.status === "BOT") && (
+                    <button
+                      onClick={handleTakeover}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-bold hover:bg-amber-600 transition shadow-sm flex items-center gap-1"
+                      title="Stop AI replies and take over live chat"
+                    >
+                      ⚡ Stop AI
+                    </button>
+                  )}
+
+                  {/* Priority dropdown */}
+                  {isSupervisor && selected.status !== "CLOSED" && (
+                    <div className="relative">
+                      <button
+                        onClick={() => { setPriorityDrop(d => !d); setCategoryDrop(false); setAssignDrop(false); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition"
+                      >
+                        {PRIORITY_EMOJI[selected.priority || "NORMAL"]} Priority <ChevronDown className="w-3 h-3" />
+                      </button>
+                      {priorityDrop && (
+                        <div className="absolute right-0 top-7 z-30 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[130px]">
+                          {PRIORITIES.map(p => (
+                            <button key={p.key} onClick={() => handlePriority(p.key)}
+                              className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2",
+                                selected.priority === p.key && "bg-primary/5 font-bold text-primary")}>
+                              {PRIORITY_EMOJI[p.key]} {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Category dropdown */}
+                  {isSupervisor && selected.status !== "CLOSED" && (
+                    <div className="relative">
+                      <button
+                        onClick={() => { setCategoryDrop(d => !d); setPriorityDrop(false); setAssignDrop(false); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition"
+                      >
+                        <Tag className="w-3 h-3" /> Category <ChevronDown className="w-3 h-3" />
+                      </button>
+                      {categoryDrop && (
+                        <div className="absolute right-0 top-7 z-30 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[140px]">
+                          {["TOUR", "HOTEL", "TAXI", "B2B", "B2C", "GENERAL"].map(cat => (
+                            <button key={cat} onClick={() => handleCategory(cat)}
+                              className={cn("w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50",
+                                selected.category === cat && "bg-primary/5 font-bold text-primary")}>
+                              {DEPARTMENTS.find(d => d.key === cat)?.emoji} {cat}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Assign dropdown */}
+                  {isSupervisor && selected.status !== "CLOSED" && selected.botEscalated && (
+                    <div className="relative">
+                      <button
+                        onClick={() => { setAssignDrop(d => !d); setPriorityDrop(false); setCategoryDrop(false); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1B3A6B] text-white text-[10px] font-bold hover:bg-[#1B3A6B]/90 transition-all"
+                      >
+                        <User2 className="w-3 h-3" /> Assign <ChevronDown className="w-3 h-3" />
+                      </button>
+                      {assignDropdown && (
+                        <div className="absolute right-0 top-7 z-30 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[190px] max-h-[220px] overflow-y-auto">
+                          {agents.length === 0 ? (
+                            <p className="px-4 py-3 text-xs text-gray-400 text-center">No chat agents configured</p>
+                          ) : (
+                            agents.map(agent => (
+                              <button key={agent.id} onClick={() => handleAssign(agent)}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2">
+                                <div className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[9px] font-black flex items-center justify-center shrink-0">
+                                  {(agent.displayName || agent.name || "?")[0].toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold text-gray-800 truncate">{agent.displayName || agent.name}</p>
+                                  <p className="text-[9px] text-gray-400">{agent.department}</p>
+                                </div>
+                                {agent.isAvailable && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Close button */}
+                  {selected.status === "OPEN" || selected.status === "ASSIGNED" ? (
+                    <button
+                      onClick={() => handleClose(selected.id)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2.5 py-1 rounded-lg hover:bg-red-100 transition border border-red-100"
+                    >
+                      <XCircle className="w-3 h-3" /> Close
+                    </button>
+                  ) : null}
+
+                  {/* Ban button */}
+                  {isSupervisor && selected.status !== "SPAM" && selected.status !== "CLOSED" && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setBanConfirm(b => !b)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-red-700 bg-red-50/80 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-100 transition"
+                      >
+                        <Shield className="w-3 h-3" /> Ban
+                      </button>
+                      {banConfirm && (
+                        <div className="absolute right-0 top-7 z-30 bg-white border border-red-100 rounded-xl shadow-2xl p-3 min-w-[200px] text-center space-y-2">
+                          <p className="text-xs font-bold text-gray-900">Ban this visitor?</p>
+                          <p className="text-[10px] text-gray-500 leading-tight">Blocks IP and session permanently.</p>
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => setBanConfirm(false)} className="flex-1 py-1 text-xs border border-gray-200 rounded-lg font-semibold hover:bg-gray-50">Cancel</button>
+                            <button onClick={handleBan} className="flex-1 py-1 text-xs bg-red-600 text-white rounded-lg font-bold hover:bg-red-700">Ban</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {/* Row 2: Contact Info & Panel Switcher Bar */}
+              <div className="px-4 py-1.5 bg-gray-50/60 flex items-center justify-between gap-2 text-[10px] text-gray-500 flex-wrap">
+                <div className="flex items-center gap-3">
+                  {selected.guestPhone && (
+                    <a href={`tel:${selected.guestPhone}`} className="flex items-center gap-1 hover:text-primary transition-colors font-medium">
+                      <Phone className="w-3 h-3 text-gray-400" /> {selected.guestPhone}
+                    </a>
+                  )}
+                  {selected.guestEmail && (
+                    <a href={`mailto:${selected.guestEmail}`} className="flex items-center gap-1 hover:text-primary transition-colors font-medium truncate max-w-[220px]">
+                      <Mail className="w-3 h-3 text-gray-400 shrink-0" /> {selected.guestEmail}
+                    </a>
+                  )}
+                  {selected.spamScore != null && selected.spamScore > 40 && (
+                    <span className="flex items-center gap-1 text-amber-600 font-bold">
+                      <AlertTriangle className="w-3 h-3" /> Spam: {selected.spamScore}
+                    </span>
+                  )}
+                </div>
 
-                {/* Panel toggle */}
-                <div className="flex rounded-xl border border-gray-200 overflow-hidden">
+                {/* View panel switcher */}
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-xs">
                   {(["chat", "notes", "requirements"] as const).map(panel => (
                     <button
                       key={panel}
                       onClick={() => setSidebarPanel(panel)}
-                      className={cn("px-3 py-1.5 text-[10px] font-bold capitalize transition-all",
+                      className={cn("px-2.5 py-1 text-[10px] font-bold capitalize transition-all",
                         sidebarPanel === panel ? "bg-[#1B3A6B] text-white" : "text-gray-500 hover:bg-gray-50")}
                     >
                       {panel === "chat" ? "💬 Chat" : panel === "notes" ? "📝 Notes" : "📋 Brief"}
                     </button>
                   ))}
                 </div>
-
-                {/* Takeover button (Stop AI replies) */}
-                {selected.status !== "CLOSED" && (!selected.botEscalated || selected.status === "BOT") && (
-                  <button
-                    onClick={handleTakeover}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-white text-[10px] font-bold hover:bg-amber-600 transition shadow-sm"
-                    title="Stop AI replies and take over live chat"
-                  >
-                    ⚡ Stop AI & Takeover
-                  </button>
-                )}
-
-                {/* Priority dropdown (supervisor only) */}
-                {isSupervisor && selected.status !== "CLOSED" && (
-                  <div className="relative">
-                    <button
-                      onClick={() => { setPriorityDrop(d => !d); setCategoryDrop(false); setAssignDrop(false); }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition"
-                    >
-                      {PRIORITY_EMOJI[selected.priority || "NORMAL"]} Priority <ChevronDown className="w-3 h-3" />
-                    </button>
-                    {priorityDrop && (
-                      <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[130px]">
-                        {PRIORITIES.map(p => (
-                          <button key={p.key} onClick={() => handlePriority(p.key)}
-                            className={cn("w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center gap-2",
-                              selected.priority === p.key && "bg-primary/5 font-bold text-primary")}>
-                            {PRIORITY_EMOJI[p.key]} {p.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Category dropdown (supervisor only) */}
-                {isSupervisor && selected.status !== "CLOSED" && (
-                  <div className="relative">
-                    <button
-                      onClick={() => { setCategoryDrop(d => !d); setPriorityDrop(false); setAssignDrop(false); }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-gray-200 text-[10px] font-bold text-gray-600 hover:bg-gray-50 transition"
-                    >
-                      <Tag className="w-3 h-3" /> Category <ChevronDown className="w-3 h-3" />
-                    </button>
-                    {categoryDrop && (
-                      <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[140px]">
-                        {["TOUR", "HOTEL", "TAXI", "B2B", "B2C", "GENERAL"].map(cat => (
-                          <button key={cat} onClick={() => handleCategory(cat)}
-                            className={cn("w-full text-left px-3 py-2 text-xs hover:bg-gray-50",
-                              selected.category === cat && "bg-primary/5 font-bold text-primary")}>
-                            {DEPARTMENTS.find(d => d.key === cat)?.emoji} {cat}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Assign dropdown (supervisor only) */}
-                {isSupervisor && selected.status !== "CLOSED" && selected.botEscalated && (
-                  <div className="relative">
-                    <button
-                      onClick={() => { setAssignDrop(d => !d); setPriorityDrop(false); setCategoryDrop(false); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1B3A6B] text-white text-[10px] font-bold hover:bg-[#1B3A6B]/90 transition-all"
-                    >
-                      <User2 className="w-3 h-3" /> Assign <ChevronDown className="w-3 h-3" />
-                    </button>
-                    {assignDropdown && (
-                      <div className="absolute right-0 top-8 z-20 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[200px] max-h-[220px] overflow-y-auto">
-                        {agents.length === 0 ? (
-                          <p className="px-4 py-3 text-xs text-gray-400 text-center">No chat agents configured</p>
-                        ) : (
-                          agents.map(agent => (
-                            <button key={agent.id} onClick={() => handleAssign(agent)}
-                              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-black flex items-center justify-center shrink-0">
-                                {(agent.displayName || agent.name || "?")[0].toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-gray-800 truncate">{agent.displayName || agent.name}</p>
-                                <p className="text-[9px] text-gray-400">{agent.department} {agent.isSupervisor ? "· Supervisor" : ""}</p>
-                              </div>
-                              {agent.isAvailable && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Close button */}
-                {selected.status === "OPEN" || selected.status === "ASSIGNED" ? (
-                  <button
-                    onClick={() => handleClose(selected.id)}
-                    className="flex items-center gap-1.5 text-[10px] font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-xl hover:bg-red-100 transition-colors border border-red-100"
-                  >
-                    <XCircle className="w-3.5 h-3.5" /> Close
-                  </button>
-                ) : null}
-
-                {/* Ban button (supervisor only) */}
-                {isSupervisor && selected.status !== "SPAM" && selected.status !== "CLOSED" && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setBanConfirm(b => !b)}
-                      className="flex items-center gap-1.5 text-[10px] font-bold text-red-600 px-3 py-1.5 rounded-xl hover:bg-red-50 transition border border-transparent hover:border-red-100"
-                      title="Ban guest session"
-                    >
-                      <Shield className="w-3.5 h-3.5" /> Ban
-                    </button>
-                    {banConfirm && (
-                      <div className="absolute right-0 top-8 z-20 bg-white border border-red-100 rounded-xl shadow-xl p-4 w-[200px]">
-                        <p className="text-xs font-bold text-red-700 mb-3">Ban this guest session?</p>
-                        <p className="text-[10px] text-gray-500 mb-3">They will be permanently blocked from chatting.</p>
-                        <div className="flex gap-2">
-                          <button onClick={handleBan} className="flex-1 bg-red-600 text-white text-xs font-bold py-1.5 rounded-lg hover:bg-red-700 transition">
-                            Ban
-                          </button>
-                          <button onClick={() => setBanConfirm(false)} className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-1.5 rounded-lg hover:bg-gray-200 transition">
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 

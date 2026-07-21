@@ -77,8 +77,9 @@ export function useChatContext() {
 }
 
 /* ─── Helpers ──────────────────────────────────────────────────── */
+/* ─── Helpers ──────────────────────────────────────────────────── */
 const API = `${API_BASE}/api`;
-const WS_URL = (import.meta as any).env?.VITE_WS_URL || "http://localhost:8080";
+const WS_URL = (import.meta as any).env?.VITE_WS_URL || API_BASE;
 
 function getToken(): string {
   try {
@@ -180,7 +181,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     const socket = io(WS_URL, {
       query: { userId: String(user.id) },
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -189,6 +190,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     socket.on("connect", () => {
       setIsConnected(true);
       // Send agent's own user ID so the server can assign correct department room
+      socket.emit("admin:join", { agentId: user.id });
+      fetchConversations();
+    });
+
+    socket.on("reconnect", () => {
+      setIsConnected(true);
       socket.emit("admin:join", { agentId: user.id });
       fetchConversations();
     });

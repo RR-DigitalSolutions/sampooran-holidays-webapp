@@ -605,6 +605,15 @@ io.on("connection", async (socket) => {
     }
   });
 
+  // ── Guest Heartbeat ───────────────────────────────────────────────────────
+  socket.on("chat:heartbeat", async (data: { sessionId?: string }) => {
+    if (data.sessionId) {
+      await db.update(conversationsTable)
+        .set({ lastMessageAt: new Date() })
+        .where(eq(conversationsTable.guestSessionId, data.sessionId));
+    }
+  });
+
   // ── Staff typing → guest ──────────────────────────────────────────────────
   socket.on("admin:typing", (data: {
     conversationId: number;
