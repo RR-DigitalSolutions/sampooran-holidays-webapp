@@ -630,7 +630,7 @@ io.on("connection", async (socket) => {
             senderId: null,
             senderRole: "BOT",
             content: nudge.message,
-            metadata: nudge.quickReplies ? JSON.stringify({ quickReplies: nudge.quickReplies }) : null,
+            metadata: nudge.quickReplies ? { quickReplies: nudge.quickReplies } : null,
           }).returning().catch(() => []);
 
           io.to(`session:${data.sessionId}`).emit("chat:message", {
@@ -941,7 +941,7 @@ io.on("connection", async (socket) => {
             senderId: null,
             senderRole: "BOT",
             content: botResult.message,
-            metadata: Object.keys(metaObj).length > 0 ? JSON.stringify(metaObj) : null,
+            metadata: Object.keys(metaObj).length > 0 ? metaObj : null,
           }).returning();
 
           const botPayload = {
