@@ -8,7 +8,7 @@ import { seedAdmin } from "./lib/seedAdmin";
 import { warmCache } from "./lib/cache";
 import { getMongoDB, ensureMongoIndexes, closeMongoDB } from "./lib/mongodb";
 import { runInitialSync } from "./lib/mongoSync";
-import { processBotMessage, getBotSession, createBotSession } from "./lib/chatBot";
+import { processBotMessage, getBotSession, createBotSession, BOT_FLOWS, getProactiveNudge, destroyBotSession } from "./lib/chatBot";
 
 /**
  * Safe startup migration: creates travel_guides table if it doesn't exist yet.
@@ -605,14 +605,81 @@ io.on("connection", async (socket) => {
     }
   });
 
-  // ── Guest Heartbeat ───────────────────────────────────────────────────────
+  // ── Guest Heartbeat — also fires proactive bot nudge if user is idle ─────────
   socket.on("chat:heartbeat", async (data: { sessionId?: string }) => {
-    if (data.sessionId) {
+    if (!data.sessionId) return;
+    try {
       await db.update(conversationsTable)
         .set({ lastMessageAt: new Date() })
         .where(eq(conversationsTable.guestSessionId, data.sessionId));
+
+      // Proactive nudge: if user is idle 90+ seconds in ENGAGING/SUMMARY state, bot sends a tip
+      const [conv] = await db.select().from(conversationsTable)
+        .where(eq(conversationsTable.guestSessionId, data.sessionId)).limit(1);
+      if (conv && !conv.botEscalated) {
+        const nudge = getProactiveNudge(data.sessionId);
+        if (nudge && nudge.message) {
+          // Emit typing indicator, short delay, then nudge
+          io.to(`session:${data.sessionId}`).emit("chat:typing_bot", { isTyping: true });
+          await new Promise(r => setTimeout(r, 1800));
+          io.to(`session:${data.sessionId}`).emit("chat:typing_bot", { isTyping: false });
+
+          // Save nudge to DB
+          await db.insert(messagesTable).values({
+            conversationId: conv.id,
+            senderId: null,
+            senderRole: "BOT",
+            content: nudge.message,
+            metadata: nudge.quickReplies ? JSON.stringify({ quickReplies: nudge.quickReplies }) : null,
+          }).returning().catch(() => []);
+
+          io.to(`session:${data.sessionId}`).emit("chat:message", {
+            senderRole: "BOT",
+            content: nudge.message,
+            text: nudge.message,
+            createdAt: new Date().toISOString(),
+            isBot: true,
+            quickReplies: nudge.quickReplies,
+          });
+          logger.info({ sessionId: data.sessionId }, "Proactive bot nudge sent");
+        }
+      }
+    } catch (_) {}
+  });
+
+  // ── Admin:Takeover — explicitly stop bot for a conversation ──────────────────
+  socket.on("admin:takeover", async (data: { conversationId: number; sessionId?: string }) => {
+    try {
+      const [conv] = await db.select().from(conversationsTable)
+        .where(eq(conversationsTable.id, data.conversationId)).limit(1);
+      if (!conv) return;
+
+      await db.update(conversationsTable)
+        .set({ botEscalated: true, status: "ASSIGNED", lastMessageAt: new Date() })
+        .where(eq(conversationsTable.id, data.conversationId));
+
+      // Destroy in-memory bot session
+      const botKey = data.sessionId || conv.guestSessionId || String(data.conversationId);
+      destroyBotSession(botKey);
+
+      // Notify the guest session that an agent is ready
+      const guestSession = data.sessionId || conv.guestSessionId;
+      if (guestSession) {
+        io.to(`session:${guestSession}`).emit("chat:agent_joined", {
+          agentName: "Travel Expert",
+          role: "AGENT",
+          conversationId: data.conversationId,
+        });
+      }
+
+      // Confirm to admin
+      socket.emit("admin:takeover_confirmed", { conversationId: data.conversationId });
+      logger.info({ convId: data.conversationId }, "Admin explicit takeover");
+    } catch (err) {
+      logger.error({ err }, "admin:takeover error");
     }
   });
+
 
   // ── Staff typing → guest ──────────────────────────────────────────────────
   socket.on("admin:typing", (data: {
@@ -628,6 +695,10 @@ io.on("connection", async (socket) => {
   // ── Main message handler ──────────────────────────────────────────────────
   socket.on("chat:message", async (msg) => {
     try {
+      // Normalize: if client sends empty sessionId, fall back to the socket-handshake sessionId.
+      // This prevents a race condition where the frontend emits before localStorage is read.
+      if (!msg.sessionId && sessionId) msg.sessionId = sessionId;
+
       const rateKey = msg.sessionId || msg.userId || socket.id;
 
       // ── 1. Rate limiting ───────────────────────────────────────────────────
@@ -700,20 +771,49 @@ io.on("connection", async (socket) => {
         isBot: false,
       };
 
-      // ── 5. Admin/agent reply — broadcast and return ────────────────────────
+      // ── 5. Admin/agent reply — broadcast, takeover bot, and return ─────────
       if (isAdmin) {
+        // First admin message in a session → stop bot, send "agent joined" event to guest
+        if (!conversation.botEscalated) {
+          await db.update(conversationsTable)
+            .set({ botEscalated: true, status: "ASSIGNED", lastMessageAt: new Date() })
+            .where(eq(conversationsTable.id, conversation.id));
+          // Emit agent-joined notification to guest widget
+          if (msg.sessionId || conversation.guestSessionId) {
+            const agentSession = msg.sessionId || conversation.guestSessionId;
+            io.to(`session:${agentSession}`).emit("chat:agent_joined", {
+              agentName: msg.guestName || "Travel Expert",
+              role: msg.role,
+              conversationId: conversation.id,
+            });
+          }
+          // Destroy in-memory bot session so bot is fully stopped
+          const botKey = (msg.sessionId || conversation.guestSessionId) || String(conversation.id);
+          destroyBotSession(botKey);
+          logger.info({ convId: conversation.id, agentRole: msg.role }, "Admin took over — bot stopped");
+        }
         if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
         if (resolvedUserId && msg.userId) io.to(`user:${msg.userId}`).emit("chat:message", userPayload);
         io.to("supervisors").emit("chat:message", userPayload);
         io.to("admins").emit("chat:message", userPayload);
-        // Notify assigned agent
         if (conversation.assignedStaffId) {
           io.to(`agent:${conversation.assignedStaffId}`).emit("chat:message", userPayload);
         }
-        await db.update(conversationsTable)
-          .set({ lastMessageAt: new Date() })
-          .where(eq(conversationsTable.id, conversation.id));
+        if (!conversation.botEscalated) { /* already updated above */ } else {
+          await db.update(conversationsTable)
+            .set({ lastMessageAt: new Date() })
+            .where(eq(conversationsTable.id, conversation.id));
+        }
         return;
+      }
+
+      // Update guest contact info on returning sessions (keeps support panel current)
+      if (!isNew && (msg.guestName || msg.guestPhone || msg.guestEmail)) {
+        await db.update(conversationsTable).set({
+          guestName:  msg.guestName  || conversation.guestName  || null,
+          guestPhone: msg.guestPhone || conversation.guestPhone || null,
+          guestEmail: msg.guestEmail || conversation.guestEmail || null,
+        }).where(eq(conversationsTable.id, conversation.id));
       }
 
       // Echo user message immediately back to client so user message appears right away!
@@ -721,11 +821,45 @@ io.on("connection", async (socket) => {
 
       // ── 6. Bot processing for guest messages ──────────────────────────────
       if (!conversation.botEscalated) {
+        const botSessionKey = msg.sessionId || String(conversation.id);
+
+        // Detect returning user context (has prior messages or known category)
+        const isReturning = !isNew;
+        const lastTopic = !isNew && conversation.category && conversation.category !== "GENERAL"
+          ? conversation.category
+          : "";
+
+        // Restore session state from DB if not in memory (e.g., after server restart)
+        const existingSession = getBotSession(botSessionKey);
+        if (!existingSession && conversation.botState && conversation.botState !== "GREETING") {
+          // Reconstruct session from DB state so mid-conversation users don't restart
+          const restoredSession = createBotSession(
+            botSessionKey,
+            msg.guestName || conversation.guestName || "Guest",
+            isReturning,
+            lastTopic
+          );
+          restoredSession.state = (conversation.botState as any) || "INTENT";
+          restoredSession.intent = (conversation.category as any) || null;
+          restoredSession.collectedData = (conversation.requirementData as Record<string, string>) || {};
+          const flow = restoredSession.intent ? (BOT_FLOWS as any)[restoredSession.intent] : null;
+          if (flow) {
+            restoredSession.questionIndex = Math.min(
+              Object.keys(restoredSession.collectedData).length,
+              flow.length - 1
+            );
+          }
+          logger.info({ botSessionKey, state: restoredSession.state }, "Restored bot session from DB");
+        }
+
         const botResult = await processBotMessage(
-          msg.sessionId || String(conversation.id),
+          botSessionKey,
           msg.text || "",
-          msg.guestName || conversation.guestName || "Guest"
+          msg.guestName || conversation.guestName || "Guest",
+          isReturning,
+          lastTopic
         );
+
 
         // Update conversation with bot's assessment
         const updateData: Record<string, any> = {
@@ -764,13 +898,23 @@ io.on("connection", async (socket) => {
           .set(updateData)
           .where(eq(conversationsTable.id, conversation.id));
 
-        // If policy muted, emit mute error event to client right away
+        // If policy muted, emit mute error event to client right away.
+        // We also save the mute message to DB for history, then skip the normal
+        // bot-reply path below to avoid double-sending.
         if (botResult.isMuted && msg.sessionId) {
           io.to(`session:${msg.sessionId}`).emit("chat:error", {
             code: "MUTED",
             message: botResult.message,
             mutedUntil: botResult.mutedUntil,
           });
+          // Save to DB so the mute notice appears in conversation history
+          await db.insert(messagesTable).values({
+            conversationId: conversation.id,
+            senderId: null,
+            senderRole: "BOT",
+            content: botResult.message,
+          }).returning().catch(() => []);
+          return; // skip normal bot-message path below
         }
 
         // Natural typing delay & bot reply
@@ -859,9 +1003,27 @@ io.on("connection", async (socket) => {
       }
 
     } catch (error: any) {
-      logger.error({ error: error?.message || String(error) }, "Error processing chat message");
-      // Do NOT emit SERVER_ERROR to client — it causes false "Something went wrong" banners
-      // Only emit for hard failures like rate-limit or blocklist
+      logger.error({ error: error?.message || String(error), stack: error?.stack }, "Error processing chat message");
+      // Emit a safe fallback bot reply so the user is NEVER left with silence.
+      // This is the primary fix for the "bot not replying" bug.
+      try {
+        if (msg?.sessionId) {
+          const fallbackText = "Sorry, I'm having a little hiccup! \uD83D\uDE10 Please try sending your message again, or type \"connect me\" to speak with a travel expert right away.";
+          io.to(`session:${msg.sessionId}`).emit("chat:message", {
+            senderRole: "BOT",
+            content: fallbackText,
+            text: fallbackText,
+            createdAt: new Date().toISOString(),
+            isBot: true,
+            quickReplies: [
+              { id: "retry", label: "\uD83D\uDD04 Try Again", value: "Hi" },
+              { id: "agent", label: "\uD83E\uDDD1 Connect me to an agent", value: "connect me to an agent" },
+            ],
+          });
+        }
+      } catch (fallbackErr) {
+        logger.error({ fallbackErr }, "Failed to send fallback bot message");
+      }
     }
   });
 

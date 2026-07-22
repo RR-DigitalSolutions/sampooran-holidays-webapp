@@ -312,6 +312,12 @@ export default function SupportPage() {
   const handleTakeover = async () => {
     if (!selected) return;
     try {
+      // Emit socket event immediately for instant guest notification
+      socket?.emit("admin:takeover", {
+        conversationId: selected.id,
+        sessionId: selected.guestSessionId,
+      });
+
       const res = await fetch(`${API}/admin/conversations/${selected.id}/takeover`, {
         method: "POST", headers: authHeaders(),
       });

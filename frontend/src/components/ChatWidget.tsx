@@ -179,6 +179,8 @@ export default function ChatWidget() {
   const [isMuted, setIsMuted]         = useState(false);
   const [latestToast, setLatestToast] = useState<{ title: string; body: string } | null>(null);
   const [dragConstraints, setDragConstraints] = useState({ left: -400, right: 20, top: -600, bottom: 50 });
+  const [isReturning, setIsReturning]         = useState(false);
+  const [agentInfo, setAgentInfo]             = useState<{ name: string; role: string } | null>(null);
 
   const socketRef      = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -240,8 +242,9 @@ export default function ChatWidget() {
       fetch(`${API_URL}/chat/history?sessionId=${sessionId.current}`)
         .then(r => r.json())
         .then(data => {
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && data.length > 0) {
             setMessages(data);
+            setIsReturning(true); // Has prior messages — returning user!
             // Check if already escalated (human messages exist)
             const hasHuman = data.some(m => ["ADMIN", "AGENT"].includes(m.senderRole));
             if (hasHuman) setIsEscalated(true);
@@ -273,12 +276,25 @@ export default function ChatWidget() {
       // Detect escalation (human agent joined)
       if (["ADMIN", "AGENT"].includes(msg.senderRole)) {
         setIsEscalated(true);
+        setAgentInfo({ name: "Travel Expert", role: msg.senderRole });
         playPing();
         const body = msgText(msg) || "An agent has joined your conversation.";
         showBrowserNotif("Sampooran Holidays Support", body);
-        setLatestToast({ title: "Agent Connected", body });
-        setTimeout(() => setLatestToast(null), 5000);
+        setLatestToast({ title: "🧑 Agent Connected", body });
+        setTimeout(() => setLatestToast(null), 6000);
       }
+    });
+
+    // Agent has explicitly joined the conversation (admin:takeover)
+    socket.on("chat:agent_joined", (data: { agentName?: string; role?: string }) => {
+      setIsEscalated(true);
+      const name = data.agentName || "Travel Expert";
+      setAgentInfo({ name, role: data.role || "AGENT" });
+      playPing();
+      const body = `${name} is now ready to help you personally! 🎉`;
+      showBrowserNotif("Sampooran Holidays — Expert Connected", body);
+      setLatestToast({ title: "✅ Expert Connected!", body });
+      setTimeout(() => setLatestToast(null), 8000);
     });
 
     socket.on("chat:typing_bot", (data: { isTyping: boolean }) => {
@@ -312,12 +328,12 @@ export default function ChatWidget() {
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [step]);
 
-  /* ── 30s Heartbeat for online status ───────────────────────────────── */
+  /* ── 90s Heartbeat (also triggers proactive idle nudge on server) ──────── */
   useEffect(() => {
     if (step !== "chat") return;
     const interval = setInterval(() => {
       socketRef.current?.emit("chat:heartbeat", { sessionId: sessionId.current });
-    }, 30_000);
+    }, 90_000); // 90s matches the proactive nudge threshold
     return () => clearInterval(interval);
   }, [step]);
 
@@ -388,7 +404,12 @@ export default function ChatWidget() {
   /* ── Send message ─────────────────────────────────────────────────────── */
   const handleSend = useCallback((text?: string) => {
     const msg = (text || input).trim();
-    if (!msg || !socketRef.current) return;
+    if (!msg || !socketRef.current || !isConnected) return;
+
+    // Ensure session ID is always present — guard against race conditions
+    const sid = sessionId.current || getOrCreateSessionId();
+    if (!sid) return;
+    if (!sessionId.current) sessionId.current = sid;
 
     const optimistic: Message = {
       senderRole: "USER", text: msg, content: msg,
@@ -398,14 +419,14 @@ export default function ChatWidget() {
     setInput("");
 
     socketRef.current.emit("chat:message", {
-      sessionId: sessionId.current,
+      sessionId: sid,
       guestName: guest.name,
       guestPhone: guest.phone,
       guestEmail: guest.email,
       role: "USER",
       text: msg,
     });
-  }, [input, guest]);
+  }, [input, guest, isConnected]);
 
   /* ── Quick reply tap ──────────────────────────────────────────────────── */
   const handleQuickReply = useCallback((value: string) => {
@@ -608,10 +629,42 @@ export default function ChatWidget() {
                             <SampoornaAvatar size="sm" online={false} />
                             <span className="text-xs font-bold text-[#1B3A6B]">Sampoorna</span>
                           </div>
-                          <p className="text-sm text-slate-700">Hello {guest.name.split(" ")[0]}! 👋</p>
-                          <p className="text-xs text-slate-500 mt-0.5">How can I help with your travel plans today?</p>
+                          {isReturning ? (
+                            <>
+                              <p className="text-sm text-slate-700">Welcome back, <strong>{guest.name.split(" ")[0]}</strong>! 🌟</p>
+                              <p className="text-xs text-slate-500 mt-0.5">Great to have you again — how can I make your next trip amazing?</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm text-slate-700">Hello <strong>{guest.name.split(" ")[0]}</strong>! 👋</p>
+                              <p className="text-xs text-slate-500 mt-0.5">I'm Sampoorna, your personal travel concierge. How can I help?</p>
+                            </>
+                          )}
                         </div>
                       </div>
+                    )}
+
+                    {/* Returning user welcome-back notification */}
+                    {isReturning && messages.length > 0 && !agentInfo && (
+                      <div className="flex justify-center my-1">
+                        <span className="text-[10px] text-slate-400 bg-white border border-slate-100 rounded-full px-3 py-0.5 shadow-sm">
+                          🔄 Resumed conversation · {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Agent Connected Banner */}
+                    {agentInfo && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        className="flex justify-center my-2"
+                      >
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center gap-2 shadow-sm text-xs text-emerald-700 font-semibold">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                          ✅ {agentInfo.name} (Travel Expert) has joined your conversation!
+                        </div>
+                      </motion.div>
                     )}
 
                     {messages.map((msg, i) => {
@@ -786,20 +839,22 @@ export default function ChatWidget() {
                   <div className="px-4 py-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
                     <input
                       type="text"
-                      disabled={isMuted}
+                      disabled={isMuted || !isConnected}
                       placeholder={
                         isMuted
                           ? "🚫 Chat suspended for policy violation"
-                          : isEscalated
-                            ? "Reply to your travel expert…"
-                            : "Ask Sampoorna anything or select an option…"
+                          : !isConnected
+                            ? "⏳ Connecting to server…"
+                            : isEscalated
+                              ? "Reply to your travel expert…"
+                              : "Ask Sampoorna anything or select an option…"
                       }
                       value={input}
                       onChange={e => { setInput(e.target.value); }}
                       onKeyDown={e => e.key === "Enter" && handleSend()}
                       className={cn(
                         "flex-1 border rounded-full px-4 py-2.5 text-sm outline-none transition",
-                        isMuted
+                        isMuted || !isConnected
                           ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
                           : "bg-slate-50 border-slate-200 focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
                       )}
