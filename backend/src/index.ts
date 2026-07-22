@@ -735,6 +735,10 @@ io.on("connection", async (socket) => {
           botState: botResult.newState,
         };
 
+        if (botResult.mutedUntil) {
+          updateData.mutedUntil = new Date(botResult.mutedUntil);
+        }
+
         if (botResult.urgency === "URGENT") {
           updateData.priority = "URGENT";
         }
@@ -746,7 +750,7 @@ io.on("connection", async (socket) => {
           await db.insert(chatBlocklistTable).values({
             type: "SESSION",
             value: msg.sessionId || "",
-            reason: `Auto-blocked: spam score ${botResult.spamScore}`,
+            reason: `Auto-blocked: severe policy violation / spam score ${botResult.spamScore}`,
           }).onConflictDoNothing();
         } else if (botResult.shouldEscalate) {
           updateData.botEscalated = true;
@@ -759,6 +763,15 @@ io.on("connection", async (socket) => {
         await db.update(conversationsTable)
           .set(updateData)
           .where(eq(conversationsTable.id, conversation.id));
+
+        // If policy muted, emit mute error event to client right away
+        if (botResult.isMuted && msg.sessionId) {
+          io.to(`session:${msg.sessionId}`).emit("chat:error", {
+            code: "MUTED",
+            message: botResult.message,
+            mutedUntil: botResult.mutedUntil,
+          });
+        }
 
         // Natural typing delay & bot reply
         if (botResult.message && !botResult.shouldBlock) {

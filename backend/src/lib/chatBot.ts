@@ -60,6 +60,8 @@ export interface BotSession {
   botPatternScore: number;
   isFlagged: boolean;
   isBlocked: boolean;
+  violationCount?: number;
+  mutedUntil?: number | null;
 
   createdAt: number;
   lastActiveAt: number;
@@ -77,6 +79,8 @@ export interface BotResponse {
   newState: BotState;
   typingDelayMs: number;        // How long to show typing indicator before sending
   urgency?: "NORMAL" | "URGENT";
+  isMuted?: boolean;
+  mutedUntil?: number | null;
 }
 
 export interface QuickReply {
@@ -582,6 +586,21 @@ setInterval(() => {
   }
 }, 30 * 60 * 1000);
 
+// ─── Severe Profanity & Abusive Words Filter ────────────────────────────────────
+
+const PROFANITY_SEVERE_LIST = [
+  "fuck", "bitch", "bastard", "cunt", "motherfucker", "asshole", "dick", "pussy",
+  "bc", "mc", "bhosdike", "bhosdika", "madarchod", "behenchod", "bhenchod",
+  "gandmarike", "chutiye", "chutiya", "gaand", "lauda", "loda", "lode",
+  "harami", "kamine", "bsdk", "mkl", "randi", "saale", "kamina", "tatti", "gand"
+];
+
+export function containsSevereProfanity(text: string): boolean {
+  const normalized = text.toLowerCase().replace(/[@$!#*]/g, "a");
+  const words = normalized.split(/[\s\W_]+/);
+  return words.some(w => PROFANITY_SEVERE_LIST.includes(w));
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function getBotSession(sessionId: string): BotSession | undefined {
@@ -605,6 +624,8 @@ export function createBotSession(sessionId: string, guestName: string): BotSessi
     botPatternScore: 0,
     isFlagged: false,
     isBlocked: false,
+    violationCount: 0,
+    mutedUntil: null,
     createdAt: Date.now(),
     lastActiveAt: Date.now(),
   };
@@ -627,6 +648,58 @@ export function processBotMessage(
 
   session.lastActiveAt = Date.now();
 
+  // ── 0a. Check if session is currently muted / timed out ─────────────────────
+  if (session.mutedUntil && Date.now() < session.mutedUntil) {
+    const remainingMs = session.mutedUntil - Date.now();
+    const remainingHours = Math.ceil(remainingMs / (3600 * 1000));
+    return reply(session, {
+      message: `🚫 Your chat session is suspended for ${remainingHours} more hour(s) due to policy violations (inappropriate language).`,
+      shouldBlock: false,
+      shouldEscalate: false,
+      newState: session.state,
+      isMuted: true,
+      mutedUntil: session.mutedUntil,
+    });
+  }
+
+  // ── 0b. Severe Vulgarity Check & Progressive Timeout (6h -> 12h -> 24h -> Permanent) ──
+  if (containsSevereProfanity(text)) {
+    session.violationCount = (session.violationCount || 0) + 1;
+    const count = session.violationCount;
+
+    let muteHours = 6;
+    if (count === 1) muteHours = 6;
+    else if (count === 2) muteHours = 12;
+    else if (count === 3) muteHours = 24;
+    else muteHours = 24 * 365; // Permanent
+
+    session.mutedUntil = Date.now() + muteHours * 3600 * 1000;
+    session.spamScore = 100;
+
+    if (count >= 4) {
+      session.isBlocked = true;
+      return reply(session, {
+        message: "🚫 Your chat access has been permanently restricted due to repeated severe policy violations. Admin review requested.",
+        shouldBlock: true,
+        shouldEscalate: true,
+        newState: "ESCALATED",
+        category: "COMPLAINT",
+        urgency: "URGENT",
+        isMuted: true,
+        mutedUntil: session.mutedUntil,
+      });
+    }
+
+    return reply(session, {
+      message: `🚫 Chat suspended for ${muteHours} hours due to use of prohibited/offensive language (Violation Strike ${count}/3). Please maintain polite and respectful communication.`,
+      shouldBlock: false,
+      shouldEscalate: count >= 3,
+      newState: session.state,
+      isMuted: true,
+      mutedUntil: session.mutedUntil,
+    });
+  }
+
   // ── Spam detection ─────────────────────────────────────────────────────────
   const rawSpam = calculateSpamScore(text, session);
   session.spamScore = Math.min(100, session.spamScore * 0.7 + rawSpam * 0.3 + rawSpam * 0.1);
@@ -636,7 +709,7 @@ export function processBotMessage(
   if (session.isBlocked || session.spamScore >= 90) {
     session.isBlocked = true;
     return reply(session, {
-      message: "Your session has been temporarily restricted due to unusual activity. Please contact us directly at support@sampooranholidays.com or call our helpline.",
+      message: "Your session has been temporarily restricted due to unusual activity. Please contact us directly at support@sampooranholidays.com.",
       shouldBlock: true, shouldEscalate: false, newState: session.state,
     });
   }
@@ -904,6 +977,8 @@ function reply(
     newState: overrides.newState,
     typingDelayMs: msg ? calcTypingDelay(msg) : 0,
     urgency: overrides.urgency,
+    isMuted: overrides.isMuted,
+    mutedUntil: overrides.mutedUntil,
   };
 }
 

@@ -32,6 +32,8 @@ export const conversationsTable = pgTable("conversations", {
   // ── Security & Spam ────────────────────────────────────────────────────────
   spamScore: integer("spam_score").default(0), // 0-100; >70 = suspected, >90 = auto-blocked
   isBanned: boolean("is_banned").default(false),
+  violationCount: integer("violation_count").default(0),
+  mutedUntil: timestamp("muted_until"),
   tags: text("tags").array(),                  // e.g. ["spam", "bot", "verified", "lead", "urgent"]
 
   // ── Status & Lifecycle ────────────────────────────────────────────────────

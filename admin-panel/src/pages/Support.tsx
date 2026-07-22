@@ -76,6 +76,8 @@ interface ExtConversation extends Conversation {
   requirementData?: Record<string, string> | null;
   spamScore?: number;
   isBanned?: boolean;
+  violationCount?: number;
+  mutedUntil?: string | Date | null;
   tags?: string[];
 }
 
@@ -926,6 +928,25 @@ export default function SupportPage() {
                     <p><span className="font-semibold text-gray-500">Phone:</span> {selected.guestPhone || "N/A"}</p>
                     {selected.userId ? <p><span className="font-semibold text-gray-500">User ID:</span> #{selected.userId}</p> : null}
                   </div>
+
+                  {selected.violationCount && selected.violationCount > 0 ? (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-xs text-red-800 space-y-1 mt-2">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                        <span>Policy Violation Strike: {selected.violationCount}/3</span>
+                      </div>
+                      {selected.mutedUntil && new Date(selected.mutedUntil) > new Date() && (
+                        <p className="text-[10px] text-red-600 font-medium">
+                          🚫 Chat suspended until {new Date(selected.mutedUntil).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                        </p>
+                      )}
+                      {selected.violationCount >= 3 && (
+                        <p className="text-[10px] font-black text-red-700 uppercase tracking-wider">
+                          ⚠️ Action Required: Permanent Ban Recommended
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center gap-2 mb-2">

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiBaseAbsolute, getApiUrl } from "@/lib/api-url";
+import SampoornaAvatar from "./SampoornaAvatar";
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 interface GuestInfo { name: string; phone: string; email: string; }
@@ -134,6 +135,7 @@ export default function ChatWidget() {
   const [isEscalated, setIsEscalated] = useState(false); // bot → human
   const [category, setCategory]       = useState<string | null>(null);
   const [errorMsg, setErrorMsg]       = useState<string | null>(null);
+  const [isMuted, setIsMuted]         = useState(false);
   const [latestToast, setLatestToast] = useState<{ title: string; body: string } | null>(null);
   const [dragConstraints, setDragConstraints] = useState({ left: -400, right: 20, top: -600, bottom: 50 });
 
@@ -387,19 +389,23 @@ export default function ChatWidget() {
             {/* ── Header ───────────────────────────────────────────────── */}
             <div className="bg-[#1B3A6B] px-5 py-4 flex items-center justify-between text-white shrink-0 cursor-grab active:cursor-grabbing">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-                  {isEscalated ? <Headset className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-                </div>
+                {isEscalated ? (
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-400/30">
+                    <Headset className="w-5 h-5 text-emerald-300" />
+                  </div>
+                ) : (
+                  <SampoornaAvatar size="md" online={isConnected} />
+                )}
                 <div>
                   <h3 className="font-bold text-sm leading-tight">
-                    {isEscalated ? "Sampooran Support" : "Sampoorna AI Assistant"}
+                    {isEscalated ? "Sampooran Support" : "Sampoorna Concierge"}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className={cn("w-2 h-2 rounded-full", isConnected && step === "chat" ? "bg-green-400" : "bg-white/40 animate-pulse")} />
-                    <span className="text-[10px] font-semibold opacity-80 uppercase tracking-wider">
+                    <span className="text-[10px] font-semibold opacity-90 tracking-wider">
                       {step === "chat"
                         ? isConnected
-                          ? isEscalated ? "Live Agent" : "AI Bot • Not a Human"
+                          ? isEscalated ? "Live Travel Expert" : "Online • Travel Assistant"
                           : "Connecting…"
                         : "Live Chat"
                       }
@@ -416,16 +422,6 @@ export default function ChatWidget() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            {/* ── AI Disclosure Banner (shown when bot is active) ───────── */}
-            {step === "chat" && !isEscalated && (
-              <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center gap-2 shrink-0">
-                <Bot className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <p className="text-[10px] text-amber-700 font-semibold">
-                  🤖 You are chatting with <strong>Sampoorna AI</strong> — not a human agent. Our team will join after you share your requirements.
-                </p>
-              </div>
-            )}
 
             {/* ── Escalated Banner ─────────────────────────────────────── */}
             {step === "chat" && isEscalated && (
@@ -562,9 +558,9 @@ export default function ChatWidget() {
                     {messages.length === 0 && (
                       <div className="flex justify-start">
                         <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%] border border-slate-100">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Bot className="w-3.5 h-3.5 text-[#1B3A6B]" />
-                            <span className="text-[10px] font-bold text-[#1B3A6B] uppercase tracking-wider">Sampoorna AI</span>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <SampoornaAvatar size="sm" online={false} />
+                            <span className="text-xs font-bold text-[#1B3A6B]">Sampoorna</span>
                           </div>
                           <p className="text-sm text-slate-700">Hello {guest.name.split(" ")[0]}! 👋</p>
                           <p className="text-xs text-slate-500 mt-0.5">How can I help with your travel plans today?</p>
@@ -587,9 +583,15 @@ export default function ChatWidget() {
                           {!isMe && (
                             <div className="flex items-center gap-1.5 px-1">
                               {isBot ? (
-                                <><Bot className="w-3 h-3 text-amber-500" /><span className="text-[9px] text-amber-600 font-bold uppercase">AI Assistant</span></>
+                                <>
+                                  <SampoornaAvatar size="sm" online={false} />
+                                  <span className="text-[10px] text-[#1B3A6B] font-bold">Sampoorna</span>
+                                </>
                               ) : isAgent ? (
-                                <><Headset className="w-3 h-3 text-emerald-600" /><span className="text-[9px] text-emerald-700 font-bold uppercase">Travel Expert</span></>
+                                <>
+                                  <Headset className="w-3 h-3 text-emerald-600" />
+                                  <span className="text-[9px] text-emerald-700 font-bold uppercase">Travel Expert</span>
+                                </>
                               ) : null}
                             </div>
                           )}
@@ -602,7 +604,7 @@ export default function ChatWidget() {
                               isMe
                                 ? "bg-[#1B3A6B] text-white rounded-tr-none"
                                 : isBot
-                                  ? "bg-amber-50 text-slate-800 rounded-tl-none border border-amber-100"
+                                  ? "bg-amber-50/90 text-slate-800 rounded-tl-none border border-amber-100"
                                   : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
                             )}
                           >
@@ -645,8 +647,8 @@ export default function ChatWidget() {
                     {/* Bot Typing indicator */}
                     {botTyping && (
                       <div className="flex items-start">
-                        <div className="bg-amber-50/80 rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm flex items-center gap-2 border border-amber-100/80">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                        <div className="bg-amber-50/80 rounded-2xl rounded-tl-none px-3.5 py-2 shadow-sm flex items-center gap-2 border border-amber-100/80">
+                          <SampoornaAvatar size="sm" online={false} />
                           <div className="flex items-center gap-1">
                             {[0, 1, 2].map(i => (
                               <motion.span key={i}
@@ -656,7 +658,7 @@ export default function ChatWidget() {
                               />
                             ))}
                           </div>
-                          <span className="text-[10px] text-amber-700 font-medium">Sampoorna is typing…</span>
+                          <span className="text-[10px] text-amber-800 font-medium">Sampoorna is typing…</span>
                         </div>
                       </div>
                     )}
@@ -683,19 +685,38 @@ export default function ChatWidget() {
                     <div ref={messagesEndRef} />
                   </div>
 
+                  {/* Muted / Suspended Policy Notice */}
+                  {isMuted && (
+                    <div className="bg-red-50 border-t border-red-100 px-4 py-2 flex items-center justify-between text-red-700 text-xs font-bold shrink-0">
+                      <span>🚫 Chat suspended due to policy violation.</span>
+                    </div>
+                  )}
+
                   {/* Input Bar */}
                   <div className="px-4 py-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
                     <input
                       type="text"
-                      placeholder={isEscalated ? "Reply to your agent…" : "Type or tap a button above…"}
+                      disabled={isMuted}
+                      placeholder={
+                        isMuted
+                          ? "🚫 Chat suspended for policy violation"
+                          : isEscalated
+                            ? "Reply to your travel expert…"
+                            : "Ask Sampoorna anything or select an option…"
+                      }
                       value={input}
-                      onChange={e => { setInput(e.target.value); emitTyping(); }}
+                      onChange={e => { setInput(e.target.value); }}
                       onKeyDown={e => e.key === "Enter" && handleSend()}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10 transition"
+                      className={cn(
+                        "flex-1 border rounded-full px-4 py-2.5 text-sm outline-none transition",
+                        isMuted
+                          ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                          : "bg-slate-50 border-slate-200 focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
+                      )}
                     />
                     <button
                       onClick={() => handleSend()}
-                      disabled={!input.trim() || !isConnected}
+                      disabled={!input.trim() || !isConnected || isMuted}
                       className="w-10 h-10 rounded-full bg-[#1B3A6B] text-[#F5A623] flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0"
                       aria-label="Send message"
                     >
