@@ -297,10 +297,15 @@ export default function ChatWidget() {
       }
     });
 
-    // Handle errors (rate limit, block)
-    socket.on("chat:error", (err: { code: string; message: string }) => {
-      setErrorMsg(err.message);
-      setTimeout(() => setErrorMsg(null), 8000);
+    // Handle errors — only show user-visible codes (MUTED, BLOCKED, RATE_LIMITED)
+    // SERVER_ERROR is suppressed to prevent false "Something went wrong" banners
+    socket.on("chat:error", (err: { code: string; message: string; mutedUntil?: number }) => {
+      const SHOW_CODES = ["MUTED", "BLOCKED", "RATE_LIMITED"];
+      if (SHOW_CODES.includes(err.code)) {
+        if (err.code === "MUTED") setIsMuted(true);
+        setErrorMsg(err.message);
+        setTimeout(() => setErrorMsg(null), 10000);
+      }
     });
 
     socketRef.current = socket;

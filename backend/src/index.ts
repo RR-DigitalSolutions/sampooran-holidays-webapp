@@ -843,15 +843,25 @@ io.on("connection", async (socket) => {
           .where(eq(conversationsTable.id, conversation.id));
       }
 
-      // ── 7. Notify admins of a brand new conversation ──────────────────────
-      if (isNew && !conversation.botEscalated) {
-        // New conversation — only log, bot will handle first
-        logger.info({ convId: conversation.id }, "New chat conversation started — bot handling");
+      // ── 7. Notify admins of ALL new conversations (including bot-handled) ──
+      if (isNew) {
+        const newConvPayload = {
+          ...conversation,
+          lastMessage: msg.text || "",
+          lastMessageRole: "USER",
+          lastMessageAt: new Date().toISOString(),
+          unreadCount: 1,
+          status: conversation.status || "BOT",
+        };
+        io.to("supervisors").emit("chat:new_conversation", newConvPayload);
+        io.to("admins").emit("chat:new_conversation", newConvPayload);
+        logger.info({ convId: conversation.id }, "New chat conversation started — notified admin");
       }
 
-    } catch (error) {
-      logger.error({ error }, "Error processing chat message");
-      socket.emit("chat:error", { code: "SERVER_ERROR", message: "Something went wrong. Please try again." });
+    } catch (error: any) {
+      logger.error({ error: error?.message || String(error) }, "Error processing chat message");
+      // Do NOT emit SERVER_ERROR to client — it causes false "Something went wrong" banners
+      // Only emit for hard failures like rate-limit or blocklist
     }
   });
 

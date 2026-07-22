@@ -20,6 +20,9 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
+// ─── Static DB import (used for recommendation cards) ───────────────────────
+import { db, packagesTable, hotelsTable, transportVehiclesTable } from "@workspace/db";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type BotState =
@@ -655,7 +658,6 @@ async function fetchRecommendations(
   collectedData: Record<string, string>
 ): Promise<RecommendationCard[]> {
   try {
-    const { db, packagesTable, hotelsTable, transportVehiclesTable } = await import("@workspace/db");
     const cards: RecommendationCard[] = [];
 
     if (intent === "TOUR" || !intent) {

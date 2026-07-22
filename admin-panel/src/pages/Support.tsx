@@ -507,8 +507,16 @@ export default function SupportPage() {
                 <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
                 <p className="text-xs font-bold">No conversations</p>
                 <p className="text-[10px] mt-1 opacity-60">
-                  {isSupervisor ? "Waiting for escalated chats…" : "No conversations assigned to you yet."}
+                  {isSupervisor
+                    ? "No chats yet. New client conversations will appear here in real-time."
+                    : "No conversations assigned to you yet."}
                 </p>
+                <button
+                  onClick={fetchConversations}
+                  className="mt-3 px-3 py-1.5 bg-[#1B3A6B] text-white text-[10px] font-bold rounded-lg hover:bg-[#1B3A6B]/90 transition"
+                >
+                  🔄 Refresh
+                </button>
               </div>
             )}
             {filtered.map(conv => {
