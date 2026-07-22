@@ -67,9 +67,23 @@ export interface BotSession {
   lastActiveAt: number;
 }
 
+export interface RecommendationCard {
+  id: number | string;
+  type: "PACKAGE" | "HOTEL" | "TAXI";
+  title: string;
+  subtitle?: string;
+  location?: string;
+  price: string;
+  originalPrice?: string;
+  rating?: number;
+  image?: string;
+  url?: string;
+}
+
 export interface BotResponse {
   message: string;
   quickReplies?: QuickReply[];
+  recommendations?: RecommendationCard[];
   isBot: true;
   shouldEscalate: boolean;
   shouldBlock: boolean;
@@ -633,16 +647,81 @@ export function createBotSession(sessionId: string, guestName: string): BotSessi
   return session;
 }
 
+// ─── DB Recommendations Generator ─────────────────────────────────────────────
+
+async function fetchRecommendations(
+  intent: ChatCategory | null,
+  text: string,
+  collectedData: Record<string, string>
+): Promise<RecommendationCard[]> {
+  try {
+    const { db, packagesTable, hotelsTable, transportVehiclesTable } = await import("@workspace/db");
+    const cards: RecommendationCard[] = [];
+
+    if (intent === "TOUR" || !intent) {
+      const packages = await db.select().from(packagesTable).limit(3);
+      for (const p of packages) {
+        cards.push({
+          id: p.id,
+          type: "PACKAGE",
+          title: p.name,
+          subtitle: `${p.duration || 4} Days / ${p.nights || 3} Nights`,
+          location: p.cities && p.cities.length > 0 ? p.cities.join(", ") : "Top Destination",
+          price: `₹${(p.pricePerPerson || 12999).toLocaleString()}`,
+          originalPrice: p.originalPrice ? `₹${p.originalPrice.toLocaleString()}` : undefined,
+          rating: p.rating || 4.8,
+          image: p.thumbnailUrl || p.imageUrl || "/placeholder-package.jpg",
+          url: `/packages/${p.slug}`,
+        });
+      }
+    } else if (intent === "HOTEL") {
+      const hotels = await db.select().from(hotelsTable).limit(3);
+      for (const h of hotels) {
+        cards.push({
+          id: h.id,
+          type: "HOTEL",
+          title: h.name,
+          subtitle: `${h.starRating || 4}★ Star ${h.type || "Hotel"}`,
+          location: h.city || h.address || "Prime Location",
+          price: `₹${(h.minPrice || 2499).toLocaleString()} / night`,
+          rating: 4.7,
+          image: "/placeholder-hotel.jpg",
+          url: `/hotels/${h.slug}`,
+        });
+      }
+    } else if (intent === "TAXI") {
+      const vehicles = await db.select().from(transportVehiclesTable).limit(3);
+      for (const v of vehicles) {
+        cards.push({
+          id: v.id,
+          type: "TAXI",
+          title: v.name,
+          subtitle: `${v.seatingCapacity || 6} Seats · ${v.isAC ? "AC" : "Non-AC"}`,
+          location: v.customCity || "Airport & Local Transfers",
+          price: `₹16 / km`,
+          rating: 4.9,
+          image: "/placeholder-car.jpg",
+          url: `/transport/${v.slug}`,
+        });
+      }
+    }
+
+    return cards;
+  } catch (err) {
+    return [];
+  }
+}
+
 /**
  * Main processing function.
  * Returns a BotResponse that includes typingDelayMs — the socket handler
  * MUST wait this many ms before emitting the bot's reply.
  */
-export function processBotMessage(
+export async function processBotMessage(
   sessionId: string,
   text: string,
   guestName: string
-): BotResponse {
+): Promise<BotResponse> {
   let session = botSessions.get(sessionId);
   if (!session) session = createBotSession(sessionId, guestName);
 
@@ -800,6 +879,16 @@ export function processBotMessage(
     const questions = BOT_FLOWS[intent];
     const currentQ  = questions[session.questionIndex];
 
+    // Smart Affirmation Guard: don't store phrases like "its correct", "yes", "ok" as destination/answers
+    const isAffirmation = /^(its?\s*correct|correct|yes|yeah|yep|sure|ok|okay|right|confirm|proceed|go\s*ahead|fine|agree|done)$/i.test(text.trim());
+    if (isAffirmation && !session.collectedData[currentQ.key]) {
+      return reply(session, {
+        message: `Great! Glad we are aligned. 😊 ${currentQ.ask}`,
+        quickReplies: currentQ.quickReplies,
+        shouldEscalate: false, shouldBlock: false, newState: session.state,
+      });
+    }
+
     // Check if answer is too vague / too short (for probing)
     const isVague = text.trim().length < 3 && !currentQ.optional && !currentQ.quickReplies;
     if (isVague && currentQ.probe && session.probingCount < 1) {
@@ -813,7 +902,7 @@ export function processBotMessage(
     session.probingCount = 0;
 
     // Save answer
-    if (text.trim()) session.collectedData[currentQ.key] = text.trim();
+    if (text.trim() && !isAffirmation) session.collectedData[currentQ.key] = text.trim();
 
     // User wants human mid-flow
     if (wantsHuman) return escalate(session, sessionId);
@@ -836,8 +925,10 @@ export function processBotMessage(
     if (session.questionIndex >= questions.length) {
       session.state = "SUMMARY";
       const summary = buildSummary(session);
+      const recs = await fetchRecommendations(intent, text, session.collectedData);
       return reply(session, {
-        message: `Here's a quick summary of what I've noted:\n\n${summary}\n\nIs everything correct? Shall I connect you with our **${getDeptLabel(intent)} specialist** who can prepare a customized quote for you? 😊`,
+        message: `Here's a quick summary of what I've noted:\n\n${summary}\n\nBelow are a few top choices curated for you! 👇\n\nShall I connect you with our **${getDeptLabel(intent)} specialist** who can finalize your custom quote? 😊`,
+        recommendations: recs,
         quickReplies: [
           { id: "yes", label: "✅ Yes, connect me!", value: "Yes, connect me to an agent" },
           { id: "edit", label: "✏️ Edit details",   value: "I want to change something" },

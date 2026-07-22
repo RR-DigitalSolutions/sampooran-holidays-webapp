@@ -45,7 +45,48 @@ interface Message {
   local?: boolean;
   isBot?: boolean;
   quickReplies?: QuickReply[];
+  recommendations?: any[];
   metadata?: string | null; // JSON string
+}
+
+/* ── Typewriter Animated Text Stream Component ────────────────────────────── */
+function TypewriterText({ text, isLatest }: { text: string; isLatest: boolean }) {
+  const [displayed, setDisplayed] = useState(isLatest ? "" : text);
+
+  useEffect(() => {
+    if (!isLatest) {
+      setDisplayed(text);
+      return;
+    }
+    setDisplayed("");
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(timer);
+    }, 14);
+    return () => clearInterval(timer);
+  }, [text, isLatest]);
+
+  return (
+    <div className="text-sm leading-relaxed whitespace-pre-line text-slate-800">
+      {displayed.replace(/\*\*(.*?)\*\*/g, "$1").replace(/_(.*?)_/g, "$1")}
+      {isLatest && displayed.length < text.length && (
+        <span className="inline-block w-1.5 h-3 bg-[#1B3A6B] ml-1 animate-pulse rounded-xs" />
+      )}
+    </div>
+  );
+}
+
+function getRecommendationsFromMeta(m: Message): any[] {
+  if (m.recommendations && m.recommendations.length > 0) return m.recommendations;
+  if (m.metadata) {
+    try {
+      const meta = JSON.parse(m.metadata);
+      if (meta.recommendations) return meta.recommendations;
+    } catch {}
+  }
+  return [];
 }
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
@@ -574,6 +615,7 @@ export default function ChatWidget() {
                       const isAgent = ["ADMIN", "AGENT"].includes(msg.senderRole);
                       const text  = msgText(msg);
                       const qr    = getQuickReplies(msg);
+                      const recs  = getRecommendationsFromMeta(msg);
 
                       if (!text) return null;
 
@@ -608,18 +650,61 @@ export default function ChatWidget() {
                                   : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
                             )}
                           >
-                            {/* Render bot messages with markdown-like formatting */}
-                            <div className={cn("text-sm leading-relaxed whitespace-pre-line", isMe ? "text-white" : "text-slate-800")}>
-                              {text
-                                .replace(/\*\*(.*?)\*\*/g, "$1") // strip bold markers for now
-                                .replace(/_(.*?)_/g, "$1")        // strip italic markers
-                              }
-                            </div>
+                            {/* Animated Typewriter Text for Bot, static for User */}
+                            {isBot ? (
+                              <TypewriterText text={text} isLatest={i === messages.length - 1} />
+                            ) : (
+                              <div className={cn("text-sm leading-relaxed whitespace-pre-line", isMe ? "text-white" : "text-slate-800")}>
+                                {text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/_(.*?)_/g, "$1")}
+                              </div>
+                            )}
+
                             <div className={cn("flex items-center gap-1 mt-1 justify-end", isMe ? "text-white/60" : "text-slate-400")}>
                               <span className="text-[9px]">{formatTime(msg.createdAt)}</span>
                               {isMe && (msg.local ? <Check className="w-3 h-3 text-white/50" /> : <CheckCheck className="w-3 h-3 text-white/70" />)}
                             </div>
                           </motion.div>
+
+                          {/* Recommendation Cards Carousel */}
+                          {!isMe && recs.length > 0 && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="flex gap-2.5 overflow-x-auto py-2 px-1 max-w-[95%] no-scrollbar my-1"
+                            >
+                              {recs.map((card: any, idx: number) => (
+                                <div key={idx} className="shrink-0 w-[190px] bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden flex flex-col transition-all hover:shadow-lg">
+                                  <div className="h-24 bg-slate-100 relative overflow-hidden">
+                                    <img src={card.image || "/placeholder-package.jpg"} alt={card.title} className="w-full h-full object-cover" />
+                                    <span className="absolute top-1.5 left-1.5 bg-[#1B3A6B] text-white text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase">
+                                      {card.type}
+                                    </span>
+                                    {card.rating && (
+                                      <span className="absolute top-1.5 right-1.5 bg-amber-400 text-slate-900 text-[8px] font-black px-1.5 py-0.5 rounded-md">
+                                        ★ {card.rating}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="p-2.5 flex-1 flex flex-col justify-between">
+                                    <div>
+                                      <h4 className="font-bold text-[11px] text-slate-900 line-clamp-1">{card.title}</h4>
+                                      {card.subtitle && <p className="text-[9px] text-slate-500 font-medium">{card.subtitle}</p>}
+                                      {card.location && <p className="text-[8px] text-slate-400 mt-0.5 truncate">{card.location}</p>}
+                                    </div>
+                                    <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                                      <p className="text-[11px] font-black text-[#1B3A6B]">{card.price}</p>
+                                      <button
+                                        onClick={() => handleQuickReply(`Book ${card.title}`)}
+                                        className="px-2 py-1 bg-[#1B3A6B] text-white rounded-lg text-[9px] font-bold hover:bg-[#1B3A6B]/90 transition shadow-xs"
+                                      >
+                                        Book Now
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </motion.div>
+                          )}
 
                           {/* Quick Replies (only for the last bot message with QRs) */}
                           {!isMe && qr.length > 0 && i === messages.length - 1 && (

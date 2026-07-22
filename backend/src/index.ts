@@ -721,7 +721,7 @@ io.on("connection", async (socket) => {
 
       // ── 6. Bot processing for guest messages ──────────────────────────────
       if (!conversation.botEscalated) {
-        const botResult = processBotMessage(
+        const botResult = await processBotMessage(
           msg.sessionId || String(conversation.id),
           msg.text || "",
           msg.guestName || conversation.guestName || "Guest"
@@ -788,12 +788,16 @@ io.on("connection", async (socket) => {
             io.to(`session:${msg.sessionId}`).emit("chat:typing_bot", { isTyping: false });
           }
 
+          const metaObj: Record<string, any> = {};
+          if (botResult.quickReplies) metaObj.quickReplies = botResult.quickReplies;
+          if (botResult.recommendations) metaObj.recommendations = botResult.recommendations;
+
           const [botMsg] = await db.insert(messagesTable).values({
             conversationId: conversation.id,
             senderId: null,
             senderRole: "BOT",
             content: botResult.message,
-            metadata: botResult.quickReplies ? JSON.stringify({ quickReplies: botResult.quickReplies }) : null,
+            metadata: Object.keys(metaObj).length > 0 ? JSON.stringify(metaObj) : null,
           }).returning();
 
           const botPayload = {
@@ -802,6 +806,7 @@ io.on("connection", async (socket) => {
             conversationId: conversation.id,
             isBot: true,
             quickReplies: botResult.quickReplies,
+            recommendations: botResult.recommendations,
           };
 
           if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", botPayload);
