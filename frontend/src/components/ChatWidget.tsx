@@ -899,7 +899,7 @@ export default function ChatWidget() {
       </AnimatePresence>
 
       {/* ── FAB Button & Rotating Tagline Badge ───────────────────────── */}
-      <div className="relative flex items-center justify-end gap-1.5 sm:gap-2">
+      <div className="relative flex items-center justify-end gap-2">
         {/* Rotating Text Pill (visible on both mobile & desktop when chat is closed) */}
         {!isOpen && (
           <AnimatePresence mode="wait">
@@ -910,23 +910,23 @@ export default function ChatWidget() {
               exit={{ opacity: 0, x: -10, scale: 0.95 }}
               transition={{ duration: 0.35 }}
               onClick={() => setIsOpen(true)}
-              className="bg-[#1B3A6B] text-[#F5A623] text-[9.5px] sm:text-[10.5px] font-extrabold px-2.5 py-1 rounded-full shadow-lg border border-[#F5A623]/40 cursor-pointer flex items-center gap-1 sm:gap-1.5 whitespace-nowrap active:scale-95 transition-transform max-w-[145px] sm:max-w-none truncate"
+              className="bg-[#1B3A6B] text-[#F5A623] text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-[#F5A623]/30 cursor-pointer flex items-center gap-1.5 whitespace-nowrap active:scale-95 transition-transform"
             >
-              <span className="text-[#F5A623]">{ROTATING_TAGLINES[rotatingIndex]}</span>
+              <span>{ROTATING_TAGLINES[rotatingIndex]}</span>
             </motion.div>
           </AnimatePresence>
         )}
 
-        <div className="relative flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 shrink-0">
+        <div className="relative flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 shrink-0">
           {/* Rotating SVG Circular Ring */}
           <motion.svg
             animate={{ rotate: 360 }}
             transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 w-full h-full pointer-events-none hidden sm:block"
+            className="absolute inset-0 w-full h-full pointer-events-none"
             viewBox="0 0 100 100"
           >
             <path id="curve" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
-            <text className="text-[7.5px] font-black uppercase tracking-[0.18em] fill-[#F5A623]">
+            <text className="text-[7.5px] font-black uppercase tracking-[0.18em] fill-[#1B3A6B]">
               <textPath href="#curve" startOffset="0%">Chat with us • Sampooran Holidays • </textPath>
             </text>
           </motion.svg>
@@ -936,17 +936,17 @@ export default function ChatWidget() {
             whileHover={{ scale: 1.07 }}
             whileTap={{ scale: 0.93 }}
             onClick={() => setIsOpen(o => !o)}
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-pointer z-10 bg-[#1B3A6B] text-[#F5A623] border border-[#F5A623]/30"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-pointer z-10 bg-[#1B3A6B] text-[#F5A623]"
             aria-label="Toggle chat"
           >
             <AnimatePresence mode="wait">
               {isOpen ? (
                 <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </motion.div>
               ) : (
                 <motion.div key="msg" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} className="animate-pulse">
-                  <MessageCircle className="w-5 h-5 fill-[#F5A623] text-[#F5A623]" />
+                  <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F5A623] text-[#F5A623]" />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -968,16 +968,16 @@ export default function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             onPointerDown={e => e.stopPropagation()}
-            className="absolute bottom-[65px] right-0 w-[270px] sm:w-[290px] bg-white rounded-2xl shadow-2xl border border-slate-100 p-3.5 cursor-pointer z-50"
+            className="absolute bottom-[70px] right-0 w-[300px] bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 cursor-pointer"
             onClick={() => { setIsOpen(true); setLatestToast(null); }}
           >
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-[#1B3A6B]/10 flex items-center justify-center shrink-0">
-                <BellRing className="w-4 h-4 text-[#1B3A6B] animate-bounce" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#1B3A6B]/10 flex items-center justify-center shrink-0">
+                <BellRing className="w-5 h-5 text-[#1B3A6B] animate-bounce" />
               </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-xs font-bold text-slate-900 truncate">{latestToast.title}</h4>
-                <p className="text-[10.5px] text-slate-600 line-clamp-2 mt-0.5 leading-snug">{latestToast.body}</p>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">{latestToast.title}</h4>
+                <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{latestToast.body}</p>
               </div>
             </div>
           </motion.div>
