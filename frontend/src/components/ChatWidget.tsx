@@ -181,6 +181,23 @@ export default function ChatWidget() {
   const [dragConstraints, setDragConstraints] = useState({ left: -400, right: 20, top: -600, bottom: 50 });
   const [isReturning, setIsReturning]         = useState(false);
   const [agentInfo, setAgentInfo]             = useState<{ name: string; role: string } | null>(null);
+  const [rotatingIndex, setRotatingIndex]     = useState(0);
+
+  const ROTATING_TAGLINES = [
+    "💬 Need Help? Chat with us!",
+    "🏔️ Kashmir & Kerala Deals!",
+    "⭐ Sampoorna AI Assistant",
+    "🔥 Best Price Guaranteed!",
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRotatingIndex(prev => (prev + 1) % ROTATING_TAGLINES.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isSendingRef = useRef(false);
 
   const socketRef      = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -259,19 +276,21 @@ export default function ChatWidget() {
       // Hide bot typing indicator when bot message arrives
       setBotTyping(false);
 
-      // Deduplicate optimistic messages
+      // Deduplicate optimistic messages and prevent duplicate server broadcasts
       setMessages(prev => {
-        const filtered = prev.filter(m => !(m.local && msgText(m) === msgText(msg)));
+        if (msg.id && prev.some(m => m.id === msg.id)) return prev;
+        const filtered = prev.filter(m => !(m.local && m.senderRole === msg.senderRole && msgText(m) === msgText(msg)));
         return [...filtered, msg];
       });
 
       // Parse quick replies from metadata if not already set
       if (!msg.quickReplies && msg.metadata) {
         try {
-          const meta = JSON.parse(msg.metadata);
+          const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
           if (meta.quickReplies) msg.quickReplies = meta.quickReplies;
         } catch {}
       }
+
 
       // Detect escalation (human agent joined)
       if (["ADMIN", "AGENT"].includes(msg.senderRole)) {
@@ -404,7 +423,8 @@ export default function ChatWidget() {
   /* ── Send message ─────────────────────────────────────────────────────── */
   const handleSend = useCallback((text?: string) => {
     const msg = (text || input).trim();
-    if (!msg || !socketRef.current || !isConnected) return;
+    if (!msg || !socketRef.current || !isConnected || isSendingRef.current) return;
+    isSendingRef.current = true;
 
     // Ensure session ID is always present — guard against race conditions
     const sid = sessionId.current || getOrCreateSessionId();
@@ -426,6 +446,8 @@ export default function ChatWidget() {
       role: "USER",
       text: msg,
     });
+
+    setTimeout(() => { isSendingRef.current = false; }, 300);
   }, [input, guest, isConnected]);
 
   /* ── Quick reply tap ──────────────────────────────────────────────────── */
@@ -440,7 +462,7 @@ export default function ChatWidget() {
       dragConstraints={dragConstraints}
       dragElastic={0.1}
       dragMomentum={false}
-      className="fixed bottom-[136px] sm:bottom-26 right-4 sm:right-6 z-[100] flex flex-col items-end select-none"
+      className="fixed bottom-20 sm:bottom-24 right-3 sm:right-6 z-[100] flex flex-col items-end select-none"
     >
       <AnimatePresence>
         {isOpen && (
@@ -450,8 +472,8 @@ export default function ChatWidget() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 16 }}
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
-            className="mb-3 w-[370px] max-w-[calc(100vw-2rem)] rounded-3xl overflow-hidden shadow-2xl flex flex-col bg-white border border-slate-200"
-            style={{ height: step === "form" ? "auto" : "540px" }}
+            className="mb-2 sm:mb-3 w-[calc(100vw-1.25rem)] sm:w-[380px] max-w-[420px] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col bg-white border border-slate-200"
+            style={{ height: step === "form" ? "auto" : "min(580px, calc(100dvh - 160px))" }}
           >
             {/* ── Header ───────────────────────────────────────────────── */}
             <div className="bg-[#1B3A6B] px-5 py-4 flex items-center justify-between text-white shrink-0 cursor-grab active:cursor-grabbing">
@@ -835,8 +857,8 @@ export default function ChatWidget() {
                     </div>
                   )}
 
-                  {/* Input Bar */}
-                  <div className="px-4 py-3 bg-white border-t border-slate-100 flex items-center gap-2 shrink-0">
+                  {/* Input Bar — always contained, send button fully visible on all mobile sizes */}
+                  <div className="px-2 sm:px-3 py-2 bg-white border-t border-slate-100 flex items-center gap-1.5 sm:gap-2 shrink-0 w-full overflow-hidden">
                     <input
                       type="text"
                       disabled={isMuted || !isConnected}
@@ -847,13 +869,13 @@ export default function ChatWidget() {
                             ? "⏳ Connecting to server…"
                             : isEscalated
                               ? "Reply to your travel expert…"
-                              : "Ask Sampoorna anything or select an option…"
+                              : "Ask Sampoorna… or pick an option"
                       }
                       value={input}
                       onChange={e => { setInput(e.target.value); }}
                       onKeyDown={e => e.key === "Enter" && handleSend()}
                       className={cn(
-                        "flex-1 border rounded-full px-4 py-2.5 text-sm outline-none transition",
+                        "flex-1 min-w-0 border rounded-full px-3 py-2 sm:px-4 sm:py-2.5 text-[13px] sm:text-sm outline-none transition",
                         isMuted || !isConnected
                           ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
                           : "bg-slate-50 border-slate-200 focus:border-[#1B3A6B] focus:ring-2 focus:ring-[#1B3A6B]/10"
@@ -862,10 +884,10 @@ export default function ChatWidget() {
                     <button
                       onClick={() => handleSend()}
                       disabled={!input.trim() || !isConnected || isMuted}
-                      className="w-10 h-10 rounded-full bg-[#1B3A6B] text-[#F5A623] flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1B3A6B] text-[#F5A623] flex items-center justify-center shadow-md active:scale-95 transition-all disabled:opacity-40 shrink-0 flex-none"
                       aria-label="Send message"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 </>
@@ -875,47 +897,66 @@ export default function ChatWidget() {
         )}
       </AnimatePresence>
 
-      {/* ── FAB Button ─────────────────────────────────────────────────── */}
-      <div className="relative flex items-center justify-center w-16 h-16 sm:w-24 sm:h-24 -mr-2 -mb-2 sm:-mr-5 sm:-mb-5">
-        {/* Rotating tagline */}
-        <motion.svg
-          animate={{ rotate: 360 }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 w-full h-full pointer-events-none hidden sm:block"
-          viewBox="0 0 100 100"
-        >
-          <path id="curve" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
-          <text className="text-[7.5px] font-black uppercase tracking-[0.18em] fill-[#1B3A6B]">
-            <textPath href="#curve" startOffset="0%">Chat with us • Sampooran Holidays • </textPath>
-          </text>
-        </motion.svg>
-
-        {/* FAB */}
-        <motion.button
-          whileHover={{ scale: 1.07 }}
-          whileTap={{ scale: 0.93 }}
-          onClick={() => setIsOpen(o => !o)}
-          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-grab active:cursor-grabbing z-10 bg-[#1B3A6B] text-[#F5A623]"
-          aria-label="Toggle chat"
-        >
+      {/* ── FAB Button & Rotating Tagline Badge ───────────────────────── */}
+      <div className="relative flex items-center justify-end gap-2">
+        {/* Rotating Text Pill (visible on both mobile & desktop when chat is closed) */}
+        {!isOpen && (
           <AnimatePresence mode="wait">
-            {isOpen ? (
-              <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-                <X className="w-6 h-6" />
-              </motion.div>
-            ) : (
-              <motion.div key="msg" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} className="animate-pulse">
-                <MessageCircle className="w-6 h-6 fill-[#F5A623] text-[#F5A623]" />
-              </motion.div>
-            )}
+            <motion.div
+              key={rotatingIndex}
+              initial={{ opacity: 0, x: 10, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -10, scale: 0.95 }}
+              transition={{ duration: 0.35 }}
+              onClick={() => setIsOpen(true)}
+              className="bg-[#1B3A6B] text-[#F5A623] text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-[#F5A623]/30 cursor-pointer flex items-center gap-1.5 whitespace-nowrap active:scale-95 transition-transform"
+            >
+              <span>{ROTATING_TAGLINES[rotatingIndex]}</span>
+            </motion.div>
           </AnimatePresence>
+        )}
 
-          {unread > 0 && !isOpen && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[8px] sm:text-[10px] font-black rounded-full flex items-center justify-center shadow-lg z-20">
-              {unread > 9 ? "9+" : unread}
-            </span>
-          )}
-        </motion.button>
+        <div className="relative flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 shrink-0">
+          {/* Rotating SVG Circular Ring */}
+          <motion.svg
+            animate={{ rotate: 360 }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox="0 0 100 100"
+          >
+            <path id="curve" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
+            <text className="text-[7.5px] font-black uppercase tracking-[0.18em] fill-[#1B3A6B]">
+              <textPath href="#curve" startOffset="0%">Chat with us • Sampooran Holidays • </textPath>
+            </text>
+          </motion.svg>
+
+          {/* FAB Button */}
+          <motion.button
+            whileHover={{ scale: 1.07 }}
+            whileTap={{ scale: 0.93 }}
+            onClick={() => setIsOpen(o => !o)}
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative cursor-pointer z-10 bg-[#1B3A6B] text-[#F5A623]"
+            aria-label="Toggle chat"
+          >
+            <AnimatePresence mode="wait">
+              {isOpen ? (
+                <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                </motion.div>
+              ) : (
+                <motion.div key="msg" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} className="animate-pulse">
+                  <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F5A623] text-[#F5A623]" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {unread > 0 && !isOpen && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[8px] sm:text-[10px] font-black rounded-full flex items-center justify-center shadow-lg z-20">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </motion.button>
+        </div>
       </div>
 
       {/* ── Toast Notification ─────────────────────────────────────────── */}

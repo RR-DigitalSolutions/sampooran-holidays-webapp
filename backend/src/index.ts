@@ -794,8 +794,8 @@ io.on("connection", async (socket) => {
         }
         if (msg.sessionId) io.to(`session:${msg.sessionId}`).emit("chat:message", userPayload);
         if (resolvedUserId && msg.userId) io.to(`user:${msg.userId}`).emit("chat:message", userPayload);
-        io.to("supervisors").emit("chat:message", userPayload);
-        io.to("admins").emit("chat:message", userPayload);
+        // Use socket.to() to exclude the sender — prevents admin from seeing their own message twice
+        socket.to("supervisors").emit("chat:message", userPayload);
         if (conversation.assignedStaffId) {
           io.to(`agent:${conversation.assignedStaffId}`).emit("chat:message", userPayload);
         }
@@ -966,16 +966,12 @@ io.on("connection", async (socket) => {
             category: botResult.category,
             status: "OPEN",
           });
-          io.to("admins").emit("chat:new_conversation", {
-            ...freshConv,
-            lastMessage: msg.text,
-          });
           logger.info({ convId: conversation.id, category: botResult.category }, "Bot escalated to human");
         }
       } else {
         // Already escalated — conversation is with human agent
+        // Emit to supervisors room (single emit to avoid double delivery for admins in both rooms)
         io.to("supervisors").emit("chat:message", userPayload);
-        io.to("admins").emit("chat:message", userPayload);
         if (conversation.assignedStaffId) {
           io.to(`agent:${conversation.assignedStaffId}`).emit("chat:message", userPayload);
         }
@@ -997,8 +993,8 @@ io.on("connection", async (socket) => {
           unreadCount: 1,
           status: conversation.status || "BOT",
         };
+        // Single emit to 'supervisors' room only — avoids duplicate for admins who join both rooms
         io.to("supervisors").emit("chat:new_conversation", newConvPayload);
-        io.to("admins").emit("chat:new_conversation", newConvPayload);
         logger.info({ convId: conversation.id }, "New chat conversation started — notified admin");
       }
 

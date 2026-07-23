@@ -156,7 +156,8 @@ export default function SupportPage() {
       const cur = selectedRef.current;
       if (!cur || msg.conversationId !== cur.id) return;
       setMessages(prev => {
-        const filtered = prev.filter(m => !(m.local && msgText(m) === msgText(msg)));
+        if (msg.id && prev.some(m => m.id === msg.id)) return prev;
+        const filtered = prev.filter(m => !(m.local && m.senderRole === msg.senderRole && msgText(m) === msgText(msg)));
         return [...filtered, msg];
       });
       setConversations(prev => prev.map(c => c.id === cur.id ? { ...c, unreadCount: 0 } : c));
@@ -824,14 +825,14 @@ export default function SupportPage() {
                             {isBot ? <><Bot className="w-3 h-3 text-amber-500" /><span className="text-[9px] text-amber-600 font-bold">AI BOT</span></> : <><User2 className="w-3 h-3 text-slate-500" /><span className="text-[9px] text-slate-500 font-bold">GUEST</span></>}
                           </div>
                         )}
-                        <div className={cn("max-w-[70%] px-4 py-2.5 rounded-2xl text-sm shadow-sm leading-relaxed",
-                          isMe ? "bg-[#1B3A6B] text-white rounded-tr-sm" :
-                          isBot ? "bg-amber-50 text-slate-700 rounded-tl-sm border border-amber-100" :
-                          "bg-white text-gray-800 rounded-tl-sm border border-gray-100")}>
-                          <p className="whitespace-pre-line">{text}</p>
-                          <div className={cn("flex items-center gap-1 mt-1 justify-end", isMe ? "text-white/60" : "text-gray-400")}>
-                            <span className="text-[9px]">{formatTime(msg.createdAt)}</span>
-                            {isMe && (msg.local ? <Check className="w-3 h-3 opacity-50" /> : <CheckCheck className="w-3 h-3 opacity-70" />)}
+                        <div className={cn("max-w-[72%] px-2.5 py-1.5 rounded-lg shadow-xs leading-tight break-words",
+                          isMe ? "bg-[#1B3A6B] text-white rounded-tr-none" :
+                          isBot ? "bg-amber-50 text-slate-700 rounded-tl-none border border-amber-200/60" :
+                          "bg-white text-slate-800 rounded-tl-none border border-slate-200/80")}>
+                          <p className="whitespace-pre-line font-normal text-[11px] leading-snug tracking-normal">{text}</p>
+                          <div className={cn("flex items-center gap-1 mt-0.5 justify-end select-none", isMe ? "text-white/60" : "text-slate-400")}>
+                            <span className="text-[9px] font-normal">{formatTime(msg.createdAt)}</span>
+                            {isMe && (msg.local ? <Check className="w-2.5 h-2.5 opacity-50" /> : <CheckCheck className="w-2.5 h-2.5 text-blue-300" />)}
                           </div>
                         </div>
                       </div>
