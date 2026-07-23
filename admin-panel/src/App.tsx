@@ -25,6 +25,7 @@ import TravelGuides from "./pages/TravelGuides";
 import Attractions from "./pages/Attractions";
 import DiningPoints from "./pages/DiningPoints";
 import Activities from "./pages/Activities";
+import VendorChat from "./pages/VendorChat";
 
 // Protected route wrapper
 function ProtectedRoute({ component: Component }: { component: () => React.ReactElement }) {
@@ -97,6 +98,9 @@ function AppRoutes() {
       </Route>
       <Route path="/support">
         <ProtectedRoute component={SupportPage} />
+      </Route>
+      <Route path="/vendor-chat">
+        <ProtectedRoute component={VendorChat} />
       </Route>
       <Route path="/transport">
         <ProtectedRoute component={Transport} />

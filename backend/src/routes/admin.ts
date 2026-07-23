@@ -1801,7 +1801,6 @@ router.patch("/conversations/:id/status", async (req: AuthenticatedRequest, res)
 
 // PATCH /admin/conversations/:id/assign — supervisor assigns to staff or vendor
 router.patch("/conversations/:id/assign", async (req: AuthenticatedRequest, res) => {
-  // Only supervisors (SUPERADMIN or ADMIN with ALL permission) can assign
   const perms: string[] = JSON.parse(req.user?.adminPermissions || '["ALL"]');
   const isSupervisor = req.user?.role === "SUPERADMIN" || perms.includes("ALL");
   if (!isSupervisor) {
@@ -1810,8 +1809,8 @@ router.patch("/conversations/:id/assign", async (req: AuthenticatedRequest, res)
   try {
     const { staffId, vendorId, department } = req.body;
     const updateData: Record<string, any> = { status: "ASSIGNED" };
-    if (staffId)    updateData.assignedStaffId  = Number(staffId);
-    if (vendorId)   updateData.assignedVendorId = Number(vendorId);
+    if (staffId !== undefined)    updateData.assignedStaffId  = staffId ? Number(staffId) : null;
+    if (vendorId !== undefined)   updateData.assignedVendorId = vendorId ? Number(vendorId) : null;
     if (department) updateData.assignedDepartment = department;
 
     const [updated] = await db
@@ -1820,13 +1819,19 @@ router.patch("/conversations/:id/assign", async (req: AuthenticatedRequest, res)
       .where(eq(conversationsTable.id, Number(req.params.id)))
       .returning();
 
-    // Get staff name for response
-    let assignedName = "Unknown";
-    if (staffId) {
-      const [staff] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, Number(staffId))).limit(1);
-      assignedName = staff?.name || "Unknown";
+    let assignedStaffName = "";
+    if (updated.assignedStaffId) {
+      const [staff] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, updated.assignedStaffId)).limit(1);
+      assignedStaffName = staff?.name || "";
     }
-    res.json({ ...updated, assignedStaffName: assignedName });
+
+    let assignedVendorName = "";
+    if (updated.assignedVendorId) {
+      const [vendor] = await db.select({ name: usersTable.name, vendorBusinessName: usersTable.vendorBusinessName }).from(usersTable).where(eq(usersTable.id, updated.assignedVendorId)).limit(1);
+      assignedVendorName = vendor?.vendorBusinessName || vendor?.name || "";
+    }
+
+    res.json({ ...updated, assignedStaffName, assignedVendorName });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to assign conversation" });
   }
@@ -2051,6 +2056,29 @@ router.delete("/chat-agents/:id", async (req: AuthenticatedRequest, res) => {
     await db.delete(chatAgentsTable).where(eq(chatAgentsTable.id, Number(req.params.id)));
     res.json({ success: true });
   } catch { res.status(500).json({ error: "Failed to delete agent" }); }
+});
+
+// GET /admin/vendors — fetch registered Hotel Owners and Transporters for chat assignment
+router.get("/vendors", async (req: AuthenticatedRequest, res) => {
+  try {
+    const vendors = await db
+      .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        phoneNumber: usersTable.phoneNumber,
+        role: usersTable.role,
+        vendorBusinessName: usersTable.vendorBusinessName,
+        vendorBusinessAddress: usersTable.vendorBusinessAddress,
+        vendorVerified: usersTable.vendorVerified,
+      })
+      .from(usersTable)
+      .where(or(eq(usersTable.role, "HOTEL_OWNER"), eq(usersTable.role, "TRANSPORTER")))
+      .orderBy(desc(usersTable.createdAt));
+    res.json(vendors);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch vendors: " + e.message });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────

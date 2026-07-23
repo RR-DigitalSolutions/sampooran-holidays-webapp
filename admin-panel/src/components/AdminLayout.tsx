@@ -86,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Live Chat & Support",
     items: [
       { label: "Live Support", icon: Headset, href: "/support", permission: "SUPPORT" },
+      { label: "Vendor Live Chat", icon: MessageSquare, href: "/vendor-chat", permission: "SUPPORT" },
     ]
   },
   {

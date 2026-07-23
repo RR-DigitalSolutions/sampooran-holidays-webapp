@@ -250,26 +250,26 @@ export default function StaffManagement() {
             return (
               <div key={member.id} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all">
                 <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg ${
-                    isSuper ? "bg-gradient-to-br from-amber-400 to-orange-500" :
-                    perms.includes("SUPPORT") ? "bg-gradient-to-br from-primary to-blue-700" :
-                    "bg-gradient-to-br from-blue-500 to-indigo-600"
-                  }`}>
-                    {isSuper ? <Shield className="w-6 h-6" /> : perms.includes("SUPPORT") ? <Headset className="w-6 h-6" /> : <User className="w-6 h-6" />}
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900">{member.name}</p>
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                      isSuper ? "bg-amber-50 text-amber-700" :
-                      perms.includes("SUPPORT") ? "bg-primary/10 text-primary" :
-                      "bg-blue-50 text-blue-700"
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg ${
+                      isSuper ? "bg-gradient-to-br from-amber-400 to-orange-500" :
+                      perms.includes("SUPPORT") ? "bg-gradient-to-br from-primary to-blue-700" :
+                      "bg-gradient-to-br from-blue-500 to-indigo-600"
                     }`}>
-                      {isSuper ? "Super Admin" : perms.includes("SUPPORT") ? "Support Agent" : "Staff"}
-                    </span>
+                      {isSuper ? <Shield className="w-6 h-6" /> : perms.includes("SUPPORT") ? <Headset className="w-6 h-6" /> : <User className="w-6 h-6" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">{member.name}</p>
+                      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                        isSuper ? "bg-amber-50 text-amber-700" :
+                        perms.includes("SUPPORT") ? "bg-primary/10 text-primary" :
+                        "bg-blue-50 text-blue-700"
+                      }`}>
+                        {isSuper ? "Super Admin" : perms.includes("SUPPORT") ? "Support Agent" : "Staff"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
                 <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
                   <Mail className="w-4 h-4" /> {member.email}
@@ -294,6 +294,295 @@ export default function StaffManagement() {
           })}
         </div>
       )}
+
+      {/* Chat Agent & Department Assignments Section */}
+      <div className="mt-12 bg-white rounded-3xl border border-gray-100 p-8 shadow-xl">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <Headset className="w-5 h-5 text-primary" /> Chat Department Assignments & Agent Roster
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">
+              Assign staff members to specific chat departments (TOURS, HOTELS, TAXI, B2B, B2C). Department agents see their assigned department chats.
+            </p>
+          </div>
+        </div>
+
+        <ChatAgentsManager staffList={staff} />
+      </div>
     </AdminLayout>
   );
 }
+
+interface ChatAgent {
+  id: number;
+  userId: number;
+  department: string;
+  isSupervisor: boolean;
+  isAvailable: boolean;
+  maxConcurrentChats: number;
+  displayName: string;
+  name?: string;
+  email?: string;
+}
+
+function ChatAgentsManager({ staffList }: { staffList: StaffMember[] }) {
+  const [agents, setAgents] = useState<ChatAgent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<number>(0);
+  const [department, setDepartment] = useState("TOUR");
+  const [isSupervisor, setIsSupervisor] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [maxChats, setMaxChats] = useState(5);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const fetchAgents = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/chat-agents`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      setAgents(Array.isArray(data) ? data : []);
+    } catch {
+      setAgents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAgents(); }, []);
+
+  const handleCreateAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaffId) { setErr("Please select a staff member"); return; }
+    setSaving(true);
+    setErr("");
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/chat-agents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({
+          userId: selectedStaffId,
+          department,
+          isSupervisor,
+          displayName,
+          maxConcurrentChats: maxChats,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setErr(d.error || "Failed to assign chat agent");
+        return;
+      }
+      setShowAddModal(false);
+      setSelectedStaffId(0);
+      setDisplayName("");
+      fetchAgents();
+    } catch {
+      setErr("Network error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleAvailable = async (agent: ChatAgent) => {
+    try {
+      await fetch(`${API_BASE}/api/admin/chat-agents/${agent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ isAvailable: !agent.isAvailable }),
+      });
+      fetchAgents();
+    } catch {}
+  };
+
+  const handleDeleteAgent = async (id: number) => {
+    try {
+      await fetch(`${API_BASE}/api/admin/chat-agents/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      fetchAgents();
+    } catch {}
+  };
+
+  const DEPT_BADGES: Record<string, string> = {
+    TOUR: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    HOTEL: "bg-purple-50 text-purple-700 border-purple-200",
+    TAXI: "bg-amber-50 text-amber-700 border-amber-200",
+    B2B: "bg-sky-50 text-sky-700 border-sky-200",
+    B2C: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    GENERAL: "bg-gray-50 text-gray-700 border-gray-200",
+    ALL: "bg-rose-50 text-rose-700 border-rose-200",
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+          Active Chat Agents ({agents.length})
+        </span>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 bg-[#1B3A6B] text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md hover:bg-[#1B3A6B]/90 transition"
+        >
+          <Plus className="w-4 h-4" /> Assign Staff to Chat Dept
+        </button>
+      </div>
+
+      {showAddModal && (
+        <form onSubmit={handleCreateAgent} className="bg-gray-50 border border-gray-200 rounded-2xl p-6 space-y-4">
+          <h4 className="font-bold text-sm text-gray-900">Assign Chat Department to Staff</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Select Staff Member</label>
+              <select
+                value={selectedStaffId}
+                onChange={e => {
+                  const id = Number(e.target.value);
+                  setSelectedStaffId(id);
+                  const st = staffList.find(s => s.id === id);
+                  if (st) setDisplayName(st.name);
+                }}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none"
+              >
+                <option value={0}>-- Select Staff --</option>
+                {staffList.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Chat Department</label>
+              <select
+                value={department}
+                onChange={e => setDepartment(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none"
+              >
+                <option value="TOUR">🏔️ TOUR — Tour Packages & Honeymoon</option>
+                <option value="HOTEL">🏨 HOTEL — Hotel Bookings & Stays</option>
+                <option value="TAXI">🚗 TAXI — Transport & Vehicle Hires</option>
+                <option value="B2B">🤝 B2B — Agency & Corporate Partnerships</option>
+                <option value="B2C">💬 B2C — General Customer Inquiries</option>
+                <option value="GENERAL">📍 GENERAL — Helpdesk</option>
+                <option value="ALL">⭐ ALL — All Departments</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Display Name (shown to clients)</label>
+              <input
+                type="text" value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="e.g. Rahul - Senior Concierge"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6 pt-2">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-700">
+              <input
+                type="checkbox" checked={isSupervisor}
+                onChange={e => setIsSupervisor(e.target.checked)}
+                className="w-4 h-4 accent-[#1B3A6B] rounded"
+              />
+              ⭐ Supervisor Access (Can view ALL chats & reassign)
+            </label>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-500">Max Concurrent Chats:</span>
+              <input
+                type="number" min={1} max={20} value={maxChats}
+                onChange={e => setMaxChats(Number(e.target.value))}
+                className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-xs text-center bg-white"
+              />
+            </div>
+          </div>
+
+          {err && <p className="text-xs text-red-500 font-semibold">{err}</p>}
+
+          <div className="flex gap-2 pt-2">
+            <button type="submit" disabled={saving} className="px-5 py-2 bg-[#1B3A6B] text-white rounded-xl text-xs font-bold hover:bg-[#1B3A6B]/90 transition">
+              {saving ? "Assigning..." : "Confirm Assignment"}
+            </button>
+            <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold">
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <div className="text-center py-8 text-xs text-gray-400">Loading chat department assignments...</div>
+      ) : agents.length === 0 ? (
+        <div className="text-center py-8 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-2xl">
+          No chat department assignments yet. Click "+ Assign Staff to Chat Dept" above to configure your team.
+        </div>
+      ) : (
+        <div className="overflow-x-auto border border-gray-100 rounded-2xl shadow-xs">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-[10px] uppercase tracking-wider text-gray-400 font-bold">
+                <th className="py-3 px-4">Staff Member</th>
+                <th className="py-3 px-4">Display Name</th>
+                <th className="py-3 px-4">Department</th>
+                <th className="py-3 px-4">Supervisor</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 text-xs">
+              {agents.map(ag => (
+                <tr key={ag.id} className="hover:bg-gray-50/50">
+                  <td className="py-3 px-4 font-bold text-gray-900">
+                    {ag.name || `User #${ag.userId}`}
+                    <span className="block text-[10px] text-gray-400 font-normal">{ag.email}</span>
+                  </td>
+                  <td className="py-3 px-4 font-semibold text-gray-700">{ag.displayName || ag.name || " Concierge"}</td>
+                  <td className="py-3 px-4">
+                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${DEPT_BADGES[ag.department] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                      {ag.department}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    {ag.isSupervisor ? (
+                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">⭐ Supervisor</span>
+                    ) : (
+                      <span className="text-[10px] text-gray-400">Agent</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4">
+                    <button
+                      onClick={() => handleToggleAvailable(ag)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1 transition ${
+                        ag.isAvailable ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${ag.isAvailable ? "bg-emerald-500" : "bg-gray-400"}`} />
+                      {ag.isAvailable ? "Available" : "Away"}
+                    </button>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => handleDeleteAgent(ag.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Remove Assignment"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+

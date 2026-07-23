@@ -122,10 +122,10 @@ export interface QuickReply {
 // ─── Typing Delay ─────────────────────────────────────────────────────────────
 
 export function calcTypingDelay(message: string): number {
-  const words   = message.split(/\s+/).filter(Boolean).length;
-  const base    = 1200;
+  const words = message.split(/\s+/).filter(Boolean).length;
+  const base = 1200;
   const perWord = Math.min(words * 48, 2000);
-  const jitter  = Math.floor(Math.random() * 300);
+  const jitter = Math.floor(Math.random() * 300);
   return Math.min(base + perWord + jitter, 4000);
 }
 
@@ -570,12 +570,12 @@ function bridge(): string {
 // ─── Intent Quick Replies ──────────────────────────────────────────────────────
 
 const INTENT_QUICK_REPLIES: QuickReply[] = [
-  { id: "q_tour",      label: "🏔️ Tour Package",           value: "Tour Package"              },
-  { id: "q_hotel",     label: "🏨 Hotel Booking",           value: "Hotel Booking"             },
-  { id: "q_taxi",      label: "🚗 Taxi / Transport",        value: "Taxi"                      },
-  { id: "q_b2b",       label: "🤝 B2B Partnership",         value: "B2B"                       },
-  { id: "q_complaint", label: "📝 Feedback / Complaint",    value: "Share Feedback or Complaint" },
-  { id: "q_other",     label: "💬 Other Query",             value: "Other"                     },
+  { id: "q_tour", label: "🏔️ Tour Package", value: "Tour Package" },
+  { id: "q_hotel", label: "🏨 Hotel Booking", value: "Hotel Booking" },
+  { id: "q_taxi", label: "🚗 Taxi / Transport", value: "Taxi" },
+  { id: "q_b2b", label: "🤝 B2B Partnership", value: "B2B" },
+  { id: "q_complaint", label: "📝 Feedback / Complaint", value: "Share Feedback or Complaint" },
+  { id: "q_other", label: "💬 Other Query", value: "Other" },
 ];
 
 // ─── Spam Detection ───────────────────────────────────────────────────────────
@@ -752,10 +752,10 @@ function getNextTip(session: BotSession): string {
 
 function buildCustomizationNote(data: Record<string, string>): string {
   const parts: string[] = [];
-  if (data.tripTheme)       parts.push(`🎯 **Theme**: ${data.tripTheme}`);
-  if (data.mealPreference)  parts.push(`🍽️ **Meals**: ${data.mealPreference}`);
+  if (data.tripTheme) parts.push(`🎯 **Theme**: ${data.tripTheme}`);
+  if (data.mealPreference) parts.push(`🍽️ **Meals**: ${data.mealPreference}`);
   if (data.specialOccasion && data.specialOccasion !== "Regular Holiday")
-                            parts.push(`🎉 **Occasion**: ${data.specialOccasion}`);
+    parts.push(`🎉 **Occasion**: ${data.specialOccasion}`);
   return parts.length > 0 ? parts.join("\n") : "";
 }
 
@@ -811,7 +811,7 @@ export async function processBotMessage(
   const rawSpam = calculateSpamScore(text, session);
   session.spamScore = Math.min(100, session.spamScore * 0.7 + rawSpam * 0.3 + rawSpam * 0.1);
   session.messageTimestamps = [...session.messageTimestamps.slice(-50), Date.now()];
-  session.messageContents   = [...session.messageContents.slice(-20), text];
+  session.messageContents = [...session.messageContents.slice(-20), text];
 
   if (session.isBlocked || session.spamScore >= 90) {
     session.isBlocked = true;
@@ -862,7 +862,7 @@ export async function processBotMessage(
         message: `Welcome back, **${firstName}**! 🎉 It's great to have you with us again!\n\nI see you were looking into **${session.lastTopic}** during your last visit. Shall we continue from there, or is there something new I can help you with today? 😊`,
         quickReplies: [
           { id: "continue", label: `📌 Continue — ${session.lastTopic}`, value: session.lastTopic },
-          { id: "new",      label: "✨ Something New",                   value: "new query"       },
+          { id: "new", label: "✨ Something New", value: "new query" },
           ...INTENT_QUICK_REPLIES.slice(0, 4),
         ],
         shouldEscalate: false, shouldBlock: false, newState: "INTENT",
@@ -930,13 +930,13 @@ export async function processBotMessage(
     const questions = BOT_FLOWS[detected];
     const firstQ = questions[0];
     const introPhrases: Record<ChatCategory, string> = {
-      TOUR:      "Wonderful! Let me help plan your perfect holiday. 🌍",
-      HOTEL:     "Sure! Let me find the best accommodation for you. 🏨",
-      TAXI:      "Of course! Let me arrange reliable transport for you. 🚗",
-      B2B:       "Exciting! Let's explore how we can work together. 🤝",
+      TOUR: "Wonderful! Let me help plan your perfect holiday. 🌍",
+      HOTEL: "Sure! Let me find the best accommodation for you. 🏨",
+      TAXI: "Of course! Let me arrange reliable transport for you. 🚗",
+      B2B: "Exciting! Let's explore how we can work together. 🤝",
       COMPLAINT: "",
-      B2C:       "Of course! Let me get the details to connect you with the right team.",
-      GENERAL:   "Happy to help! Let me get a few details.",
+      B2C: "Of course! Let me get the details to connect you with the right team.",
+      GENERAL: "Happy to help! Let me get a few details.",
     };
 
     return reply(session, {
@@ -949,9 +949,9 @@ export async function processBotMessage(
 
   // ── COLLECTING (or COMPLAINT) ───────────────────────────────────────────────
   if (session.state === "COLLECTING" || session.state === "COMPLAINT") {
-    const intent  = session.intent!;
+    const intent = session.intent!;
     const questions = BOT_FLOWS[intent];
-    const currentQ  = questions[session.questionIndex];
+    const currentQ = questions[session.questionIndex];
 
     const isAffirmation = /^(its?\s*correct|correct|yes|yeah|yep|sure|ok|okay|right|confirm|proceed|go\s*ahead|fine|agree|done)$/i.test(text.trim());
     if (isAffirmation && !session.collectedData[currentQ.key]) {
@@ -1026,9 +1026,9 @@ export async function processBotMessage(
         message: `Here's a quick summary of what I've noted:\n\n${summary}\n\nBelow are a few top choices curated for you! 👇\n\nShall I connect you with our **${getDeptLabel(intent)} specialist** who can finalize your custom quote? 😊`,
         recommendations: recs,
         quickReplies: [
-          { id: "yes",  label: "✅ Yes, connect me!",    value: "Yes, connect me to an agent" },
-          { id: "edit", label: "✏️ Edit details",         value: "I want to change something"  },
-          { id: "more", label: "❓ I have a question",    value: "I have a question first"     },
+          { id: "yes", label: "✅ Yes, connect me!", value: "Yes, connect me to an agent" },
+          { id: "edit", label: "✏️ Edit details", value: "I want to change something" },
+          { id: "more", label: "❓ I have a question", value: "I have a question first" },
         ],
         shouldEscalate: false, shouldBlock: false, newState: "SUMMARY",
       });
@@ -1080,10 +1080,10 @@ export async function processBotMessage(
       message: `🌟 **Your Personalized Travel Plan is Ready!**\n\n**Requirements:**\n${summary}\n\n**Your Preferences:**\n${custNote}${occasionNote}\n\nHere are our top picks curated just for you! 👇\n\n_Our travel expert is reviewing your profile and will connect shortly. Meanwhile, feel free to ask me anything!_`,
       recommendations: recs,
       quickReplies: [
-        { id: "yes",   label: "✅ Connect me now!",        value: "Yes, connect me to an agent" },
-        { id: "tip",   label: "💡 Share a travel tip",     value: "tell me a travel tip"        },
-        { id: "faq",   label: "❓ Ask a question",         value: "I have a question"           },
-        { id: "more",  label: "📋 More recommendations",   value: "show me more options"        },
+        { id: "yes", label: "✅ Connect me now!", value: "Yes, connect me to an agent" },
+        { id: "tip", label: "💡 Share a travel tip", value: "tell me a travel tip" },
+        { id: "faq", label: "❓ Ask a question", value: "I have a question" },
+        { id: "more", label: "📋 More recommendations", value: "show me more options" },
       ],
       shouldEscalate: false, shouldBlock: false, newState: "ENGAGING",
     });
@@ -1108,9 +1108,9 @@ export async function processBotMessage(
       return reply(session, {
         message: `${roundMsg}\n\n${tip}\n\n_Want to hear another? Or shall I connect you with our expert now?_`,
         quickReplies: [
-          { id: "another", label: "💡 Another Tip!",         value: "tell me a travel tip"        },
-          { id: "connect", label: "🧑 Connect me now",        value: "connect me to an agent"      },
-          { id: "question", label: "❓ I have a question",    value: "I have a question"           },
+          { id: "another", label: "💡 Another Tip!", value: "tell me a travel tip" },
+          { id: "connect", label: "🧑 Connect me now", value: "connect me to an agent" },
+          { id: "question", label: "❓ I have a question", value: "I have a question" },
         ],
         shouldEscalate: false, shouldBlock: false, newState: "ENGAGING",
       });
@@ -1123,8 +1123,8 @@ export async function processBotMessage(
         message: `Here are more hand-picked options for you! 🎒\n\n_Each of these can be customized to your exact preferences. Our expert will walk you through the details._`,
         recommendations: recs,
         quickReplies: [
-          { id: "connect", label: "✅ Connect me now!",       value: "connect me to an agent"      },
-          { id: "tip",     label: "💡 Travel Tip",            value: "tell me a travel tip"        },
+          { id: "connect", label: "✅ Connect me now!", value: "connect me to an agent" },
+          { id: "tip", label: "💡 Travel Tip", value: "tell me a travel tip" },
         ],
         shouldEscalate: false, shouldBlock: false, newState: "ENGAGING",
       });
@@ -1138,9 +1138,9 @@ export async function processBotMessage(
       return reply(session, {
         message: `${faq.answer}\n\n💬 _Feel free to ask anything else! Our ${getDeptLabel(session.intent!)} expert will join shortly for detailed personalized advice._`,
         quickReplies: [
-          { id: "connect", label: "✅ Connect me now!",       value: "connect me to an agent"      },
-          { id: "tip",     label: "💡 Travel Tip",            value: "tell me a travel tip"        },
-          { id: "another", label: "❓ Another Question",      value: "I have another question"     },
+          { id: "connect", label: "✅ Connect me now!", value: "connect me to an agent" },
+          { id: "tip", label: "💡 Travel Tip", value: "tell me a travel tip" },
+          { id: "another", label: "❓ Another Question", value: "I have another question" },
         ],
         shouldEscalate: false, shouldBlock: false, newState: "ENGAGING",
       });
@@ -1155,8 +1155,8 @@ export async function processBotMessage(
       return reply(session, {
         message: `${bridge()}I've really enjoyed our conversation! 🌟\n\nTo give you the most accurate pricing and availability, I'd love to connect you with our specialist now — they have access to exclusive deals not listed online!\n\n${tip}`,
         quickReplies: [
-          { id: "yes",     label: "✅ Yes, connect me!",      value: "connect me to an agent"      },
-          { id: "later",   label: "⏳ In a few minutes",      value: "wait a bit"                  },
+          { id: "yes", label: "✅ Yes, connect me!", value: "connect me to an agent" },
+          { id: "later", label: "⏳ In a few minutes", value: "wait a bit" },
         ],
         shouldEscalate: false, shouldBlock: false, newState: "ENGAGING",
       });
@@ -1165,9 +1165,9 @@ export async function processBotMessage(
     return reply(session, {
       message: `${bridge()}💡 While our expert gets ready for you:\n\n${tip}\n\nIs there anything specific about your trip I can answer in the meantime?`,
       quickReplies: [
-        { id: "another", label: "💡 Another Tip!",           value: "tell me a travel tip"        },
-        { id: "connect", label: "🧑 Connect me now",          value: "connect me to an agent"      },
-        { id: "faq",     label: "❓ Ask a Question",          value: "I have a question"           },
+        { id: "another", label: "💡 Another Tip!", value: "tell me a travel tip" },
+        { id: "connect", label: "🧑 Connect me now", value: "connect me to an agent" },
+        { id: "faq", label: "❓ Ask a Question", value: "I have a question" },
       ],
       shouldEscalate: false, shouldBlock: false, newState: "ENGAGING",
     });
@@ -1200,8 +1200,8 @@ export async function processBotMessage(
       return reply(session, {
         message: `${faq.answer}\n\nOnce you're ready, our ${getDeptLabel(session.intent!)} expert can answer all your specific questions in detail. Shall I connect you now?`,
         quickReplies: [
-          { id: "yes",  label: "✅ Yes, connect me!", value: "Yes, connect me to an agent" },
-          { id: "more", label: "❓ More questions",   value: "I have more questions"       },
+          { id: "yes", label: "✅ Yes, connect me!", value: "Yes, connect me to an agent" },
+          { id: "more", label: "❓ More questions", value: "I have more questions" },
         ],
         shouldEscalate: false, shouldBlock: false, newState: "SUMMARY",
       });
@@ -1210,8 +1210,8 @@ export async function processBotMessage(
     return reply(session, {
       message: `That's a great question! For detailed, personalized answers, our travel specialist would be the best person to help.\n\nThey'll review your requirements and get back to you with everything you need — accurate pricing, availability, and a tailored itinerary. 🌟\n\nShall I connect you now?`,
       quickReplies: [
-        { id: "yes",  label: "✅ Yes, please!",   value: "Yes, connect me to an agent" },
-        { id: "wait", label: "⏳ Not yet",         value: "Not yet"                    },
+        { id: "yes", label: "✅ Yes, please!", value: "Yes, connect me to an agent" },
+        { id: "wait", label: "⏳ Not yet", value: "Not yet" },
       ],
       shouldEscalate: false, shouldBlock: false, newState: "SUMMARY",
     });
@@ -1253,8 +1253,8 @@ export function getProactiveNudge(sessionId: string): BotResponse | null {
   return reply(session, {
     message,
     quickReplies: [
-      { id: "connect", label: "✅ Connect me now!",     value: "connect me to an agent"  },
-      { id: "tip",     label: "💡 Another Travel Tip",  value: "tell me a travel tip"    },
+      { id: "connect", label: "✅ Connect me now!", value: "connect me to an agent" },
+      { id: "tip", label: "💡 Another Travel Tip", value: "tell me a travel tip" },
     ],
     shouldEscalate: false, shouldBlock: false, newState: session.state,
   });
@@ -1266,10 +1266,10 @@ function escalate(session: BotSession, sessionId: string): BotResponse {
   session.state = "ESCALATED";
   botSessions.set(sessionId, session);
 
-  const hasData  = Object.keys(session.collectedData).length > 0;
-  const hasCust  = Object.keys(session.customizationData).length > 0;
-  const dept     = session.intent ? getDeptLabel(session.intent) : "Support";
-  const isCompl  = session.intent === "COMPLAINT";
+  const hasData = Object.keys(session.collectedData).length > 0;
+  const hasCust = Object.keys(session.customizationData).length > 0;
+  const dept = session.intent ? getDeptLabel(session.intent) : "Support";
+  const isCompl = session.intent === "COMPLAINT";
   const custNote = hasCust ? buildCustomizationNote(session.customizationData) : "";
 
   const message = isCompl
@@ -1299,13 +1299,13 @@ function buildSummary(session: BotSession): string {
 
 function getDeptLabel(category: ChatCategory): string {
   const labels: Record<ChatCategory, string> = {
-    TOUR:      "Tour Package",
-    HOTEL:     "Hotel",
-    TAXI:      "Transport",
-    B2B:       "B2B Partnership",
-    B2C:       "Support",
+    TOUR: "Tour Package",
+    HOTEL: "Hotel",
+    TAXI: "Transport",
+    B2B: "B2B Partnership",
+    B2C: "Support",
     COMPLAINT: "Senior Support",
-    GENERAL:   "Support",
+    GENERAL: "Support",
   };
   return labels[category] || "Support";
 }

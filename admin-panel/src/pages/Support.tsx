@@ -119,6 +119,9 @@ export default function SupportPage() {
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("ALL");
   const [showRequirements, setShowReq]    = useState(false);
   const [agents, setAgents]               = useState<Agent[]>([]);
+  const [vendors, setVendors]             = useState<Array<{ id: number; name: string; email: string; phoneNumber?: string; role: string; vendorBusinessName?: string }>>([]);
+  const [assignTab, setAssignTab]         = useState<"staff" | "vendor">("staff");
+  const [queueScope, setQueueScope]       = useState<"ALL" | "MY_ASSIGNED" | "MY_DEPT">("ALL");
   const [notes, setNotes]                 = useState<Note[]>([]);
   const [newNote, setNewNote]             = useState("");
   const [addingNote, setAddingNote]       = useState(false);
@@ -140,11 +143,16 @@ export default function SupportPage() {
   /* ── Auto scroll ────────────────────────────────────────────────────── */
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, guestTyping]);
 
-  /* ── Load agents for assignment dropdown ────────────────────────────── */
+  /* ── Load agents & vendors for assignment dropdown ──────────────────── */
   useEffect(() => {
     fetch(`${API}/admin/chat-agents`, { headers: authHeaders() })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setAgents(data); })
+      .catch(() => {});
+
+    fetch(`${API}/admin/vendors`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setVendors(data); })
       .catch(() => {});
   }, []);
 
@@ -280,8 +288,26 @@ export default function SupportPage() {
         const updated = await res.json();
         setSelected(s => s ? { ...s, ...updated, assignedStaffName: agent.displayName || agent.name } : s);
         setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, ...updated } : c));
-        // Also emit via socket for real-time
         socket?.emit("chat:assign", { conversationId: selected.id, staffId: agent.userId, department: agent.department });
+      }
+    } catch {}
+    setAssignDrop(false);
+  };
+
+  /* ── Assign to Vendor (Hotel / Transport) ────────────────────────────── */
+  const handleAssignVendor = async (v: { id: number; name: string; vendorBusinessName?: string; role: string }) => {
+    if (!selected || !isSupervisor) return;
+    try {
+      const res = await fetch(`${API}/admin/conversations/${selected.id}/assign`, {
+        method: "PATCH", headers: authHeaders(),
+        body: JSON.stringify({ vendorId: v.id }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        const vName = v.vendorBusinessName || v.name;
+        setSelected(s => s ? { ...s, ...updated, assignedVendorName: vName } : s);
+        setConversations(prev => prev.map(c => c.id === selected.id ? { ...c, ...updated } : c));
+        socket?.emit("chat:assign", { conversationId: selected.id, vendorId: v.id });
       }
     } catch {}
     setAssignDrop(false);
@@ -701,7 +727,7 @@ export default function SupportPage() {
                     </div>
                   )}
 
-                  {/* Assign dropdown */}
+                  {/* Assign dropdown (Staff Agents & Hotel/Transport Vendors) */}
                   {isSupervisor && selected.status !== "CLOSED" && selected.botEscalated && (
                     <div className="relative">
                       <button
@@ -711,23 +737,64 @@ export default function SupportPage() {
                         <User2 className="w-3 h-3" /> Assign <ChevronDown className="w-3 h-3" />
                       </button>
                       {assignDropdown && (
-                        <div className="absolute right-0 top-7 z-30 bg-white border border-gray-100 rounded-xl shadow-xl py-1 min-w-[190px] max-h-[220px] overflow-y-auto">
-                          {agents.length === 0 ? (
-                            <p className="px-4 py-3 text-xs text-gray-400 text-center">No chat agents configured</p>
+                        <div className="absolute right-0 top-7 z-30 bg-white border border-gray-100 rounded-xl shadow-2xl p-2 min-w-[240px] max-h-[280px] overflow-y-auto">
+                          {/* Segmented selector tab */}
+                          <div className="flex border-b border-gray-100 pb-1.5 mb-1 gap-1">
+                            <button
+                              onClick={() => setAssignTab("staff")}
+                              className={cn(
+                                "flex-1 py-1 text-[10px] font-bold rounded-md transition",
+                                assignTab === "staff" ? "bg-[#1B3A6B] text-white" : "text-gray-500 hover:bg-gray-50"
+                              )}
+                            >
+                              👨‍💼 Staff Agents ({agents.length})
+                            </button>
+                            <button
+                              onClick={() => setAssignTab("vendor")}
+                              className={cn(
+                                "flex-1 py-1 text-[10px] font-bold rounded-md transition",
+                                assignTab === "vendor" ? "bg-[#1B3A6B] text-white" : "text-gray-500 hover:bg-gray-50"
+                              )}
+                            >
+                              🏨 Vendors ({vendors.length})
+                            </button>
+                          </div>
+
+                          {assignTab === "staff" ? (
+                            agents.length === 0 ? (
+                              <p className="px-3 py-3 text-xs text-gray-400 text-center">No chat agents configured</p>
+                            ) : (
+                              agents.map(agent => (
+                                <button key={agent.id} onClick={() => handleAssign(agent)}
+                                  className="w-full text-left px-2.5 py-1.5 hover:bg-gray-50 rounded-lg flex items-center gap-2 transition">
+                                  <div className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[9px] font-black flex items-center justify-center shrink-0">
+                                    {(agent.displayName || agent.name || "?")[0].toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-gray-800 truncate">{agent.displayName || agent.name}</p>
+                                    <p className="text-[9px] text-gray-400">{agent.department}</p>
+                                  </div>
+                                  {agent.isAvailable && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                                </button>
+                              ))
+                            )
                           ) : (
-                            agents.map(agent => (
-                              <button key={agent.id} onClick={() => handleAssign(agent)}
-                                className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[9px] font-black flex items-center justify-center shrink-0">
-                                  {(agent.displayName || agent.name || "?")[0].toUpperCase()}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold text-gray-800 truncate">{agent.displayName || agent.name}</p>
-                                  <p className="text-[9px] text-gray-400">{agent.department}</p>
-                                </div>
-                                {agent.isAvailable && <span className="ml-auto w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
-                              </button>
-                            ))
+                            vendors.length === 0 ? (
+                              <p className="px-3 py-3 text-xs text-gray-400 text-center">No registered vendors found</p>
+                            ) : (
+                              vendors.map(v => (
+                                <button key={v.id} onClick={() => handleAssignVendor(v)}
+                                  className="w-full text-left px-2.5 py-1.5 hover:bg-gray-50 rounded-lg flex items-center gap-2 transition">
+                                  <div className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-700 text-[9px] font-black flex items-center justify-center shrink-0">
+                                    {v.role === "HOTEL_OWNER" ? "🏨" : "🚗"}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-gray-800 truncate">{v.vendorBusinessName || v.name}</p>
+                                    <p className="text-[9px] text-gray-400">{v.role === "HOTEL_OWNER" ? "Hotel Owner" : "Transporter"}</p>
+                                  </div>
+                                </button>
+                              ))
+                            )
                           )}
                         </div>
                       )}

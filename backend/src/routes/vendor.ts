@@ -3,9 +3,9 @@ import {
   db, hotelsTable, hotelRoomsTable, hotelPoliciesTable, hotelReviewsTable,
   hotelPhotosTable, hotelRoomInventoryTable, transportServicesTable,
   bookingsTable, inquiriesTable, destinationsTable, statesTable, countriesTable,
-  usersTable, pendingCityRequestsTable
+  usersTable, pendingCityRequestsTable, conversationsTable, messagesTable
 } from "@workspace/db";
-import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../lib/logger";
 import { clearCachePattern } from "../lib/cache";
@@ -1123,6 +1123,118 @@ router.patch("/profile", async (req: AuthenticatedRequest, res: Response) => {
   } catch (error: any) {
     logger.error({ error: error.message }, "Vendor profile update error");
     res.status(500).json({ error: "Failed to update profile details" });
+  }
+});
+// VENDOR CHAT SUPPORT PORTAL ENDPOINTS
+// ─────────────────────────────────────────────────────────────
+
+// GET /vendor/conversations — Fetch chats assigned to this vendor
+router.get("/conversations", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const vendorId = req.user!.id;
+    const convos = await db
+      .select()
+      .from(conversationsTable)
+      .where(eq(conversationsTable.assignedVendorId, vendorId))
+      .orderBy(desc(conversationsTable.lastMessageAt));
+
+    const result = await Promise.all(convos.map(async (c) => {
+      const [lastMsg] = await db
+        .select()
+        .from(messagesTable)
+        .where(eq(messagesTable.conversationId, c.id))
+        .orderBy(desc(messagesTable.createdAt))
+        .limit(1);
+
+      const [unread] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messagesTable)
+        .where(and(eq(messagesTable.conversationId, c.id), eq(messagesTable.isRead, false), eq(messagesTable.senderRole, 'USER')));
+
+      return {
+        ...c,
+        lastMessage: lastMsg?.content || "",
+        lastMessageRole: lastMsg?.senderRole || "",
+        unreadCount: Number(unread?.count || 0),
+      };
+    }));
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Vendor conversations error");
+    res.status(500).json({ error: "Failed to fetch vendor conversations" });
+  }
+});
+
+// GET /vendor/conversations/:id/messages — Fetch message history
+router.get("/conversations/:id/messages", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const vendorId = req.user!.id;
+    const convId = Number(req.params.id);
+
+    // Security check: ensure chat is assigned to this vendor
+    const [conv] = await db.select().from(conversationsTable)
+      .where(and(eq(conversationsTable.id, convId), eq(conversationsTable.assignedVendorId, vendorId)))
+      .limit(1);
+
+    if (!conv) {
+      return res.status(403).json({ error: "Conversation not assigned to this vendor" });
+    }
+
+    const msgs = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.conversationId, convId))
+      .orderBy(asc(messagesTable.createdAt));
+
+    // Mark user messages as read
+    await db
+      .update(messagesTable)
+      .set({ isRead: true })
+      .where(and(eq(messagesTable.conversationId, convId), eq(messagesTable.senderRole, 'USER')));
+
+    res.json(msgs);
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Vendor messages error");
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
+});
+
+// POST /vendor/conversations/:id/messages — Vendor posts a reply to client
+router.post("/conversations/:id/messages", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const vendorId = req.user!.id;
+    const convId = Number(req.params.id);
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: "Message text is required" });
+    }
+
+    // Security check
+    const [conv] = await db.select().from(conversationsTable)
+      .where(and(eq(conversationsTable.id, convId), eq(conversationsTable.assignedVendorId, vendorId)))
+      .limit(1);
+
+    if (!conv) {
+      return res.status(403).json({ error: "Conversation not assigned to this vendor" });
+    }
+
+    const [savedMsg] = await db.insert(messagesTable).values({
+      conversationId: convId,
+      senderId: vendorId,
+      senderRole: "AGENT",
+      content: text.trim(),
+    }).returning();
+
+    await db.update(conversationsTable)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(conversationsTable.id, convId));
+
+    res.status(201).json(savedMsg);
+  } catch (error: any) {
+    logger.error({ error: error.message }, "Vendor send message error");
+    res.status(500).json({ error: "Failed to send vendor message" });
   }
 });
 

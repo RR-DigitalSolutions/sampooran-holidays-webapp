@@ -84,21 +84,21 @@ function getRecommendationsFromMeta(m: Message): any[] {
     try {
       const meta = JSON.parse(m.metadata);
       if (meta.recommendations) return meta.recommendations;
-    } catch {}
+    } catch { }
   }
   return [];
 }
 
 /* ── Constants ───────────────────────────────────────────────────────────── */
-const WS_URL  = process.env.NEXT_PUBLIC_WS_URL || getApiBaseAbsolute();
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || getApiBaseAbsolute();
 const API_URL = getApiUrl();
 
 const CATEGORY_LABELS: Record<string, string> = {
-  TOUR:    "Tour Packages",
-  HOTEL:   "Hotel Bookings",
-  TAXI:    "Transport / Taxi",
-  B2B:     "B2B Sales",
-  B2C:     "Customer Support",
+  TOUR: "Tour Packages",
+  HOTEL: "Hotel Bookings",
+  TAXI: "Transport / Taxi",
+  B2B: "B2B Sales",
+  B2C: "Customer Support",
   GENERAL: "Support Team",
 };
 
@@ -114,7 +114,7 @@ function initAudio() {
 if (typeof document !== "undefined") {
   const unlock = () => {
     initAudio();
-    globalAudio?.play().then(() => { globalAudio!.pause(); globalAudio!.currentTime = 0; }).catch(() => {});
+    globalAudio?.play().then(() => { globalAudio!.pause(); globalAudio!.currentTime = 0; }).catch(() => { });
     document.removeEventListener("click", unlock);
     document.removeEventListener("keydown", unlock);
   };
@@ -123,7 +123,7 @@ if (typeof document !== "undefined") {
 }
 
 function playPing() {
-  try { initAudio(); if (globalAudio) { globalAudio.currentTime = 0; globalAudio.play().catch(() => {}); } } catch (_) {}
+  try { initAudio(); if (globalAudio) { globalAudio.currentTime = 0; globalAudio.play().catch(() => { }); } } catch (_) { }
 }
 
 async function requestNotifPermission() {
@@ -162,31 +162,32 @@ function getQuickReplies(m: Message): QuickReply[] {
 
 /* ── Main Component ──────────────────────────────────────────────────────── */
 export default function ChatWidget() {
-  const [isOpen, setIsOpen]           = useState(false);
-  const [step, setStep]               = useState<"form" | "chat">("form");
-  const [guest, setGuest]             = useState<GuestInfo>({ name: "", phone: "", email: "" });
-  const [agreed, setAgreed]           = useState(false);
-  const [formErr, setFormErr]         = useState("");
-  const [messages, setMessages]       = useState<Message[]>([]);
-  const [input, setInput]             = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<"form" | "chat">("form");
+  const [guest, setGuest] = useState<GuestInfo>({ name: "", phone: "", email: "" });
+  const [agreed, setAgreed] = useState(false);
+  const [formErr, setFormErr] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
-  const [botTyping, setBotTyping]     = useState(false);
-  const [unread, setUnread]           = useState(0);
+  const [botTyping, setBotTyping] = useState(false);
+  const [unread, setUnread] = useState(0);
   const [isEscalated, setIsEscalated] = useState(false); // bot → human
-  const [category, setCategory]       = useState<string | null>(null);
-  const [errorMsg, setErrorMsg]       = useState<string | null>(null);
-  const [isMuted, setIsMuted]         = useState(false);
+  const [category, setCategory] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
   const [latestToast, setLatestToast] = useState<{ title: string; body: string } | null>(null);
   const [dragConstraints, setDragConstraints] = useState({ left: -400, right: 20, top: -600, bottom: 50 });
-  const [isReturning, setIsReturning]         = useState(false);
-  const [agentInfo, setAgentInfo]             = useState<{ name: string; role: string } | null>(null);
-  const [rotatingIndex, setRotatingIndex]     = useState(0);
+  const [isReturning, setIsReturning] = useState(false);
+  const [agentInfo, setAgentInfo] = useState<{ name: string; role: string } | null>(null);
+  const [rotatingIndex, setRotatingIndex] = useState(0);
 
   const ROTATING_TAGLINES = [
     "💬 Need Help? Chat with us!",
-    "🏔️ Kashmir & Kerala Deals!",
-    "⭐ Sampoorna AI Assistant",
+    "🏔️ Kashmir & Ladakh Deals!",
+    "🏨 Hotels, Cab & Packages",
+    "⭐ Sampoorna Travel Assistant",
     "🔥 Best Price Guaranteed!",
   ];
 
@@ -199,11 +200,11 @@ export default function ChatWidget() {
 
   const isSendingRef = useRef(false);
 
-  const socketRef      = useRef<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const botTypingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sessionId      = useRef<string>("");
+  const sessionId = useRef<string>("");
 
   /* ── Drag Constraints ─────────────────────────────────────────────────── */
   useEffect(() => {
@@ -226,7 +227,7 @@ export default function ChatWidget() {
         const g: GuestInfo = JSON.parse(saved);
         setGuest(g);
         if (g.name && g.phone && g.email) setStep("chat");
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -267,7 +268,7 @@ export default function ChatWidget() {
             if (hasHuman) setIsEscalated(true);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     });
 
     socket.on("disconnect", () => setIsConnected(false));
@@ -288,7 +289,7 @@ export default function ChatWidget() {
         try {
           const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
           if (meta.quickReplies) msg.quickReplies = meta.quickReplies;
-        } catch {}
+        } catch { }
       }
 
 
@@ -356,11 +357,11 @@ export default function ChatWidget() {
     return () => clearInterval(interval);
   }, [step]);
 
-  const [password, setPassword]       = useState("");
-  const [isB2B, setIsB2B]             = useState(false);
+  const [password, setPassword] = useState("");
+  const [isB2B, setIsB2B] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [wantRegister, setWantRegister] = useState(false);
-  const [userAccount, setUserAccount]   = useState<any>(null);
+  const [userAccount, setUserAccount] = useState<any>(null);
 
   /* ── Form Submit ──────────────────────────────────────────────────────── */
   const handleFormSubmit = async () => {
@@ -690,12 +691,12 @@ export default function ChatWidget() {
                     )}
 
                     {messages.map((msg, i) => {
-                      const isMe  = msg.senderRole === "USER";
+                      const isMe = msg.senderRole === "USER";
                       const isBot = msg.isBot || msg.senderRole === "BOT";
                       const isAgent = ["ADMIN", "AGENT"].includes(msg.senderRole);
-                      const text  = msgText(msg);
-                      const qr    = getQuickReplies(msg);
-                      const recs  = getRecommendationsFromMeta(msg);
+                      const text = msgText(msg);
+                      const qr = getQuickReplies(msg);
+                      const recs = getRecommendationsFromMeta(msg);
 
                       if (!text) return null;
 
