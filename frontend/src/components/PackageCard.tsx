@@ -513,7 +513,7 @@ function PackageCardComponent({
           <div className="flex items-center gap-1.5 md:gap-3 mb-1 py-0.5 border-y border-white/3">
             {inclusionList.map((inc, i) => (
               <div key={i} className="flex flex-col items-center gap-0.5 group/inc">
-                <div className="w-5.5 h-5.5 md:w-6 md:h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-colors group-hover/inc:bg-white/10">
+                <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-colors group-hover/inc:bg-white/10">
                   <inc.Icon className="w-2.5 md:w-3 h-2.5 md:h-3 text-accent" />
                 </div>
                 <span className="text-[6.5px] md:text-[7px] font-normal text-white">{inc.label}</span>
