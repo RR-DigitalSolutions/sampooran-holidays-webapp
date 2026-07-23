@@ -147,37 +147,51 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
   }, [config]);
 
   const categories = useMemo(() => {
-    let list = [...(config?.categories?.filter((c: any) => c.isActive) || [])];
+    const rawCats = config?.categories?.filter((c: any) => c.isActive !== false) || [];
+    const rawThemes = config?.themes?.filter((t: any) => t.isActive !== false) || [];
 
-    // Normalize snake_case to camelCase for categories
-    list = list.map((c: any) => ({
-      ...c,
-      imageUrl: c.imageUrl || c.image_url
+    // Map themes into category format
+    const themesAsCats = rawThemes.map((t: any) => ({
+      id: t.id + 10000,
+      label: t.name,
+      slug: t.slug,
+      iconName: "Globe",
+      imageUrl: t.imageUrl || t.image_url,
+      href: `/packages?category=${encodeURIComponent(t.name)}`,
+      packageCount: Number(t.packageCount) || 0,
+      startingPrice: t.startingPrice ? Number(t.startingPrice) : null,
+      isActive: true
     }));
 
-    if (config?.themes?.length) {
-      // Map themes to category format if they don't already exist in categories
-      const themeCats = config.themes.map((t: any) => ({
-        id: t.id + 10000, // Large offset to avoid ID conflict
-        label: t.name,
-        iconName: "Globe", // Default icon
-        imageUrl: t.imageUrl || t.image_url,
-        href: `/${t.slug}-tour-packages`,
-        packageCount: t.packageCount,
-        startingPrice: t.startingPrice,
-        isActive: true
-      }));
+    // Normalize categories & merge counts from themes if matching
+    const normalizedCats = rawCats.map((c: any) => {
+      const matchTheme = rawThemes.find((t: any) => t.name.toLowerCase() === c.label.toLowerCase());
+      const pCount = Number(c.packageCount) || (matchTheme ? Number(matchTheme.packageCount) : 0) || 0;
+      const sPrice = (c.startingPrice ? Number(c.startingPrice) : null) || (matchTheme && matchTheme.startingPrice ? Number(matchTheme.startingPrice) : null);
+      
+      let href = c.href;
+      if (!href || href === "/" || href === "#" || href.trim() === "") {
+        href = `/packages?category=${encodeURIComponent(c.label)}`;
+      }
 
-      // Merge but avoid duplicates by label
-      const existingLabels = new Set(list.map((c: any) => c.label.toLowerCase()));
-      themeCats.forEach((tc: any) => {
-        if (!existingLabels.has(tc.label.toLowerCase())) {
-          list.push(tc);
-        }
-      });
-    }
+      return {
+        ...c,
+        imageUrl: c.imageUrl || c.image_url || matchTheme?.imageUrl,
+        href,
+        packageCount: pCount,
+        startingPrice: sPrice
+      };
+    });
 
-    return list;
+    // Merge unique theme labels that aren't already in categories
+    const existingLabels = new Set(normalizedCats.map((c: any) => c.label.toLowerCase()));
+    themesAsCats.forEach((tc: any) => {
+      if (!existingLabels.has(tc.label.toLowerCase())) {
+        normalizedCats.push(tc);
+      }
+    });
+
+    return normalizedCats;
   }, [config]);
 
   const sections = useMemo(() => {

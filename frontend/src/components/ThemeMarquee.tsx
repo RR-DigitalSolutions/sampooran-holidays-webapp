@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useRef } from "react";
 import Link from "next/link";
@@ -125,7 +125,9 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                   const themeLabel = theme.label || theme.name || "Theme";
                   const rawThemeImage = theme.imageUrl?.trim() || theme.image_url?.trim();
                   const finalImageUrl = rawThemeImage ? validateImageUrl(rawThemeImage, 200, 200, "1:1") : "";
-                  const linkHref = theme.href || `/packages?theme=${theme.slug || themeLabel}`;
+                  const linkHref = (theme.href && theme.href !== "/" && theme.href !== "#" && theme.href.trim() !== "")
+                    ? theme.href
+                    : `/packages?category=${encodeURIComponent(themeLabel)}`;
 
                   return (
                     <div key={theme.id || idx} className="flex-none w-[82px] md:w-[125px]">
@@ -162,14 +164,14 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                             className="text-[9px] md:text-[11px] font-black text-primary uppercase group-hover:text-accent transition-colors text-center truncate w-full px-1"
                             style={{ fontFamily: "'Poppins', sans-serif" }}
                           >
-                            {theme.label}
+                            {themeLabel}
                           </span>
                           <div className="flex flex-col items-center">
                             <span className="text-[7.5px] md:text-[9px] font-black text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                              {theme.packageCount || 0} + Tours
+                              {(theme.packageCount || 0) > 0 ? `${theme.packageCount} + Tours` : "Explore Tours"}
                             </span>
                             <span className="text-[7.5px] md:text-[9px] font-bold text-slate-600">
-                              From Rs.{theme.startingPrice?.toLocaleString("en-IN") || "9,999"}
+                              {theme.startingPrice ? `From Rs.${Number(theme.startingPrice).toLocaleString("en-IN")}` : "Best Deals"}
                             </span>
                           </div>
                         </div>
