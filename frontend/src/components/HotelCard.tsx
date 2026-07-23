@@ -164,9 +164,9 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
             {hotel.name}
           </h3>
 
-          {/* Amenities — Compact Icon Circles (w-5 h-5 / 20px) matching Trending packages */}
+          {/* Amenities — Compact Icon Circles without top/bottom border lines */}
           {displayAmenities && displayAmenities.length > 0 && (
-            <div className="flex items-center gap-1 md:gap-2 my-0.5 py-0.5 border-y border-white/5 overflow-x-auto no-scrollbar whitespace-nowrap w-full scroll-smooth">
+            <div className="flex items-center gap-1 md:gap-2 my-1 overflow-x-auto no-scrollbar whitespace-nowrap w-full scroll-smooth">
               {displayAmenities.map((info, index) => {
                 const Icon = info.icon;
                 return (
