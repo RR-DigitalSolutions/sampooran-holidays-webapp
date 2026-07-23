@@ -642,6 +642,7 @@ router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: sync to MongoDB in background (non-blocking)
     syncPackage(updatedWithCode.id);
+    syncHomeConfig();
     res.status(201).json(updatedWithCode);
   } catch (e: any) {
     logger.error({ error: e.message }, "Package creation error");
@@ -674,6 +675,7 @@ router.patch("/packages/:id", requirePermission("PACKAGES"), async (req, res) =>
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: sync updated package to MongoDB
     syncPackage(Number(id));
+    syncHomeConfig();
     res.json(updated);
   } catch (e: any) {
     logger.error({ error: e.message }, "Package update error");
@@ -690,6 +692,7 @@ router.delete("/packages/:id", requirePermission("PACKAGES"), async (req, res) =
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: remove from MongoDB
     deleteMongoPackage(Number(req.params.id));
+    syncHomeConfig();
     res.json({ message: "Package deleted successfully" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete package" });

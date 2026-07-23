@@ -369,11 +369,82 @@ export async function syncHomeConfig(): Promise<void> {
     if (!col) return;
 
     const [slides, categories, sections, themes, offers] = await Promise.all([
-      db.select().from(homePageSlidesTable).where(eq(homePageSlidesTable.isActive, true)),
-      db.select().from(homePageCategoriesTable).where(eq(homePageCategoriesTable.isActive, true)),
-      db.select().from(homePageSectionsTable).where(eq(homePageSectionsTable.isActive, true)),
-      db.select().from(themesTable).where(eq(themesTable.isActive, true)),
-      db.select().from(offersTable).where(eq(offersTable.isActive, true)),
+      db.select({
+        id: homePageSlidesTable.id,
+        title: homePageSlidesTable.title,
+        subtitle: homePageSlidesTable.subtitle,
+        imageUrl: homePageSlidesTable.imageUrl,
+        image_url: homePageSlidesTable.imageUrl,
+        videoUrl: homePageSlidesTable.videoUrl,
+        tag: homePageSlidesTable.tag,
+        ctaText: homePageSlidesTable.ctaText,
+        ctaLink: homePageSlidesTable.ctaLink,
+        displayOrder: homePageSlidesTable.displayOrder,
+        isActive: homePageSlidesTable.isActive
+      }).from(homePageSlidesTable).where(eq(homePageSlidesTable.isActive, true)).orderBy(asc(homePageSlidesTable.displayOrder)),
+
+      db.select({
+        id: homePageCategoriesTable.id,
+        label: homePageCategoriesTable.label,
+        slug: homePageCategoriesTable.slug,
+        description: homePageCategoriesTable.description,
+        content: homePageCategoriesTable.content,
+        iconName: homePageCategoriesTable.iconName,
+        imageUrl: homePageCategoriesTable.imageUrl,
+        image_url: homePageCategoriesTable.imageUrl,
+        href: homePageCategoriesTable.href,
+        color: homePageCategoriesTable.color,
+        displayOrder: homePageCategoriesTable.displayOrder,
+        isActive: homePageCategoriesTable.isActive,
+        metaTitle: homePageCategoriesTable.metaTitle,
+        metaDescription: homePageCategoriesTable.metaDescription,
+        metaKeywords: homePageCategoriesTable.metaKeywords,
+        packageCount: sql<number>`count(${packagesTable.id})::int`.as('packageCount'),
+        startingPrice: sql<number>`min(${packagesTable.pricePerPerson})`.as('startingPrice')
+      })
+      .from(homePageCategoriesTable)
+      .leftJoin(packagesTable, or(
+        ilike(packagesTable.category, sql`concat('%', ${homePageCategoriesTable.label}, '%')`),
+        ilike(homePageCategoriesTable.label, sql`concat('%', ${packagesTable.category}, '%')`)
+      ))
+      .where(eq(homePageCategoriesTable.isActive, true))
+      .groupBy(
+        homePageCategoriesTable.id, homePageCategoriesTable.label, homePageCategoriesTable.slug,
+        homePageCategoriesTable.description, homePageCategoriesTable.content,
+        homePageCategoriesTable.iconName, homePageCategoriesTable.imageUrl,
+        homePageCategoriesTable.href, homePageCategoriesTable.color,
+        homePageCategoriesTable.displayOrder, homePageCategoriesTable.isActive,
+        homePageCategoriesTable.metaTitle, homePageCategoriesTable.metaDescription, homePageCategoriesTable.metaKeywords
+      )
+      .orderBy(asc(homePageCategoriesTable.displayOrder)),
+
+      db.select().from(homePageSectionsTable).where(eq(homePageSectionsTable.isActive, true)).orderBy(asc(homePageSectionsTable.displayOrder)),
+
+      db.select({
+        id: themesTable.id,
+        name: themesTable.name,
+        slug: themesTable.slug,
+        imageUrl: themesTable.imageUrl,
+        image_url: themesTable.imageUrl,
+        description: themesTable.description,
+        isActive: themesTable.isActive,
+        displayOrder: themesTable.displayOrder,
+        packageCount: sql<number>`count(${packagesTable.id})::int`.as('packageCount'),
+        startingPrice: sql<number>`min(${packagesTable.pricePerPerson})`.as('startingPrice')
+      })
+      .from(themesTable)
+      .leftJoin(packagesTable, or(
+        ilike(packagesTable.category, sql`concat('%', ${themesTable.name}, '%')`),
+        ilike(themesTable.name, sql`concat('%', ${packagesTable.category}, '%')`)
+      ))
+      .where(eq(themesTable.isActive, true))
+      .groupBy(
+        themesTable.id, themesTable.name, themesTable.slug, themesTable.imageUrl,
+        themesTable.description, themesTable.isActive, themesTable.displayOrder
+      )
+      .orderBy(asc(themesTable.displayOrder)),
+
+      db.select().from(offersTable).where(eq(offersTable.isActive, true)).orderBy(asc(offersTable.displayOrder)),
     ]);
 
     const doc: MongoHomeConfig = {
@@ -387,7 +458,7 @@ export async function syncHomeConfig(): Promise<void> {
     };
 
     await col.replaceOne({ _type: "homeConfig" }, doc, { upsert: true });
-    logger.debug("✅ MongoDB: homeConfig synced");
+    logger.debug("✅ MongoDB: homeConfig synced with dynamic counts");
   } catch (err) {
     logger.error({ err }, "MongoDB syncHomeConfig failed — non-fatal");
   }

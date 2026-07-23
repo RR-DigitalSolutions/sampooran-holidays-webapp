@@ -92,9 +92,8 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
     fetchConfig();
   }, []);
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 60 }, [
-    Autoplay({ delay: 6000, stopOnInteraction: false }),
-    Fade()
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 25 }, [
+    Autoplay({ delay: 5000, stopOnInteraction: false })
   ]);
 
   const [featuredRef, featuredApi] = useEmblaCarousel({
@@ -318,13 +317,13 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                   <div className="absolute inset-0 z-0 overflow-hidden" ref={emblaRef}>
                     <div className="flex h-full w-full">
                       {slides.map((slide: any, i: number) => (
-                        <div key={i} className="relative flex-[0_0_100%] min-w-0 h-full">
+                        <div key={i} className="relative flex-[0_0_100%] min-w-0 h-full overflow-hidden">
                           {slide.videoUrl ? (
                             <video src={slide.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover select-none pointer-events-none" />
                           ) : (
                             <div
                               ref={el => { zoomDivsRef.current[i] = el; }}
-                              className="absolute inset-0 hero-slide"
+                              className="absolute inset-0 transition-transform duration-[8s] ease-out scale-105 group-hover:scale-110"
                             >
                               <Image
                                 src={validateImageUrl(slide.imageUrl || slide.image_url, 1600, 900, "16:9")}
@@ -341,34 +340,31 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                       ))}
                     </div>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black/80 z-[1] pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/30 to-black/85 z-[1] pointer-events-none" />
                   
-                  {/* Hero Text Content */}
+                  {/* Hero Text Content with catchy animated transitions */}
                   <div className="relative z-10 container mx-auto px-4 text-center text-white pt-14 md:pt-24 mt-2 md:mt-0">
-                    <div className="inline-block bg-accent text-accent-foreground text-[9px] md:text-xs font-bold px-2 py-0.5 md:px-4 md:py-1.5 rounded-full mb-1.5 md:mb-6 shadow-lg">
-                      {slides[heroIdx]?.tag || "Explore"} Destinations
+                    <div key={`hero-text-${heroIdx}`} className="transition-all duration-700 ease-out animate-in fade-in slide-in-from-bottom-5">
+                      <div className="inline-flex items-center gap-1.5 bg-accent/90 backdrop-blur-md text-primary text-[10px] md:text-xs font-black px-3.5 py-1 md:px-5 md:py-1.5 rounded-full mb-2 md:mb-6 shadow-xl uppercase tracking-wider">
+                        <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary animate-pulse" />
+                        {slides[heroIdx]?.tag || "Explore"} Destinations
+                      </div>
+                      <h1 className="text-2xl xs:text-3xl md:text-7xl lg:text-8xl font-serif font-black mb-2 md:mb-4 leading-[1.1] tracking-tight text-white drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)] px-2">
+                        {slides[heroIdx]?.title}
+                      </h1>
+                      <p className="text-xs xs:text-sm md:text-xl text-white/90 mb-4 md:mb-8 max-w-2xl mx-auto font-medium leading-relaxed drop-shadow-md line-clamp-2 md:line-clamp-none px-4">
+                        {slides[heroIdx]?.subtitle}
+                      </p>
                     </div>
-                    <h1 className="text-2xl xs:text-3xl md:text-7xl lg:text-8xl font-serif font-bold mb-1.5 md:mb-4 leading-tight drop-shadow-2xl animate-in slide-in-from-bottom-6 px-2">
-                      {slides[heroIdx]?.title}
-                    </h1>
-                    <p className="text-xs xs:text-sm md:text-xl text-white/85 mb-4 md:mb-10 max-w-2xl mx-auto font-light leading-relaxed animate-in slide-in-from-bottom-8 line-clamp-2 md:line-clamp-none">
-                      {slides[heroIdx]?.subtitle}
-                    </p>
-                    <div className="mt-8 hidden md:flex flex-wrap gap-3 justify-center items-center pb-4">
-                      <span className="text-[11px] font-bold text-white/60">Popular:</span>
+                    <div className="mt-6 hidden md:flex flex-wrap gap-3 justify-center items-center pb-4">
+                      <span className="text-[11px] font-bold text-white/60 uppercase tracking-widest">Popular:</span>
                       {["Manali Package", "Ladakh Tour", "Kashmir Honeymoon", "Spiti Expedition", "Family Tour"].map(q => (
-                        <button key={q} onClick={() => router.push(`/packages?q=${encodeURIComponent(q)}`)} className="bg-white/10 border border-white/20 text-white text-xs px-5 py-2 rounded-full hover:bg-white/20 hover:border-white/40 transition-all backdrop-blur-md font-light tracking-wide">
+                        <button key={q} onClick={() => router.push(`/packages?q=${encodeURIComponent(q)}`)} className="bg-white/10 border border-white/20 text-white text-xs px-5 py-2 rounded-full hover:bg-accent hover:text-primary hover:border-accent transition-all duration-300 backdrop-blur-md font-bold tracking-wide shadow-md">
                           {q}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <style>{`
-                    @keyframes heroKenBurns {
-                      from { transform: scale(1.00); }
-                      to   { transform: scale(1.10); }
-                    }
-                  `}</style>
 
                   <div className="absolute bottom-14 xs:bottom-18 sm:bottom-24 md:bottom-8 left-0 right-0 flex justify-center gap-2 z-10">
                     {slides.map((_: any, i: number) => (

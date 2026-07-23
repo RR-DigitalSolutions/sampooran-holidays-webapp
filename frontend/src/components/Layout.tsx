@@ -94,21 +94,31 @@ export function Layout({ children }: { children: ReactNode }) {
   ];
 
   useEffect(() => {
-    // Show first modal 5 seconds after load
+    if (typeof window === "undefined") return;
+    const count = parseInt(sessionStorage.getItem("sh_dev_modal_count") || "0", 10);
+    if (count >= 3) return;
+
+    // Show first popup after 5 seconds
     const initialTimer = setTimeout(() => {
+      const newCount = count + 1;
+      sessionStorage.setItem("sh_dev_modal_count", String(newCount));
+      setModalCount(newCount);
       setDevModalOpen(true);
-      setModalCount(1);
     }, 5000);
 
     return () => clearTimeout(initialTimer);
   }, []);
 
   useEffect(() => {
-    if (modalCount > 0 && modalCount < 5) {
+    if (modalCount > 0 && modalCount < 3) {
       const interval = setInterval(() => {
+        const storedCount = parseInt(sessionStorage.getItem("sh_dev_modal_count") || "0", 10);
+        if (storedCount >= 3) return;
+        const next = storedCount + 1;
+        sessionStorage.setItem("sh_dev_modal_count", String(next));
+        setModalCount(next);
         setDevModalOpen(true);
-        setModalCount(prev => prev + 1);
-      }, 120000); // 2 minutes
+      }, 120000); // 2 minutes repeat up to 3 times maximum
 
       return () => clearInterval(interval);
     }

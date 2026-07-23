@@ -323,8 +323,9 @@ export default function PackageForm() {
       customFetch("/api/admin/activities"),
       customFetch("/api/admin/dining"),
       customFetch("/api/admin/hotels"),
-      customFetch("/api/transport?limit=500")
-    ]).then(([dests, states, countries, attrs, activities, dinings, globalHotels, transports]) => {
+      customFetch("/api/transport?limit=500"),
+      customFetch("/api/admin/home/categories")
+    ]).then(([dests, states, countries, attrs, activities, dinings, globalHotels, transports, categoriesData]) => {
       setAllDests(Array.isArray(dests) ? dests : []);
       setAllStates(Array.isArray(states) ? states : []);
       setAllCountries(Array.isArray(countries) ? countries : []);
@@ -333,6 +334,12 @@ export default function PackageForm() {
       setAllDining(Array.isArray(dinings) ? dinings : []);
       setAllGlobalHotels(Array.isArray(globalHotels) ? globalHotels : []);
       setAllGlobalTransports(Array.isArray(transports?.vehicles) ? transports.vehicles : []);
+      if (Array.isArray(categoriesData)) {
+        const catNames = categoriesData.filter((c: any) => c.isActive !== false).map((c: any) => c.label);
+        const defaults = ["Adventure", "Luxury", "Honeymoon", "Family", "Religious", "Wildlife", "Leisure", "Weekend", "Corporate", "Group Tours"];
+        const unique = Array.from(new Set([...catNames, ...defaults]));
+        setDynamicCategories(unique);
+      }
     });
 
     customFetch("/api/admin/settings").then((settings) => {
@@ -464,16 +471,9 @@ export default function PackageForm() {
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
                 <input list="categories-list" value={category} onChange={e=>setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1B3A6B] outline-none" placeholder="Search or select category..." />
                 <datalist id="categories-list">
-                  <option value="Honeymoon" />
-                  <option value="Adventure" />
-                  <option value="Family" />
-                  <option value="Religious" />
-                  <option value="Wildlife" />
-                  <option value="Leisure" />
-                  <option value="Weekend" />
-                  <option value="Corporate" />
-                  <option value="Luxury" />
-                  <option value="Group Tours" />
+                  {dynamicCategories.map(cat => (
+                    <option key={cat} value={cat} />
+                  ))}
                 </datalist>
               </div>
               <div>
