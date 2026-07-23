@@ -94,21 +94,35 @@ export function Layout({ children }: { children: ReactNode }) {
   ];
 
   useEffect(() => {
-    // Show first modal 5 seconds after load
-    const initialTimer = setTimeout(() => {
-      setDevModalOpen(true);
-      setModalCount(1);
-    }, 5000);
+    let count = 0;
+    try {
+      count = parseInt(sessionStorage.getItem("under_dev_popup_count") || "0", 10);
+    } catch {}
 
-    return () => clearTimeout(initialTimer);
+    if (count < 3) {
+      const initialTimer = setTimeout(() => {
+        setDevModalOpen(true);
+        const nextCount = count + 1;
+        setModalCount(nextCount);
+        try {
+          sessionStorage.setItem("under_dev_popup_count", String(nextCount));
+        } catch {}
+      }, 4000);
+
+      return () => clearTimeout(initialTimer);
+    }
   }, []);
 
   useEffect(() => {
-    if (modalCount > 0 && modalCount < 5) {
+    if (modalCount > 0 && modalCount < 3) {
       const interval = setInterval(() => {
         setDevModalOpen(true);
-        setModalCount(prev => prev + 1);
-      }, 120000); // 2 minutes
+        setModalCount(prev => {
+          const next = prev + 1;
+          try { sessionStorage.setItem("under_dev_popup_count", String(next)); } catch {}
+          return next;
+        });
+      }, 120000); // 2 minutes interval up to 3 times max
 
       return () => clearInterval(interval);
     }
@@ -433,67 +447,77 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* ─── Footer ────────────────────────────────────────────────────── */}
       <footer className="bg-gradient-to-b from-[#0B1528] via-[#0D1B3E] to-[#0B1528] text-white">
 
-        {/* Quick Contact Bar */}
-        <div className="bg-white/5 border-b border-white/10">
-          <div className="container mx-auto px-4 py-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-5">
+        {/* Quick Contact & Office Address Bar (Mobile-first, Premium & Stable UI) */}
+        <div className="bg-white/5 border-b border-white/10 backdrop-blur-md">
+          <div className="container mx-auto px-4 py-4 sm:py-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
-              {/* Offices */}
-              <div className="flex items-center gap-2.5">
-                <div className="w-7.5 h-7.5 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
-                  <Building2 className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
+              {/* Office Address Card */}
+              <div className="bg-[#0B1528]/80 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3 shadow-lg hover:border-[#F5A623]/40 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-[#F5A623]/15 border border-[#F5A623]/30 flex items-center justify-center shrink-0">
+                  <Building2 className="w-5 h-5 text-[#F5A623]" />
                 </div>
-                <div>
-                  <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Our Offices</p>
-                  <Link href="/contact" className="text-[#F5A623] font-bold text-[9.5px] sm:text-[10px] hover:underline transition-colors">
-                    Locate Us →
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-[9px] uppercase tracking-widest text-[#F5A623] mb-0.5">Head Office Address</p>
+                  <p className="text-[11px] font-medium text-slate-200 line-clamp-1 truncate">{siteSettings.address}</p>
+                  <Link href="/contact" className="text-[10px] font-bold text-[#F5A623] hover:underline flex items-center gap-1 mt-0.5">
+                    <span>Locate Branch Offices</span> →
                   </Link>
                 </div>
               </div>
 
-              {/* Call Us */}
-              <div className="flex items-center gap-2.5">
-                <div className="w-7.5 h-7.5 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
-                  <Phone className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
+              {/* Call Us Card */}
+              <div className="bg-[#0B1528]/80 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3 shadow-lg hover:border-[#F5A623]/40 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-[#F5A623]/15 border border-[#F5A623]/30 flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5 text-[#F5A623]" />
                 </div>
-                <div>
-                  <p className="font-bold text-[9px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Call Us</p>
-                  <a href={`tel:${siteSettings.phone.replace(/[^+\d]/g, "")}`} className="text-white font-bold text-[11px] sm:text-xs hover:text-[#F5A623] transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-[9px] uppercase tracking-widest text-[#F5A623] mb-0.5">Call & WhatsApp Support</p>
+                  <a href={`tel:${siteSettings.phone.replace(/[^+\d]/g, "")}`} className="text-xs font-bold text-white hover:text-[#F5A623] transition-colors truncate block">
                     {siteSettings.phone}
                   </a>
+                  <p className="text-[9.5px] text-slate-400 mt-0.5 font-medium">24/7 Dedicated Concierge</p>
                 </div>
               </div>
 
-              {/* Write to us */}
-              <div className="flex items-center gap-1.5">
-                <div className="w-6 h-6 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
-                  <Mail className="w-3 h-3 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
+              {/* Write to Us Card */}
+              <div className="bg-[#0B1528]/80 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3 shadow-lg hover:border-[#F5A623]/40 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-[#F5A623]/15 border border-[#F5A623]/30 flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5 text-[#F5A623]" />
                 </div>
-                <div className="min-w-0">
-                  <p className="font-bold text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Write to Us</p>
-                  <a href={`mailto:${siteSettings.email}`} className="text-white/80 font-semibold text-[8.5px] sm:text-xs hover:text-[#F5A623] transition-colors truncate block">
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-[9px] uppercase tracking-widest text-[#F5A623] mb-0.5">Write To Us</p>
+                  <a href={`mailto:${siteSettings.email}`} className="text-xs font-semibold text-white/90 hover:text-[#F5A623] transition-colors truncate block">
                     {siteSettings.email}
                   </a>
+                  <p className="text-[9.5px] text-slate-400 mt-0.5 font-medium">Quick Email Response</p>
                 </div>
               </div>
 
-              {/* Social */}
-              <div className="flex items-center gap-1.5">
-                <div className="w-6 h-6 sm:w-9 sm:h-9 bg-white/5 rounded-md flex items-center justify-center shrink-0 border border-white/10">
-                  <Share2 className="w-3 h-3 sm:w-4.5 sm:h-4.5 text-[#F5A623]" />
+              {/* Social Media Card */}
+              <div className="bg-[#0B1528]/80 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3 shadow-lg hover:border-[#F5A623]/40 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-[#F5A623]/15 border border-[#F5A623]/30 flex items-center justify-center shrink-0">
+                  <Share2 className="w-5 h-5 text-[#F5A623]" />
                 </div>
-                <div>
-                  <p className="font-bold text-[8px] sm:text-[10px] uppercase tracking-widest text-slate-400 mb-0.5">Follow Us</p>
-                  <div className="flex items-center gap-1">
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-[9px] uppercase tracking-widest text-[#F5A623] mb-1">Follow Our Community</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {SOCIAL.map((s) => (
-                      <a key={s.label} href={s.href} aria-label={s.label}
-                        className={cn("w-4.5 h-4.5 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center text-white transition-all hover:scale-105", s.color)}>
-                        <s.icon className="w-2 h-2 sm:w-3 sm:h-3" />
+                      <a
+                        key={s.label}
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={s.label}
+                        className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white shadow-md transition-all hover:scale-110 active:scale-95", s.color)}
+                      >
+                        <s.icon className="w-3 h-3" />
                       </a>
                     ))}
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
