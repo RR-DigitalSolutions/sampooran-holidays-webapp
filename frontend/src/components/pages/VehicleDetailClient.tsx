@@ -235,7 +235,7 @@ export default function VehicleDetailClient({
       </AnimatePresence>
 
       {/* ── Main Detail Presentation ── */}
-      <div className="container mx-auto px-4 pt-24 md:pt-28 pb-8 md:pb-12">
+      <div className="container mx-auto px-4 pt-[78px] md:pt-[84px] pb-8 md:pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
           {/* LEFT: Content Panel (8 columns) */}
@@ -577,7 +577,7 @@ export default function VehicleDetailClient({
 
           {/* RIGHT: Booking Desk Card (4 columns) - Desktop Sticky */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="lg:sticky lg:top-[96px] space-y-4 z-30">
+            <div className="lg:sticky lg:top-[82px] space-y-4 z-30">
               
               <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
                 {/* Header starting price — Compact 2-Line Header */}
