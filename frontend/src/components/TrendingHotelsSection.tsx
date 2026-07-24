@@ -16,6 +16,11 @@ interface TrendingHotel {
   starRating: number;
   city: string;
   startingPrice: number;
+  countrySlug?: string;
+  stateSlug?: string;
+  destinationSlug?: string;
+  highlights?: string[];
+  amenities?: string[];
 }
 
 interface TrendingHotelsSectionProps {
@@ -68,18 +73,21 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
             </div>
             
             {/* Desktop Navigation */}
-            <div className="hidden md:flex flex-col items-end gap-6 pr-2 pb-2">
-              <Link href="/hotels" className="text-primary font-bold text-sm hover:text-accent flex items-center gap-1.5 group transition-colors">
-                All Hotels <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <div className="flex items-center gap-2">
-                <button aria-label="Previous Hotel" title="Previous Hotel" onClick={scrollPrev} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button aria-label="Next Hotel" title="Next Hotel" onClick={scrollNext} className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary hover:shadow-sm transition-all focus:outline-none">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="hidden md:flex items-center gap-2 p-4">
+              <button
+                onClick={scrollPrev}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-primary hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={scrollNext}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-primary hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
@@ -107,7 +115,12 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
                 images: [hotel.imageUrl],
                 address: hotel.city,
                 startingPrice: hotel.startingPrice,
-                isVerified: true
+                isVerified: true,
+                countrySlug: hotel.countrySlug || "india",
+                stateSlug: hotel.stateSlug || "himachal-pradesh",
+                destinationSlug: hotel.destinationSlug || "manali",
+                highlights: hotel.highlights || [],
+                amenities: hotel.amenities || []
               };
 
               return (

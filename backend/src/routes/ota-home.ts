@@ -328,7 +328,11 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       city: hotelsTable.city,
       startingPrice: hotelsTable.minPrice,
       highlights: hotelsTable.highlights,
-      amenities: hotelsTable.amenities
+      amenities: hotelsTable.amenities,
+      countrySlug: hotelsTable.countrySlug,
+      stateSlug: hotelsTable.stateSlug,
+      destinationSlug: hotelsTable.destinationSlug,
+      customCity: hotelsTable.customCity,
     })
     .from(hotelsTable)
     .where(and(
@@ -348,7 +352,10 @@ router.get("/trending-hotels", cacheMiddleware(600), async (req, res) => {
       city: h.city || "Unknown",
       startingPrice: h.startingPrice || 0,
       highlights: h.highlights || [],
-      amenities: h.amenities || []
+      amenities: h.amenities || [],
+      countrySlug: h.countrySlug || "india",
+      stateSlug: h.stateSlug || "himachal-pradesh",
+      destinationSlug: h.destinationSlug || h.customCity || "manali"
     }));
 
     res.json(formattedHotels);

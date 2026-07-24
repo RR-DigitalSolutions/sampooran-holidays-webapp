@@ -165,3 +165,5 @@ export function getHotelDetailUrl(hotel: {
   const city = `hotels-in-${cleanCity}`;
   return `/hotels/${country}/${state}/${city}/${hotel.slug}`;
 }
+
+export const getHotelHref = getHotelDetailUrl;

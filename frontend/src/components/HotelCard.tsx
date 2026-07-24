@@ -6,7 +6,7 @@ import {
   Wifi, Coffee, Mountain, Wind, Car, Flame, Tv, Bell, Activity, Sparkles, Check
 } from "lucide-react";
 import { useState } from "react";
-import { validateImageUrl } from "@/lib/utils";
+import { validateImageUrl, getHotelHref } from "@/lib/utils";
 import { getAmenityInfo, COMPREHENSIVE_AMENITIES } from "@/lib/amenities-config";
 
 interface Hotel {
@@ -23,6 +23,11 @@ interface Hotel {
   highlights?: string[];
   startingPrice?: number;
   isVerified?: boolean;
+  countrySlug?: string;
+  stateSlug?: string;
+  destinationSlug?: string;
+  city?: string;
+  customCity?: string;
 }
 
 // Default fallback highlights shown when hotel has none set
@@ -76,6 +81,8 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
     ? validateImageUrl(rawImage, 400, 300, "4:3")
     : "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800";
 
+  const hotelHref = getHotelHref(hotel);
+
   // Normalize amenityKeys
   const normalizeAmenityKey = (val: any): string => {
     if (!val) return "";
@@ -108,8 +115,8 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
     <div className="h-full flex w-full card-mobile-margin card-gpu-fix group hover:-translate-y-1.5 transition-transform duration-300 ease-out">
       <div className="w-full bg-primary rounded-2xl overflow-hidden border border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500 flex flex-col h-full relative">
 
-        {/* Image Area — Compact mobile height (h-32 xs:h-36 md:h-44) */}
-        <div className="relative h-32 xs:h-36 md:h-44 overflow-hidden shrink-0 w-full">
+        {/* Image Area — Clickable Link */}
+        <Link href={hotelHref} className="relative h-32 xs:h-36 md:h-44 overflow-hidden shrink-0 w-full block">
           <img
             src={imageUrl}
             alt={hotel.name}
@@ -137,7 +144,7 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
 
           {/* Wishlist */}
           <button
-            onClick={(e) => { e.preventDefault(); setWishlisted(!wishlisted); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWishlisted(!wishlisted); }}
             className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 p-1 rounded-md sm:rounded-lg bg-white/25 backdrop-blur-md hover:bg-white hover:text-red-500 transition-all z-10 border border-white/20 text-white"
           >
             <Heart className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${wishlisted ? "fill-red-500 text-red-500" : ""}`} />
@@ -156,13 +163,15 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
               <span className="text-[6.5px] sm:text-[8px] font-bold font-sans">{hotel.starRating || 3}.0</span>
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Info Area — Ultra Compact Layout */}
         <div className="p-2 pt-1 md:p-3 md:pt-1 flex flex-col flex-1 bg-primary text-white">
-          <h3 className="text-[11px] font-semibold md:text-[13.5px] md:font-bold text-white group-hover:text-accent transition-colors line-clamp-1 leading-tight mb-0.5 font-sans">
-            {hotel.name}
-          </h3>
+          <Link href={hotelHref}>
+            <h3 className="text-[11px] font-semibold md:text-[13.5px] md:font-bold text-white group-hover:text-accent transition-colors line-clamp-1 leading-tight mb-0.5 font-sans">
+              {hotel.name}
+            </h3>
+          </Link>
 
           {/* Amenities — Compact Icon Circles without top/bottom border lines */}
           {displayAmenities && displayAmenities.length > 0 && (
@@ -206,7 +215,7 @@ export function HotelCard({ hotel }: { hotel: Hotel }) {
                 </span>
               </div>
             </div>
-            <Link href={`/hotels/${hotel.slug}`}>
+            <Link href={hotelHref}>
               <button
                 className="w-6 h-6 md:w-8 md:h-8 rounded-md md:rounded-lg bg-white/10 flex items-center justify-center text-white group-hover:bg-accent group-hover:text-primary hover:scale-105 transition-all shadow-xs border border-white/10"
                 aria-label={`View details for ${hotel.name}`}

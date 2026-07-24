@@ -234,45 +234,6 @@ export default function VehicleDetailClient({
         )}
       </AnimatePresence>
 
-      {/* ── Breadcrumbs Sticky Header ── */}
-      <div className="bg-white border-b border-slate-200/60 sticky top-14 md:top-[74px] z-40">
-        <div className="container mx-auto px-4 h-11 flex items-center justify-between gap-4">
-          <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium overflow-hidden">
-            <Link href="/transport" className="hover:text-primary transition-colors whitespace-nowrap">Transport</Link>
-            <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
-            <Link href={`/transport/${countrySlug}/${stateSlug}/transport-in-${vehicle.destinationSlug}`} className="hover:text-primary transition-colors whitespace-nowrap hidden sm:block">
-              {vehicle.cityName}
-            </Link>
-            <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 hidden sm:block" />
-            <span className="text-slate-800 truncate max-w-[140px] sm:max-w-xs font-semibold">{vehicle.name}</span>
-          </nav>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                setWishlisted(!wishlisted);
-                toast.success(wishlisted ? "Removed from wishlist" : "Saved to wishlist!");
-              }}
-              className={cn(
-                "p-1.5 rounded-lg border transition-all",
-                wishlisted ? "bg-red-50 border-red-200 text-red-500" : "border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-400"
-              )}
-            >
-              <Heart className={cn("w-3.5 h-3.5", wishlisted && "fill-red-500")} />
-            </button>
-            <button
-              onClick={() => {
-                navigator.share?.({ title: vehicle.name, url: window.location.href });
-                toast.success("Shared successfully!");
-              }}
-              className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:border-primary hover:text-primary transition-all"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* ── Main Detail Presentation ── */}
       <div className="container mx-auto px-4 py-5 md:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
@@ -349,6 +310,45 @@ export default function VehicleDetailClient({
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Breadcrumbs & Share/Wishlist Bar (Moved below Hero Image) */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium overflow-hidden">
+                <Link href="/transport" className="hover:text-primary transition-colors whitespace-nowrap">Transport</Link>
+                <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
+                <Link href={`/transport/${countrySlug}/${stateSlug}/transport-in-${vehicle.destinationSlug}`} className="hover:text-primary transition-colors whitespace-nowrap hidden sm:block">
+                  {vehicle.cityName}
+                </Link>
+                <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 hidden sm:block" />
+                <span className="text-slate-800 truncate max-w-[180px] sm:max-w-xs font-semibold">{vehicle.name}</span>
+              </nav>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    setWishlisted(!wishlisted);
+                    toast.success(wishlisted ? "Removed from wishlist" : "Saved to wishlist!");
+                  }}
+                  className={cn(
+                    "p-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs font-medium",
+                    wishlisted ? "bg-red-50 border-red-200 text-red-500" : "border-slate-200 text-slate-500 hover:border-red-200 hover:text-red-500"
+                  )}
+                >
+                  <Heart className={cn("w-3.5 h-3.5", wishlisted && "fill-red-500")} />
+                  <span className="hidden sm:inline">{wishlisted ? "Saved" : "Wishlist"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.share?.({ title: vehicle.name, url: window.location.href });
+                    toast.success("Shared successfully!");
+                  }}
+                  className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:border-primary hover:text-primary transition-all flex items-center gap-1.5 text-xs font-medium"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Share</span>
+                </button>
+              </div>
             </div>
 
             {/* Compact Sleek Features Strip immediately below Hero Gallery */}
@@ -577,7 +577,7 @@ export default function VehicleDetailClient({
 
           {/* RIGHT: Booking Desk Card (4 columns) - Desktop Sticky */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="lg:sticky lg:top-[120px] space-y-4 z-30">
+            <div className="lg:sticky lg:top-[90px] space-y-4 z-30">
               
               <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
                 {/* Header starting price */}
