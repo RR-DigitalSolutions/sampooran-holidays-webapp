@@ -276,9 +276,8 @@ function PackageCardComponent({
             fill
             className="object-cover card-img-zoom"
           />
-          {/* Enhanced gradient for text readability and theme matching */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <div className="absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-[#1B3A6B] to-transparent opacity-90" />
+          {/* Clean image overlay for text contrast */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
 
           {/* Top Badges */}
           <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1.5 z-20">
@@ -414,8 +413,8 @@ function PackageCardComponent({
         className={cn(
           "relative h-full flex flex-col bg-primary rounded-lg overflow-hidden border transition-all duration-300",
           hovered
-            ? "shadow-[0_20px_50px_-10px_rgba(27,58,107,0.45)] border-accent/30 -translate-y-1.5"
-            : "shadow-[0_8px_30px_-8px_rgba(0,0,0,0.25)] border-primary/30 translate-y-0"
+            ? "shadow-xl border-accent/30 -translate-y-1.5"
+            : "shadow-md border-primary/30 translate-y-0"
         )}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -428,7 +427,7 @@ function PackageCardComponent({
           )}
         />
 
-        {/* Image Section */}
+        {/* Image Section — Clean original photo display */}
         <div className="relative h-40 md:h-44 overflow-hidden shrink-0">
           <Image
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
@@ -436,12 +435,11 @@ function PackageCardComponent({
             fill
             className="object-cover card-img-zoom"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/5" />
-          {/* Blue tint at bottom to blend into card body */}
-          <div className="absolute bottom-0 inset-x-0 h-5 bg-gradient-to-t from-primary/90 to-transparent" />
+          {/* Subtle bottom gradient strictly for location badge visibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
           {/* Top Badges */}
-          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
+          <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
             {pkg.isTrending && (
               <div className="bg-orange-500/90 backdrop-blur-md text-white text-[9px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-lg">
                 <Zap className="w-2.5 h-2.5 fill-current" /> Trending
@@ -456,7 +454,7 @@ function PackageCardComponent({
 
           {/* Discount */}
           {discount > 0 && (
-            <div className="absolute top-4 right-4 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-lg border border-white/20 z-10">
+            <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-lg border border-white/20 z-10">
               {discount}% OFF
             </div>
           )}
@@ -465,7 +463,7 @@ function PackageCardComponent({
           <button
             onClick={(e) => { e.preventDefault(); setWishlisted(!wishlisted); }}
             className={cn(
-              "absolute top-4 right-4 p-1.5 rounded-lg backdrop-blur-md hover:bg-white/30 transition-all z-10 border border-white/20",
+              "absolute top-3 right-3 p-1.5 rounded-lg backdrop-blur-md hover:bg-white/30 transition-all z-10 border border-white/20",
               discount > 0 ? "hidden" : "block",
               wishlisted ? "bg-red-500/80 text-white" : "bg-white/20 text-white"
             )}
@@ -474,14 +472,14 @@ function PackageCardComponent({
           </button>
 
           {/* Destination & Cities Overlay */}
-          <div className="absolute bottom-3 left-4 right-4 z-10">
-            <div className="flex items-center gap-1.5 text-white/90 text-[10px] font-bold mb-1">
+          <div className="absolute bottom-2.5 left-3 right-3 z-10">
+            <div className="flex items-center gap-1.5 text-white/95 text-[10px] font-bold mb-1">
               <MapPin className="w-3 h-3 text-accent" />
               {pkg.stateName || "Himachal"}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               {citiesList.slice(0, 3).map((city, i) => (
-                <span key={i} className="text-white text-[11px] font-bold bg-black/20 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
+                <span key={i} className="text-white text-[10px] font-bold bg-black/45 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/15">
                   {city}
                 </span>
               ))}
