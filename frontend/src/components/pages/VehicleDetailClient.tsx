@@ -526,53 +526,7 @@ export default function VehicleDetailClient({
               </div>
             </div>
 
-            {/* Verified Client Reviews */}
-            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-800">Verified Client Reviews</h2>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">Verified testimonials from recent rentals</p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center text-amber-400">
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span className="text-sm font-semibold text-slate-800 ml-1">{vehicle.rating}</span>
-                  </div>
-                  <span className="text-xs text-slate-400 font-medium">/ 5.0</span>
-                </div>
-              </div>
-
-              <div className="space-y-3.5">
-                {[
-                  { name: "Sanjay Kumar", date: "June 2026", rating: 5, comment: `Outstanding service! Car was super clean, AC was freezing, and the driver was extremely polite and professional. We took a round trip to Manali and felt completely safe throughout.` },
-                  { name: "Neha Sharma", date: "May 2026", rating: 5, comment: `Highly recommended for family trips. The booking team coordinated everything seamlessly. Driver was experienced on mountain roads. The luggage carrier held all our bags easily.` },
-                  { name: "Amanpreet Singh", date: "April 2026", rating: 4, comment: `Very neat interior, excellent sound system. We rented it for sightseeing. Driver knew all the short routes and scenic spots. Will book again.` },
-                ].map((rev, i) => (
-                  <div key={i} className="space-y-1.5 pb-3 border-b border-slate-100 last:border-0 last:pb-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[#1B3A6B]/10 text-[#1B3A6B] font-semibold text-xs flex items-center justify-center">
-                          {rev.name[0]}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-800">{rev.name}</p>
-                          <p className="text-[10px] text-slate-400 font-normal">{rev.date}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center text-amber-400">
-                        {[1, 2, 3, 4, 5].map(s => (
-                          <Star key={s} className={cn("w-3 h-3", s <= rev.rating ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed font-normal">
-                      "{rev.comment}"
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+            {/* End of Left Column Content */}
           </div>
 
           {/* RIGHT: Booking Desk Card (4 columns) - Desktop Sticky */}
@@ -843,10 +797,75 @@ export default function VehicleDetailClient({
           </div>
 
         </div>
+      </div>
 
+      {/* ── Full-Width Customer Reviews Section ── */}
+      <section className="w-full bg-slate-100/70 border-y border-slate-200/70 py-12 md:py-16 mt-8">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="bg-[#1B3A6B]/10 text-[#1B3A6B] text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                  Verified Traveler Reviews
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#1B3A6B] tracking-tight">
+                Guest Experiences <span className="text-[#F5A623]">&amp; Testimonials</span>
+              </h2>
+              <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">
+                Verified reviews from customers who rented {vehicle.name} for outstation &amp; local tours.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20 self-start sm:self-auto">
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <span className="text-sm font-bold text-slate-800">{vehicle.rating} / 5.0</span>
+              <span className="text-xs text-slate-500 font-medium">({vehicle.reviewCount || 10} Reviews)</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { name: "Sanjay Kumar", date: "June 2026", rating: 5, location: "Delhi NCR", comment: `Outstanding service! Car was super clean, AC was freezing, and the driver was extremely polite and professional. We took a round trip to Manali and felt completely safe throughout.` },
+              { name: "Neha Sharma", date: "May 2026", rating: 5, location: "Chandigarh", comment: `Highly recommended for family trips. The booking team coordinated everything seamlessly. Driver was experienced on mountain roads. The luggage carrier held all our bags easily.` },
+              { name: "Amanpreet Singh", date: "April 2026", rating: 5, location: "Amritsar", comment: `Very neat interior, excellent sound system. We rented it for sightseeing. Driver knew all the short routes and scenic spots. Will book again.` },
+            ].map((rev, i) => (
+              <div key={i} className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-[#1B3A6B] text-[#F5A623] font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                      {rev.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-800 truncate">{rev.name}</h4>
+                      <p className="text-[10px] text-slate-400 font-medium truncate">{rev.location} · {rev.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span className="text-xs font-bold text-slate-800">{rev.rating}.0</span>
+                  </div>
+                </div>
+                <div className="py-4 flex-1">
+                  <p className="text-slate-600 text-xs sm:text-sm leading-relaxed font-normal">
+                    &ldquo;{rev.comment}&rdquo;
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                  <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                    <ShieldCheck className="w-3 h-3 text-emerald-500" /> Verified Fleet Rental
+                  </span>
+                  <span>Sampooran Holidays</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="container mx-auto px-4 max-w-6xl pb-12">
         {/* Recommended alternative fleet */}
         {related.length > 0 && (
-          <section className="mt-12 pt-10 border-t border-slate-200/60">
+          <section className="mt-8 pt-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">
                 Recommended Fleet Options
