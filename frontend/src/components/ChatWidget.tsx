@@ -182,6 +182,20 @@ export default function ChatWidget() {
   const [isReturning, setIsReturning] = useState(false);
   const [agentInfo, setAgentInfo] = useState<{ name: string; role: string } | null>(null);
   const [rotatingIndex, setRotatingIndex] = useState(0);
+  const [isTaglineDismissed, setIsTaglineDismissed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("sh_chat_tagline_dismissed") === "true";
+    }
+    return false;
+  });
+
+  const handleDismissTagline = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsTaglineDismissed(true);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("sh_chat_tagline_dismissed", "true");
+    }
+  };
 
   const ROTATING_TAGLINES = [
     "💬 Need Help? Chat with us!",
@@ -463,7 +477,7 @@ export default function ChatWidget() {
       dragConstraints={dragConstraints}
       dragElastic={0.1}
       dragMomentum={false}
-      className="fixed bottom-20 sm:bottom-24 right-3 sm:right-6 z-[100] flex flex-col items-end select-none"
+      className="fixed bottom-24 sm:bottom-28 right-3 sm:right-6 z-[100] flex flex-col items-end select-none"
     >
       <AnimatePresence>
         {isOpen && (
@@ -900,8 +914,8 @@ export default function ChatWidget() {
 
       {/* ── FAB Button & Rotating Tagline Badge ───────────────────────── */}
       <div className="relative flex items-center justify-end gap-2">
-        {/* Rotating Text Pill (visible on both mobile & desktop when chat is closed) */}
-        {!isOpen && (
+        {/* Rotating Text Pill (visible when chat is closed & user has not dismissed it) */}
+        {!isOpen && !isTaglineDismissed && (
           <AnimatePresence mode="wait">
             <motion.div
               key={rotatingIndex}
@@ -910,9 +924,18 @@ export default function ChatWidget() {
               exit={{ opacity: 0, x: -10, scale: 0.95 }}
               transition={{ duration: 0.35 }}
               onClick={() => setIsOpen(true)}
-              className="bg-[#1B3A6B] text-[#F5A623] text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-[#F5A623]/30 cursor-pointer flex items-center gap-1.5 whitespace-nowrap active:scale-95 transition-transform"
+              className="bg-[#1B3A6B] text-[#F5A623] text-[11px] sm:text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg border border-[#F5A623]/30 cursor-pointer flex items-center gap-1.5 whitespace-nowrap active:scale-95 transition-transform group"
             >
               <span>{ROTATING_TAGLINES[rotatingIndex]}</span>
+              <button
+                type="button"
+                onClick={handleDismissTagline}
+                className="p-0.5 rounded-full hover:bg-white/20 text-[#F5A623] hover:text-white transition-colors shrink-0 ml-0.5"
+                title="Close text banner"
+                aria-label="Dismiss banner"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </motion.div>
           </AnimatePresence>
         )}

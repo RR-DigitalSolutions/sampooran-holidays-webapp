@@ -236,15 +236,15 @@ export default function VehicleDetailClient({
 
       {/* ── Breadcrumbs Sticky Header ── */}
       <div className="bg-white border-b border-slate-200/60 sticky top-14 md:top-[74px] z-40">
-        <div className="container mx-auto px-4 h-12 flex items-center justify-between gap-4">
-          <nav className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-widest font-black overflow-hidden">
+        <div className="container mx-auto px-4 h-11 flex items-center justify-between gap-4">
+          <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium overflow-hidden">
             <Link href="/transport" className="hover:text-primary transition-colors whitespace-nowrap">Transport</Link>
             <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
             <Link href={`/transport/${countrySlug}/${stateSlug}/transport-in-${vehicle.destinationSlug}`} className="hover:text-primary transition-colors whitespace-nowrap hidden sm:block">
               {vehicle.cityName}
             </Link>
             <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 hidden sm:block" />
-            <span className="text-slate-800 truncate max-w-[140px] sm:max-w-xs">{vehicle.name}</span>
+            <span className="text-slate-800 truncate max-w-[140px] sm:max-w-xs font-semibold">{vehicle.name}</span>
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -254,7 +254,7 @@ export default function VehicleDetailClient({
                 toast.success(wishlisted ? "Removed from wishlist" : "Saved to wishlist!");
               }}
               className={cn(
-                "p-2 rounded-xl border transition-all",
+                "p-1.5 rounded-lg border transition-all",
                 wishlisted ? "bg-red-50 border-red-200 text-red-500" : "border-slate-200 text-slate-400 hover:border-red-200 hover:text-red-400"
               )}
             >
@@ -265,7 +265,7 @@ export default function VehicleDetailClient({
                 navigator.share?.({ title: vehicle.name, url: window.location.href });
                 toast.success("Shared successfully!");
               }}
-              className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:border-primary hover:text-primary transition-all"
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:border-primary hover:text-primary transition-all"
             >
               <Share2 className="w-3.5 h-3.5" />
             </button>
@@ -274,17 +274,17 @@ export default function VehicleDetailClient({
       </div>
 
       {/* ── Main Detail Presentation ── */}
-      <div className="container mx-auto px-4 py-6 md:py-8">
+      <div className="container mx-auto px-4 py-5 md:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
           {/* LEFT: Content Panel (8 columns) */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="lg:col-span-8 space-y-5">
             
             {/* Gallery Frame */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-3 shadow-sm">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-2.5 shadow-xs">
               <div
-                className="relative w-full rounded-2xl overflow-hidden bg-slate-900 cursor-zoom-in group"
-                style={{ paddingBottom: "52%" }}
+                className="relative w-full rounded-xl overflow-hidden bg-slate-900 cursor-zoom-in group"
+                style={{ paddingBottom: "50%" }}
                 onClick={() => setLightboxOpen(true)}
               >
                 <AnimatePresence mode="wait">
@@ -304,44 +304,44 @@ export default function VehicleDetailClient({
                   <>
                     <button
                       onClick={e => { e.stopPropagation(); prevImage(); }}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70 transition-colors z-10"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70 transition-colors z-10"
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                     <button
                       onClick={e => { e.stopPropagation(); nextImage(); }}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70 transition-colors z-10"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70 transition-colors z-10"
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </>
                 )}
 
-                <div className="absolute top-4 left-4 flex gap-2 z-10">
-                  <span className="bg-primary text-white text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest shadow-md">
+                <div className="absolute top-3 left-3 flex gap-2 z-10">
+                  <span className="bg-primary text-white text-[9px] font-semibold uppercase px-2.5 py-0.5 rounded-full tracking-wide shadow-sm">
                     {vehicle.type}
                   </span>
                   {vehicle.badge && (
-                    <span className="bg-amber-500 text-slate-950 text-[9px] font-black uppercase px-3 py-1 rounded-full tracking-widest shadow-md">
+                    <span className="bg-amber-500 text-slate-950 text-[9px] font-semibold uppercase px-2.5 py-0.5 rounded-full tracking-wide shadow-sm">
                       {vehicle.badge}
                     </span>
                   )}
                 </div>
 
-                <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1 rounded-full font-mono">
+                <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-medium px-2.5 py-0.5 rounded-full font-mono">
                   {activeImageIdx + 1} / {images.length}
                 </div>
               </div>
 
               {images.length > 1 && (
-                <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+                <div className="flex gap-2 mt-2.5 overflow-x-auto no-scrollbar pb-0.5">
                   {images.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setActiveImageIdx(idx)}
                       className={cn(
-                        "shrink-0 w-16 h-12 md:w-20 md:h-14 rounded-xl overflow-hidden border-2 transition-all",
-                        activeImageIdx === idx ? "border-primary shadow-sm scale-95" : "border-transparent opacity-60 hover:opacity-100"
+                        "shrink-0 w-14 h-10 md:w-16 md:h-11 rounded-lg overflow-hidden border-2 transition-all",
+                        activeImageIdx === idx ? "border-primary shadow-xs scale-95" : "border-transparent opacity-60 hover:opacity-100"
                       )}
                     >
                       <img src={img} alt="" className="w-full h-full object-cover" />
@@ -351,20 +351,65 @@ export default function VehicleDetailClient({
               )}
             </div>
 
+            {/* Compact Sleek Features Strip immediately below Hero Gallery */}
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-2.5 sm:p-3 shadow-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-700">
+                <div className="flex items-center gap-2.5 bg-slate-50/80 rounded-xl px-2.5 py-2 border border-slate-100/80">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Users className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none">Capacity</span>
+                    <span className="text-xs font-semibold text-slate-800 leading-tight block mt-0.5 truncate">{vehicle.capacity} Seats</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 bg-slate-50/80 rounded-xl px-2.5 py-2 border border-slate-100/80">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Briefcase className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none">Luggage Limit</span>
+                    <span className="text-xs font-semibold text-slate-800 leading-tight block mt-0.5 truncate">{vehicle.luggageCapacity} Bags</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 bg-slate-50/80 rounded-xl px-2.5 py-2 border border-slate-100/80">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Compass className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none">Transmission</span>
+                    <span className="text-xs font-semibold text-slate-800 leading-tight block mt-0.5 truncate">{vehicle.transmission}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 bg-slate-50/80 rounded-xl px-2.5 py-2 border border-slate-100/80">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Fuel className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[9px] text-slate-400 font-medium block leading-none">Fuel System</span>
+                    <span className="text-xs font-semibold text-slate-800 leading-tight block mt-0.5 truncate">{vehicle.fuelType}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Title & Primary Metadata Profile */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={cn("text-[9px] font-black uppercase border px-2.5 py-0.5 rounded-full", cat.color)}>
+                <span className={cn("text-[10px] font-semibold border px-2.5 py-0.5 rounded-full", cat.color)}>
                   {cat.label} Class
                 </span>
                 {vehicle.isVerified && (
-                  <span className="flex items-center gap-1 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <span className="flex items-center gap-1 text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
                     <BadgeCheck className="w-3.5 h-3.5 text-emerald-500" /> Verified Logistics Partner
                   </span>
                 )}
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
                 {vehicle.name}
               </h1>
 
@@ -372,60 +417,42 @@ export default function VehicleDetailClient({
                 {[1, 2, 3, 4, 5].map(s => (
                   <Star key={s} className={cn("w-3.5 h-3.5", s <= Math.round(vehicle.rating) ? "fill-amber-400 text-amber-400" : "text-slate-200")} />
                 ))}
-                <span className="text-xs font-black text-slate-700 ml-1.5">{vehicle.rating}</span>
-                <span className="text-xs text-slate-400 font-semibold">({vehicle.reviewCount} verified reviews)</span>
+                <span className="text-xs font-semibold text-slate-700 ml-1.5">{vehicle.rating}</span>
+                <span className="text-xs text-slate-400 font-medium">({vehicle.reviewCount} verified reviews)</span>
               </div>
 
-              {/* Grid specs row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                {[
-                  { icon: Users, label: "Capacity", value: `${vehicle.capacity} Seats` },
-                  { icon: Briefcase, label: "Luggage Limit", value: `${vehicle.luggageCapacity} Bags` },
-                  { icon: Compass, label: "Transmission", value: vehicle.transmission },
-                  { icon: Fuel, label: "Fuel System", value: vehicle.fuelType },
-                ].map((spec, i) => (
-                  <div key={i} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col items-center text-center gap-1 hover:border-slate-200 transition-colors">
-                    <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center mb-1 text-primary">
-                      <spec.icon className="w-4 h-4" />
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{spec.label}</span>
-                    <span className="text-xs font-black text-slate-800">{spec.value}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
                 {vehicle.isAc && (
-                  <span className="flex items-center gap-1.5 text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1.5 rounded-full">
+                  <span className="flex items-center gap-1.5 text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100/80 px-2.5 py-1 rounded-full">
                     <Thermometer className="w-3.5 h-3.5 text-blue-500" /> Climate Control AC
                   </span>
                 )}
-                <span className="flex items-center gap-1.5 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200/60 px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200/60 px-2.5 py-1 rounded-full">
                   <Calendar className="w-3.5 h-3.5 text-slate-500" /> Model Year {vehicle.year} ({vehicleAge === 0 ? "New" : `${vehicleAge}y`})
                 </span>
-                <span className="flex items-center gap-1.5 text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200/60 px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200/60 px-2.5 py-1 rounded-full">
                   <Gauge className="w-3.5 h-3.5 text-slate-500" /> Base Rate ₹{vehicle.pricePerKm}/km
                 </span>
               </div>
             </div>
 
             {/* Description card */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-3">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Fleet Details & Services</h2>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-2.5">
+              <h2 className="text-sm font-semibold text-slate-800">Fleet Details & Services</h2>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
                 {vehicle.description}
               </p>
             </div>
 
             {/* Included / Excluded Fare Rules */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Fare Inclusions & Exclusions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4">
-                  <h3 className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
+              <h2 className="text-sm font-semibold text-slate-800">Fare Inclusions & Exclusions</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="space-y-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3.5">
+                  <h3 className="text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Included in Fare
                   </h3>
-                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside pl-1 font-medium">
+                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside pl-0.5 font-normal">
                     <li>Fuel Charges & Maintenance</li>
                     <li>Commercial Vehicle Insurance</li>
                     <li>Professional Driver Allowance</li>
@@ -433,11 +460,11 @@ export default function VehicleDetailClient({
                     <li>24/7 Helpline Support</li>
                   </ul>
                 </div>
-                <div className="space-y-2 bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4">
-                  <h3 className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                <div className="space-y-2 bg-rose-500/5 border border-rose-500/10 rounded-xl p-3.5">
+                  <h3 className="text-xs font-semibold text-rose-800 flex items-center gap-1.5">
                     <X className="w-4 h-4 text-rose-500" /> Excluded from Fare
                   </h3>
-                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside pl-1 font-medium">
+                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside pl-0.5 font-normal">
                     <li>Toll taxes & State Entry taxes</li>
                     <li>Parking fees (paid as actuals)</li>
                     <li>Night charges (after 10:00 PM)</li>
@@ -450,13 +477,13 @@ export default function VehicleDetailClient({
 
             {/* Amenities Grid */}
             {vehicle.features && vehicle.features.length > 0 && (
-              <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Vehicle Amenities</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
+                <h2 className="text-sm font-semibold text-slate-800">Vehicle Amenities</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {vehicle.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span className="text-xs font-bold text-slate-700">{feature.replace(/_/g, " ")}</span>
+                    <div key={i} className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-xs font-medium text-slate-700">{feature.replace(/_/g, " ")}</span>
                     </div>
                   ))}
                 </div>
@@ -464,35 +491,35 @@ export default function VehicleDetailClient({
             )}
 
             {/* Safety Log Checklist */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Inspection Safety Log</h2>
+                <h2 className="text-sm font-semibold text-slate-800">Inspection Safety Log</h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {SAFETY_CHECKS.map((item, idx) => (
-                  <div key={idx} className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-3.5 flex flex-col items-center text-center gap-1.5 hover:bg-emerald-500/10 transition-colors">
-                    <span className="text-base">{item.icon}</span>
-                    <span className="text-[9px] text-slate-500 font-bold block leading-tight">{item.label}</span>
-                    <span className="text-[10px] font-black text-emerald-600 block">{item.status}</span>
+                  <div key={idx} className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 flex flex-col items-center text-center gap-1 hover:bg-emerald-500/10 transition-colors">
+                    <span className="text-sm">{item.icon}</span>
+                    <span className="text-[10px] text-slate-500 font-medium block leading-tight">{item.label}</span>
+                    <span className="text-[10px] font-semibold text-emerald-600 block">{item.status}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Logistics Vendor Profile */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Transporter Profile</h2>
-              <div className="flex items-center gap-4 bg-slate-900 text-white rounded-2xl p-4 md:p-5">
-                <div className="w-12 h-12 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black text-lg shrink-0">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
+              <h2 className="text-sm font-semibold text-slate-800">Transporter Profile</h2>
+              <div className="flex items-center gap-3.5 bg-slate-900 text-white rounded-xl p-4">
+                <div className="w-10 h-10 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-semibold text-base shrink-0">
                   {vehicle.businessName?.[0] || "L"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-white text-sm md:text-base truncate">{vehicle.businessName}</p>
-                  <p className="text-slate-400 text-xs mt-0.5 font-medium">Logistics Vendor: {vehicle.ownerName} · Registered since {vehicle.operatingSince}</p>
+                  <p className="font-semibold text-white text-sm truncate">{vehicle.businessName}</p>
+                  <p className="text-slate-400 text-xs mt-0.5 font-normal">Logistics Vendor: {vehicle.ownerName} · Registered since {vehicle.operatingSince}</p>
                 </div>
                 {vehicle.isVerified && (
-                  <div className="shrink-0 flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                  <div className="shrink-0 flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full text-[10px] font-medium shadow-xs">
                     <ShieldCheck className="w-3.5 h-3.5" /> Verified
                   </div>
                 )}
@@ -500,36 +527,36 @@ export default function VehicleDetailClient({
             </div>
 
             {/* Verified Client Reviews */}
-            <div className="bg-white border border-slate-200/60 rounded-3xl p-5 md:p-6 shadow-sm space-y-4">
+            <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-xs space-y-3.5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">Verified Client Reviews</h2>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Verified testimonials from recent rentals</p>
+                  <h2 className="text-sm font-semibold text-slate-800">Verified Client Reviews</h2>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">Verified testimonials from recent rentals</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <div className="flex items-center text-amber-400">
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span className="text-sm font-black text-slate-800 ml-1">{vehicle.rating}</span>
+                    <span className="text-sm font-semibold text-slate-800 ml-1">{vehicle.rating}</span>
                   </div>
-                  <span className="text-xs text-slate-400 font-black">/ 5.0</span>
+                  <span className="text-xs text-slate-400 font-medium">/ 5.0</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {[
                   { name: "Sanjay Kumar", date: "June 2026", rating: 5, comment: `Outstanding service! Car was super clean, AC was freezing, and the driver was extremely polite and professional. We took a round trip to Manali and felt completely safe throughout.` },
                   { name: "Neha Sharma", date: "May 2026", rating: 5, comment: `Highly recommended for family trips. The booking team coordinated everything seamlessly. Driver was experienced on mountain roads. The luggage carrier held all our bags easily.` },
                   { name: "Amanpreet Singh", date: "April 2026", rating: 4, comment: `Very neat interior, excellent sound system. We rented it for sightseeing. Driver knew all the short routes and scenic spots. Will book again.` },
                 ].map((rev, i) => (
-                  <div key={i} className="space-y-2 pb-3.5 border-b border-slate-100 last:border-0 last:pb-0">
+                  <div key={i} className="space-y-1.5 pb-3 border-b border-slate-100 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#1B3A6B]/10 text-[#1B3A6B] font-black text-xs flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-full bg-[#1B3A6B]/10 text-[#1B3A6B] font-semibold text-xs flex items-center justify-center">
                           {rev.name[0]}
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-slate-800">{rev.name}</p>
-                          <p className="text-[9px] text-slate-400 font-medium">{rev.date}</p>
+                          <p className="text-xs font-semibold text-slate-800">{rev.name}</p>
+                          <p className="text-[10px] text-slate-400 font-normal">{rev.date}</p>
                         </div>
                       </div>
                       <div className="flex items-center text-amber-400">
@@ -538,7 +565,7 @@ export default function VehicleDetailClient({
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed italic font-medium">
+                    <p className="text-xs text-slate-600 leading-relaxed font-normal">
                       "{rev.comment}"
                     </p>
                   </div>
@@ -548,45 +575,45 @@ export default function VehicleDetailClient({
 
           </div>
 
-          {/* RIGHT: Booking Desk Card (4 columns) - Desktop only */}
+          {/* RIGHT: Booking Desk Card (4 columns) - Desktop Sticky */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="lg:sticky lg:top-[130px] space-y-4">
+            <div className="lg:sticky lg:top-[120px] space-y-4 z-30">
               
-              <div className="bg-white border border-slate-200/60 rounded-3xl shadow-lg overflow-hidden">
+              <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
                 {/* Header starting price */}
-                <div className="bg-slate-900 p-5 text-white relative overflow-hidden">
+                <div className="bg-slate-900 p-4.5 text-white relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-28 h-28 bg-[#1B3A6B]/20 rounded-full blur-2xl" />
-                  <p className="text-white/40 text-[8px] font-black uppercase tracking-widest mb-1">Starting Rental Fee</p>
+                  <p className="text-white/50 text-[10px] font-medium uppercase tracking-wide mb-0.5">Starting Rental Fee</p>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black text-white">₹{vehicle.pricePerDay.toLocaleString("en-IN")}</span>
-                    <span className="text-white/50 text-xs font-bold">/day</span>
+                    <span className="text-2xl font-bold text-white">₹{vehicle.pricePerDay.toLocaleString("en-IN")}</span>
+                    <span className="text-white/60 text-xs font-normal">/day</span>
                   </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/10 text-[9px] text-white/50 font-semibold">
+                  <div className="flex justify-between items-center mt-2.5 pt-2.5 border-t border-white/10 text-[10px] text-white/60 font-medium">
                     <span>Base rate: ₹{vehicle.pricePerKm}/km</span>
-                    <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                    <span className="flex items-center gap-1 text-emerald-400 font-medium">
                       <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Instant Booking
                     </span>
                   </div>
                 </div>
 
                 {/* Booking Inputs & Calculations */}
-                <div className="p-4 space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#1B3A6B]">Dynamic Fare Calculator</h3>
+                <div className="p-4 space-y-3.5">
+                  <h3 className="text-xs font-semibold text-slate-800">Dynamic Fare Calculator</h3>
 
                   {bookingSubmitted ? (
-                    <div className="flex flex-col items-center gap-3 py-6 text-center">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                        <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                    <div className="flex flex-col items-center gap-2.5 py-5 text-center">
+                      <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                       </div>
-                      <p className="font-bold text-slate-900 text-sm">Booking Query Submitted!</p>
-                      <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">Our transport coordinator will verify fleet availability and driver logs, sending details within 15 minutes.</p>
-                      <button type="button" onClick={() => setBookingSubmitted(false)} className="text-[11px] font-black text-[#1B3A6B] hover:underline">Submit another query</button>
+                      <p className="font-semibold text-slate-900 text-sm">Booking Query Submitted!</p>
+                      <p className="text-xs text-slate-500 leading-relaxed font-normal">Our transport coordinator will verify fleet availability and driver logs, sending details within 15 minutes.</p>
+                      <button type="button" onClick={() => setBookingSubmitted(false)} className="text-xs font-medium text-[#1B3A6B] hover:underline">Submit another query</button>
                     </div>
                   ) : (
-                    <form onSubmit={handleBookNow} className="space-y-3.5">
+                    <form onSubmit={handleBookNow} className="space-y-3">
                       
                       {/* Trip Type selection pills */}
-                      <div className="grid grid-cols-3 gap-1 bg-slate-100 rounded-lg p-0.5 text-[9px] font-black uppercase tracking-wider text-slate-500">
+                      <div className="grid grid-cols-3 gap-1 bg-slate-100 rounded-lg p-0.5 text-xs font-medium text-slate-600">
                         {([
                           { label: "One-Way", value: "oneway" as const },
                           { label: "Round Trip", value: "roundtrip" as const },
@@ -597,8 +624,8 @@ export default function VehicleDetailClient({
                             type="button"
                             onClick={() => setTripType(tab.value)}
                             className={cn(
-                              "py-1.5 rounded-md transition-all text-center",
-                              tripType === tab.value ? "bg-white text-slate-800 shadow-3xs font-black" : "hover:text-slate-700"
+                              "py-1 rounded-md transition-all text-center",
+                              tripType === tab.value ? "bg-white text-slate-900 shadow-xs font-semibold" : "hover:text-slate-800"
                             )}
                           >
                             {tab.label}
@@ -609,7 +636,7 @@ export default function VehicleDetailClient({
                       {/* Pickup Date & Time Grid */}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Date</label>
+                          <label className="text-[10px] font-medium text-slate-500 block mb-0.5">Pickup Date</label>
                           <div className="relative">
                             <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <input
@@ -618,13 +645,13 @@ export default function VehicleDetailClient({
                               value={pickupDate}
                               onChange={e => setPickupDate(e.target.value)}
                               min={new Date().toISOString().split("T")[0]}
-                              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                              className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#1B3A6B] transition-colors"
                             />
                           </div>
                         </div>
                         {tripType === "roundtrip" ? (
                           <div>
-                            <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Return Date</label>
+                            <label className="text-[10px] font-medium text-slate-500 block mb-0.5">Return Date</label>
                             <div className="relative">
                               <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                               <input
@@ -633,13 +660,13 @@ export default function VehicleDetailClient({
                                 value={returnDate}
                                 onChange={e => setReturnDate(e.target.value)}
                                 min={pickupDate || new Date().toISOString().split("T")[0]}
-                                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                                className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#1B3A6B] transition-colors"
                               />
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Time</label>
+                            <label className="text-[10px] font-medium text-slate-500 block mb-0.5">Pickup Time</label>
                             <div className="relative">
                               <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                               <input
@@ -647,7 +674,7 @@ export default function VehicleDetailClient({
                                 required
                                 value={pickupTime}
                                 onChange={e => setPickupTime(e.target.value)}
-                                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                                className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#1B3A6B] transition-colors"
                               />
                             </div>
                           </div>
@@ -658,8 +685,8 @@ export default function VehicleDetailClient({
                       {tripType !== "local" && (
                         <div>
                           <div className="flex justify-between items-center mb-0.5">
-                            <label className="text-[9px] font-black uppercase text-slate-400">Est. Distance: {displayKm} km</label>
-                            <span className="text-[8px] font-bold text-slate-400">(Covered: {coveredKm}km)</span>
+                            <label className="text-[10px] font-medium text-slate-500">Est. Distance: {displayKm} km</label>
+                            <span className="text-[9px] text-slate-400">(Covered: {coveredKm}km)</span>
                           </div>
                           <input
                             type="range"
@@ -676,7 +703,7 @@ export default function VehicleDetailClient({
                       {/* Pickup & Drop inputs */}
                       <div className="space-y-2">
                         <div>
-                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Pickup Point Address</label>
+                          <label className="text-[10px] font-medium text-slate-500 block mb-0.5">Pickup Address</label>
                           <div className="relative">
                             <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <input
@@ -685,12 +712,12 @@ export default function VehicleDetailClient({
                               value={pickupAddr}
                               placeholder="Hotel / Airport / Residence"
                               onChange={e => setPickupAddr(e.target.value)}
-                              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 placeholder:text-slate-350 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                              className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1B3A6B] transition-colors"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-0.5">Drop Destination</label>
+                          <label className="text-[10px] font-medium text-slate-500 block mb-0.5">Drop Destination</label>
                           <div className="relative">
                             <Navigation className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                             <input
@@ -699,7 +726,7 @@ export default function VehicleDetailClient({
                               value={dropAddr}
                               placeholder="Sightseeing city or hotel"
                               onChange={e => setDropAddr(e.target.value)}
-                              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-bold text-slate-750 placeholder:text-slate-350 focus:outline-none focus:border-[#1B3A6B] transition-colors"
+                              className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1B3A6B] transition-colors"
                             />
                           </div>
                         </div>
@@ -707,32 +734,32 @@ export default function VehicleDetailClient({
 
                       {/* Dynamic Pricing Breakout */}
                       {pickupDate && (
-                        <div className="border-t border-slate-100 pt-2.5 space-y-1 text-[11px] text-slate-650 font-medium">
+                        <div className="border-t border-slate-100 pt-2 space-y-1 text-xs text-slate-600 font-normal">
                           <div className="flex justify-between">
-                            <span>Base Stay Rate ({rentalDays} d)</span>
-                            <span className="text-slate-800 font-bold">₹{basePriceTotal.toLocaleString()}</span>
+                            <span>Base Rate ({rentalDays} d)</span>
+                            <span className="text-slate-800 font-medium">₹{basePriceTotal.toLocaleString()}</span>
                           </div>
                           {extraKmCharges > 0 && (
                             <div className="flex justify-between">
-                              <span>Extra distance charge ({extraKm} km)</span>
-                              <span className="text-slate-800 font-bold">₹{extraKmCharges.toLocaleString()}</span>
+                              <span>Extra distance ({extraKm} km)</span>
+                              <span className="text-slate-800 font-medium">₹{extraKmCharges.toLocaleString()}</span>
                             </div>
                           )}
                           <div className="flex justify-between">
                             <span>Driver allowance</span>
-                            <span className="text-slate-800 font-bold">₹{driverAllowance.toLocaleString()}</span>
+                            <span className="text-slate-800 font-medium">₹{driverAllowance.toLocaleString()}</span>
                           </div>
                           {stateTaxEstimate > 0 && (
                             <div className="flex justify-between">
                               <span>State tax & toll allowance</span>
-                              <span className="text-slate-800 font-bold">₹{stateTaxEstimate.toLocaleString()}</span>
+                              <span className="text-slate-800 font-medium">₹{stateTaxEstimate.toLocaleString()}</span>
                             </div>
                           )}
-                          <div className="flex justify-between text-rose-600 bg-rose-50/50 px-1.5 py-0.5 rounded border border-rose-100 font-bold text-[9px] mt-1">
+                          <div className="flex justify-between text-rose-600 bg-rose-50/60 px-1.5 py-0.5 rounded border border-rose-100 font-medium text-[10px] mt-1">
                             <span>Category discount ({discountPercent}%)</span>
                             <span>-₹{discountAmount.toLocaleString()}</span>
                           </div>
-                          <div className="flex justify-between pt-1 border-t border-slate-100 font-bold text-slate-800 text-xs">
+                          <div className="flex justify-between pt-1 border-t border-slate-100 font-semibold text-slate-800 text-xs">
                             <span>Subtotal</span>
                             <span>₹{subtotal.toLocaleString()}</span>
                           </div>
@@ -740,7 +767,7 @@ export default function VehicleDetailClient({
                             <span>GST (5%)</span>
                             <span>₹{gst.toLocaleString()}</span>
                           </div>
-                          <div className="flex justify-between pt-1.5 border-t border-slate-100 font-black text-[#1B3A6B] text-sm">
+                          <div className="flex justify-between pt-1.5 border-t border-slate-100 font-bold text-[#1B3A6B] text-sm">
                             <span>Est. Grand Total</span>
                             <span>₹{grandTotal.toLocaleString()}</span>
                           </div>
@@ -749,7 +776,7 @@ export default function VehicleDetailClient({
 
                       {/* Action buttons */}
                       <div className="space-y-1.5">
-                        <Button type="submit" className="w-full h-10 rounded-lg bg-[#1B3A6B] hover:bg-[#142d54] text-white font-black uppercase text-xs tracking-wider shadow-md">
+                        <Button type="submit" className="w-full h-9.5 rounded-lg bg-[#1B3A6B] hover:bg-[#142d54] text-white font-semibold text-xs tracking-wide shadow-xs">
                           Request Fleet Booking ⚡
                         </Button>
                       </div>
@@ -757,32 +784,32 @@ export default function VehicleDetailClient({
                     </form>
                   )}
 
-                  <p className="text-[8.5px] text-center text-slate-450 leading-tight">
-                    *Toll taxes, parking fees, and borders entry taxes are directly paid to the driver on actual ticket receipt.
+                  <p className="text-[9px] text-center text-slate-400 leading-tight">
+                    *Toll taxes, parking fees, and borders entry taxes are directly paid to driver on actual ticket receipt.
                   </p>
                 </div>
               </div>
 
               {/* Call desk cards */}
-              <div className="bg-white border border-slate-200/60 rounded-3xl p-4.5 shadow-sm space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Immediate Helpline Desk</p>
+              <div className="bg-white border border-slate-200/60 rounded-2xl p-4 shadow-xs space-y-2.5">
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Immediate Helpline Desk</p>
                 <div className="grid grid-cols-1 gap-2">
-                  <a href="tel:+918595513009" className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-2.5 hover:border-[#1B3A6B] transition-all group">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#1B3A6B] flex items-center justify-center group-hover:bg-[#1B3A6B] group-hover:text-white transition-colors shrink-0">
-                      <Phone className="w-4 h-4" />
+                  <a href="tel:+918595513009" className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl p-2.5 hover:border-[#1B3A6B] transition-all group">
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#1B3A6B] flex items-center justify-center group-hover:bg-[#1B3A6B] group-hover:text-white transition-colors shrink-0">
+                      <Phone className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase">Call Transport Head</p>
-                      <p className="text-xs font-black text-slate-800">+91 85955-13009</p>
+                      <p className="text-[9px] text-slate-400 font-medium">Call Transport Head</p>
+                      <p className="text-xs font-semibold text-slate-800">+91 85955-13009</p>
                     </div>
                   </a>
-                  <a href="https://wa.me/918595513009" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-2.5 hover:border-emerald-500 transition-all group">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
-                      <MessageCircle className="w-4 h-4" />
+                  <a href="https://wa.me/918595513009" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 rounded-xl p-2.5 hover:border-emerald-500 transition-all group">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-colors shrink-0">
+                      <MessageCircle className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase">WhatsApp Desk</p>
-                      <p className="text-xs font-black text-slate-800">Instant Chat Connection</p>
+                      <p className="text-[9px] text-slate-400 font-medium">WhatsApp Desk</p>
+                      <p className="text-xs font-semibold text-slate-800">Instant Chat Connection</p>
                     </div>
                   </a>
                 </div>
@@ -795,9 +822,9 @@ export default function VehicleDetailClient({
                   { icon: Clock, label: "24/7 Desk" },
                   { icon: Award, label: "Lowest price" },
                 ].map((b, i) => (
-                  <div key={i} className="bg-white border border-slate-200/60 rounded-xl p-2 flex flex-col items-center gap-0.5 text-center shadow-3xs">
+                  <div key={i} className="bg-white border border-slate-200/60 rounded-xl p-2 flex flex-col items-center gap-0.5 text-center shadow-xs">
                     <b.icon className="w-3.5 h-3.5 text-[#1B3A6B]" />
-                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-wide leading-none">{b.label}</span>
+                    <span className="text-[9px] font-medium text-slate-500 leading-none">{b.label}</span>
                   </div>
                 ))}
               </div>
