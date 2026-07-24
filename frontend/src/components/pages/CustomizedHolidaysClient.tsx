@@ -34,7 +34,8 @@ import {
   CircleDollarSign,
   Star,
   Zap,
-  Quote
+  Quote,
+  Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -382,45 +383,88 @@ export default function CustomizedHolidaysClient() {
         </div>
       </section>
 
-      {/* 5. REVIEWS SECTION - MATCHING REFERENCE IMAGE */}
-      <section className="py-20 bg-slate-50/30 overflow-hidden border-t border-slate-100">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between mb-12">
-            <h2 className="text-xl md:text-2xl font-black text-primary uppercase tracking-tight flex items-center gap-3">
-              What customers <span className="text-accent">says about us</span>
-            </h2>
-            <div className="flex gap-2">
-              <button onClick={() => emblaReviewApi?.scrollPrev()} className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 hover:bg-primary hover:text-white transition-all flex items-center justify-center"><ChevronLeft className="w-5 h-5" /></button>
-              <button onClick={() => emblaReviewApi?.scrollNext()} className="w-8 h-8 rounded-full bg-primary text-white hover:bg-accent hover:text-primary transition-all flex items-center justify-center shadow-lg shadow-primary/20"><ChevronRight className="w-5 h-5" /></button>
+      {/* 5. REVIEWS SECTION */}
+      <section className="py-12 md:py-16 bg-slate-50/60 overflow-hidden border-t border-slate-100">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8 border-b border-slate-200/60 pb-5">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="bg-[#1B3A6B]/10 text-[#1B3A6B] text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                  Verified Guest Reviews
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-[#1B3A6B] tracking-tight">
+                What Our Guests <span className="text-[#F5A623]">Say About Us</span>
+              </h2>
+              <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">
+                Real travel experiences from happy clients across India and worldwide.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <button
+                onClick={() => emblaReviewApi?.scrollPrev()}
+                className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-[#1B3A6B] hover:text-white transition-all flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
+                aria-label="Previous review"
+              >
+                <ChevronLeft className="w-4.5 h-4.5" />
+              </button>
+              <button
+                onClick={() => emblaReviewApi?.scrollNext()}
+                className="w-9 h-9 rounded-full bg-[#1B3A6B] text-white hover:bg-[#F5A623] hover:text-[#1B3A6B] transition-all flex items-center justify-center shadow-md cursor-pointer active:scale-95"
+                aria-label="Next review"
+              >
+                <ChevronRight className="w-4.5 h-4.5" />
+              </button>
             </div>
           </div>
 
           <div className="relative">
-            <div className="overflow-hidden px-4 -mx-4" ref={emblaReviewRef}>
-              <div className="flex gap-8">
+            <div className="overflow-hidden" ref={emblaReviewRef}>
+              <div className="flex -ml-4 sm:-ml-6">
                 {testimonials.map((rev) => (
-                  <div key={rev.id} className="flex-[0_0_90%] sm:flex-[0_0_45%] lg:flex-[0_0_31%] min-w-0 py-4">
-                    <div className="relative bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-50 h-full flex flex-col">
-                      {/* Avatar Badge */}
-                      <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
-                        <img src={rev.avatar || rev.imageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${rev.name}`} alt={rev.name} className="w-full h-full object-cover" />
+                  <div key={rev.id} className="flex-[0_0_88%] sm:flex-[0_0_48%] lg:flex-[0_0_33.333%] min-w-0 pl-4 sm:pl-6 py-1">
+                    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all h-full flex flex-col justify-between">
+                      {/* Card Header */}
+                      <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="relative w-9 h-9 rounded-full bg-[#1B3A6B] text-[#F5A623] font-bold text-xs flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                            {rev.avatar || rev.imageUrl ? (
+                              <img src={rev.avatar || rev.imageUrl} alt={rev.name} className="w-full h-full object-cover" />
+                            ) : (
+                              rev.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+                            )}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border border-white flex items-center justify-center">
+                              <Check className="w-2 h-2 text-white stroke-[3px]" />
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-800 truncate">{rev.name}</h4>
+                            {rev.location && (
+                              <p className="text-[10px] text-slate-400 font-medium truncate">{rev.location}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          <span className="text-xs font-bold text-slate-800">{rev.rating || 5}.0</span>
+                        </div>
                       </div>
 
-                      <div className="flex-1 pt-4">
-                        <p className="text-slate-500 text-xs md:text-sm font-medium leading-relaxed italic line-clamp-4 relative">
-                          "{rev.content || rev.comment}"
-                          {rev.content && rev.content.length > 150 && <span className="text-accent font-black ml-1 cursor-pointer">Read more</span>}
+                      {/* Comment */}
+                      <div className="flex-1 py-3">
+                        <p className="text-slate-600 text-xs sm:text-sm leading-relaxed font-normal line-clamp-4">
+                          &ldquo;{rev.content || rev.comment}&rdquo;
                         </p>
                       </div>
 
-                      <div className="mt-8 flex flex-col items-end">
-                        <div className="flex gap-0.5 mb-2">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={cn("w-3 h-3 fill-accent text-accent", i >= (rev.rating || 5) && "fill-slate-200 text-slate-200")} />
-                          ))}
-                        </div>
-                        <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{rev.name}</h4>
-                        {rev.location && <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{rev.location}</p>}
+                      {/* Footer */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                        <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                          <Check className="w-3 h-3 text-emerald-500" /> Verified Guest
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-medium">Sampooran Holidays</span>
                       </div>
                     </div>
                   </div>

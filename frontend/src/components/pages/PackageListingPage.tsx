@@ -1556,82 +1556,93 @@ function FaqSection({ faqs, entityName }: { faqs: Array<{ question: string; answ
       </div>
 
       {/* Reviews Container - Full width container max-w-6xl */}
-      <div className="container mx-auto px-4 max-w-6xl mt-12 md:mt-20">
+      <div className="container mx-auto px-4 max-w-6xl mt-10 md:mt-16">
         {/* ── Happy Clients Reviews Carousel ── */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-slate-50/30 border-t border-slate-100 rounded-lg overflow-hidden py-4 md:py-6"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="bg-slate-50/60 border border-slate-200/60 rounded-3xl p-4 sm:p-6 md:p-8"
         >
-          {/* Header — exact match to /customized-holidays */}
-          <div className="flex items-center justify-between mb-2 md:mb-2">
-            <h3 className="text-base md:text-lg font-black text-primary uppercase tracking-tight flex items-center gap-3">
-              What customers <span className="text-accent">says about us</span>
-            </h3>
-            <p className="text-slate-600 text-sm md:text-base max-w-lg mx-auto">Here are some of our happy clients, read more about their travel experiences with us.</p>
-            <div className="flex gap-2">
+          {/* Header Layout — Clean flex-col on mobile, flex-row on desktop */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8 border-b border-slate-200/60 pb-5">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="bg-[#1B3A6B]/10 text-[#1B3A6B] text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                  Verified Guest Reviews
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-[#1B3A6B] tracking-tight">
+                What Our Guests <span className="text-[#F5A623]">Say About Us</span>
+              </h3>
+              <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1">
+                Real travel experiences from happy clients across India and worldwide.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
               <button
                 onClick={() => emblaApi?.scrollPrev()}
-                className="w-8 h-8 rounded-full bg-slate-200 text-slate-500 hover:bg-primary hover:text-white transition-all flex items-center justify-center"
+                className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-[#1B3A6B] hover:text-white transition-all flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
                 aria-label="Previous review"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4.5 h-4.5" />
               </button>
               <button
                 onClick={() => emblaApi?.scrollNext()}
-                className="w-8 h-8 rounded-full bg-primary text-white hover:bg-accent hover:text-primary transition-all flex items-center justify-center shadow-lg shadow-primary/20"
+                className="w-9 h-9 rounded-full bg-[#1B3A6B] text-white hover:bg-[#F5A623] hover:text-[#1B3A6B] transition-all flex items-center justify-center shadow-md cursor-pointer active:scale-95"
                 aria-label="Next review"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4.5 h-4.5" />
               </button>
             </div>
           </div>
 
-          {/* Embla Carousel — exact same structure as /customized-holidays */}
+          {/* Embla Carousel Cards */}
           <div className="relative">
-            <div className="overflow-hidden px-8 -mx-4 py-4 -my-4" ref={emblaRef}>
-              <div className="flex -ml-6">
+            <div className="overflow-hidden" ref={emblaRef}>
+              <div className="flex -ml-4 sm:-ml-6">
                 {reviews.map((rev, i) => (
-                  <div key={rev.id || i} className="flex-[0_0_90%] sm:flex-[0_0_45%] lg:flex-[0_0_31%] min-w-0 pl-6 py-4">
-                    <div className="relative bg-white rounded-lg p-5 md:p-8 shadow-xl shadow-slate-200/50 border border-slate-50 h-full flex flex-col">
+                  <div key={rev.id || i} className="flex-[0_0_88%] sm:flex-[0_0_48%] lg:flex-[0_0_33.333%] min-w-0 pl-4 sm:pl-6 py-1">
+                    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all h-full flex flex-col justify-between">
 
-                      {/* Avatar badge — overlapping top-left corner */}
-                      <div className="absolute -top-3.5 -left-3.5 w-12 h-12 rounded-full border-2 border-white shadow-md bg-gradient-to-br from-primary to-[#1D4ED8] flex items-center justify-center text-accent font-bold text-xs tracking-wider select-none shrink-0">
-                        {rev.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
-                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border border-white flex items-center justify-center shadow-sm">
-                          <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />
+                      {/* Card Header: Avatar & Name + Rating */}
+                      <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="relative w-9 h-9 rounded-full bg-[#1B3A6B] text-[#F5A623] font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                            {rev.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border border-white flex items-center justify-center">
+                              <Check className="w-2 h-2 text-white stroke-[3px]" />
+                            </div>
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-800 truncate">{rev.name}</h4>
+                            {rev.location && (
+                              <p className="text-[10px] text-slate-400 font-medium truncate">{rev.location}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          <span className="text-xs font-bold text-slate-800">{rev.rating || 5}.0</span>
                         </div>
                       </div>
 
-                      {/* Review text — NOT italic */}
-                      <div className="flex-1 pt-4">
-                        <p className="text-slate-700 text-[11px] md:text-xs font-medium leading-relaxed line-clamp-4 relative">
+                      {/* Review Comment */}
+                      <div className="flex-1 py-3">
+                        <p className="text-slate-600 text-xs sm:text-sm leading-relaxed font-normal line-clamp-4">
                           &ldquo;{rev.content || rev.comment}&rdquo;
-                          {(rev.content || rev.comment)?.length > 150 && (
-                            <span className="text-accent font-black ml-1 cursor-pointer">Read more</span>
-                          )}
                         </p>
                       </div>
 
-                      {/* Stars + Name — bottom right */}
-                      <div className="mt-8 flex flex-col items-end">
-                        <div className="flex gap-0.5 mb-2">
-                          {[...Array(5)].map((_, si) => (
-                            <Star
-                              key={si}
-                              className={cn(
-                                "w-3 h-3",
-                                si < (rev.rating || 5) ? "fill-accent text-accent" : "fill-slate-200 text-slate-200"
-                              )}
-                            />
-                          ))}
-                        </div>
-                        <h4 className="text-[10px] font-black text-primary uppercase tracking-wider">{rev.name}</h4>
-                        {rev.location && (
-                          <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">{rev.location}</p>
-                        )}
+                      {/* Footer Badge */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                        <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                          <Check className="w-3 h-3 text-emerald-500" /> Verified Guest
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-medium">Sampooran Holidays</span>
                       </div>
 
                     </div>

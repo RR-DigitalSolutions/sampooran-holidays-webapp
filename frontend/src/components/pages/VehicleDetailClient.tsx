@@ -235,7 +235,7 @@ export default function VehicleDetailClient({
       </AnimatePresence>
 
       {/* ── Main Detail Presentation ── */}
-      <div className="container mx-auto px-4 py-5 md:py-6">
+      <div className="container mx-auto px-4 pt-24 md:pt-28 pb-8 md:pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           
           {/* LEFT: Content Panel (8 columns) */}
@@ -577,21 +577,31 @@ export default function VehicleDetailClient({
 
           {/* RIGHT: Booking Desk Card (4 columns) - Desktop Sticky */}
           <div className="hidden lg:block lg:col-span-4">
-            <div className="lg:sticky lg:top-[90px] space-y-4 z-30">
+            <div className="lg:sticky lg:top-[96px] space-y-4 z-30">
               
               <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
-                {/* Header starting price */}
-                <div className="bg-slate-900 p-4.5 text-white relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-28 h-28 bg-[#1B3A6B]/20 rounded-full blur-2xl" />
-                  <p className="text-white/50 text-[10px] font-medium uppercase tracking-wide mb-0.5">Starting Rental Fee</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-white">₹{vehicle.pricePerDay.toLocaleString("en-IN")}</span>
-                    <span className="text-white/60 text-xs font-normal">/day</span>
+                {/* Header starting price — Compact 2-Line Header */}
+                <div className="bg-[#1B3A6B] p-3.5 sm:p-4 text-white relative overflow-hidden space-y-2">
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-white/5 rounded-full blur-xl pointer-events-none" />
+                  
+                  {/* Line 1: Title & Instant Booking Badge */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/80 font-medium tracking-wide">Starting Rental Fee</span>
+                    <span className="flex items-center gap-1 text-emerald-400 font-semibold text-[11px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <Zap className="w-3 h-3 fill-emerald-400" /> Instant Booking
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center mt-2.5 pt-2.5 border-t border-white/10 text-[10px] text-white/60 font-medium">
-                    <span>Base rate: ₹{vehicle.pricePerKm}/km</span>
-                    <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                      <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Instant Booking
+
+                  {/* Line 2: Big Price & Base Rate Badge */}
+                  <div className="flex items-baseline justify-between pt-0.5">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-2xl font-bold text-white leading-none">
+                        ₹{vehicle.pricePerDay.toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-white/70 text-xs font-medium">/day</span>
+                    </div>
+                    <span className="text-white/90 text-[11px] font-semibold bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">
+                      Base: ₹{vehicle.pricePerKm}/km
                     </span>
                   </div>
                 </div>
