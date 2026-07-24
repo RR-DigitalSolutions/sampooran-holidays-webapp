@@ -107,31 +107,28 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
             className="absolute top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-white flex flex-col shadow-2xl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white">
-              <Link href="/" onClick={onClose} className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <img src="/logo.png" className="w-5 h-5 brightness-0 invert" alt="Logo" />
-                </div>
-                <span className="font-serif font-bold text-primary text-lg leading-none">Sampooran</span>
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 bg-white">
+              <Link href="/" onClick={onClose} className="flex items-center gap-2 text-left">
+                <img src="/logo.png" alt="Sampooran Holidays" className="h-8.5 w-auto object-contain" />
               </Link>
               <button 
                 onClick={onClose} 
                 aria-label="Close menu"
-                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+                className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* Profile Action - Fixed at top */}
-            <div className="p-5 border-b border-slate-50 bg-slate-50/50">
-              <Link href="/login" onClick={onClose} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <User className="w-5 h-5" />
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60">
+              <Link href="/login" onClick={onClose} className="flex items-center gap-2.5 text-left">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-800">Login / Sign Up</p>
-                  <p className="text-[11px] text-slate-500">Manage your bookings</p>
+                <div className="min-w-0 text-left">
+                  <p className="text-xs font-bold text-slate-800 leading-tight">Login / Sign Up</p>
+                  <p className="text-[10px] text-slate-500 font-medium leading-tight">Manage your bookings</p>
                 </div>
               </Link>
             </div>
@@ -147,104 +144,104 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                     initial="initial"
                     animate="animate"
                     exit="exit"
-                    className="absolute inset-0 w-full h-fit p-5 space-y-2"
+                    className="absolute inset-0 w-full h-fit p-4 space-y-1.5 text-left"
                   >
-                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className="w-full flex items-center rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <Link 
                         href="/india-tour-packages" 
                         onClick={onClose}
-                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                        className="flex-1 flex items-center gap-2.5 p-2.5 px-3 active:scale-[0.98] transition-transform text-left"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                          <MapPin className="w-5 h-5 text-accent" />
+                        <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-xs">
+                          <MapPin className="w-3.5 h-3.5 text-accent" />
                         </div>
-                        <span className="font-semibold text-slate-800 text-[14px]">India Tours</span>
+                        <span className="font-semibold text-slate-800 text-[12.5px] text-left">India Tours</span>
                       </Link>
                       <button 
                         onClick={() => setView('india')}
-                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        className="p-2.5 px-3 text-slate-400 hover:text-slate-700 border-l border-slate-100 transition-colors"
                         aria-label="View India regions"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className="w-full flex items-center rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <Link 
                         href="/world-tour-packages" 
                         onClick={onClose}
-                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                        className="flex-1 flex items-center gap-2.5 p-2.5 px-3 active:scale-[0.98] transition-transform text-left"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                          <Globe className="w-5 h-5 text-accent" />
+                        <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-xs">
+                          <Globe className="w-3.5 h-3.5 text-accent" />
                         </div>
-                        <span className="font-semibold text-slate-800 text-[14px]">World Tours</span>
+                        <span className="font-semibold text-slate-800 text-[12.5px] text-left">World Tours</span>
                       </Link>
                       <button 
                         onClick={() => setView('world')}
-                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        className="p-2.5 px-3 text-slate-400 hover:text-slate-700 border-l border-slate-100 transition-colors"
                         aria-label="View World regions"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className="w-full flex items-center rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <Link 
                         href="/hotels" 
                         onClick={onClose}
-                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                        className="flex-1 flex items-center gap-2.5 p-2.5 px-3 active:scale-[0.98] transition-transform text-left"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                          <Building2 className="w-5 h-5 text-accent" />
+                        <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-xs">
+                          <Building2 className="w-3.5 h-3.5 text-accent" />
                         </div>
-                        <span className="font-semibold text-slate-800 text-[14px]">Hotels</span>
+                        <span className="font-semibold text-slate-800 text-[12.5px] text-left">Hotels</span>
                       </Link>
                       <button 
                         onClick={() => setView('hotels')}
-                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        className="p-2.5 px-3 text-slate-400 hover:text-slate-700 border-l border-slate-100 transition-colors"
                         aria-label="View Hotels list"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="w-full flex items-center rounded-2xl bg-white border border-slate-100 shadow-sm">
+                    <div className="w-full flex items-center rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <Link 
                         href="/transport" 
                         onClick={onClose}
-                        className="flex-1 flex items-center gap-3 p-4 pr-2 active:scale-[0.98] transition-transform"
+                        className="flex-1 flex items-center gap-2.5 p-2.5 px-3 active:scale-[0.98] transition-transform text-left"
                       >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                          <Car className="w-5 h-5 text-accent" />
+                        <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-xs">
+                          <Car className="w-3.5 h-3.5 text-accent" />
                         </div>
-                        <span className="font-semibold text-slate-800 text-[14px]">Transport</span>
+                        <span className="font-semibold text-slate-800 text-[12.5px] text-left">Transport</span>
                       </Link>
                       <button 
                         onClick={() => setView('transport')}
-                        className="p-4 pl-3 text-slate-400 hover:text-slate-600 border-l border-slate-100/50 transition-colors active:scale-90"
+                        className="p-2.5 px-3 text-slate-400 hover:text-slate-700 border-l border-slate-100 transition-colors"
                         aria-label="View Transport list"
                       >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
 
                     <button 
                       onClick={() => setView('services')}
-                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm active:scale-95 transition-all"
+                      className="w-full flex items-center justify-between p-2.5 px-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs active:scale-95 transition-all text-left"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-lg shadow-primary/20">
-                          <Briefcase className="w-5 h-5 text-accent" />
+                      <div className="flex items-center gap-2.5 text-left">
+                        <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-xs">
+                          <Briefcase className="w-3.5 h-3.5 text-accent" />
                         </div>
-                        <span className="font-semibold text-slate-800 text-[14px]">Group Tours</span>
+                        <span className="font-semibold text-slate-800 text-[12.5px] text-left">Group Tours</span>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
                     </button>
 
-                    <div className="pt-4 pb-2">
-                      <div className="h-px bg-slate-100 w-full mb-4"></div>
-                      <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-2 mb-3">More Links</h4>
+                    <div className="pt-3 pb-2 text-left">
+                      <div className="h-px bg-slate-100 w-full mb-3"></div>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 mb-2 text-left">More Links</h4>
                       <div className="space-y-1">
                         {[
                           { icon: Plane, label: "Inbound", href: "/inbound" },
@@ -256,12 +253,12 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                             key={item.label} 
                             href={item.href}
                             onClick={onClose}
-                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600 transition-colors group"
+                            className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg hover:bg-slate-50 text-slate-600 transition-colors group text-left"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[#1e3a8a] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                              <item.icon className="w-4 h-4 text-accent" />
+                            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                              <item.icon className="w-3.5 h-3.5" />
                             </div>
-                            <span className="font-medium text-[14px] text-slate-700 group-hover:text-primary transition-colors">{item.label}</span>
+                            <span className="font-medium text-[12.5px] text-slate-700 group-hover:text-primary transition-colors text-left">{item.label}</span>
                           </Link>
                         ))}
                       </div>
@@ -574,15 +571,15 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                           <>
                             {regionsToRender.indiaZones && regionsToRender.indiaZones.length > 0 && (
                               <>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 pb-1">🇮🇳 India</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 pb-1 text-left">India</p>
                                 {regionsToRender.indiaZones.map((zone: any) => (
-                                  <div key={zone.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                  <div key={zone.name} className="border border-slate-200/80 rounded-xl overflow-hidden bg-slate-50/50">
                                     <button
                                       onClick={() => setExpandedRegion(expandedRegion === zone.name ? null : zone.name)}
-                                      className="w-full flex items-center justify-between p-4 bg-white"
+                                      className="w-full flex items-center justify-between p-3 px-3.5 bg-white text-left"
                                     >
-                                      <span className="font-bold text-slate-700">{zone.name} Transport</span>
-                                      <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedRegion === zone.name && "rotate-180")} />
+                                      <span className="font-bold text-slate-700 text-xs text-left">{zone.name} Transport</span>
+                                      <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", expandedRegion === zone.name && "rotate-180")} />
                                     </button>
                                     <AnimatePresence>
                                       {expandedRegion === zone.name && (
@@ -592,17 +589,17 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                           exit={{ height: 0, opacity: 0 }}
                                           className="overflow-hidden"
                                         >
-                                          <div className="p-4 pt-2 space-y-4">
+                                          <div className="p-3 pt-1 space-y-3 text-left">
                                             {zone.states && zone.states.map((state: any) => {
                                               const subRegionKey = `transport-india-${state.slug}`;
                                               const isSubExpanded = expandedSubRegion === subRegionKey;
                                               return (
-                                                <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-3 last:pb-0">
+                                                <div key={state.title} className="border-b border-slate-100/80 last:border-0 pb-2.5 last:pb-0 text-left">
                                                   <button
                                                     onClick={() => toggleSubRegion(subRegionKey)}
-                                                    className="w-full flex items-center justify-between py-2 text-left"
+                                                    className="w-full flex items-center justify-between py-1.5 text-left"
                                                   >
-                                                    <span className="text-[13px] font-semibold text-slate-900 hover:text-primary transition-colors">
+                                                    <span className="text-[12px] font-semibold text-slate-800 hover:text-primary transition-colors text-left">
                                                       {state.title} Transport
                                                     </span>
                                                     <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", isSubExpanded && "rotate-180")} />
@@ -616,12 +613,12 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                         exit={{ height: 0, opacity: 0 }}
                                                         className="overflow-hidden"
                                                       >
-                                                        <div className="pt-2 pb-1">
-                                                          <div className="flex flex-wrap gap-2">
+                                                        <div className="pt-1.5 pb-1 text-left">
+                                                          <div className="flex flex-wrap gap-1.5 text-left">
                                                             <Link
                                                               href={`/transport?state=${state.slug}&country=india`}
                                                               onClick={onClose}
-                                                              className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
+                                                              className="group flex items-center text-[10.5px] font-bold text-primary bg-primary/5 border border-primary/20 px-2.5 py-1 rounded-full hover:bg-primary hover:text-white transition-all text-left"
                                                             >
                                                               <span>All {state.title} Transport</span>
                                                             </Link>
@@ -633,9 +630,8 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                                   key={itemSlug || itemName}
                                                                   href={`/transport?city=${itemSlug}&state=${state.slug}&country=india`}
                                                                   onClick={onClose}
-                                                                  className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
+                                                                  className="group flex items-center text-[10.5px] font-medium text-slate-600 bg-white border border-slate-200 px-2.5 py-1 rounded-full hover:border-primary hover:text-primary transition-all text-left"
                                                                 >
-                                                                  <MapPin className="w-3 h-3 text-slate-400 group-hover:text-accent transition-colors shrink-0" />
                                                                   <span>{itemName} Transport</span>
                                                                 </Link>
                                                               );
@@ -659,15 +655,15 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 
                             {regionsToRender.worldRegions && regionsToRender.worldRegions.length > 0 && (
                               <>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 pt-2 pb-1">🌍 World</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2 pb-1 text-left">World</p>
                                 {regionsToRender.worldRegions.map((region: any) => (
-                                  <div key={region.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                  <div key={region.name} className="border border-slate-200/80 rounded-xl overflow-hidden bg-slate-50/50">
                                     <button
                                       onClick={() => setExpandedRegion(expandedRegion === region.name ? null : region.name)}
-                                      className="w-full flex items-center justify-between p-4 bg-white"
+                                      className="w-full flex items-center justify-between p-3 px-3.5 bg-white text-left"
                                     >
-                                      <span className="font-semibold text-slate-900">{region.name} Transport</span>
-                                      <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", expandedRegion === region.name && "rotate-180")} />
+                                      <span className="font-bold text-slate-700 text-xs text-left">{region.name} Transport</span>
+                                      <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", expandedRegion === region.name && "rotate-180")} />
                                     </button>
                                     <AnimatePresence>
                                       {expandedRegion === region.name && (
