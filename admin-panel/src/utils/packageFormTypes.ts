@@ -1,4 +1,4 @@
-﻿// ─── Shared helpers reused by PackageForm ─────────────────────────────────────
+// ─── Shared helpers reused by PackageForm ─────────────────────────────────────
 import { getApiUrl } from "./api-url";
 const API_BASE = getApiUrl();
 
@@ -96,22 +96,30 @@ export interface DiningStop {
 
 export interface ItineraryDay {
   day: number;
-  dayType?: DayType;         // NEW — defaults to SIGHTSEEING if undefined (backward compat)
+  dayType?: DayType;        // Defaults to SIGHTSEEING if undefined (backward compat)
   title: string;
   description: string;
-  // ── Location ──────────────────────────────────────────────────────────────
-  location: string;          // SIGHTSEEING / ARRIVAL / LEISURE / DEPARTURE: single city
-  fromCity?: string;         // TRANSIT: journey origin (e.g. "Delhi")
-  toCity?: string;           // TRANSIT: journey destination (e.g. "Manali")
-  // ── Accommodation ─────────────────────────────────────────────────────────
+  // ── Location (multi-city per day) ──────────────────────────────────────────
+  location: string;         // Legacy single-city string (kept for backward compat + TRANSIT label)
+  cities?: string[];        // NEW: multiple city names for one day (e.g. ["Shimla","Kufri","Naldehra"])
+  cityIds?: number[];       // NEW: resolved destinationIds (drives CRM suggestions for hotels/transport/attractions)
+  // ── Journey (TRANSIT days) ─────────────────────────────────────────────────
+  fromCity?: string;        // TRANSIT: journey origin
+  toCity?: string;          // TRANSIT: journey destination
+  fromCityId?: number;      // NEW: resolved destinationId for fromCity
+  toCityId?: number;        // NEW: resolved destinationId for toCity
+  // ── Geo context (auto-resolved from city IDs → used to populate package-level arrays) ──
+  stateId?: number;         // Which state this day primarily belongs to
+  countryId?: number;       // Which country this day primarily belongs to
+  // ── Accommodation ──────────────────────────────────────────────────────────
   accommodation: string;
-  // ── Meals ─────────────────────────────────────────────────────────────────
+  // ── Meals ──────────────────────────────────────────────────────────────────
   meals: Partial<Record<MealType, MealEntry>> | string[];
-  // ── Attractions & Activities ───────────────────────────────────────────────
+  // ── Attractions & Activities ────────────────────────────────────────────────
   attractionIds: number[];
   activities: string[];
   diningStops: DiningStop[];
-  // ── Transport ─────────────────────────────────────────────────────────────
+  // ── Transport ──────────────────────────────────────────────────────────────
   transport?: string;
 }
 

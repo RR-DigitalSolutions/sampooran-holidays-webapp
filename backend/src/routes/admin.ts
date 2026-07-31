@@ -622,11 +622,22 @@ router.get("/packages", requirePermission("PACKAGES"), async (req, res) => {
 // POST /admin/packages
 router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
   try {
-    const data = req.body;
+    const data = { ...req.body };
     // Basic slug generation if not provided
     if (!data.slug && data.name) {
       data.slug = data.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
     }
+    if (data.cities) data.cities = toStringArray(data.cities);
+    if (data.highlights) data.highlights = toStringArray(data.highlights);
+    if (data.inclusions) data.inclusions = toStringArray(data.inclusions);
+    if (data.exclusions) data.exclusions = toStringArray(data.exclusions);
+    if (data.importantNotes) data.importantNotes = toStringArray(data.importantNotes);
+    if (data.inclusionIcons) data.inclusionIcons = toStringArray(data.inclusionIcons);
+    if (data.galleryImages) data.galleryImages = toStringArray(data.galleryImages);
+    if (data.monthsToTravel) data.monthsToTravel = toStringArray(data.monthsToTravel);
+    if (Array.isArray(data.destinationIds)) data.destinationIds = data.destinationIds.map(Number).filter(Boolean);
+    if (Array.isArray(data.stateIds)) data.stateIds = data.stateIds.map(Number).filter(Boolean);
+    if (Array.isArray(data.countryIds)) data.countryIds = data.countryIds.map(Number).filter(Boolean);
     const [inserted] = await db.insert(packagesTable).values(data).returning();
 
     // Generate unique package code using ID
@@ -665,9 +676,22 @@ router.get("/packages/:id", requirePermission("PACKAGES"), async (req, res) => {
 router.patch("/packages/:id", requirePermission("PACKAGES"), async (req, res) => {
   try {
     const { id } = req.params;
+    const data = { ...req.body };
+    if (data.cities) data.cities = toStringArray(data.cities);
+    if (data.highlights) data.highlights = toStringArray(data.highlights);
+    if (data.inclusions) data.inclusions = toStringArray(data.inclusions);
+    if (data.exclusions) data.exclusions = toStringArray(data.exclusions);
+    if (data.importantNotes) data.importantNotes = toStringArray(data.importantNotes);
+    if (data.inclusionIcons) data.inclusionIcons = toStringArray(data.inclusionIcons);
+    if (data.galleryImages) data.galleryImages = toStringArray(data.galleryImages);
+    if (data.monthsToTravel) data.monthsToTravel = toStringArray(data.monthsToTravel);
+    if (Array.isArray(data.destinationIds)) data.destinationIds = data.destinationIds.map(Number).filter(Boolean);
+    if (Array.isArray(data.stateIds)) data.stateIds = data.stateIds.map(Number).filter(Boolean);
+    if (Array.isArray(data.countryIds)) data.countryIds = data.countryIds.map(Number).filter(Boolean);
+
     const [updated] = await db
       .update(packagesTable)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...data, updatedAt: new Date() })
       .where(eq(packagesTable.id, Number(id)))
       .returning();
     clearCachePattern("cache:/api/packages*");

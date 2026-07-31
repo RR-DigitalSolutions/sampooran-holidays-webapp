@@ -944,7 +944,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         // For TRANSIT days, display location as "FromCity → ToCity"; fallback to single location
         location: isTransit && (fromCity || toCity)
           ? [fromCity, toCity].filter(Boolean).join(" → ")
-          : normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"]),
+          : (Array.isArray(d["cities"]) && (d["cities"] as string[]).filter(Boolean).length > 0
+              ? (d["cities"] as string[]).filter(Boolean).join(" → ")
+              : normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"])),
         // Preserve new route fields for UI rendering
         dayType,
         fromCity,

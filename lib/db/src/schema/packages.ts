@@ -11,6 +11,8 @@ export const packagesTable = pgTable("packages", {
   countryId: integer("country_id"),
   destinationId: integer("destination_id"),
   destinationIds: integer("destination_ids").array().default([]),
+  stateIds: integer("state_ids").array().default([]),   // NEW: multi-state packages
+  countryIds: integer("country_ids").array().default([]), // NEW: multi-country packages
   imageUrl: text("image_url"),
   thumbnailUrl: text("thumbnail_url"),
   shortDescription: text("short_description"),
@@ -71,6 +73,8 @@ export const packagesTable = pgTable("packages", {
   packagesTagsGinIdx: index("packages_tags_gin_idx").using("gin", table.tags),
   packagesCitiesGinIdx: index("packages_cities_gin_idx").using("gin", table.cities),
   packagesDestinationIdsGinIdx: index("packages_destination_ids_gin_idx").using("gin", table.destinationIds),
+  packagesStateIdsGinIdx: index("packages_state_ids_gin_idx").using("gin", table.stateIds),
+  packagesCountryIdsGinIdx: index("packages_country_ids_gin_idx").using("gin", table.countryIds),
 }));
 
 export const insertPackageSchema = createInsertSchema(packagesTable).omit({ id: true, createdAt: true });

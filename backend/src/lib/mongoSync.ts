@@ -73,10 +73,13 @@ export interface MongoPackage {
   // Denormalized from JOINs (no JOIN needed at read time)
   destinationId: number | null;
   destinationName: string | null;
+  destinationIds?: number[] | null;
   stateId: number | null;
   stateName: string | null;
+  stateIds?: number[] | null;
   countryId: number | null;
   countryName: string | null;
+  countryIds?: number[] | null;
   syncedAt: Date;
 }
 
@@ -153,8 +156,11 @@ export async function syncPackage(pgId: number): Promise<void> {
         tags: packagesTable.tags,
         inclusionIcons: packagesTable.inclusionIcons,
         destinationId: packagesTable.destinationId,
+        destinationIds: packagesTable.destinationIds,
         stateId: packagesTable.stateId,
+        stateIds: packagesTable.stateIds,
         countryId: packagesTable.countryId,
+        countryIds: packagesTable.countryIds,
         destinationName: destinationsTable.name,
         stateName: statesTable.name,
         countryName: countriesTable.name,
@@ -207,10 +213,13 @@ export async function syncPackage(pgId: number): Promise<void> {
       inclusionIcons: row.inclusionIcons,
       destinationId: row.destinationId,
       destinationName: row.destinationName,
+      destinationIds: row.destinationIds,
       stateId: row.stateId,
       stateName: row.stateName,
+      stateIds: row.stateIds,
       countryId: row.countryId,
       countryName: row.countryName,
+      countryIds: row.countryIds,
       syncedAt: new Date(),
     };
 
