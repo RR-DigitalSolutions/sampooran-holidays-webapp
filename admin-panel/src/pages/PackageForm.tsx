@@ -104,6 +104,10 @@ export default function PackageForm() {
   const [calPriceModVal, setCalPriceModVal] = useState(0);
   const [calDiscountType, setCalDiscountType] = useState<"none" | "flat" | "percentage">("none");
   const [calDiscountVal, setCalDiscountVal] = useState(0);
+  const [calExtraAdult, setCalExtraAdult] = useState<number | "">("");
+  const [calChildWithBed, setCalChildWithBed] = useState<number | "">("");
+  const [calChildWithoutBed, setCalChildWithoutBed] = useState<number | "">("");
+  const [calInfant, setCalInfant] = useState<number | "">("");
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
   const [dragStart, setDragStart] = useState<string | null>(null);
@@ -313,10 +317,15 @@ export default function PackageForm() {
         priceModifierValue: calRateType === "blackout" || calRateType === "price-on-request" ? 0 : calPriceModVal,
         discountType: calRateType === "blackout" || calRateType === "price-on-request" ? "none" : calDiscountType,
         discountValue: calRateType === "blackout" || calRateType === "price-on-request" ? 0 : calDiscountVal,
+        extraPersonPrice: calExtraAdult !== "" ? Number(calExtraAdult) : undefined,
+        childWithBedPrice: calChildWithBed !== "" ? Number(calChildWithBed) : undefined,
+        childWithoutBedPrice: calChildWithoutBed !== "" ? Number(calChildWithoutBed) : undefined,
+        infantPrice: calInfant !== "" ? Number(calInfant) : undefined,
       };
       await customFetch(`/api/admin/packages/${id}/calendar-inventory`, { method: "POST", body: JSON.stringify(payload) });
       toast.success("Calendar rates updated successfully");
       setSelectedCalendarDates([]); setStartDateInput(""); setEndDateInput("");
+      setCalExtraAdult(""); setCalChildWithBed(""); setCalChildWithoutBed(""); setCalInfant("");
       fetchCalendarRates();
     } catch (error: any) {
       toast.error("Failed to update rates: " + error.message);
@@ -1514,6 +1523,27 @@ export default function PackageForm() {
                               </div>
                             )}
                           </div>
+                          <div className="bg-white p-3 rounded-xl border border-gray-150 space-y-2.5 shadow-xs">
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Category Rate Overrides (Optional)</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[9px] font-semibold text-gray-400">Extra Adult (₹)</label>
+                                <input type="number" value={calExtraAdult} onChange={e => setCalExtraAdult(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Override..." className="w-full text-xs p-1.5 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-semibold text-gray-400">Child w/ Bed (₹)</label>
+                                <input type="number" value={calChildWithBed} onChange={e => setCalChildWithBed(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Override..." className="w-full text-xs p-1.5 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-semibold text-gray-400">Child w/o Bed (₹)</label>
+                                <input type="number" value={calChildWithoutBed} onChange={e => setCalChildWithoutBed(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Override..." className="w-full text-xs p-1.5 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none" />
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-semibold text-gray-400">Infant (₹)</label>
+                                <input type="number" value={calInfant} onChange={e => setCalInfant(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Override..." className="w-full text-xs p-1.5 rounded-lg border border-gray-200 focus:border-[#1B3A6B] outline-none" />
+                              </div>
+                            </div>
+                          </div>
                         </>
                       )}
                       <button type="button" disabled={selectedCalendarDates.length === 0} onClick={handleCalendarRateSubmit}
@@ -1566,13 +1596,13 @@ export default function PackageForm() {
                   return (
                     <div key={idx} className={`rounded-2xl border-2 ${cfg.borderColor} overflow-hidden shadow-sm`}>
                       {/* Card Header */}
-                      <div className={`${cfg.headerBg} px-5 py-3 flex items-center justify-between`}>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <div className="bg-white/20 backdrop-blur rounded-lg px-2.5 py-1 text-white font-black text-xs tracking-widest">DAY {day.day}</div>
-                          <span className="text-white/90 text-xs font-semibold">{cfg.emoji} {cfg.label}</span>
+                      <div className={`${cfg.headerBg} px-4 py-2.5 flex items-center justify-between`}>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <div className="bg-white/20 backdrop-blur rounded px-2 py-0.5 text-white font-black text-xs tracking-wider">DAY {day.day}</div>
+                          <span className="text-white/95 text-xs font-bold">{cfg.emoji} {cfg.label}</span>
                           {/* City display with arrows */}
                           {isTransit && day.fromCity && day.toCity ? (
-                            <span className="text-white/80 text-[10px] font-medium bg-white/15 rounded-full px-2.5 py-0.5 flex items-center gap-1">
+                            <span className="text-white/90 text-[10px] font-semibold bg-white/20 rounded-full px-2.5 py-0.5 flex items-center gap-1">
                               {day.fromCity} <ArrowRight className="w-3 h-3" /> {day.toCity}
                             </span>
                           ) : displayCities.length > 0 ? (
@@ -1580,7 +1610,7 @@ export default function PackageForm() {
                               {displayCities.map((city, ci) => (
                                 <span key={ci} className="flex items-center gap-1">
                                   {ci > 0 && <ArrowRight className="w-3 h-3 text-white/60" />}
-                                  <span className="text-white/80 text-[10px] font-medium bg-white/15 rounded-full px-2 py-0.5 flex items-center gap-0.5">
+                                  <span className="text-white/90 text-[10px] font-semibold bg-white/20 rounded-full px-2 py-0.5 flex items-center gap-0.5">
                                     <MapPin className="w-2.5 h-2.5" /> {city}
                                   </span>
                                 </span>
@@ -1588,42 +1618,41 @@ export default function PackageForm() {
                             </span>
                           ) : null}
                         </div>
-                        <button type="button" onClick={() => removeDay(idx)} className="text-white/70 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition"><Trash2 className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => removeDay(idx)} className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1 transition"><Trash2 className="w-4 h-4" /></button>
                       </div>
 
                       {/* Card Body */}
-                      <div className={`${cfg.bgColor} p-5 space-y-5`}>
+                      <div className={`${cfg.bgColor} p-4 space-y-3.5`}>
 
                         {/* 1. Day Type Selector */}
                         <div>
-                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Day Type</p>
-                          <div className="flex flex-wrap gap-2">
+                          <p className="text-[9.5px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Day Type</p>
+                          <div className="flex flex-wrap gap-1.5">
                             {DAY_TYPES.map(dt => {
                               const dc = DAY_TYPE_CONFIG[dt];
                               const isCurrent = dayType === dt;
                               return (
                                 <button key={dt} type="button" onClick={() => updateDay(idx, { dayType: dt })} title={dc.description}
-                                  className={`text-xs px-3.5 py-1.5 rounded-full font-bold border transition-all ${isCurrent ? `${dc.bgColor} ${dc.color} ${dc.borderColor} shadow-sm ring-2 ring-offset-1 ring-current/30` : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"}`}>
+                                  className={`text-[11px] px-2.5 py-1 rounded-full font-bold border transition-all ${isCurrent ? `${dc.bgColor} ${dc.color} ${dc.borderColor} shadow-xs ring-1 ring-current/30` : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
                                   {dc.emoji} {dc.label}
                                 </button>
                               );
                             })}
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-1">{cfg.description}</p>
                         </div>
 
                         {/* 2. Title & Description */}
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Day Title</label>
-                            <div className="flex gap-2">
-                              <input value={day.title} onChange={e => updateDay(idx, { title: e.target.value })} placeholder="e.g. Arrival in Shimla → Explore Kufri" className="flex-1 px-3 py-2 rounded-lg border outline-none font-bold bg-white focus:border-[#1B3A6B]" />
-                              <button type="button" title="Auto-suggest title" onClick={() => updateDay(idx, { title: autoTitle(day) })} className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold transition whitespace-nowrap border border-gray-200">✨ Auto</button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="md:col-span-1">
+                            <label className="text-[9.5px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Day Title</label>
+                            <div className="flex gap-1.5">
+                              <input value={day.title} onChange={e => updateDay(idx, { title: e.target.value })} placeholder="e.g. Arrival in Shimla → Explore Kufri" className="flex-1 px-2.5 py-1.5 rounded-lg border outline-none font-bold text-xs bg-white focus:border-[#1B3A6B]" />
+                              <button type="button" title="Auto-suggest title" onClick={() => updateDay(idx, { title: autoTitle(day) })} className="px-2 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-[11px] font-bold transition whitespace-nowrap border border-gray-200">✨ Auto</button>
                             </div>
                           </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Day Description</label>
-                            <textarea value={day.description} onChange={e => updateDay(idx, { description: e.target.value })} placeholder="Describe the day's experience, highlights, and what to expect..." rows={2} className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white focus:border-[#1B3A6B]" />
+                          <div className="md:col-span-2">
+                            <label className="text-[9.5px] font-bold text-gray-500 block mb-1 uppercase tracking-wider">Day Description</label>
+                            <textarea value={day.description} onChange={e => updateDay(idx, { description: e.target.value })} placeholder="Describe the day's experience, highlights..." rows={1} className="w-full px-2.5 py-1.5 rounded-lg border outline-none text-xs bg-white focus:border-[#1B3A6B]" />
                           </div>
                         </div>
 

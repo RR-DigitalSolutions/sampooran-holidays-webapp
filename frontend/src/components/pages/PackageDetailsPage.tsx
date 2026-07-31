@@ -283,6 +283,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [calendarRates, setCalendarRates] = useState<any[]>([]);
   const [loadingCal, setLoadingCal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   // ── Guest Segment Counts ──
   const [adults, setAdults] = useState(2);
@@ -487,6 +488,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       setInquiryMessage(`I am interested in booking "${packageData.name}" (${packageData.packageCode || "N/A"}). Please share details.`);
     }
   }, [packageData.name, packageData.packageCode]);
+
+  const handleBookNow = () => {
+    const el = document.getElementById("enquire");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1032,7 +1040,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const packageHotels = packageData.hotels || [];
   const importantNotes = packageData.importantNotes || [];
   const priceLabel = pricePerPerson > 0 ? `₹${pricePerPerson.toLocaleString("en-IN")}` : "Price on request";
-
   // Hero badges: only show themes from CMS — no duplication of category / tourType which are shown elsewhere
   const heroBadges = Array.from(new Set(packageThemes)).filter(Boolean) as string[];
 
@@ -1042,40 +1049,45 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const minGuests = packageData.minGuests ?? 2;
   const maxGuests = packageData.maxGuests ?? 10;
 
-  const { totalPackageCost, totalOriginalCost, totalSavings, priceAfterDiscount, gstAmount, grandTotal, guestCountLabel, categoryBreakdown } = useMemo(() => {
-    const isGroup = !!packageData.isGroupPricing;
-    const baseCap = packageData.groupBaseCapacity ?? 2;
-
-    // Category rate tiers
+  const { totalPackageCost, totalOriginalCost, totalSavings, priceAfterDiscount, gstAmount, grandTotal, guestCountLabel, categoryBreakdown, totalPayingGuests, baseRoomCost } = useMemo(() => {
+    // 1. Effective Category Rate Tiers
     const adultRate = pricePerPerson;
-    const extraAdultRate = Number(packageData.extraPersonPrice) > 0 ? Number(packageData.extraPersonPrice) : pricePerPerson;
-    const childWithBedRate = Number(packageData.childWithBedPrice) > 0 ? Number(packageData.childWithBedPrice) : Math.round(pricePerPerson * 0.75);
-    const childWithoutBedRate = Number(packageData.childWithoutBedPrice) > 0 ? Number(packageData.childWithoutBedPrice) : Math.round(pricePerPerson * 0.5);
+    const extraAdultRate = Number(packageData.extraPersonPrice) > 0 ? Number(packageData.extraPersonPrice) : adultRate;
+    const childWithBedRate = Number(packageData.childWithBedPrice) > 0 ? Number(packageData.childWithBedPrice) : Math.round(adultRate * 0.75);
+    const childWithoutBedRate = Number(packageData.childWithoutBedPrice) > 0 ? Number(packageData.childWithoutBedPrice) : Math.round(adultRate * 0.50);
     const infantRate = Number(packageData.infantPrice) > 0 ? Number(packageData.infantPrice) : 0;
 
-    // Line totals
-    const adultTotal = adults * adultRate;
-    const extraAdultTotal = extraAdults * extraAdultRate;
-    const childWithBedTotal = childWithBed * childWithBedRate;
-    const childWithoutBedTotal = childWithoutBed * childWithoutBedRate;
-    const infantTotal = infantsCount * infantRate;
+    // 2. Base Capacity & Extra Add-on Calculations
+    const totalAdultsCount = adults + extraAdults;
+    const baseRoomTotalCost = Math.max(totalAdultsCount, minGuests) <= minGuests 
+      ? minGuests * adultRate 
+      : minGuests * adultRate;
 
-    let totalCost = 0;
-    let originalCost = 0;
+    const extraAdultsCountBilled = Math.max(0, totalAdultsCount - minGuests);
+    const extraAdultsTotalCost = extraAdultsCountBilled * extraAdultRate;
 
-    if (isGroup) {
-      totalCost = (baseCap * adultRate) + extraAdultTotal + childWithBedTotal + childWithoutBedTotal + infantTotal;
-      originalCost = (baseCap * originalPrice) + (extraAdults * (packageData.extraPersonPrice || originalPrice)) + (childWithBed * childWithBedRate) + (childWithoutBed * childWithoutBedRate) + infantTotal;
-    } else {
-      totalCost = adultTotal + extraAdultTotal + childWithBedTotal + childWithoutBedTotal + infantTotal;
-      originalCost = (adults * originalPrice) + (extraAdults * (packageData.extraPersonPrice || originalPrice)) + (childWithBed * Math.round(originalPrice * 0.75)) + (childWithoutBed * Math.round(originalPrice * 0.5)) + infantTotal;
-    }
+    const childWithBedTotalCost = childWithBed * childWithBedRate;
+    const childWithoutBedTotalCost = childWithoutBed * childWithoutBedRate;
+    const infantTotalCost = infantsCount * infantRate;
+
+    // 3. Subtotal & Savings
+    const totalCost = baseRoomTotalCost + extraAdultsTotalCost + childWithBedTotalCost + childWithoutBedTotalCost + infantTotalCost;
+    
+    // Original prices without discount
+    const origAdultRate = originalPrice;
+    const origBaseRoomCost = Math.max(totalAdultsCount, minGuests) * origAdultRate;
+    const origExtraAdultCost = extraAdultsCountBilled * (packageData.extraPersonPrice || origAdultRate);
+    const origChildWithBedCost = childWithBed * (packageData.childWithBedPrice || Math.round(origAdultRate * 0.75));
+    const origChildWithoutBedCost = childWithoutBed * (packageData.childWithoutBedPrice || Math.round(origAdultRate * 0.50));
+    const originalCost = origBaseRoomCost + origExtraAdultCost + origChildWithBedCost + origChildWithoutBedCost + infantTotalCost;
 
     const savingsVal = Math.max(0, originalCost - totalCost);
     const gstVal = Math.round(totalCost * 0.05);
     const finalTotal = totalCost + gstVal;
 
-    let countParts = [`${adults} Adult${adults > 1 ? 's' : ''}`];
+    const payingGuestsCount = Math.max(totalAdultsCount, minGuests) + childWithBed + childWithoutBed;
+
+    let countParts = [`${adults} Primary Adult${adults > 1 ? 's' : ''}`];
     if (extraAdults > 0) countParts.push(`${extraAdults} Extra Adult${extraAdults > 1 ? 's' : ''}`);
     if (childWithBed > 0) countParts.push(`${childWithBed} Child (Bed)`);
     if (childWithoutBed > 0) countParts.push(`${childWithoutBed} Child (No Bed)`);
@@ -1089,15 +1101,47 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       gstAmount: gstVal,
       grandTotal: finalTotal,
       guestCountLabel: countParts.join(', '),
+      totalPayingGuests: payingGuestsCount,
+      baseRoomCost: baseRoomTotalCost,
       categoryBreakdown: [
-        { label: "Adult", count: adults, rate: adultRate, total: adultTotal },
-        ...(extraAdults > 0 ? [{ label: "Extra Adult", count: extraAdults, rate: extraAdultRate, total: extraAdultTotal }] : []),
-        ...(childWithBed > 0 ? [{ label: "Child with Bed", count: childWithBed, rate: childWithBedRate, total: childWithBedTotal }] : []),
-        ...(childWithoutBed > 0 ? [{ label: "Child without Bed", count: childWithoutBed, rate: childWithoutBedRate, total: childWithoutBedTotal }] : []),
-        ...(infantsCount > 0 ? [{ label: "Infant (Under 2 yrs)", count: infantsCount, rate: infantRate, total: infantTotal }] : []),
+        {
+          label: `Base Room Capacity (${Math.min(totalAdultsCount, minGuests)}/${minGuests} Min Guests)`,
+          count: Math.max(totalAdultsCount, minGuests),
+          rate: adultRate,
+          total: baseRoomTotalCost,
+          isBaseRoom: true,
+        },
+        ...(extraAdultsCountBilled > 0 ? [{
+          label: "Extra Adult Add-on",
+          count: extraAdultsCountBilled,
+          rate: extraAdultRate,
+          total: extraAdultsTotalCost,
+          isBaseRoom: false,
+        }] : []),
+        ...(childWithBed > 0 ? [{
+          label: "Child with Bed (5-12 yrs)",
+          count: childWithBed,
+          rate: childWithBedRate,
+          total: childWithBedTotalCost,
+          isBaseRoom: false,
+        }] : []),
+        ...(childWithoutBed > 0 ? [{
+          label: "Child w/o Bed (2-5 yrs)",
+          count: childWithoutBed,
+          rate: childWithoutBedRate,
+          total: childWithoutBedTotalCost,
+          isBaseRoom: false,
+        }] : []),
+        ...(infantsCount > 0 ? [{
+          label: "Infant (Under 2 yrs)",
+          count: infantsCount,
+          rate: infantRate,
+          total: infantTotalCost,
+          isBaseRoom: false,
+        }] : []),
       ]
     };
-  }, [adults, extraAdults, childWithBed, childWithoutBed, infantsCount, pricePerPerson, originalPrice, packageData]);
+  }, [adults, extraAdults, childWithBed, childWithoutBed, infantsCount, pricePerPerson, originalPrice, packageData, minGuests]);
 
   const guestCount = adults + extraAdults + childWithBed + childWithoutBed;
 
@@ -1757,57 +1801,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   })}
                 </div>
               </section>
-            )}
-
-            {/* Category-Wise Pricing Table Card */}
-            <section id="pricing-breakdown" className="rounded-2xl border border-slate-900 bg-slate-950 text-white p-5 md:p-6 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-emerald-400" /> Category Price Breakdown
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Transparent per-person pricing rates for all traveler categories.</p>
-                </div>
-                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                  Verified Rates
-                </span>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
-                      <th className="py-2.5 px-3 font-bold">Category</th>
-                      <th className="py-2.5 px-3 font-bold text-right">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-900 font-semibold">
-                    <tr className="hover:bg-slate-900/50">
-                      <td className="py-3 px-3 text-white">Adult</td>
-                      <td className="py-3 px-3 text-right font-bold text-emerald-400">₹{(pricePerPerson || 0).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr className="hover:bg-slate-900/50">
-                      <td className="py-3 px-3 text-slate-200">Extra Adult</td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.extraPersonPrice) || pricePerPerson || 0).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr className="hover:bg-slate-900/50">
-                      <td className="py-3 px-3 text-slate-200">Child with Bed</td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.childWithBedPrice) || Math.round(pricePerPerson * 0.75) || 0).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr className="hover:bg-slate-900/50">
-                      <td className="py-3 px-3 text-slate-200">Child without Bed</td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.childWithoutBedPrice) || Math.round(pricePerPerson * 0.5) || 0).toLocaleString('en-IN')}</td>
-                    </tr>
-                    <tr className="hover:bg-slate-900/50">
-                      <td className="py-3 px-3 text-slate-200">Infant (Under 2 yrs)</td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.infantPrice) || 0).toLocaleString('en-IN')}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {(packageInclusions.length > 0 || packageExclusions.length > 0) && (
+            )}            {(packageInclusions.length > 0 || packageExclusions.length > 0) && (
               <section id="inclusions" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
                 <div className="grid gap-6 lg:grid-cols-2">
                   {packageInclusions.length > 0 && (
@@ -1978,26 +1972,38 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           <aside className="space-y-2.5 xl:sticky xl:top-[76px]">
             {/* ── Guest Occupancy & Fare Selector Widget ── */}
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
-              {/* Header with popover toggle and grand total */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              {/* Header with Original Price, Discount Badge & Grand Total */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3 gap-2">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Travelers &amp; Cost</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Travelers &amp; Occupancy</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs font-bold text-slate-800">{guestCountLabel}</span>
                     <button
                       type="button"
                       onClick={() => setShowGuestsEdit(!showGuestsEdit)}
-                      className="text-[10px] font-bold text-[#1B3A6B] hover:underline bg-slate-50 hover:bg-slate-100 px-1.5 py-0.5 rounded border border-slate-205"
+                      className="text-[10px] font-bold text-[#1B3A6B] hover:underline bg-slate-50 hover:bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200"
                     >
                       {showGuestsEdit ? "Hide" : "Change"}
                     </button>
                   </div>
                 </div>
+
                 <div className="text-right">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Grand Total</p>
-                  <p className="text-lg font-black text-slate-900 leading-none mt-0.5">₹{grandTotal.toLocaleString('en-IN')}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Final Payable</p>
+                  <div className="flex items-baseline justify-end gap-1.5 mt-0.5">
+                    {totalSavings > 0 && totalOriginalCost > 0 && (
+                      <span className="text-xs text-slate-400 font-semibold line-through">
+                        ₹{(totalOriginalCost + Math.round(totalOriginalCost * 0.05)).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    <span className="text-lg font-black text-slate-900 leading-none">
+                      ₹{grandTotal.toLocaleString('en-IN')}
+                    </span>
+                  </div>
                   {totalSavings > 0 && (
-                    <span className="text-[8px] font-extrabold text-emerald-600 block mt-0.5">Save ₹{totalSavings.toLocaleString('en-IN')}</span>
+                    <span className="inline-block text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded mt-1">
+                      {discountLabel} (Save ₹{totalSavings.toLocaleString('en-IN')})
+                    </span>
                   )}
                 </div>
               </div>
@@ -2094,7 +2100,15 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
               {/* Detailed Category Price Breakdown Card */}
               <div className="text-[11px] space-y-2 bg-[#1B3A6B]/5 p-3.5 rounded-xl border border-[#1B3A6B]/15">
-                <p className="text-[10px] font-bold text-[#1B3A6B] uppercase tracking-wider mb-1">Price Breakout Summary</p>
+                <div className="flex items-center justify-between mb-1 border-b border-[#1B3A6B]/10 pb-1.5">
+                  <p className="text-[10px] font-bold text-[#1B3A6B] uppercase tracking-wider">Price Breakout Summary</p>
+                  {totalSavings > 0 && (
+                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {discountLabel}
+                    </span>
+                  )}
+                </div>
+
                 {categoryBreakdown.map((item, bIdx) => (
                   <div key={bIdx} className="flex items-center justify-between text-slate-700 font-medium">
                     <span>{item.count}× {item.label} <span className="text-[9.5px] text-slate-400">(@ ₹{item.rate.toLocaleString('en-IN')})</span></span>
@@ -2103,26 +2117,40 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 ))}
                 
                 <div className="pt-2 border-t border-slate-200/80 space-y-1">
-                  <div className="flex items-center justify-between text-slate-500 font-medium">
-                    <span>Subtotal</span>
-                    <span className="font-semibold text-slate-800">₹{totalPackageCost.toLocaleString('en-IN')}</span>
-                  </div>
-                  {totalSavings > 0 && (
-                    <div className="flex items-center justify-between text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded -mx-1">
-                      <span className="font-bold">{discountLabel} applied</span>
-                      <span className="font-bold">−₹{totalSavings.toLocaleString('en-IN')}</span>
+                  {totalOriginalCost > totalPackageCost && (
+                    <div className="flex items-center justify-between text-slate-400">
+                      <span>Original Total</span>
+                      <span className="line-through font-semibold">₹{totalOriginalCost.toLocaleString('en-IN')}</span>
                     </div>
                   )}
+
+                  <div className="flex items-center justify-between text-slate-600 font-medium">
+                    <span>Discounted Base Cost</span>
+                    <span className="font-bold text-slate-900">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {totalSavings > 0 && (
+                    <div className="flex items-center justify-between text-emerald-700 bg-emerald-50/80 px-2 py-1 rounded border border-emerald-100">
+                      <span className="font-bold">Total Savings ({discountLabel})</span>
+                      <span className="font-extrabold">−₹{totalSavings.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-slate-500 pb-1.5 border-b border-dashed border-slate-200">
                     <span>GST (5%)</span>
                     <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
                   </div>
+
+                  <div className="flex items-center justify-between pt-1 text-slate-950 font-black">
+                    <span className="text-xs uppercase tracking-wider text-slate-700">Final Payable Price</span>
+                    <span className="text-base text-[#1B3A6B]">₹{grandTotal.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
 
                 {/* Compact EMI & No Cost tag */}
-                <div className="flex items-center justify-between pt-1 font-semibold text-slate-655">
+                <div className="flex items-center justify-between pt-1 text-[10.5px] font-semibold text-slate-600 border-t border-slate-100">
                   <span>No-Cost EMI from</span>
-                  <span className="text-[#1B3A6B]">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}/mo × 3</span>
+                  <span className="text-[#1B3A6B] font-bold">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}/mo × 3</span>
                 </div>
               </div>
             </div>
@@ -2768,12 +2796,227 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             </div>
           </div>
           {/* Action indicator trigger */}
-          <div className="flex items-center gap-1 bg-accent text-white px-3 py-1.5 rounded-md font-bold text-xs shadow-sm">
-            <span>Book/Customize</span>
-            <ChevronUp className="w-3 h-3" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowBookingModal(true)}
+            className="flex items-center gap-1.5 bg-accent hover:bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-lg font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
+          >
+            <span>Book / Customize</span>
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
+
+      {/* ── Smart OTA Booking & Price Breakout Modal (Mobile & Desktop) ── */}
+      {showBookingModal && (
+        <div className="fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 animate-in fade-in">
+          <div className="bg-white w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-200 max-h-[92vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-[#1B3A6B] text-white p-4 sm:p-5 flex items-start justify-between shrink-0">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded uppercase tracking-wider">
+                    OTA Booking Engine
+                  </span>
+                  <span className="text-xs font-semibold text-slate-200">
+                    Min {minGuests} – Max {maxGuests} Guests
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold mt-1 text-white leading-snug line-clamp-1">
+                  {packageData.name}
+                </h3>
+                {travelDate ? (
+                  <p className="text-xs text-amber-200 font-semibold mt-0.5 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 inline" /> Selected Departure: {travelDate}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-300 font-medium mt-0.5">
+                    Select guests below to calculate your exact trip total
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBookingModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-slate-800">
+              {/* Capacity Progress Meter */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                <div className="flex items-center justify-between text-xs font-bold mb-1.5">
+                  <span className="text-slate-700">Room Occupancy Used</span>
+                  <span className={guestCount >= maxGuests ? "text-rose-600 font-extrabold" : "text-[#1B3A6B]"}>
+                    {guestCount} / {maxGuests} Max Capacity
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${guestCount >= maxGuests ? "bg-rose-500" : "bg-[#1B3A6B]"}`}
+                    style={{ width: `${Math.min(100, (guestCount / maxGuests) * 100)}%` }}
+                  />
+                </div>
+                {guestCount < minGuests && (
+                  <p className="text-[10px] text-amber-700 font-semibold mt-1.5 bg-amber-50 border border-amber-200 p-1.5 rounded">
+                    ℹ️ Standard tour policy: Minimum {minGuests}-person twin sharing base room rate applies.
+                  </p>
+                )}
+              </div>
+
+              {/* 5 Category Counter Selectors */}
+              <div className="space-y-2.5 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Configure Traveler Counts</p>
+
+                {/* Primary Adults */}
+                <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Primary Adults</p>
+                    <p className="text-[10px] text-slate-400">Base room capacity rate (Age 12+)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setAdults(prev => Math.max(1, prev - 1))} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">−</button>
+                    <span className="text-xs font-bold text-slate-900 w-5 text-center font-mono">{adults}</span>
+                    <button type="button" onClick={() => {
+                      if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                      setAdults(prev => prev + 1);
+                    }} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">+</button>
+                  </div>
+                </div>
+
+                {/* Extra Adult */}
+                <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Extra Adult</p>
+                    <p className="text-[10px] text-slate-400">Add-on guest sharing room (Age 12+)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setExtraAdults(prev => Math.max(0, prev - 1))} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">−</button>
+                    <span className="text-xs font-bold text-slate-900 w-5 text-center font-mono">{extraAdults}</span>
+                    <button type="button" onClick={() => {
+                      if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                      setExtraAdults(prev => prev + 1);
+                    }} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">+</button>
+                  </div>
+                </div>
+
+                {/* Child with Bed */}
+                <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Child with Bed</p>
+                    <p className="text-[10px] text-slate-400">Age 5–12 yrs (Includes extra bed)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setChildWithBed(prev => Math.max(0, prev - 1))} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">−</button>
+                    <span className="text-xs font-bold text-slate-900 w-5 text-center font-mono">{childWithBed}</span>
+                    <button type="button" onClick={() => {
+                      if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                      setChildWithBed(prev => prev + 1);
+                    }} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">+</button>
+                  </div>
+                </div>
+
+                {/* Child w/o Bed */}
+                <div className="flex items-center justify-between py-1 border-b border-slate-100">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Child w/o Bed</p>
+                    <p className="text-[10px] text-slate-400">Age 2–5 yrs (Sharing bed)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setChildWithoutBed(prev => Math.max(0, prev - 1))} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">−</button>
+                    <span className="text-xs font-bold text-slate-900 w-5 text-center font-mono">{childWithoutBed}</span>
+                    <button type="button" onClick={() => {
+                      if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                      setChildWithoutBed(prev => prev + 1);
+                    }} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">+</button>
+                  </div>
+                </div>
+
+                {/* Infants */}
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Infants</p>
+                    <p className="text-[10px] text-slate-400">Under 2 yrs</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">−</button>
+                    <span className="text-xs font-bold text-slate-900 w-5 text-center font-mono">{infantsCount}</span>
+                    <button type="button" onClick={() => setInfantsCount(prev => prev + 1)} className="w-7 h-7 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-sm">+</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Itemized Real-Time Price Breakout Table */}
+              <div className="bg-slate-950 text-white rounded-2xl p-4 shadow-xl border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Itemized Cost Breakout</span>
+                  <span className="text-[10px] font-bold text-slate-400">Amounts (INR)</span>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  {categoryBreakdown.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-slate-200">
+                      <span>{item.label}</span>
+                      <span className="font-bold text-white">₹{item.total.toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+
+                  <div className="pt-2 border-t border-slate-800 space-y-1">
+                    <div className="flex justify-between text-slate-400 font-medium">
+                      <span>Subtotal</span>
+                      <span className="font-semibold text-slate-200">₹{totalPackageCost.toLocaleString("en-IN")}</span>
+                    </div>
+                    {totalSavings > 0 && (
+                      <div className="flex justify-between text-emerald-400 font-medium">
+                        <span>{discountLabel}</span>
+                        <span>−₹{totalSavings.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-slate-400 font-medium pb-1.5 border-b border-dashed border-slate-800">
+                      <span>GST (5%)</span>
+                      <span className="font-semibold text-slate-200">₹{gstAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-extrabold text-white pt-1">
+                      <span>Grand Total</span>
+                      <span className="text-emerald-400 text-base">₹{grandTotal.toLocaleString("en-IN")}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <div className="w-full sm:w-auto text-left">
+                <p className="text-[10px] font-bold uppercase text-slate-400">Total Payable Amount</p>
+                <p className="text-xl font-black text-[#1B3A6B]">₹{grandTotal.toLocaleString("en-IN")}</p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowBookingModal(false)}
+                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-300 font-bold text-xs text-slate-650 hover:bg-slate-100 transition"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    handleBookNow();
+                  }}
+                  className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#2a519b] text-white font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition active:scale-95"
+                >
+                  Proceed &amp; Reserve 🚀
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AttractionActivityModal
         type="attraction"

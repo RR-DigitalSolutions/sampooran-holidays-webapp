@@ -119,6 +119,10 @@ export const packageCalendarInventoryTable = pgTable("package_calendar_inventory
   priceModifierValue: real("price_modifier_value").default(0), // adjustment value
   discountType: text("discount_type").default("none"), // 'none' | 'flat' | 'percentage'
   discountValue: real("discount_value").default(0), // discount overlay value
+  extraPersonPrice: real("extra_person_price"),
+  childWithBedPrice: real("child_with_bed_price"),
+  childWithoutBedPrice: real("child_without_bed_price"),
+  infantPrice: real("infant_price"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (t) => {

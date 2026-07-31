@@ -619,6 +619,30 @@ router.get("/packages", requirePermission("PACKAGES"), async (req, res) => {
   }
 });
 
+// Helper: Generate guaranteed unique package code format: SH-RDS-XXXXX (5-character alphanumeric)
+async function generateUniquePackageCode(): Promise<string> {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  for (let attempt = 0; attempt < 50; attempt++) {
+    let codeStr = "";
+    for (let i = 0; i < 5; i++) {
+      codeStr += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const candidate = `SH-RDS-${codeStr}`;
+    const [existing] = await db
+      .select({ id: packagesTable.id })
+      .from(packagesTable)
+      .where(eq(packagesTable.packageCode, candidate))
+      .limit(1);
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+  const [result] = await db.select({ count: sql<number>`count(*)::int` }).from(packagesTable);
+  const nextNum = Number(result?.count || 0) + 1;
+  return `SH-RDS-${String(nextNum).padStart(5, "0")}`;
+}
+
 // POST /admin/packages
 router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
   try {
@@ -641,23 +665,34 @@ router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
     if (data.childWithBedPrice !== undefined) data.childWithBedPrice = Number(data.childWithBedPrice) || 0;
     if (data.childWithoutBedPrice !== undefined) data.childWithoutBedPrice = Number(data.childWithoutBedPrice) || 0;
     if (data.infantPrice !== undefined) data.infantPrice = Number(data.infantPrice) || 0;
-    const [inserted] = await db.insert(packagesTable).values(data).returning();
 
-    // Generate unique package code using ID
-    const generatedCode = "SH-" + (inserted.category ? inserted.category.slice(0, 3).toUpperCase() : "PKG") + "-" + String(inserted.id).padStart(4, "0");
-    const [updatedWithCode] = await db
-      .update(packagesTable)
-      .set({ packageCode: data.packageCode || generatedCode })
-      .where(eq(packagesTable.id, inserted.id))
-      .returning();
+    // Guaranteed unique Package Code in format SH-RDS-XXXXX
+    let packageCodeToUse = data.packageCode;
+    if (!packageCodeToUse || !packageCodeToUse.startsWith("SH-RDS-")) {
+      packageCodeToUse = await generateUniquePackageCode();
+    } else {
+      // If code was provided manually, check for conflicts
+      const [existingCode] = await db
+        .select({ id: packagesTable.id })
+        .from(packagesTable)
+        .where(eq(packagesTable.packageCode, packageCodeToUse))
+        .limit(1);
+      if (existingCode) {
+        packageCodeToUse = await generateUniquePackageCode();
+      }
+    }
+
+    data.packageCode = packageCodeToUse;
+
+    const [inserted] = await db.insert(packagesTable).values(data).returning();
 
     clearCachePattern("cache:/api/packages*");
     clearCachePattern("cache:/api/destinations/resolve-slug*");
     clearCachePattern("cache:/api/ota/home/config*");
     // ⚡ Fire-and-forget: sync to MongoDB in background (non-blocking)
-    syncPackage(updatedWithCode.id);
+    syncPackage(inserted.id);
     syncHomeConfig();
-    res.status(201).json(updatedWithCode);
+    res.status(201).json(inserted);
   } catch (e: any) {
     logger.error({ error: e.message }, "Package creation error");
     res.status(500).json({ error: "Failed to create package: " + e.message });
@@ -766,7 +801,7 @@ router.get("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), as
 router.post("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), async (req, res) => {
   try {
     const packageId = Number(req.params.id);
-    const { dates, rateType, priceModifierType, priceModifierValue, discountType, discountValue } = req.body;
+    const { dates, rateType, priceModifierType, priceModifierValue, discountType, discountValue, extraPersonPrice, childWithBedPrice, childWithoutBedPrice, infantPrice } = req.body;
 
     if (!Array.isArray(dates) || dates.length === 0) {
       return res.status(400).json({ error: "Invalid dates list" });
@@ -780,6 +815,13 @@ router.post("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), a
     // Use a transaction for batch updates (highly performant / conflict-free)
     await db.transaction(async (tx) => {
       for (const dateStr of dates) {
+        const catOverrideVals = {
+          extraPersonPrice: extraPersonPrice !== undefined && extraPersonPrice !== null && extraPersonPrice !== "" ? Number(extraPersonPrice) : null,
+          childWithBedPrice: childWithBedPrice !== undefined && childWithBedPrice !== null && childWithBedPrice !== "" ? Number(childWithBedPrice) : null,
+          childWithoutBedPrice: childWithoutBedPrice !== undefined && childWithoutBedPrice !== null && childWithoutBedPrice !== "" ? Number(childWithoutBedPrice) : null,
+          infantPrice: infantPrice !== undefined && infantPrice !== null && infantPrice !== "" ? Number(infantPrice) : null,
+        };
+
         // Upsert calendar rule
         await tx
           .insert(packageCalendarInventoryTable)
@@ -791,6 +833,7 @@ router.post("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), a
             priceModifierValue: Number(priceModifierValue) || 0,
             discountType: discountType || "none",
             discountValue: Number(discountValue) || 0,
+            ...catOverrideVals,
             updatedAt: new Date(),
           })
           .onConflictDoUpdate({
@@ -801,6 +844,7 @@ router.post("/packages/:id/calendar-inventory", requirePermission("PACKAGES"), a
               priceModifierValue: Number(priceModifierValue) || 0,
               discountType: discountType || "none",
               discountValue: Number(discountValue) || 0,
+              ...catOverrideVals,
               updatedAt: new Date(),
             },
           });
