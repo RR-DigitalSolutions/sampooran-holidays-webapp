@@ -33,7 +33,7 @@ import { AttractionActivityModal } from "../modals/AttractionActivityModal";
 import { HeroImageSlider } from "../HeroImageSlider";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Sliders, Calendar, CreditCard, CalendarRange, Info, Clock } from "lucide-react";
+import { Sliders, Calendar, CreditCard, CalendarRange, Info, Clock, Tag } from "lucide-react";
 
 type PackageItineraryDay = {
   day?: number;
@@ -115,6 +115,9 @@ type PackageData = {
   groupBaseCapacity?: number;
   extraPersonPrice?: number;
   extraChildPrice?: number;
+  childWithBedPrice?: number;
+  childWithoutBedPrice?: number;
+  infantPrice?: number;
 };
 
 type AttractionActivityData = Record<string, unknown>;
@@ -283,7 +286,10 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   // ── Guest Segment Counts ──
   const [adults, setAdults] = useState(2);
-  const [childrenCount, setChildrenCount] = useState(0);
+  const [extraAdults, setExtraAdults] = useState(0);
+  const [childWithBed, setChildWithBed] = useState(0);
+  const [childWithoutBed, setChildWithoutBed] = useState(0);
+  const [childrenCount, setChildrenCount] = useState(0); // sync helper
   const [infantsCount, setInfantsCount] = useState(0);
   const [showGuestsEdit, setShowGuestsEdit] = useState(false);
 
@@ -1036,48 +1042,44 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const minGuests = packageData.minGuests ?? 2;
   const maxGuests = packageData.maxGuests ?? 10;
 
-  const { totalPackageCost, totalOriginalCost, totalSavings, priceAfterDiscount, gstAmount, grandTotal, guestCountLabel } = useMemo(() => {
+  const { totalPackageCost, totalOriginalCost, totalSavings, priceAfterDiscount, gstAmount, grandTotal, guestCountLabel, categoryBreakdown } = useMemo(() => {
     const isGroup = !!packageData.isGroupPricing;
     const baseCap = packageData.groupBaseCapacity ?? 2;
-    
+
+    // Category rate tiers
+    const adultRate = pricePerPerson;
+    const extraAdultRate = Number(packageData.extraPersonPrice) > 0 ? Number(packageData.extraPersonPrice) : pricePerPerson;
+    const childWithBedRate = Number(packageData.childWithBedPrice) > 0 ? Number(packageData.childWithBedPrice) : Math.round(pricePerPerson * 0.75);
+    const childWithoutBedRate = Number(packageData.childWithoutBedPrice) > 0 ? Number(packageData.childWithoutBedPrice) : Math.round(pricePerPerson * 0.5);
+    const infantRate = Number(packageData.infantPrice) > 0 ? Number(packageData.infantPrice) : 0;
+
+    // Line totals
+    const adultTotal = adults * adultRate;
+    const extraAdultTotal = extraAdults * extraAdultRate;
+    const childWithBedTotal = childWithBed * childWithBedRate;
+    const childWithoutBedTotal = childWithoutBed * childWithoutBedRate;
+    const infantTotal = infantsCount * infantRate;
+
     let totalCost = 0;
     let originalCost = 0;
 
     if (isGroup) {
-      // Group Pricing Formula
-      const adultsInBase = Math.min(adults, baseCap);
-      const childrenInBase = Math.min(childrenCount, baseCap - adultsInBase);
-      const extraAdults = adults - adultsInBase;
-      const extraChildren = childrenCount - childrenInBase;
-
-      // Base capacity price
-      totalCost = baseCap * pricePerPerson;
-      originalCost = baseCap * originalPrice;
-
-      // Extra person pricing
-      totalCost += extraAdults * (packageData.extraPersonPrice ?? 0);
-      totalCost += extraChildren * (packageData.extraChildPrice ?? 0);
-
-      originalCost += extraAdults * (packageData.extraPersonPrice ?? 0);
-      originalCost += extraChildren * (packageData.extraChildPrice ?? 0);
+      totalCost = (baseCap * adultRate) + extraAdultTotal + childWithBedTotal + childWithoutBedTotal + infantTotal;
+      originalCost = (baseCap * originalPrice) + (extraAdults * (packageData.extraPersonPrice || originalPrice)) + (childWithBed * childWithBedRate) + (childWithoutBed * childWithoutBedRate) + infantTotal;
     } else {
-      // Standard dynamic pricing formula: children count as half, infants free
-      const adultsCost = adults * pricePerPerson;
-      const childrenCost = childrenCount * Math.round(pricePerPerson * 0.5);
-      totalCost = adultsCost + childrenCost;
-
-      const originalAdultsCost = adults * originalPrice;
-      const originalChildrenCost = childrenCount * Math.round(originalPrice * 0.5);
-      originalCost = originalAdultsCost + originalChildrenCost;
+      totalCost = adultTotal + extraAdultTotal + childWithBedTotal + childWithoutBedTotal + infantTotal;
+      originalCost = (adults * originalPrice) + (extraAdults * (packageData.extraPersonPrice || originalPrice)) + (childWithBed * Math.round(originalPrice * 0.75)) + (childWithoutBed * Math.round(originalPrice * 0.5)) + infantTotal;
     }
 
     const savingsVal = Math.max(0, originalCost - totalCost);
     const gstVal = Math.round(totalCost * 0.05);
     const finalTotal = totalCost + gstVal;
 
-    let countLabel = `${adults} Ad`;
-    if (childrenCount > 0) countLabel += `, ${childrenCount} Ch`;
-    if (infantsCount > 0) countLabel += `, ${infantsCount} Inf`;
+    let countParts = [`${adults} Adult${adults > 1 ? 's' : ''}`];
+    if (extraAdults > 0) countParts.push(`${extraAdults} Extra Adult${extraAdults > 1 ? 's' : ''}`);
+    if (childWithBed > 0) countParts.push(`${childWithBed} Child (Bed)`);
+    if (childWithoutBed > 0) countParts.push(`${childWithoutBed} Child (No Bed)`);
+    if (infantsCount > 0) countParts.push(`${infantsCount} Infant${infantsCount > 1 ? 's' : ''}`);
 
     return {
       totalPackageCost: totalCost,
@@ -1086,11 +1088,18 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       priceAfterDiscount: totalCost,
       gstAmount: gstVal,
       grandTotal: finalTotal,
-      guestCountLabel: countLabel
+      guestCountLabel: countParts.join(', '),
+      categoryBreakdown: [
+        { label: "Adult", count: adults, rate: adultRate, total: adultTotal },
+        ...(extraAdults > 0 ? [{ label: "Extra Adult", count: extraAdults, rate: extraAdultRate, total: extraAdultTotal }] : []),
+        ...(childWithBed > 0 ? [{ label: "Child with Bed", count: childWithBed, rate: childWithBedRate, total: childWithBedTotal }] : []),
+        ...(childWithoutBed > 0 ? [{ label: "Child without Bed", count: childWithoutBed, rate: childWithoutBedRate, total: childWithoutBedTotal }] : []),
+        ...(infantsCount > 0 ? [{ label: "Infant (Under 2 yrs)", count: infantsCount, rate: infantRate, total: infantTotal }] : []),
+      ]
     };
-  }, [adults, childrenCount, infantsCount, pricePerPerson, originalPrice, packageData]);
+  }, [adults, extraAdults, childWithBed, childWithoutBed, infantsCount, pricePerPerson, originalPrice, packageData]);
 
-  const guestCount = adults + childrenCount;
+  const guestCount = adults + extraAdults + childWithBed + childWithoutBed;
 
   const discountLabel = packageData.discountPercent
     ? `${packageData.discountPercent}% OFF`
@@ -1750,6 +1759,54 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </section>
             )}
 
+            {/* Category-Wise Pricing Table Card */}
+            <section id="pricing-breakdown" className="rounded-2xl border border-slate-900 bg-slate-950 text-white p-5 md:p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-emerald-400" /> Category Price Breakdown
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Transparent per-person pricing rates for all traveler categories.</p>
+                </div>
+                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                  Verified Rates
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                      <th className="py-2.5 px-3 font-bold">Category</th>
+                      <th className="py-2.5 px-3 font-bold text-right">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-900 font-semibold">
+                    <tr className="hover:bg-slate-900/50">
+                      <td className="py-3 px-3 text-white">Adult</td>
+                      <td className="py-3 px-3 text-right font-bold text-emerald-400">₹{(pricePerPerson || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-900/50">
+                      <td className="py-3 px-3 text-slate-200">Extra Adult</td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.extraPersonPrice) || pricePerPerson || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-900/50">
+                      <td className="py-3 px-3 text-slate-200">Child with Bed</td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.childWithBedPrice) || Math.round(pricePerPerson * 0.75) || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-900/50">
+                      <td className="py-3 px-3 text-slate-200">Child without Bed</td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.childWithoutBedPrice) || Math.round(pricePerPerson * 0.5) || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                    <tr className="hover:bg-slate-900/50">
+                      <td className="py-3 px-3 text-slate-200">Infant (Under 2 yrs)</td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-100">₹{(Number(packageData.infantPrice) || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
             {(packageInclusions.length > 0 || packageExclusions.length > 0) && (
               <section id="inclusions" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
                 <div className="grid gap-6 lg:grid-cols-2">
@@ -1947,70 +2004,70 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
               {/* Collapsible Occupancy Adjusters */}
               {showGuestsEdit && (
-                <div className="space-y-2.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100/60">
-                  {/* Adults counter */}
+                <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100/60">
+                  {/* Primary Adults */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-slate-800">Adults</p>
-                      <p className="text-[9px] text-slate-400">Age 12 or above</p>
+                      <p className="text-xs font-bold text-slate-800">Adults (Primary)</p>
+                      <p className="text-[9px] text-slate-400">Base room sharing rate</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAdults(prev => Math.max(1, prev - 1))}
-                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs"
-                      >
-                        −
-                      </button>
+                      <button type="button" onClick={() => setAdults(prev => Math.max(1, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{adults}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (adults + childrenCount >= maxGuests) {
-                            toast.error(`Maximum allowed guests is ${maxGuests}`);
-                            return;
-                          }
-                          setAdults(prev => prev + 1);
-                        }}
-                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs"
-                      >
-                        +
-                      </button>
+                      <button type="button" onClick={() => {
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setAdults(prev => prev + 1);
+                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
-                  {/* Children counter */}
+                  {/* Extra Adult */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-slate-800">Children</p>
-                      <p className="text-[9px] text-slate-400">Age 5 to 11 (50% Price)</p>
+                      <p className="text-xs font-bold text-slate-800">Extra Adult</p>
+                      <p className="text-[9px] text-slate-400">Additional adult guest</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
-                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs"
-                      >
-                        −
-                      </button>
-                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{childrenCount}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (adults < 2) {
-                            toast.warning("Minimum 2 adults are required to add children.");
-                            return;
-                          }
-                          if (adults + childrenCount >= maxGuests) {
-                            toast.error(`Maximum allowed guests is ${maxGuests}`);
-                            return;
-                          }
-                          setChildrenCount(prev => prev + 1);
-                        }}
-                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs"
-                      >
-                        +
-                      </button>
+                      <button type="button" onClick={() => setExtraAdults(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{extraAdults}</span>
+                      <button type="button" onClick={() => {
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setExtraAdults(prev => prev + 1);
+                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+
+                  {/* Child with Bed */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Child with Bed</p>
+                      <p className="text-[9px] text-slate-400">Age 5–12 yrs (includes bed)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setChildWithBed(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{childWithBed}</span>
+                      <button type="button" onClick={() => {
+                        if (adults < 1) { toast.warning("At least 1 adult required"); return; }
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setChildWithBed(prev => prev + 1);
+                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+
+                  {/* Child without Bed */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Child w/o Bed</p>
+                      <p className="text-[9px] text-slate-400">Age 2–5 yrs (sharing bed)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setChildWithoutBed(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{childWithoutBed}</span>
+                      <button type="button" onClick={() => {
+                        if (adults < 1) { toast.warning("At least 1 adult required"); return; }
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setChildWithoutBed(prev => prev + 1);
+                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
@@ -2018,62 +2075,48 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-slate-800">Infants</p>
-                      <p className="text-[9px] text-slate-400">Under 5 years (Free)</p>
+                      <p className="text-[9px] text-slate-400">Under 2 yrs</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))}
-                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs"
-                      >
-                        −
-                      </button>
+                      <button type="button" onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{infantsCount}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (adults < 2) {
-                            toast.warning("Minimum 2 adults are required to add infants.");
-                            return;
-                          }
-                          setInfantsCount(prev => prev + 1);
-                        }}
-                        className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs"
-                      >
-                        +
-                      </button>
+                      <button type="button" onClick={() => setInfantsCount(prev => prev + 1)} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
-                  {/* Occupancy rules warnings */}
-                  {adults < 2 && (childrenCount > 0 || infantsCount > 0) && (
-                    <p className="text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 mt-1">
-                      ⚠️ Minimum 2 adults mandatory to include children or infants.
-                    </p>
-                  )}
-                  {adults + childrenCount < minGuests && (
+                  {guestCount < minGuests && (
                     <p className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2 mt-1">
-                      ⚠️ Minimum {minGuests} guests are required to book this package.
+                      ⚠️ Minimum {minGuests} guests required for this package.
                     </p>
                   )}
                 </div>
               )}
 
-              {/* Price Breakdown Details */}
-              <div className="text-[11px] space-y-1.5 bg-slate-50/50 p-3 rounded-xl border border-slate-100/60">
-                <div className="flex items-center justify-between text-slate-500">
-                  <span>Base Package Cost</span>
-                  <span className="font-semibold text-slate-850">₹{totalPackageCost.toLocaleString('en-IN')}</span>
-                </div>
-                {totalSavings > 0 && (
-                  <div className="flex items-center justify-between text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded -mx-1">
-                    <span className="font-bold">{discountLabel} applied</span>
-                    <span className="font-bold">−₹{totalSavings.toLocaleString('en-IN')}</span>
+              {/* Detailed Category Price Breakdown Card */}
+              <div className="text-[11px] space-y-2 bg-[#1B3A6B]/5 p-3.5 rounded-xl border border-[#1B3A6B]/15">
+                <p className="text-[10px] font-bold text-[#1B3A6B] uppercase tracking-wider mb-1">Price Breakout Summary</p>
+                {categoryBreakdown.map((item, bIdx) => (
+                  <div key={bIdx} className="flex items-center justify-between text-slate-700 font-medium">
+                    <span>{item.count}× {item.label} <span className="text-[9.5px] text-slate-400">(@ ₹{item.rate.toLocaleString('en-IN')})</span></span>
+                    <span className="font-bold text-slate-900">₹{item.total.toLocaleString('en-IN')}</span>
                   </div>
-                )}
-                <div className="flex items-center justify-between text-slate-500 pb-1.5 border-b border-dashed border-slate-200">
-                  <span>GST (5%)</span>
-                  <span className="font-semibold text-slate-850">₹{gstAmount.toLocaleString('en-IN')}</span>
+                ))}
+                
+                <div className="pt-2 border-t border-slate-200/80 space-y-1">
+                  <div className="flex items-center justify-between text-slate-500 font-medium">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-slate-800">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+                  </div>
+                  {totalSavings > 0 && (
+                    <div className="flex items-center justify-between text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded -mx-1">
+                      <span className="font-bold">{discountLabel} applied</span>
+                      <span className="font-bold">−₹{totalSavings.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-slate-500 pb-1.5 border-b border-dashed border-slate-200">
+                    <span>GST (5%)</span>
+                    <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
 
                 {/* Compact EMI & No Cost tag */}

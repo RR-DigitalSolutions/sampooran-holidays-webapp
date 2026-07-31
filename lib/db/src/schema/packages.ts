@@ -54,6 +54,9 @@ export const packagesTable = pgTable("packages", {
   groupBaseCapacity: integer("group_base_capacity").notNull().default(2),
   extraPersonPrice: real("extra_person_price").notNull().default(0),
   extraChildPrice: real("extra_child_price").notNull().default(0),
+  childWithBedPrice: real("child_with_bed_price").notNull().default(0),
+  childWithoutBedPrice: real("child_without_bed_price").notNull().default(0),
+  infantPrice: real("infant_price").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   // Standard B-Tree Indexes

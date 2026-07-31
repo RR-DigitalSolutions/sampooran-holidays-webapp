@@ -60,6 +60,9 @@ export interface MongoPackage {
   groupBaseCapacity: number | null;
   extraPersonPrice: number | null;
   extraChildPrice: number | null;
+  childWithBedPrice: number | null;
+  childWithoutBedPrice: number | null;
+  infantPrice: number | null;
   category: string | null;
   packageType: string | null;
   isFeatured: boolean | null;
@@ -145,6 +148,9 @@ export async function syncPackage(pgId: number): Promise<void> {
         groupBaseCapacity: packagesTable.groupBaseCapacity,
         extraPersonPrice: packagesTable.extraPersonPrice,
         extraChildPrice: packagesTable.extraChildPrice,
+        childWithBedPrice: packagesTable.childWithBedPrice,
+        childWithoutBedPrice: packagesTable.childWithoutBedPrice,
+        infantPrice: packagesTable.infantPrice,
         category: packagesTable.category,
         packageType: packagesTable.packageType,
         isFeatured: packagesTable.isFeatured,
@@ -201,6 +207,9 @@ export async function syncPackage(pgId: number): Promise<void> {
       groupBaseCapacity: row.groupBaseCapacity,
       extraPersonPrice: row.extraPersonPrice,
       extraChildPrice: row.extraChildPrice,
+      childWithBedPrice: row.childWithBedPrice,
+      childWithoutBedPrice: row.childWithoutBedPrice,
+      infantPrice: row.infantPrice,
       category: row.category,
       packageType: row.packageType,
       isFeatured: row.isFeatured,

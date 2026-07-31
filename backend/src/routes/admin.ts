@@ -638,6 +638,9 @@ router.post("/packages", requirePermission("PACKAGES"), async (req, res) => {
     if (Array.isArray(data.destinationIds)) data.destinationIds = data.destinationIds.map(Number).filter(Boolean);
     if (Array.isArray(data.stateIds)) data.stateIds = data.stateIds.map(Number).filter(Boolean);
     if (Array.isArray(data.countryIds)) data.countryIds = data.countryIds.map(Number).filter(Boolean);
+    if (data.childWithBedPrice !== undefined) data.childWithBedPrice = Number(data.childWithBedPrice) || 0;
+    if (data.childWithoutBedPrice !== undefined) data.childWithoutBedPrice = Number(data.childWithoutBedPrice) || 0;
+    if (data.infantPrice !== undefined) data.infantPrice = Number(data.infantPrice) || 0;
     const [inserted] = await db.insert(packagesTable).values(data).returning();
 
     // Generate unique package code using ID
@@ -688,6 +691,9 @@ router.patch("/packages/:id", requirePermission("PACKAGES"), async (req, res) =>
     if (Array.isArray(data.destinationIds)) data.destinationIds = data.destinationIds.map(Number).filter(Boolean);
     if (Array.isArray(data.stateIds)) data.stateIds = data.stateIds.map(Number).filter(Boolean);
     if (Array.isArray(data.countryIds)) data.countryIds = data.countryIds.map(Number).filter(Boolean);
+    if (data.childWithBedPrice !== undefined) data.childWithBedPrice = Number(data.childWithBedPrice) || 0;
+    if (data.childWithoutBedPrice !== undefined) data.childWithoutBedPrice = Number(data.childWithoutBedPrice) || 0;
+    if (data.infantPrice !== undefined) data.infantPrice = Number(data.infantPrice) || 0;
 
     const [updated] = await db
       .update(packagesTable)

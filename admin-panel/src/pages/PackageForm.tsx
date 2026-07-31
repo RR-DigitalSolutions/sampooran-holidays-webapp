@@ -90,6 +90,9 @@ export default function PackageForm() {
   const [groupBaseCapacity, setGroupBaseCapacity] = useState(2);
   const [extraPersonPrice, setExtraPersonPrice] = useState(0);
   const [extraChildPrice, setExtraChildPrice] = useState(0);
+  const [childWithBedPrice, setChildWithBedPrice] = useState(0);
+  const [childWithoutBedPrice, setChildWithoutBedPrice] = useState(0);
+  const [infantPrice, setInfantPrice] = useState(0);
 
   // ── Pricing Calendar State ─────────────────────────────────────────────────
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -405,6 +408,8 @@ export default function PackageForm() {
         setMinGuests(pkg.minGuests ?? 2); setMaxGuests(pkg.maxGuests ?? 10);
         setIsGroupPricing(pkg.isGroupPricing ?? false); setGroupBaseCapacity(pkg.groupBaseCapacity ?? 2);
         setExtraPersonPrice(pkg.extraPersonPrice ?? 0); setExtraChildPrice(pkg.extraChildPrice ?? 0);
+        setChildWithBedPrice(pkg.childWithBedPrice ?? 0); setChildWithoutBedPrice(pkg.childWithoutBedPrice ?? 0);
+        setInfantPrice(pkg.infantPrice ?? 0);
         const bPrice = pkg.originalPrice || pkg.pricePerPerson || 0;
         setBasePrice(bPrice);
         if (bPrice > (pkg.pricePerPerson || 0)) { setDiscountType("flat"); setDiscountValue(bPrice - (pkg.pricePerPerson || 0)); }
@@ -455,6 +460,7 @@ export default function PackageForm() {
       cancellationPolicy, paymentPolicy, faqs, hotels: [], itinerary,
       galleryImages, metaTitle, metaDescription, metaKeywords, monthsToTravel,
       minGuests, maxGuests, isGroupPricing, groupBaseCapacity, extraPersonPrice, extraChildPrice,
+      childWithBedPrice, childWithoutBedPrice, infantPrice,
     };
     try {
       if (isEdit) await customFetch(`/api/admin/packages/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -1256,6 +1262,66 @@ export default function PackageForm() {
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Original Strike Price</p>
                   <p className="text-xl font-bold text-gray-400 line-through">₹{originalPrice.toLocaleString("en-IN")}</p>
+                </div>
+              </div>
+
+              {/* Detailed Category-Based Rates */}
+              <div className="border-t border-gray-100 pt-5 space-y-4">
+                <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-purple-600" /> Category-Wise Price Breakdown (Per Person Rates)
+                </h4>
+                <p className="text-xs text-gray-500 -mt-1">
+                  Define specific pricing for Extra Adults, Children (with/without bed), and Infants. These rates are used for client add-ons and dynamic checkout calculations.
+                </p>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Extra Adult Rate (₹)</label>
+                    <input type="number" min="0" value={extraPersonPrice || ""} onChange={e => setExtraPersonPrice(Number(e.target.value))} placeholder="e.g. 21999" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold text-gray-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Child with Bed Rate (₹)</label>
+                    <input type="number" min="0" value={childWithBedPrice || ""} onChange={e => setChildWithBedPrice(Number(e.target.value))} placeholder="e.g. 17999" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold text-gray-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Child w/o Bed Rate (₹)</label>
+                    <input type="number" min="0" value={childWithoutBedPrice || ""} onChange={e => setChildWithoutBedPrice(Number(e.target.value))} placeholder="e.g. 12999" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold text-gray-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Infant Rate (₹)</label>
+                    <input type="number" min="0" value={infantPrice || ""} onChange={e => setInfantPrice(Number(e.target.value))} placeholder="e.g. 0 or 2500" className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#1B3A6B] text-sm font-semibold text-gray-800" />
+                  </div>
+                </div>
+
+                {/* Live Category Breakdown Table Preview */}
+                <div className="bg-slate-950 text-white rounded-2xl p-5 border border-slate-800 shadow-lg space-y-3 mt-3">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Category</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Price Per Person</span>
+                  </div>
+
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex justify-between items-center py-1 border-b border-slate-900">
+                      <span className="font-semibold text-white">Adult</span>
+                      <span className="font-bold text-emerald-400">₹{(pricePerPerson || basePrice || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-slate-900">
+                      <span className="font-semibold text-slate-200">Extra Adult</span>
+                      <span className="font-bold text-slate-100">₹{(extraPersonPrice || pricePerPerson || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-slate-900">
+                      <span className="font-semibold text-slate-200">Child with Bed</span>
+                      <span className="font-bold text-slate-100">₹{(childWithBedPrice || Math.round(pricePerPerson * 0.75) || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-b border-slate-900">
+                      <span className="font-semibold text-slate-200">Child without Bed</span>
+                      <span className="font-bold text-slate-100">₹{(childWithoutBedPrice || Math.round(pricePerPerson * 0.5) || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="font-semibold text-slate-200">Infant (Under 2 yrs)</span>
+                      <span className="font-bold text-slate-100">₹{(infantPrice || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
