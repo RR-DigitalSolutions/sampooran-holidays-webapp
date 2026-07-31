@@ -46,7 +46,7 @@ export default function Inquiries() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
-  const [typeFilter, setTypeFilter] = useState<"all" | "travel" | "newsletter">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "travel" | "package" | "newsletter">("all");
   const [selected, setSelected] = useState<Inquiry | null>(null);
   const [updating, setUpdating] = useState<number | null>(null);
 
@@ -163,6 +163,8 @@ export default function Inquiries() {
     let matchesType = true;
     if (typeFilter === "travel") {
       matchesType = i.inquiryType !== "newsletter";
+    } else if (typeFilter === "package") {
+      matchesType = !!i.packageId || i.inquiryType === "customization" || i.inquiryType === "package" || (!!i.message && i.message.toLowerCase().includes("customization"));
     } else if (typeFilter === "newsletter") {
       matchesType = i.inquiryType === "newsletter";
     }
@@ -217,7 +219,8 @@ export default function Inquiries() {
         <div className="flex bg-slate-100 p-1 rounded-xl">
           {[
             { id: "all", label: "All Leads" },
-            { id: "travel", label: "Travel Leads" },
+            { id: "travel", label: "General Leads" },
+            { id: "package", label: "Package Inquiries 📦" },
             { id: "newsletter", label: "Newsletter Subscribers" },
           ].map(tab => (
             <button

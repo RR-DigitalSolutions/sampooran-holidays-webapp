@@ -33,7 +33,7 @@ import { AttractionActivityModal } from "../modals/AttractionActivityModal";
 import { HeroImageSlider } from "../HeroImageSlider";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Sliders, Calendar, CreditCard, CalendarRange, Info, Clock, Tag } from "lucide-react";
+import { Sliders, Calendar, CreditCard, CalendarRange, Info, Clock, Tag, RefreshCw } from "lucide-react";
 
 type PackageItineraryDay = {
   day?: number;
@@ -228,13 +228,13 @@ function normalizeDiningStops(raw: unknown): string[] {
 
 const renderPolicyContent = (text: string | null) => {
   if (!text) return <p className="text-xs text-slate-400 font-semibold">Policy details will be updated soon.</p>;
-  
+
   if (text.includes("<") && text.includes(">")) {
     return (
-      <div 
+      <div
         className="prose prose-slate prose-xs max-w-none text-slate-600 leading-relaxed font-semibold space-y-1.5
                    prose-p:m-0 prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5 prose-strong:text-slate-800"
-        dangerouslySetInnerHTML={{ __html: text }} 
+        dangerouslySetInnerHTML={{ __html: text }}
       />
     );
   }
@@ -294,9 +294,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [custHotelPref, setCustHotelPref] = useState("4 Star Deluxe");
   const [custNotes, setCustNotes] = useState("");
   const [custBudget, setCustBudget] = useState("");
+  const [custFormErrors, setCustFormErrors] = useState<Record<string, string>>({});
   const [isSubmittingCust, setIsSubmittingCust] = useState(false);
   const [customizeSubmitted, setCustomizeSubmitted] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  const [custFormOpenTime, setCustFormOpenTime] = useState<number>(Date.now());
 
   // Countdown timer effect after inquiry submission
   useEffect(() => {
@@ -320,20 +322,37 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   const handleCustomizeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Client-side field validation
+    const errs: Record<string, string> = {};
+    if (!custName.trim()) errs.name = "Full Name is required";
+    if (!custPhone.trim()) errs.phone = "Phone number is required";
+    if (!custEmail.trim() || !custEmail.includes("@")) errs.email = "Valid email address is required";
+
+    if (Object.keys(errs).length > 0) {
+      setCustFormErrors(errs);
+      toast.error("Please fill in all required fields highlighted in red.");
+      return;
+    }
+
+    setCustFormErrors({});
     setIsSubmittingCust(true);
+
     try {
+      const elapsed = Date.now() - custFormOpenTime;
       const payload = {
-        name: custName,
-        email: custEmail,
-        phone: custPhone,
+        name: custName.trim(),
+        email: custEmail.trim(),
+        phone: custPhone.trim(),
         inquiryType: "customization",
         packageId: packageData?.id || null,
         destination: packageData?.destinationName || packageData?.stateName || null,
         travelDate: travelDate || custDate || null,
         adults: adults,
         children: extraAdults + childWithBed + childWithoutBed,
-        message: `CUSTOMIZATION INQUIRY for "${packageData?.name || 'Package'}" (Code: ${packageData?.packageCode || 'N/A'}).\n• Departure Date: ${travelDate || custDate || 'Flexible'}\n• Travelers: ${guestCountLabel}\n• Hotel Category Pref: ${custHotelPref}\n• Custom Notes: ${custNotes}`,
-        budget: custBudget || null
+        message: `CUSTOMIZATION INQUIRY for "${packageData?.name || 'Package'}" (Code: ${packageData?.packageCode || 'N/A'}).\n• Departure Date: ${travelDate || custDate || 'Flexible'}\n• Travelers: ${guestCountLabel}\n• Hotel Category Pref: ${custHotelPref}\n• Custom Notes: ${custNotes.trim()}`,
+        budget: custBudget || null,
+        submitDuration: Math.max(2500, elapsed)
       };
 
       const res = await fetch("/api/inquiries", {
@@ -345,7 +364,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       if (res.ok) {
         setCustomizeSubmitted(true);
       } else {
-        toast.error("Failed to submit customization request. Please try again.");
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to submit customization request. Please check form inputs.");
       }
     } catch {
       toast.error("Network error. Please check your connection.");
@@ -428,14 +448,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       const duration = packageData.duration ? `${packageData.duration} Days` : "";
       const nights = packageData.nights ? `${packageData.nights} Nights` : "";
       const durationText = [duration, nights].filter(Boolean).join(" and ");
-      
+
       return [
         `Discover the ultimate travel experience with our signature ${name} designed specifically for discerning travelers. Handcrafted by local destination curators at Sampooran Holidays, this comprehensive ${durationText || "holiday"} journey showcases the very best of ${dest}, blending iconic sightseeing wonders with hidden regional secrets that generic operators miss.`,
         `Your premium all-inclusive tour includes cherry-picked accommodations offering exceptional hospitality and comfort, delicious daily regional meals, safe and expert on-ground transportation, and round-the-clock ground support from our expert tour managers. Every single detail is thoroughly structured, giving you absolute peace of mind so you can focus entirely on creating unforgettable memories with your loved ones.`,
         `At Sampooran Holidays, we pride ourselves on delivering standard-setting B2B and B2C Himalayan travel solutions. With over 12 years of specialized mountain operations and a trusted network of over 500+ agent partners across India, we guarantee the best rates, verified premium inclusions, and a seamless travel itinerary from arrival to departure. Book today to secure your slots!`
       ];
     }
-    
+
     return raw
       .split(/\r?\n\r?\n/)
       .map(p => p.trim())
@@ -455,7 +475,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       const month = currentMonth.getMonth();
       const firstDay = new Date(year, month - 1, 1).toISOString().split("T")[0];
       const lastDay = new Date(year, month + 2, 0).toISOString().split("T")[0];
-      
+
       const res = await fetch(`/api/packages/${packageData.slug}/calendar-inventory?startDate=${firstDay}&endDate=${lastDay}`);
       if (res.ok) {
         const data = await res.json();
@@ -478,12 +498,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const days: Date[] = [];
-    
+
     const startPadding = firstDay.getDay();
     for (let i = startPadding - 1; i >= 0; i--) {
       days.push(new Date(year, month, -i));
     }
-    
+
     const totalDays = lastDay.getDate();
     for (let i = 1; i <= totalDays; i++) {
       days.push(new Date(year, month, i));
@@ -1028,8 +1048,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         location: isTransit && (fromCity || toCity)
           ? [fromCity, toCity].filter(Boolean).join(" → ")
           : (Array.isArray(d["cities"]) && (d["cities"] as string[]).filter(Boolean).length > 0
-              ? (d["cities"] as string[]).filter(Boolean).join(" → ")
-              : normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"])),
+            ? (d["cities"] as string[]).filter(Boolean).join(" → ")
+            : normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"])),
         // Preserve new route fields for UI rendering
         dayType,
         fromCity,
@@ -1078,7 +1098,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   const activePricePerPerson = travelDate ? dynamicPricePerPerson : basePricePerPerson;
   const pricePerPerson = activePricePerPerson;
-  
+
   const originalPrice = useMemo(() => {
     if (travelDate && selectedDateOverride) {
       let baseVal = basePricePerPerson;
@@ -1128,8 +1148,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
     // 2. Base Capacity & Extra Add-on Calculations
     const totalAdultsCount = adults + extraAdults;
-    const baseRoomTotalCost = Math.max(totalAdultsCount, minGuests) <= minGuests 
-      ? minGuests * adultRate 
+    const baseRoomTotalCost = Math.max(totalAdultsCount, minGuests) <= minGuests
+      ? minGuests * adultRate
       : minGuests * adultRate;
 
     const extraAdultsCountBilled = Math.max(0, totalAdultsCount - minGuests);
@@ -1141,7 +1161,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
     // 3. Subtotal & Savings
     const totalCost = baseRoomTotalCost + extraAdultsTotalCost + childWithBedTotalCost + childWithoutBedTotalCost + infantTotalCost;
-    
+
     // Original prices without discount
     const origAdultRate = originalPrice;
     const origBaseRoomCost = Math.max(totalAdultsCount, minGuests) * origAdultRate;
@@ -1540,24 +1560,22 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                           <div className="absolute left-2.5 sm:left-4 top-5 sm:top-6 bottom-0 w-0.5 bg-slate-200" />
                         )}
                         {/* Timeline dot — changes based on day type */}
-                        <div className={`absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 flex items-center justify-center z-10 ${
-                          day.dayType === "TRANSIT"
+                        <div className={`absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 flex items-center justify-center z-10 ${day.dayType === "TRANSIT"
                             ? "border-amber-300 bg-amber-50"
                             : day.dayType === "ARRIVAL"
-                            ? "border-emerald-300 bg-emerald-50"
-                            : day.dayType === "DEPARTURE"
-                            ? "border-rose-300 bg-rose-50"
-                            : day.dayType === "LEISURE"
-                            ? "border-purple-300 bg-purple-50"
-                            : "border-slate-200 bg-white"
-                        }`}>
+                              ? "border-emerald-300 bg-emerald-50"
+                              : day.dayType === "DEPARTURE"
+                                ? "border-rose-300 bg-rose-50"
+                                : day.dayType === "LEISURE"
+                                  ? "border-purple-300 bg-purple-50"
+                                  : "border-slate-200 bg-white"
+                          }`}>
                           {day.dayType === "TRANSIT"
                             ? <Car className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-amber-500" />
-                            : <MapPin className={`h-2.5 w-2.5 sm:h-4 sm:w-4 ${
-                                day.dayType === "ARRIVAL" ? "text-emerald-500"
+                            : <MapPin className={`h-2.5 w-2.5 sm:h-4 sm:w-4 ${day.dayType === "ARRIVAL" ? "text-emerald-500"
                                 : day.dayType === "DEPARTURE" ? "text-rose-500"
-                                : day.dayType === "LEISURE" ? "text-purple-500"
-                                : "text-blue-600"
+                                  : day.dayType === "LEISURE" ? "text-purple-500"
+                                    : "text-blue-600"
                               }`} />
                           }
                         </div>
@@ -1574,19 +1592,18 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               </p>
                               {/* Day type badge — only for typed days */}
                               {day.dayType && day.dayType !== "SIGHTSEEING" && (
-                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ${
-                                  day.dayType === "TRANSIT"
+                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ${day.dayType === "TRANSIT"
                                     ? "bg-amber-100 text-amber-700"
                                     : day.dayType === "ARRIVAL"
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : day.dayType === "DEPARTURE"
-                                    ? "bg-rose-100 text-rose-700"
-                                    : "bg-purple-100 text-purple-700"
-                                }`}>
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : day.dayType === "DEPARTURE"
+                                        ? "bg-rose-100 text-rose-700"
+                                        : "bg-purple-100 text-purple-700"
+                                  }`}>
                                   {day.dayType === "TRANSIT" ? "🚗 Travel Day"
                                     : day.dayType === "ARRIVAL" ? "✈️ Arrival"
-                                    : day.dayType === "DEPARTURE" ? "🏠 Departure"
-                                    : "🌸 Leisure"}
+                                      : day.dayType === "DEPARTURE" ? "🏠 Departure"
+                                        : "🌸 Leisure"}
                                 </span>
                               )}
                               {/* TRANSIT: From → To route display */}
@@ -1958,38 +1975,38 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             <section id="enquire" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm scroll-mt-20">
               <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Enquire &amp; Customize Your Trip</h2>
               <p className="mt-2 text-sm text-slate-500 font-medium">Have special requirements or want a custom seasonal package quote? Fill out the details below and our destination expert will call you shortly.</p>
-              
+
               <form onSubmit={handleInquirySubmit} className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Honeypot fields to prevent spam bots */}
-                <input type="text" name="website" className="hidden" value={honeypotWebsite} onChange={e=>setHoneypotWebsite(e.target.value)} />
-                
+                <input type="text" name="website" className="hidden" value={honeypotWebsite} onChange={e => setHoneypotWebsite(e.target.value)} />
+
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Name *</label>
-                  <input required type="text" value={inquiryName} onChange={e=>setInquiryName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. John Doe" />
+                  <input required type="text" value={inquiryName} onChange={e => setInquiryName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. John Doe" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Email *</label>
-                  <input required type="email" value={inquiryEmail} onChange={e=>setInquiryEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. john@example.com" />
+                  <input required type="email" value={inquiryEmail} onChange={e => setInquiryEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. john@example.com" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone Number *</label>
-                  <input required type="tel" value={inquiryPhone} onChange={e=>setInquiryPhone(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. +91 9000000000" />
+                  <input required type="tel" value={inquiryPhone} onChange={e => setInquiryPhone(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. +91 9000000000" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Travel Date</label>
-                  <input type="date" value={inquiryDate} onChange={e=>setInquiryDate(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" />
+                  <input type="date" value={inquiryDate} onChange={e => setInquiryDate(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Number of Persons</label>
-                  <input type="number" min="1" value={inquiryGuests} onChange={e=>setInquiryGuests(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" />
+                  <input type="number" min="1" value={inquiryGuests} onChange={e => setInquiryGuests(Number(e.target.value))} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Your Budget (INR)</label>
-                  <input type="number" value={inquiryBudget} onChange={e=>setInquiryBudget(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. 50000" />
+                  <input type="number" value={inquiryBudget} onChange={e => setInquiryBudget(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="e.g. 50000" />
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Message / Special Requests</label>
-                  <textarea value={inquiryMessage} onChange={e=>setInquiryMessage(e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="Tell us what you want to customize (e.g. hotel category, transport details)..." />
+                  <textarea value={inquiryMessage} onChange={e => setInquiryMessage(e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:border-[#1B3A6B] outline-none text-sm" placeholder="Tell us what you want to customize (e.g. hotel category, transport details)..." />
                 </div>
                 <div className="md:col-span-2">
                   <button type="submit" disabled={isSubmittingInquiry} className="w-full bg-[#1B3A6B] text-white py-3 rounded-lg font-bold hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 text-sm">
@@ -2087,7 +2104,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 {monthDays.map((dayDate, idx) => {
                   const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
                   const today = new Date();
-                  today.setHours(0,0,0,0);
+                  today.setHours(0, 0, 0, 0);
                   const isPast = dayDate < today;
 
                   const yyyy = dayDate.getFullYear();
@@ -2367,7 +2384,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 >
                   <span>Book Now</span>
                 </button>
-                
+
                 <button
                   type="button"
                   onClick={() => {
@@ -2410,7 +2427,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             {/* ── Support / Call ── */}
             <div className="rounded-md border border-slate-200 bg-white p-3.5 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">Support</p>
-              <p className="text-xs text-slate-600 mb-3">We are here to help you book confidently with expert travel guidance.</p>
+              <p className="text-[7.5px] text-slate-600 mb-2">We are here to help you book confidently with expert travel guidance.</p>
               <a
                 href="tel:+919000000000"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#1B3A6B] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md"
@@ -2428,7 +2445,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       ════════════════════════════════════════════ */}
       <section className="bg-white border-t border-slate-200 py-10 md:py-16 mt-6">
         <div className="container mx-auto px-4 lg:px-8">
-          
+
           {/* Top Header */}
           <div className="text-center mb-10">
             <p className="text-accent font-bold text-xs md:text-sm mb-2 uppercase tracking-widest">Why Choose Sampooran Holidays</p>
@@ -2465,8 +2482,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             <h3 className="text-lg sm:text-xl font-bold text-[#1B3A6B] mb-4 font-serif">
               {longDescTitle}
             </h3>
-            
-            <div 
+
+            <div
               className={cn(
                 "space-y-4 text-slate-600 leading-relaxed text-xs md:text-sm font-medium transition-all duration-500 overflow-hidden relative",
                 !isLongDescExpanded && "max-h-[140px]"
@@ -2475,7 +2492,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {longDescParagraphs.map((para, i) => (
                 <p key={i}>{para}</p>
               ))}
-              
+
               {!isLongDescExpanded && (
                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
               )}
@@ -2554,242 +2571,242 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 )}
               </div>
 
-            {/* Configure Guests counter in mobile bottom sheet */}
-            <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm space-y-2.5 mt-2">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Configure Guests</span>
-                <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-500">
-                  Min: {minGuests} • Max: {maxGuests}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {/* Adults counter */}
-                <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
-                  <span className="text-[9px] font-bold text-slate-500">Adults</span>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <button
-                      type="button"
-                      onClick={() => setAdults(prev => Math.max(1, prev - 1))}
-                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
-                    >
-                      −
-                    </button>
-                    <span className="text-xs font-bold font-mono">{adults}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (adults + childrenCount >= maxGuests) {
-                          toast.error(`Max ${maxGuests} guests`);
-                          return;
-                        }
-                        setAdults(prev => prev + 1);
-                      }}
-                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                {/* Children counter */}
-                <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
-                  <span className="text-[9px] font-bold text-slate-500">Children</span>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <button
-                      type="button"
-                      onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
-                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
-                    >
-                      −
-                    </button>
-                    <span className="text-xs font-bold font-mono">{childrenCount}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (adults < 2) {
-                          toast.warning("Needs 2 adults");
-                          return;
-                        }
-                        if (adults + childrenCount >= maxGuests) {
-                          toast.error(`Max ${maxGuests} guests`);
-                          return;
-                        }
-                        setChildrenCount(prev => prev + 1);
-                      }}
-                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                {/* Infants counter */}
-                <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
-                  <span className="text-[9px] font-bold text-slate-500">Infants</span>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <button
-                      type="button"
-                      onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))}
-                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
-                    >
-                      −
-                    </button>
-                    <span className="text-xs font-bold font-mono">{infantsCount}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (adults < 2) {
-                          toast.warning("Needs 2 adults");
-                          return;
-                        }
-                        setInfantsCount(prev => prev + 1);
-                      }}
-                      className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {adults < 2 && (childrenCount > 0 || infantsCount > 0) && (
-                <p className="text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded px-2 py-1">
-                  ⚠️ Minimum 2 adults mandatory to include children or infants.
-                </p>
-              )}
-              {adults + childrenCount < minGuests && (
-                <p className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 rounded px-2 py-1">
-                  ⚠️ Minimum {minGuests} guests are required.
-                </p>
-              )}
-            </div>
-
-            {/* Mobile Calendar Date-Picker Widget */}
-            <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm space-y-3 mt-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Travel Date</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                    className="p-1 border border-slate-200 rounded text-[10px] font-bold"
-                  >
-                    &larr;
-                  </button>
-                  <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
-                    {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+              {/* Configure Guests counter in mobile bottom sheet */}
+              <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm space-y-2.5 mt-2">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Configure Guests</span>
+                  <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-500">
+                    Min: {minGuests} • Max: {maxGuests}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                    className="p-1 border border-slate-200 rounded text-[10px] font-bold"
-                  >
-                    &rarr;
-                  </button>
                 </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Adults counter */}
+                  <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
+                    <span className="text-[9px] font-bold text-slate-500">Adults</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setAdults(prev => Math.max(1, prev - 1))}
+                        className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-bold font-mono">{adults}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adults + childrenCount >= maxGuests) {
+                            toast.error(`Max ${maxGuests} guests`);
+                            return;
+                          }
+                          setAdults(prev => prev + 1);
+                        }}
+                        className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Children counter */}
+                  <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
+                    <span className="text-[9px] font-bold text-slate-500">Children</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setChildrenCount(prev => Math.max(0, prev - 1))}
+                        className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-bold font-mono">{childrenCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adults < 2) {
+                            toast.warning("Needs 2 adults");
+                            return;
+                          }
+                          if (adults + childrenCount >= maxGuests) {
+                            toast.error(`Max ${maxGuests} guests`);
+                            return;
+                          }
+                          setChildrenCount(prev => prev + 1);
+                        }}
+                        className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Infants counter */}
+                  <div className="flex flex-col items-center justify-center p-1.5 border border-slate-100 rounded-lg">
+                    <span className="text-[9px] font-bold text-slate-500">Infants</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))}
+                        className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-bold font-mono">{infantsCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adults < 2) {
+                            toast.warning("Needs 2 adults");
+                            return;
+                          }
+                          setInfantsCount(prev => prev + 1);
+                        }}
+                        className="w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 text-[10px]"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {adults < 2 && (childrenCount > 0 || infantsCount > 0) && (
+                  <p className="text-[9px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded px-2 py-1">
+                    ⚠️ Minimum 2 adults mandatory to include children or infants.
+                  </p>
+                )}
+                {adults + childrenCount < minGuests && (
+                  <p className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 rounded px-2 py-1">
+                    ⚠️ Minimum {minGuests} guests are required.
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-7 gap-0.5">
-                {monthDays.map((dayDate, idx) => {
-                  const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
-                  const today = new Date();
-                  today.setHours(0,0,0,0);
-                  const isPast = dayDate < today;
+              {/* Mobile Calendar Date-Picker Widget */}
+              <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm space-y-3 mt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Travel Date</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                      className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                    >
+                      &larr;
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-700 min-w-[60px] text-center font-mono">
+                      {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                      className="p-1 border border-slate-200 rounded text-[10px] font-bold"
+                    >
+                      &rarr;
+                    </button>
+                  </div>
+                </div>
 
-                  const yyyy = dayDate.getFullYear();
-                  const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
-                  const dd = String(dayDate.getDate()).padStart(2, "0");
-                  const dateStr = `${yyyy}-${mm}-${dd}`;
+                <div className="grid grid-cols-7 gap-0.5">
+                  {monthDays.map((dayDate, idx) => {
+                    const isCurrentMonth = dayDate.getMonth() === currentMonth.getMonth();
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const isPast = dayDate < today;
 
-                  const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
-                  const isSelected = travelDate === dateStr;
+                    const yyyy = dayDate.getFullYear();
+                    const mm = String(dayDate.getMonth() + 1).padStart(2, "0");
+                    const dd = String(dayDate.getDate()).padStart(2, "0");
+                    const dateStr = `${yyyy}-${mm}-${dd}`;
 
-                  let finalPrice = basePricePerPerson;
-                  let originalPriceBeforeDiscount = originalPrice;
-                  let isBlackout = false;
-                  let isPriceOnReq = false;
-                  let rateType = "regular";
-                  let discountPercentVal = 0;
+                    const rule = calendarRates.find(r => r.date === dateStr || (typeof r.date === "string" && r.date.split("T")[0] === dateStr));
+                    const isSelected = travelDate === dateStr;
 
-                  if (rule) {
-                    rateType = rule.rateType || "regular";
-                    if (rule.rateType === "blackout") isBlackout = true;
-                    else if (rule.rateType === "price-on-request") isPriceOnReq = true;
-                    else {
-                      const mod = Number(rule.priceModifierValue) || 0;
-                      if (rule.priceModifierType === "fixed") finalPrice = mod;
-                      else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
-                      else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
+                    let finalPrice = basePricePerPerson;
+                    let originalPriceBeforeDiscount = originalPrice;
+                    let isBlackout = false;
+                    let isPriceOnReq = false;
+                    let rateType = "regular";
+                    let discountPercentVal = 0;
 
-                      originalPriceBeforeDiscount = finalPrice;
+                    if (rule) {
+                      rateType = rule.rateType || "regular";
+                      if (rule.rateType === "blackout") isBlackout = true;
+                      else if (rule.rateType === "price-on-request") isPriceOnReq = true;
+                      else {
+                        const mod = Number(rule.priceModifierValue) || 0;
+                        if (rule.priceModifierType === "fixed") finalPrice = mod;
+                        else if (rule.priceModifierType === "percentage") finalPrice = basePricePerPerson * (1 + mod / 100);
+                        else if (rule.priceModifierType === "value") finalPrice = basePricePerPerson + mod;
 
-                      const disc = Number(rule.discountValue) || 0;
-                      if (rule.discountType === "percentage") {
-                        finalPrice = finalPrice * (1 - disc / 100);
+                        originalPriceBeforeDiscount = finalPrice;
+
+                        const disc = Number(rule.discountValue) || 0;
+                        if (rule.discountType === "percentage") {
+                          finalPrice = finalPrice * (1 - disc / 100);
+                          discountPercentVal = disc;
+                        } else if (rule.discountType === "flat") {
+                          finalPrice = Math.max(0, finalPrice - disc);
+                          discountPercentVal = Math.round((disc / originalPriceBeforeDiscount) * 100);
+                        }
+                      }
+                    } else {
+                      const disc = packageData.discountPercent || 0;
+                      if (disc > 0) {
+                        finalPrice = basePricePerPerson;
+                        originalPriceBeforeDiscount = originalPrice;
                         discountPercentVal = disc;
-                      } else if (rule.discountType === "flat") {
-                        finalPrice = Math.max(0, finalPrice - disc);
-                        discountPercentVal = Math.round((disc / originalPriceBeforeDiscount) * 100);
                       }
                     }
-                  } else {
-                    const disc = packageData.discountPercent || 0;
-                    if (disc > 0) {
-                      finalPrice = basePricePerPerson;
-                      originalPriceBeforeDiscount = originalPrice;
-                      discountPercentVal = disc;
+
+                    const isDisabled = isPast || !isCurrentMonth || isBlackout;
+                    const isPeak = rateType === "peak";
+                    const isOff = rateType === "off-season";
+
+                    let cellBgClass = "bg-white text-slate-800 border-slate-100 hover:bg-slate-50";
+                    if (isSelected) {
+                      cellBgClass = "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20 scale-[1.03]";
+                    } else if (isBlackout) {
+                      cellBgClass = "bg-slate-100 text-slate-450 line-through border-slate-200 pointer-events-none";
+                    } else if (isPriceOnReq) {
+                      cellBgClass = "bg-amber-50/70 text-amber-800 border-amber-250/70 hover:bg-amber-100";
+                    } else if (isPeak) {
+                      cellBgClass = "bg-rose-50/60 text-rose-850 border-rose-150/70 hover:bg-rose-100/70";
+                    } else if (isOff) {
+                      cellBgClass = "bg-sky-50/60 text-sky-850 border-sky-150/70 hover:bg-sky-100/70";
+                    } else if (rule && rateType === "regular") {
+                      cellBgClass = "bg-emerald-50/40 text-emerald-800 border-emerald-150/70 hover:bg-emerald-100/60";
                     }
-                  }
 
-                  const isDisabled = isPast || !isCurrentMonth || isBlackout;
-                  const isPeak = rateType === "peak";
-                  const isOff = rateType === "off-season";
-
-                  let cellBgClass = "bg-white text-slate-800 border-slate-100 hover:bg-slate-50";
-                  if (isSelected) {
-                    cellBgClass = "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20 scale-[1.03]";
-                  } else if (isBlackout) {
-                    cellBgClass = "bg-slate-100 text-slate-450 line-through border-slate-200 pointer-events-none";
-                  } else if (isPriceOnReq) {
-                    cellBgClass = "bg-amber-50/70 text-amber-800 border-amber-250/70 hover:bg-amber-100";
-                  } else if (isPeak) {
-                    cellBgClass = "bg-rose-50/60 text-rose-850 border-rose-150/70 hover:bg-rose-100/70";
-                  } else if (isOff) {
-                    cellBgClass = "bg-sky-50/60 text-sky-850 border-sky-150/70 hover:bg-sky-100/70";
-                  } else if (rule && rateType === "regular") {
-                    cellBgClass = "bg-emerald-50/40 text-emerald-800 border-emerald-150/70 hover:bg-emerald-100/60";
-                  }
-
-                  return (
-                    <button
-                      type="button"
-                      key={idx}
-                      disabled={isDisabled}
-                      onClick={() => {
-                        setTravelDate(dateStr);
-                      }}
-                      className={`h-9 rounded flex flex-col justify-center items-center p-0.5 transition-all border ${cellBgClass}`}
-                    >
-                      <span className="text-[9px] font-bold">{dayDate.getDate()}</span>
-                      {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
-                        <div className="flex flex-col items-center justify-center leading-none mt-0.5 scale-90">
-                          {discountPercentVal > 0 && (
-                            <span className={`text-[5.5px] line-through ${isSelected ? "text-white/60" : "text-[#1B3A6B] font-bold"} leading-none mb-0.5`}>
-                              ₹{Math.round(originalPriceBeforeDiscount)}
+                    return (
+                      <button
+                        type="button"
+                        key={idx}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          setTravelDate(dateStr);
+                        }}
+                        className={`h-9 rounded flex flex-col justify-center items-center p-0.5 transition-all border ${cellBgClass}`}
+                      >
+                        <span className="text-[9px] font-bold">{dayDate.getDate()}</span>
+                        {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
+                          <div className="flex flex-col items-center justify-center leading-none mt-0.5 scale-90">
+                            {discountPercentVal > 0 && (
+                              <span className={`text-[5.5px] line-through ${isSelected ? "text-white/60" : "text-[#1B3A6B] font-bold"} leading-none mb-0.5`}>
+                                ₹{Math.round(originalPriceBeforeDiscount)}
+                              </span>
+                            )}
+                            <span className={`text-[7.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-650"}`}>
+                              ₹{Math.round(finalPrice)}
                             </span>
-                          )}
-                          <span className={`text-[7.5px] font-bold tracking-tighter leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-650"}`}>
-                            ₹{Math.round(finalPrice)}
-                          </span>
-                        </div>
-                      )}
-                      {isBlackout && <span className="text-[6px] text-slate-450">Sold</span>}
-                      {isPriceOnReq && <span className="text-[6px] text-amber-700">Req</span>}
-                    </button>
-                  );
-                })}
+                          </div>
+                        )}
+                        {isBlackout && <span className="text-[6px] text-slate-450">Sold</span>}
+                        {isPriceOnReq && <span className="text-[6px] text-amber-700">Req</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
             </div>
 
             {/* CTA Actions */}
@@ -3178,31 +3195,74 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         </div>
       )}
 
-      {/* ── Customize Trip Modal & 5-Second Thank You Redirect ── */}
+      {/* ── Customize Trip Modal & Animated Thank You Redirect ── */}
       {showCustomizeModal && (
         <div className="fixed inset-0 z-[130] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col">
             {customizeSubmitted ? (
-              /* Thank You Card Overlay with 5-Second Countdown */
-              <div className="p-8 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-3xl shadow-inner animate-bounce font-bold">
-                  ✓
+              /* Beautiful Animated Thank You Card Overlay with Live Chat Guide & 5s Countdown */
+              <div className="p-6 sm:p-8 text-center space-y-4 bg-gradient-to-b from-white via-emerald-50/30 to-white">
+                <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping"></div>
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/30 font-bold z-10 animate-bounce">
+                    ✓
+                  </div>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900">Thank You!</h3>
-                <p className="text-sm font-semibold text-slate-700">
-                  Your customization requirement has been successfully submitted to our travel specialists!
-                </p>
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-800 font-bold space-y-1 text-left">
-                  <p>✓ Saved under B2C Admin Inquiries</p>
-                  <p>✓ Package: {packageData.name} ({packageData.packageCode || "N/A"})</p>
-                  <p>✓ Travel Date: {travelDate || custDate || "Flexible"}</p>
-                  <p>✓ Guest Capacity: {guestCountLabel}</p>
+
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                    Namaste &amp; Thank You, {custName || "Valued Guest"}! 🙏
+                  </h3>
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 mt-1.5 leading-relaxed">
+                    We are deeply honored &amp; excited to plan your dream vacation for <strong className="text-slate-900">"{packageData.name}"</strong>. Our senior travel specialists are reviewing your requirements to build your personalized package!
+                  </p>
                 </div>
-                <div className="pt-2 text-xs text-slate-500 font-medium">
-                  Redirecting back to your package page in{" "}
-                  <span className="font-mono text-base font-black text-[#1B3A6B] bg-slate-100 px-2 py-0.5 rounded">
-                    {countdown}s
-                  </span>
+
+                {/* Requirements Summary Badge */}
+                <div className="bg-white border border-emerald-200/80 rounded-xl p-3 shadow-xs text-xs text-slate-700 space-y-1 text-left">
+                  <div className="flex items-center justify-between pb-1 border-b border-emerald-100">
+                    <span className="font-bold text-emerald-800 flex items-center gap-1">
+                      <span>✓ Inquiry Registered</span>
+                    </span>
+                    <span className="text-[10px] font-mono bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                      Code: {packageData.packageCode || "SH-RDS-GEN"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                    <p><strong className="text-slate-500">Departure:</strong> {travelDate || custDate || "Flexible"}</p>
+                    <p><strong className="text-slate-500">Travelers:</strong> {guestCountLabel}</p>
+                    <p><strong className="text-slate-500">Hotel Pref:</strong> {custHotelPref}</p>
+                    <p><strong className="text-slate-500">Contact:</strong> {custPhone}</p>
+                  </div>
+                </div>
+
+                {/* Live Chat Guide Widget Callout */}
+                <div className="bg-gradient-to-r from-[#1B3A6B] to-[#265191] text-white rounded-xl p-3 text-left shadow-md flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl shrink-0">
+                    💬
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-amber-300">Need Instant Assistance?</p>
+                    <p className="text-[11px] text-slate-100 leading-snug">
+                      Our official Travel Experts are online! Look for the Live Chat Widget in the bottom-right corner to start a live conversation immediately.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 5-Second Animated Progress Bar & Countdown */}
+                <div className="pt-2 space-y-1.5">
+                  <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full transition-all duration-1000 ease-linear"
+                      style={{ width: `${(countdown / 5) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Returning to package page in{" "}
+                    <span className="font-mono text-sm font-black text-[#1B3A6B] bg-slate-100 px-2 py-0.5 rounded">
+                      {countdown}s
+                    </span>
+                  </p>
                 </div>
               </div>
             ) : (
@@ -3231,39 +3291,63 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                 <form onSubmit={handleCustomizeSubmit} className="p-5 space-y-3.5 max-h-[75vh] overflow-y-auto text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Your Full Name *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Your Full Name <span className="text-rose-500">*</span>
+                    </label>
                     <input
-                      required
                       type="text"
                       value={custName}
-                      onChange={(e) => setCustName(e.target.value)}
+                      onChange={(e) => {
+                        setCustName(e.target.value);
+                        if (custFormErrors.name) setCustFormErrors(prev => ({ ...prev, name: "" }));
+                      }}
                       placeholder="e.g. Rahul Sharma"
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-[#1B3A6B] outline-none text-xs"
+                      className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${custFormErrors.name ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"
+                        }`}
                     />
+                    {custFormErrors.name && (
+                      <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {custFormErrors.name}</p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phone Number *</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Phone Number <span className="text-rose-500">*</span>
+                      </label>
                       <input
-                        required
                         type="tel"
                         value={custPhone}
-                        onChange={(e) => setCustPhone(e.target.value)}
+                        onChange={(e) => {
+                          setCustPhone(e.target.value);
+                          if (custFormErrors.phone) setCustFormErrors(prev => ({ ...prev, phone: "" }));
+                        }}
                         placeholder="e.g. +91 9876543210"
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-[#1B3A6B] outline-none text-xs"
+                        className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${custFormErrors.phone ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"
+                          }`}
                       />
+                      {custFormErrors.phone && (
+                        <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {custFormErrors.phone}</p>
+                      )}
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email Address *</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Email Address <span className="text-rose-500">*</span>
+                      </label>
                       <input
-                        required
                         type="email"
                         value={custEmail}
-                        onChange={(e) => setCustEmail(e.target.value)}
+                        onChange={(e) => {
+                          setCustEmail(e.target.value);
+                          if (custFormErrors.email) setCustFormErrors(prev => ({ ...prev, email: "" }));
+                        }}
                         placeholder="e.g. rahul@example.com"
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-[#1B3A6B] outline-none text-xs"
+                        className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${custFormErrors.email ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"
+                          }`}
                       />
+                      {custFormErrors.email && (
+                        <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {custFormErrors.email}</p>
+                      )}
                     </div>
                   </div>
 
@@ -3314,9 +3398,16 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                     <button
                       type="submit"
                       disabled={isSubmittingCust}
-                      className="px-6 py-2 rounded-lg bg-[#1B3A6B] hover:bg-[#285294] text-white font-bold text-xs uppercase tracking-wider shadow-md disabled:opacity-50"
+                      className="px-6 py-2 rounded-lg bg-[#1B3A6B] hover:bg-[#285294] text-white font-bold text-xs uppercase tracking-wider shadow-md disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      {isSubmittingCust ? "Submitting..." : "Submit Requirement 🚀"}
+                      {isSubmittingCust ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Submitting...</span>
+                        </>
+                      ) : (
+                        <span>Submit Requirement 🚀</span>
+                      )}
                     </button>
                   </div>
                 </form>
