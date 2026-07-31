@@ -1970,197 +1970,18 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
           </main>
 
           <aside className="space-y-2.5 xl:sticky xl:top-[76px]">
-            {/* ── Guest Occupancy & Fare Selector Widget ── */}
-            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
-              {/* Header with Original Price, Discount Badge & Grand Total */}
-              <div className="flex items-start justify-between border-b border-slate-100 pb-3 gap-2">
+            {/* ── 1. Dynamic Rate Calendar Widget (TOP of Sidebar) ── */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Travelers &amp; Occupancy</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-bold text-slate-800">{guestCountLabel}</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowGuestsEdit(!showGuestsEdit)}
-                      className="text-[10px] font-bold text-[#1B3A6B] hover:underline bg-slate-50 hover:bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200"
-                    >
-                      {showGuestsEdit ? "Hide" : "Change"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Final Payable</p>
-                  <div className="flex items-baseline justify-end gap-1.5 mt-0.5">
-                    {totalSavings > 0 && totalOriginalCost > 0 && (
-                      <span className="text-xs text-slate-400 font-semibold line-through">
-                        ₹{(totalOriginalCost + Math.round(totalOriginalCost * 0.05)).toLocaleString('en-IN')}
-                      </span>
-                    )}
-                    <span className="text-lg font-black text-slate-900 leading-none">
-                      ₹{grandTotal.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  {totalSavings > 0 && (
-                    <span className="inline-block text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded mt-1">
-                      {discountLabel} (Save ₹{totalSavings.toLocaleString('en-IN')})
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Collapsible Occupancy Adjusters */}
-              {showGuestsEdit && (
-                <div className="space-y-3 bg-slate-50/50 p-3 rounded-xl border border-slate-100/60">
-                  {/* Primary Adults */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Adults (Primary)</p>
-                      <p className="text-[9px] text-slate-400">Base room sharing rate</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setAdults(prev => Math.max(1, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
-                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{adults}</span>
-                      <button type="button" onClick={() => {
-                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
-                        setAdults(prev => prev + 1);
-                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
-                    </div>
-                  </div>
-
-                  {/* Extra Adult */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Extra Adult</p>
-                      <p className="text-[9px] text-slate-400">Additional adult guest</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setExtraAdults(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
-                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{extraAdults}</span>
-                      <button type="button" onClick={() => {
-                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
-                        setExtraAdults(prev => prev + 1);
-                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
-                    </div>
-                  </div>
-
-                  {/* Child with Bed */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Child with Bed</p>
-                      <p className="text-[9px] text-slate-400">Age 5–12 yrs (includes bed)</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildWithBed(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
-                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{childWithBed}</span>
-                      <button type="button" onClick={() => {
-                        if (adults < 1) { toast.warning("At least 1 adult required"); return; }
-                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
-                        setChildWithBed(prev => prev + 1);
-                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
-                    </div>
-                  </div>
-
-                  {/* Child without Bed */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Child w/o Bed</p>
-                      <p className="text-[9px] text-slate-400">Age 2–5 yrs (sharing bed)</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildWithoutBed(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
-                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{childWithoutBed}</span>
-                      <button type="button" onClick={() => {
-                        if (adults < 1) { toast.warning("At least 1 adult required"); return; }
-                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
-                        setChildWithoutBed(prev => prev + 1);
-                      }} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
-                    </div>
-                  </div>
-
-                  {/* Infants counter */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">Infants</p>
-                      <p className="text-[9px] text-slate-400">Under 2 yrs</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 text-xs">−</button>
-                      <span className="text-xs font-bold text-slate-800 w-4 text-center font-mono">{infantsCount}</span>
-                      <button type="button" onClick={() => setInfantsCount(prev => prev + 1)} className="w-6.5 h-6.5 rounded-full border border-slate-200 bg-white flex items-center justify-center font-bold text-slate-655 hover:bg-slate-55 transition active:scale-95 text-xs">+</button>
-                    </div>
-                  </div>
-
-                  {guestCount < minGuests && (
-                    <p className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2 mt-1">
-                      ⚠️ Minimum {minGuests} guests required for this package.
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Step 1: Select Departure Date</p>
+                  {travelDate ? (
+                    <p className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Selected: {travelDate}
                     </p>
+                  ) : (
+                    <p className="text-xs font-bold text-slate-800 mt-0.5">Click any date to see exact rates</p>
                   )}
-                </div>
-              )}
-
-              {/* Detailed Category Price Breakdown Card */}
-              <div className="text-[11px] space-y-2 bg-[#1B3A6B]/5 p-3.5 rounded-xl border border-[#1B3A6B]/15">
-                <div className="flex items-center justify-between mb-1 border-b border-[#1B3A6B]/10 pb-1.5">
-                  <p className="text-[10px] font-bold text-[#1B3A6B] uppercase tracking-wider">Price Breakout Summary</p>
-                  {totalSavings > 0 && (
-                    <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
-                      {discountLabel}
-                    </span>
-                  )}
-                </div>
-
-                {categoryBreakdown.map((item, bIdx) => (
-                  <div key={bIdx} className="flex items-center justify-between text-slate-700 font-medium">
-                    <span>{item.count}× {item.label} <span className="text-[9.5px] text-slate-400">(@ ₹{item.rate.toLocaleString('en-IN')})</span></span>
-                    <span className="font-bold text-slate-900">₹{item.total.toLocaleString('en-IN')}</span>
-                  </div>
-                ))}
-                
-                <div className="pt-2 border-t border-slate-200/80 space-y-1">
-                  {totalOriginalCost > totalPackageCost && (
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Original Total</span>
-                      <span className="line-through font-semibold">₹{totalOriginalCost.toLocaleString('en-IN')}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between text-slate-600 font-medium">
-                    <span>Discounted Base Cost</span>
-                    <span className="font-bold text-slate-900">₹{totalPackageCost.toLocaleString('en-IN')}</span>
-                  </div>
-
-                  {totalSavings > 0 && (
-                    <div className="flex items-center justify-between text-emerald-700 bg-emerald-50/80 px-2 py-1 rounded border border-emerald-100">
-                      <span className="font-bold">Total Savings ({discountLabel})</span>
-                      <span className="font-extrabold">−₹{totalSavings.toLocaleString('en-IN')}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between text-slate-500 pb-1.5 border-b border-dashed border-slate-200">
-                    <span>GST (5%)</span>
-                    <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1 text-slate-950 font-black">
-                    <span className="text-xs uppercase tracking-wider text-slate-700">Final Payable Price</span>
-                    <span className="text-base text-[#1B3A6B]">₹{grandTotal.toLocaleString('en-IN')}</span>
-                  </div>
-                </div>
-
-                {/* Compact EMI & No Cost tag */}
-                <div className="flex items-center justify-between pt-1 text-[10.5px] font-semibold text-slate-600 border-t border-slate-100">
-                  <span>No-Cost EMI from</span>
-                  <span className="text-[#1B3A6B] font-bold">₹{Math.round(grandTotal / 3).toLocaleString('en-IN')}/mo × 3</span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Dynamic Rate Calendar Widget ── */}
-            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-4 hidden xl:block">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Select Travel Date</p>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">Choose departure date</p>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -2272,7 +2093,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       onClick={() => {
                         setTravelDate(dateStr);
                       }}
-                      className={`h-11 rounded flex flex-col justify-between items-center p-1 transition-all border ${cellBgClass}`}
+                      className={`h-11 rounded-lg flex flex-col justify-between items-center p-1 transition-all border ${cellBgClass}`}
                     >
                       <span className="text-[9px] leading-none font-bold">{dayDate.getDate()}</span>
                       {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
@@ -2311,30 +2132,184 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               </div>
             </div>
 
-            {/* ── CTA Actions Card ── */}
-            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm space-y-2 hidden xl:block">
-              <button
-                type="button"
-                onClick={handleDirectBooking}
-                disabled={isBooking}
-                className="block w-full rounded-md bg-[#1B3A6B] px-4 py-2.5 text-center text-sm font-bold text-white hover:bg-[#152e55] transition-all hover:shadow-md active:scale-[0.98] disabled:opacity-50"
-              >
-                {isBooking ? "Booking..." : travelDate ? "Book Now Direct ⚡" : "Select Travel Date Above"}
-              </button>
-              <Link
-                href="#enquire"
-                className="block w-full rounded-md bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-center text-sm font-bold text-white hover:from-amber-600 hover:to-orange-650 transition-all hover:shadow-md active:scale-[0.98]"
-              >
-                ✦ Customize &amp; Enquire
-              </Link>
-              <a
-                href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')} (${packageData.packageCode || 'No Code'})`}
-                target="_blank"
-                rel="noreferrer"
-                className="block w-full rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-all"
-              >
-                Chat on WhatsApp
-              </a>
+            {/* ── 2. Compact E-Commerce Price Breakout & CTA Box (BELOW Calendar) ── */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg space-y-3 hidden xl:block">
+              {/* Header with Date, Guest Count & Change Toggle */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Step 2: Pricing Breakout</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs font-extrabold text-slate-800">
+                      {travelDate ? `📅 ${travelDate}` : 'Standard Rates'} • {guestCountLabel}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowGuestsEdit(!showGuestsEdit)}
+                      className="text-[9.5px] font-bold text-[#1B3A6B] hover:underline bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded border border-slate-200"
+                    >
+                      {showGuestsEdit ? "Done" : "Edit Guests"}
+                    </button>
+                  </div>
+                </div>
+                {totalSavings > 0 && (
+                  <span className="text-[9.5px] font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    {discountLabel}
+                  </span>
+                )}
+              </div>
+
+              {/* Collapsible Occupancy Adjusters */}
+              {showGuestsEdit && (
+                <div className="space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                  {/* Primary Adults */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Adults (Primary)</p>
+                      <p className="text-[9px] text-slate-400">Base room capacity (Age 12+)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setAdults(prev => Math.max(1, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{adults}</span>
+                      <button type="button" onClick={() => {
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setAdults(prev => prev + 1);
+                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+
+                  {/* Extra Adult */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Extra Adult</p>
+                      <p className="text-[9px] text-slate-400">Add-on guest in room</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setExtraAdults(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{extraAdults}</span>
+                      <button type="button" onClick={() => {
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setExtraAdults(prev => prev + 1);
+                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+
+                  {/* Child with Bed */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Child with Bed</p>
+                      <p className="text-[9px] text-slate-400">Age 5–12 yrs (extra bed)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setChildWithBed(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{childWithBed}</span>
+                      <button type="button" onClick={() => {
+                        if (adults < 1) { toast.warning("At least 1 adult required"); return; }
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setChildWithBed(prev => prev + 1);
+                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+
+                  {/* Child without Bed */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Child w/o Bed</p>
+                      <p className="text-[9px] text-slate-400">Age 2–5 yrs (sharing bed)</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setChildWithoutBed(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{childWithoutBed}</span>
+                      <button type="button" onClick={() => {
+                        if (adults < 1) { toast.warning("At least 1 adult required"); return; }
+                        if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
+                        setChildWithoutBed(prev => prev + 1);
+                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+
+                  {/* Infants counter */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Infants</p>
+                      <p className="text-[9px] text-slate-400">Under 2 yrs</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{infantsCount}</span>
+                      <button type="button" onClick={() => setInfantsCount(prev => prev + 1)} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Compact E-Commerce Style Line-Item Breakout */}
+              <div className="text-xs space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-100 font-medium">
+                {categoryBreakdown.map((item, bIdx) => (
+                  <div key={bIdx} className="flex items-center justify-between text-slate-700">
+                    <span>{item.count}× {item.label} <span className="text-[9.5px] text-slate-400">(@ ₹{item.rate.toLocaleString('en-IN')})</span></span>
+                    <span className="font-bold text-slate-900">₹{item.total.toLocaleString('en-IN')}</span>
+                  </div>
+                ))}
+
+                <div className="pt-1.5 border-t border-slate-200/80 space-y-1">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-slate-800">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {totalSavings > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded -mx-1">
+                      <span>Total Savings ({discountLabel})</span>
+                      <span>−₹{totalSavings.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-slate-500 pb-1 border-b border-dashed border-slate-200">
+                    <span>GST (5%)</span>
+                    <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Final Payable Price Highlight Box */}
+              <div className="bg-slate-950 text-white rounded-xl p-3 flex items-center justify-between border border-slate-900">
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Final Payable Amount</p>
+                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <span className="text-lg font-black text-white">₹{grandTotal.toLocaleString('en-IN')}</span>
+                    {totalSavings > 0 && totalOriginalCost > 0 && (
+                      <span className="text-xs text-slate-400 line-through">
+                        ₹{(totalOriginalCost + Math.round(totalOriginalCost * 0.05)).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {totalSavings > 0 && (
+                  <span className="text-[10px] font-black bg-emerald-400 text-slate-950 px-2 py-1 rounded font-mono uppercase">
+                    Save ₹{totalSavings.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons: Instant Booking CTA */}
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowBookingModal(true)}
+                  className="w-full bg-[#1B3A6B] hover:bg-[#275091] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                >
+                  <span>Proceed to Book / Reserve 🚀</span>
+                </button>
+                
+                <a
+                  href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')} (${packageData.packageCode || 'No Code'})`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                >
+                  <span>💬 Chat on WhatsApp for Instaspecs</span>
+                </a>
+              </div>
             </div>
 
             {/* ── Why book with us ── */}
