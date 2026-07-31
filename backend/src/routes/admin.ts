@@ -2637,6 +2637,33 @@ router.patch("/hotel-bookings/:id", requirePermission("HOTELS"), async (req, res
   }
 });
 
+// GET /admin/b2c-bookings — all B2C package bookings with guest and package details
+router.get("/b2c-bookings", requirePermission("USERS"), async (req, res) => {
+  try {
+    const rows = await db.execute(sql`
+      SELECT 
+        b.id, b.status, b.payment_status AS "paymentStatus",
+        b.travel_date AS "travelDate", b.travelers_count AS "travelersCount",
+        b.adults_count AS "adultsCount", b.children_count AS "childrenCount",
+        b.infants_count AS "infantsCount",
+        b.total_amount AS "totalAmount", b.final_paid_amount AS "finalPaidAmount",
+        b.special_requests AS "specialRequests", b.created_at AS "createdAt",
+        u.name AS "guestName", u.email AS "guestEmail", u.phone AS "guestPhone",
+        u.phone_number AS "guestPhoneNumber",
+        p.name AS "packageName", p.package_code AS "packageCode", p.duration, p.nights
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      LEFT JOIN packages p ON b.package_id = p.id
+      ORDER BY b.created_at DESC
+      LIMIT 200
+    `);
+    res.json(rows.rows);
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Failed to fetch B2C bookings");
+    res.status(500).json({ error: "Failed to fetch B2C bookings" });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────
 // PENDING CITY REQUESTS — Admin Alert System
 // Vendors submit custom cities not in our CMS — admin reviews and resolves

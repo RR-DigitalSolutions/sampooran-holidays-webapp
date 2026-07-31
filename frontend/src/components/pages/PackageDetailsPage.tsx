@@ -283,7 +283,24 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [calendarRates, setCalendarRates] = useState<any[]>([]);
   const [loadingCal, setLoadingCal] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  // ── Complete Direct Booking Engine Modal States ──
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [bookingStep, setBookingStep] = useState<"details" | "register" | "payment" | "confirmed">("details");
+
+  // Registration & Login States inside Booking Modal
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regAuthMode, setRegAuthMode] = useState<"register" | "login">("register");
+  const [regErrors, setRegErrors] = useState<Record<string, string>>({});
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+
+  // Payment Checkout States
+  const [payOption, setPayOption] = useState<"advance" | "full">("advance");
+  const [payMethod, setPayMethod] = useState<"upi" | "card" | "netbanking">("upi");
+  const [isProcessingPay, setIsProcessingPay] = useState(false);
+  const [confirmedBookingData, setConfirmedBookingData] = useState<any>(null);
 
   // ── Customize Trip Modal & Inquiry Redirect State ──
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
@@ -345,13 +362,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         email: custEmail.trim(),
         phone: custPhone.trim(),
         inquiryType: "customization",
-        packageId: packageData?.id || null,
-        destination: packageData?.destinationName || packageData?.stateName || null,
-        travelDate: travelDate || custDate || null,
+        packageId: packageData?.id ? Number(packageData.id) : undefined,
+        destination: packageData?.destinationName || packageData?.stateName || undefined,
+        travelDate: travelDate || custDate || undefined,
         adults: adults,
         children: extraAdults + childWithBed + childWithoutBed,
         message: `CUSTOMIZATION INQUIRY for "${packageData?.name || 'Package'}" (Code: ${packageData?.packageCode || 'N/A'}).\n• Departure Date: ${travelDate || custDate || 'Flexible'}\n• Travelers: ${guestCountLabel}\n• Hotel Category Pref: ${custHotelPref}\n• Custom Notes: ${custNotes.trim()}`,
-        budget: custBudget || null,
+        budget: custBudget || undefined,
         submitDuration: Math.max(2500, elapsed)
       };
 
@@ -373,7 +390,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       setIsSubmittingCust(false);
     }
   };
-
   // ── Guest Segment Counts ──
   const [adults, setAdults] = useState(2);
   const [extraAdults, setExtraAdults] = useState(0);
@@ -395,7 +411,122 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
   const [isSubmittingInquiry, setIsSubmittingInquiry] = useState(false);
   const [isLongDescExpanded, setIsLongDescExpanded] = useState(false);
 
-  const { user, token } = useAuth();
+  const { user, token, login } = useAuth();
+
+  // ── Handlers for Direct Booking Engine Flow ──
+  const handleProceedFromDetails = () => {
+    if (!travelDate) {
+      toast.warning("Please select your travel date from the calendar first!");
+      return;
+    }
+    if (user) {
+      // User is already logged in — go straight to payment step!
+      setBookingStep("payment");
+    } else {
+      // User is NOT logged in — prompt registration/login step!
+      setBookingStep("register");
+    }
+  };
+
+  const handleRegisterOrLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+
+    if (!regEmail.trim() || !regEmail.includes("@")) {
+      errs.email = "Valid email address is required";
+    }
+    if (!regPassword.trim() || regPassword.length < 6) {
+      errs.password = "Password must be at least 6 characters";
+    }
+
+    if (regAuthMode === "register") {
+      if (!regName.trim()) errs.name = "Full Name is required";
+      if (!regPhone.trim()) errs.phone = "Phone number is required";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setRegErrors(errs);
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    setRegErrors({});
+    setIsSubmittingAuth(true);
+
+    try {
+      const endpoint = regAuthMode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const bodyPayload = regAuthMode === "register"
+        ? { name: regName.trim(), email: regEmail.trim(), password: regPassword, phoneNumber: regPhone.trim() }
+        : { email: regEmail.trim(), password: regPassword };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.token && data.user) {
+        login(data.user, data.token);
+        toast.success(regAuthMode === "register" ? "Account created successfully!" : "Welcome back!");
+        setBookingStep("payment");
+      } else {
+        toast.error(data.error || "Authentication failed. Please try again.");
+      }
+    } catch {
+      toast.error("Network error during registration.");
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!travelDate) {
+      toast.error("Please select a valid travel date.");
+      return;
+    }
+
+    setIsProcessingPay(true);
+    try {
+      const totalAdults = adults + extraAdults;
+      const totalChildren = childWithBed + childWithoutBed;
+      const totalGuests = totalAdults + totalChildren;
+      const payableAmount = payOption === "advance" ? Math.round(grandTotal * 0.25) : grandTotal;
+
+      const payload = {
+        packageId: packageData.id,
+        travelDate: travelDate,
+        travelersCount: totalGuests,
+        adultsCount: totalAdults,
+        childrenCount: totalChildren,
+        infantsCount: infantsCount,
+        specialRequests: `Direct OTA Booking Engine. Payment Mode: ${payOption.toUpperCase()} (₹${payableAmount.toLocaleString('en-IN')}). Method: ${payMethod.toUpperCase()}`
+      };
+
+      const authToken = token || localStorage.getItem("sh_auth_token");
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.booking) {
+        setConfirmedBookingData(data.booking);
+        setBookingStep("confirmed");
+        toast.success("🎉 Booking Confirmed & Guaranteed!");
+      } else {
+        toast.error(data.error || "Booking transaction failed. Please try again.");
+      }
+    } catch {
+      toast.error("Network error during booking confirmation.");
+    } finally {
+      setIsProcessingPay(false);
+    }
+  };
 
   const featuresList = [
     {
@@ -2379,8 +2510,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                 <button
                   type="button"
-                  onClick={() => setShowBookingModal(true)}
-                  className="w-full bg-[#1B3A6B] hover:bg-[#275091] text-white py-1.5 rounded-md font-semibold text-[10px] uppercase tracking-wider shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1 text-center"
+                  onClick={() => {
+                    setBookingStep("details");
+                    setShowBookingModal(true);
+                  }}
+                  className="w-full bg-[#1B3A6B] hover:bg-[#275091] text-white py-1.5 rounded-md font-semibold text-[10px] uppercase tracking-wider shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1 text-center cursor-pointer"
                 >
                   <span>Book Now</span>
                 </button>
@@ -2813,11 +2947,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100">
               <button
                 type="button"
-                onClick={handleDirectBooking}
-                disabled={isBooking}
-                className="block w-full rounded-md bg-[#1B3A6B] py-2.5 text-center text-xs font-bold text-white hover:bg-[#152e55] disabled:opacity-50"
+                onClick={() => {
+                  setShowBookingDrawer(false);
+                  setBookingStep("details");
+                  setShowBookingModal(true);
+                }}
+                className="block w-full rounded-md bg-[#1B3A6B] py-2.5 text-center text-xs font-bold text-white hover:bg-[#152e55] cursor-pointer"
               >
-                {isBooking ? "Booking..." : travelDate ? "Book Direct ⚡" : "Book Now"}
+                {travelDate ? "Book Direct ⚡" : "Book Now"}
               </button>
               <button
                 onClick={() => {
@@ -3191,6 +3328,385 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 />
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+           OTA DIRECT BOOKING ENGINE & RESERVATION CHECKOUT MODAL
+      ══════════════════════════════════════════════════════════════ */}
+      {showBookingModal && (
+        <div className="fixed inset-0 z-[130] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 transition-all duration-300 animate-in fade-in">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col">
+            
+            {/* Modal Header Bar with Step Indicators */}
+            <div className="bg-[#1B3A6B] text-white p-4 sm:p-5 flex items-start justify-between shrink-0">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded uppercase tracking-wider">
+                    {bookingStep === "details" && "Step 1 of 3: Reserve Package"}
+                    {bookingStep === "register" && "Step 2 of 3: Traveler Auth"}
+                    {bookingStep === "payment" && "Step 3 of 3: Secure Checkout"}
+                    {bookingStep === "confirmed" && "Booking Confirmed 🎉"}
+                  </span>
+                  <span className="text-xs text-slate-300 font-mono">
+                    Code: {packageData.packageCode || "SH-RDS-GEN"}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-white leading-snug">
+                  {bookingStep === "details" && `Reserve "${packageData.name}"`}
+                  {bookingStep === "register" && (regAuthMode === "register" ? "Traveler Registration & Profile" : "Sign In to Your Account")}
+                  {bookingStep === "payment" && "Confirm Payment & Lock Package"}
+                  {bookingStep === "confirmed" && "Booking Successfully Confirmed! 🚀"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBookingModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-sm transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Step Content Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto max-h-[75vh] space-y-4 text-xs">
+              
+              {/* STEP 1: Package Breakdown & Guest Segment Config */}
+              {bookingStep === "details" && (
+                <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1 text-slate-700">
+                    <p className="font-bold text-slate-900 text-xs">📅 Selected Travel Date: <span className="text-[#1B3A6B] font-mono font-black">{travelDate || "Not Selected (Select from Calendar)"}</span></p>
+                    <p className="text-[11px]">👥 Configured Guests: <strong className="text-slate-900">{guestCountLabel}</strong></p>
+                    {!travelDate && (
+                      <p className="text-[10px] text-amber-700 font-semibold bg-amber-50 border border-amber-200 p-1.5 rounded mt-1">
+                        ⚠️ Please close this modal and click your preferred travel date from the calendar to see exact live pricing.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Summary Pricing Line Items */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-1">Price Summary</h4>
+                    {categoryBreakdown.map((item, bIdx) => (
+                      <div key={bIdx} className="flex justify-between text-slate-650 text-xs">
+                        <span>{item.count}× {item.label}</span>
+                        <span className="font-bold text-slate-900">₹{item.total.toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 border-t border-slate-200 space-y-1">
+                      <div className="flex justify-between text-slate-500">
+                        <span>Subtotal</span>
+                        <span className="font-semibold text-slate-800">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+                      </div>
+                      {totalSavings > 0 && (
+                        <div className="flex justify-between text-emerald-700 font-semibold bg-emerald-50 px-2 py-1 rounded text-xs">
+                          <span>Total Discount Savings ({discountLabel})</span>
+                          <span>−₹{totalSavings.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-slate-500">
+                        <span>Taxes &amp; GST (5%)</span>
+                        <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-[#1B3A6B] font-black text-sm pt-2 border-t border-slate-300">
+                        <span>Total Payable Amount</span>
+                        <span>₹{grandTotal.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowBookingModal(false)}
+                      className="px-4 py-2 rounded-lg border border-slate-300 font-bold text-xs text-slate-600 hover:bg-slate-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleProceedFromDetails}
+                      className="px-6 py-2.5 rounded-lg bg-[#1B3A6B] hover:bg-[#265191] text-white font-bold text-xs uppercase tracking-wider shadow-md flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Proceed &amp; Reserve 🚀</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Traveler Registration / Sign In Form */}
+              {bookingStep === "register" && (
+                <form onSubmit={handleRegisterOrLogin} className="space-y-3.5">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 text-xs font-semibold">
+                    🔑 {regAuthMode === "register" ? "Please create your traveler account to secure your booking & receive instant vouchers." : "Welcome back! Please sign in to complete your reservation."}
+                  </div>
+
+                  {/* Toggle between Register and Login */}
+                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setRegAuthMode("register")}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${regAuthMode === "register" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500"}`}
+                    >
+                      Register New Account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRegAuthMode("login")}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition ${regAuthMode === "login" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500"}`}
+                    >
+                      Already Have Account? Sign In
+                    </button>
+                  </div>
+
+                  {regAuthMode === "register" && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Full Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        placeholder="e.g. Rahul Sharma"
+                        className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${regErrors.name ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"}`}
+                      />
+                      {regErrors.name && <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {regErrors.name}</p>}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Email Address <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="e.g. rahul@example.com"
+                        className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${regErrors.email ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"}`}
+                      />
+                      {regErrors.email && <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {regErrors.email}</p>}
+                    </div>
+
+                    {regAuthMode === "register" && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                          Phone Number <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          value={regPhone}
+                          onChange={(e) => setRegPhone(e.target.value)}
+                          placeholder="e.g. +91 9876543210"
+                          className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${regErrors.phone ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"}`}
+                        />
+                        {regErrors.phone && <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {regErrors.phone}</p>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Password <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      className={`w-full px-3 py-2 rounded-lg border outline-none text-xs ${regErrors.password ? "border-rose-500 bg-rose-50/50" : "border-slate-300 focus:border-[#1B3A6B]"}`}
+                    />
+                    {regErrors.password && <p className="text-[10px] text-rose-600 font-bold mt-0.5">⚠️ {regErrors.password}</p>}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBookingStep("details")}
+                      className="px-4 py-2 rounded-lg border border-slate-300 font-bold text-xs text-slate-600 hover:bg-slate-100"
+                    >
+                      &larr; Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingAuth}
+                      className="px-6 py-2.5 rounded-lg bg-[#1B3A6B] hover:bg-[#265191] text-white font-bold text-xs uppercase tracking-wider shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {isSubmittingAuth ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <span>{regAuthMode === "register" ? "Register & Continue to Payment 🔒" : "Sign In & Continue 🔒"}</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 3: Payment Checkout Options */}
+              {bookingStep === "payment" && (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs space-y-1 text-emerald-900">
+                    <p className="font-bold">✓ Logged in as: <span className="text-slate-900 font-black">{user?.name || regName}</span> ({user?.email || regEmail})</p>
+                    <p className="text-[11px]">Package: <strong>{packageData.name}</strong> • Travel Date: <strong>{travelDate}</strong></p>
+                  </div>
+
+                  {/* Payment Option Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Select Payment Plan</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setPayOption("advance")}
+                        className={`p-3 rounded-xl border-2 text-left transition ${payOption === "advance" ? "border-[#1B3A6B] bg-blue-50/60 shadow-xs" : "border-slate-200 bg-white"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs">Token Advance (25%)</span>
+                          <span className="text-[10px] bg-amber-400 text-slate-950 font-bold px-1.5 py-0.5 rounded">POPULAR</span>
+                        </div>
+                        <p className="text-sm font-black text-[#1B3A6B] mt-1">₹{Math.round(grandTotal * 0.25).toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Pay 25% now to lock price &amp; dates. Remaining on arrival.</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPayOption("full")}
+                        className={`p-3 rounded-xl border-2 text-left transition ${payOption === "full" ? "border-[#1B3A6B] bg-blue-50/60 shadow-xs" : "border-slate-200 bg-white"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs">Full Amount (100%)</span>
+                        </div>
+                        <p className="text-sm font-black text-slate-900 mt-1">₹{grandTotal.toLocaleString('en-IN')}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Complete full payment for instant 100% voucher release.</p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">Payment Gateway Option</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod("upi")}
+                        className={`p-2 rounded-lg border text-center font-bold text-xs transition ${payMethod === "upi" ? "border-[#1B3A6B] bg-[#1B3A6B] text-white" : "border-slate-200 text-slate-700 bg-white"}`}
+                      >
+                        📱 UPI / QR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod("card")}
+                        className={`p-2 rounded-lg border text-center font-bold text-xs transition ${payMethod === "card" ? "border-[#1B3A6B] bg-[#1B3A6B] text-white" : "border-slate-200 text-slate-700 bg-white"}`}
+                      >
+                        💳 Card
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod("netbanking")}
+                        className={`p-2 rounded-lg border text-center font-bold text-xs transition ${payMethod === "netbanking" ? "border-[#1B3A6B] bg-[#1B3A6B] text-white" : "border-slate-200 text-slate-700 bg-white"}`}
+                      >
+                        🏦 Banking
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBookingStep("details")}
+                      className="px-4 py-2 rounded-lg border border-slate-300 font-bold text-xs text-slate-600 hover:bg-slate-100"
+                    >
+                      &larr; Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProcessingPay}
+                      onClick={handleConfirmPayment}
+                      className="px-6 py-2.5 rounded-lg bg-[#1B3A6B] hover:bg-[#265191] text-white font-bold text-xs uppercase tracking-wider shadow-md disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {isProcessingPay ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Processing Gateway...</span>
+                        </>
+                      ) : (
+                        <span>Pay ₹{(payOption === "advance" ? Math.round(grandTotal * 0.25) : grandTotal).toLocaleString('en-IN')} &amp; Confirm Booking 🔒</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Booking Confirmation & 2-Hour Voucher Assurance Screen */}
+              {bookingStep === "confirmed" && (
+                <div className="p-4 sm:p-6 text-center space-y-4 bg-gradient-to-b from-white via-emerald-50/40 to-white rounded-xl">
+                  <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping"></div>
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/30 font-bold z-10 animate-bounce">
+                      ✓
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                      Booking Confirmed &amp; Guaranteed! 🚀
+                    </h3>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 mt-1.5 leading-relaxed">
+                      Namaste &amp; Thank You, <strong className="text-slate-900">{user?.name || regName || "Valued Traveler"}</strong>! 🙏 Your tour booking for <strong className="text-slate-900">"{packageData.name}"</strong> has been successfully placed &amp; locked.
+                    </p>
+                  </div>
+
+                  {/* PROMINENT VOUCHER GUARANTEE ASSURANCE BANNER */}
+                  <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-xl text-left shadow-lg space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📄</span>
+                      <h4 className="font-bold text-sm text-amber-200 uppercase tracking-wider">Official Voucher Guarantee</h4>
+                    </div>
+                    <p className="text-xs text-white leading-relaxed pt-0.5">
+                      Your official travel voucher, hotel confirmation slip, and day-by-day itinerary will be sent to your registered email (<strong className="underline text-amber-100">{user?.email || regEmail}</strong>) and WhatsApp (<strong className="underline text-amber-100">{user?.phone || user?.phoneNumber || regPhone}</strong>) within the <strong className="bg-white/20 px-1.5 py-0.5 rounded text-white font-bold font-mono">Next 2 Hours</strong> with proper confirmation!
+                    </p>
+                  </div>
+
+                  {/* Booking Details Card */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 space-y-1.5 text-left shadow-xs">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                      <span className="font-bold text-[#1B3A6B]">Booking Ref: SH-BK-{confirmedBookingData?.id || Date.now().toString().slice(-6)}</span>
+                      <span className="text-[10px] font-mono bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded font-bold">CONFIRMED</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                      <p><strong className="text-slate-500">Departure:</strong> {travelDate}</p>
+                      <p><strong className="text-slate-500">Travelers:</strong> {guestCountLabel}</p>
+                      <p><strong className="text-slate-500">Total Amount:</strong> ₹{grandTotal.toLocaleString('en-IN')}</p>
+                      <p><strong className="text-slate-500">Paid Now:</strong> ₹{(payOption === "advance" ? Math.round(grandTotal * 0.25) : grandTotal).toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <a
+                      href={`https://wa.me/919000000000?text=Hello%20Sampooran%20Holidays!%20I%20just%20booked%20${encodeURIComponent(packageData.name || "Package")}%20(Ref:%20SH-BK-${confirmedBookingData?.id || 'NEW'}).%20Please%20share%20my%20voucher.`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md"
+                    >
+                      <span>💬 Chat for Instant Voucher on WhatsApp</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setShowBookingModal(false)}
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs"
+                    >
+                      Close &amp; Back to Package
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
       )}

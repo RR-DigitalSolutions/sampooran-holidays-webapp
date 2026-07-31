@@ -8,81 +8,90 @@ import rateLimit from "express-rate-limit";
 
 const router: IRouter = Router();
 
-// 5 inquiries per 15 min per IP — prevents spam bots flooding CRM/email
+// 50 inquiries per 15 min per IP
 const inquiryLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 50,
   message: { error: "Too many inquiries submitted. Please wait before sending another." },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 router.post("/inquiries", inquiryLimiter, async (req, res): Promise<void> => {
-  // ── Smart Bot/Spam Protection ──
-  // 1. Honeypot check (hidden fields filled by bots)
-  if (req.body.website || req.body.address_confirm || req.body.honeypot) {
-    // Return mock successful response to trick the bot into stopping
-    res.status(201).json({
-      id: 9999,
-      name: "Verification",
-      status: "new",
-      message: "Genuine inquiry simulated",
-      createdAt: new Date().toISOString(),
-    });
-    return;
-  }
-
-  // 2. Quick-submit time check (humans take > 1.5s to submit, bots are instant)
-  const submitDuration = req.body.submitDuration ? parseInt(req.body.submitDuration) : null;
-  if (submitDuration !== null && submitDuration < 1500) {
-    res.status(201).json({
-      id: 9999,
-      name: "Verification",
-      status: "new",
-      message: "Speed limit exceeded",
-      createdAt: new Date().toISOString(),
-    });
-    return;
-  }
-
-  const parsed = SubmitInquiryBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const [inquiry] = await db
-    .insert(inquiriesTable)
-    .values({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      phone: parsed.data.phone || "",
-      inquiryType: parsed.data.inquiryType || "general",
-      packageId: parsed.data.packageId,
-      hotelId: parsed.data.hotelId,
-      transportId: parsed.data.transportId,
-      vendorId: parsed.data.vendorId,
-      destination: parsed.data.destination,
-      travelDate: parsed.data.travelDate,
-      numberOfPersons: (parsed.data.adults || 0) + (parsed.data.children || 0),
-      message: parsed.data.message || "",
-      budget: parsed.data.budget ? parseFloat(parsed.data.budget) : null,
-      status: "new",
-    })
-    .returning();
-
-  // Notification Logic
-  if (inquiry.vendorId) {
-    const [vendor] = await db.select().from(usersTable).where(eq(usersTable.id, inquiry.vendorId)).limit(1);
-    if (vendor && vendor.email) {
-      notifyVendorOfInquiry(vendor.email, inquiry.name, inquiry.message || "New general inquiry");
+  try {
+    // ── Smart Bot/Spam Protection ──
+    // 1. Honeypot check (hidden fields filled by bots)
+    if (req.body.website || req.body.address_confirm || req.body.honeypot) {
+      res.status(201).json({
+        id: 9999,
+        name: "Verification",
+        status: "new",
+        message: "Genuine inquiry simulated",
+        createdAt: new Date().toISOString(),
+      });
+      return;
     }
-  }
 
-  res.status(201).json({
-    ...inquiry,
-    createdAt: inquiry.createdAt?.toISOString() ?? new Date().toISOString(),
-  });
+    // 2. Quick-submit time check (humans take > 1.5s to submit, bots are instant)
+    const submitDuration = req.body.submitDuration ? parseInt(req.body.submitDuration) : null;
+    if (submitDuration !== null && submitDuration < 1000) {
+      res.status(201).json({
+        id: 9999,
+        name: "Verification",
+        status: "new",
+        message: "Speed limit exceeded",
+        createdAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    const parsed = SubmitInquiryBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+
+    const pkgId = parsed.data.packageId && Number(parsed.data.packageId) > 0 ? Number(parsed.data.packageId) : null;
+    const htlId = parsed.data.hotelId && Number(parsed.data.hotelId) > 0 ? Number(parsed.data.hotelId) : null;
+    const trnId = parsed.data.transportId && Number(parsed.data.transportId) > 0 ? Number(parsed.data.transportId) : null;
+    const vndId = parsed.data.vendorId && Number(parsed.data.vendorId) > 0 ? Number(parsed.data.vendorId) : null;
+
+    const [inquiry] = await db
+      .insert(inquiriesTable)
+      .values({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        phone: parsed.data.phone || "",
+        inquiryType: parsed.data.inquiryType || "customization",
+        packageId: pkgId,
+        hotelId: htlId,
+        transportId: trnId,
+        vendorId: vndId,
+        destination: parsed.data.destination || null,
+        travelDate: parsed.data.travelDate || null,
+        numberOfPersons: (parsed.data.adults || 0) + (parsed.data.children || 0),
+        message: parsed.data.message || "Package Customization Inquiry",
+        budget: parsed.data.budget ? parseFloat(parsed.data.budget) : null,
+        status: "new",
+      })
+      .returning();
+
+    // Notification Logic
+    if (inquiry && inquiry.vendorId) {
+      const [vendor] = await db.select().from(usersTable).where(eq(usersTable.id, inquiry.vendorId)).limit(1);
+      if (vendor && vendor.email) {
+        notifyVendorOfInquiry(vendor.email, inquiry.name, inquiry.message || "New general inquiry");
+      }
+    }
+
+    res.status(201).json({
+      ...inquiry,
+      createdAt: inquiry.createdAt?.toISOString() ?? new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("Error creating inquiry:", error);
+    res.status(500).json({ error: "Failed to submit inquiry: " + (error.message || "Database error") });
+  }
 });
 
 export default router;
