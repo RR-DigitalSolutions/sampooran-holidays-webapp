@@ -1971,40 +1971,40 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
           <aside className="space-y-2.5 xl:sticky xl:top-[76px]">
             {/* ── 1. Dynamic Rate Calendar Widget (TOP of Sidebar) ── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5 hidden xl:block">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm space-y-2.5 hidden xl:block">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Step 1: Select Departure Date</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-[#1B3A6B]">Step 1: Select Departure Date</p>
                   {travelDate ? (
-                    <p className="text-xs font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> Selected: {travelDate}
+                    <p className="text-[10px] font-bold text-emerald-700 mt-0.5 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Selected: {travelDate}
                     </p>
                   ) : (
-                    <p className="text-xs font-bold text-slate-800 mt-0.5">Click any date to see exact rates</p>
+                    <p className="text-[7px] text-slate-500 font-normal mt-0.5">Click any date to see exact rates</p>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
-                    className="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
+                    className="p-1 border border-slate-200 rounded hover:bg-slate-50 text-[10px] font-bold leading-none"
                   >
                     &larr;
                   </button>
-                  <span className="text-xs font-bold text-slate-700 min-w-[70px] text-center font-mono">
+                  <span className="text-[11px] font-bold text-slate-700 min-w-[64px] text-center font-mono">
                     {currentMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                   </span>
                   <button
                     type="button"
                     onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                    className="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
+                    className="p-1 border border-slate-200 rounded hover:bg-slate-50 text-[10px] font-bold leading-none"
                   >
                     &rarr;
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1.5 uppercase tracking-wider">
+              <div className="grid grid-cols-7 text-center text-[9px] font-bold text-slate-400 border-b border-slate-100 pb-1 uppercase tracking-wider">
                 <div>Su</div>
                 <div>Mo</div>
                 <div>Tu</div>
@@ -2072,7 +2072,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
                   let cellBgClass = "bg-white text-slate-800 border-slate-100 hover:bg-slate-50";
                   if (isSelected) {
-                    cellBgClass = "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20 scale-[1.03]";
+                    cellBgClass = "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-md shadow-[#1B3A6B]/20 scale-[1.02]";
                   } else if (isBlackout) {
                     cellBgClass = "bg-slate-100 text-slate-450 line-through border-slate-200 pointer-events-none";
                   } else if (isPriceOnReq) {
@@ -2093,74 +2093,72 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       onClick={() => {
                         setTravelDate(dateStr);
                       }}
-                      className={`h-11 rounded-lg flex flex-col justify-between items-center p-1 transition-all border ${cellBgClass}`}
+                      className={`h-9 rounded-md flex flex-col justify-between items-center p-0.5 transition-all border ${cellBgClass}`}
                     >
-                      <span className="text-[9px] leading-none font-bold">{dayDate.getDate()}</span>
+                      <span className="text-[8.5px] leading-none font-bold">{dayDate.getDate()}</span>
                       {isCurrentMonth && !isPast && !isBlackout && !isPriceOnReq && (
-                        <div className="flex flex-col items-center">
+                        <div className="flex flex-col items-center justify-center leading-none">
                           {discountPercentVal > 0 && !isSelected && (
-                            <span className="text-[6px] text-rose-600 font-bold bg-rose-50 px-1 rounded-sm border border-rose-100 leading-none mb-0.5 scale-90">
-                              -{discountPercentVal}%
-                            </span>
-                          )}
-                          <div className="flex flex-col items-center justify-center leading-none">
-                            {discountPercentVal > 0 && (
-                              <span className={`text-[5.5px] font-bold line-through ${isSelected ? "text-white/60" : "text-slate-400"} leading-none mb-0.5`}>
+                            <div className="flex items-center justify-center gap-0.5 leading-none scale-90 mb-0.5">
+                              <span className="text-[5.5px] font-bold line-through text-slate-400">
                                 ₹{Math.round(originalPriceBeforeDiscount)}
                               </span>
-                            )}
-                            <span className={`text-[8.5px] sm:text-[9.5px] font-bold tracking-tight leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-600"}`}>
-                              ₹{Math.round(finalPrice)}
-                            </span>
-                          </div>
+                              <span className="text-[6px] text-rose-600 font-extrabold bg-rose-50 px-0.5 rounded border border-rose-100 leading-none">
+                                -{discountPercentVal}%
+                              </span>
+                            </div>
+                          )}
+                          <span className={`text-[8.5px] font-extrabold tracking-tight leading-none ${isSelected ? "text-white" : discountPercentVal > 0 ? "text-emerald-700" : "text-slate-800"}`}>
+                            ₹{Math.round(finalPrice)}
+                          </span>
                         </div>
                       )}
-                      {isBlackout && <span className="text-[7px] font-bold text-slate-400">Sold</span>}
-                      {isPriceOnReq && <span className="text-[7px] font-bold text-amber-700">Request</span>}
+                      {isBlackout && <span className="text-[6.5px] font-bold text-slate-400">Sold</span>}
+                      {isPriceOnReq && <span className="text-[6.5px] font-bold text-amber-700">Req</span>}
                     </button>
                   );
                 })}
               </div>
 
               {/* Dynamic Rates Color Legend */}
-              <div className="flex flex-wrap items-center justify-between gap-y-1.5 pt-2 border-t border-slate-100 text-[8px] font-bold text-slate-500">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-50 border border-rose-150"></span> Peak</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-sky-50 border border-sky-150"></span> Off-Season</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-50/40 border border-emerald-150"></span> Regular</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-50 border border-amber-200"></span> Request</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-slate-100 border border-slate-200"></span> Sold</span>
+              <div className="flex flex-wrap items-center justify-between gap-y-1 pt-1.5 border-t border-slate-100 text-[8px] font-medium text-slate-500">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded bg-rose-50 border border-rose-150"></span> Peak</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded bg-sky-50 border border-sky-150"></span> Off-Season</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded bg-emerald-50/40 border border-emerald-150"></span> Regular</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded bg-amber-50 border border-amber-200"></span> Request</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded bg-slate-100 border border-slate-200"></span> Sold</span>
               </div>
             </div>
 
             {/* ── 2. Compact E-Commerce Price Breakout & CTA Box (BELOW Calendar) ── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg space-y-3 hidden xl:block">
+            <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-md space-y-2.5 hidden xl:block">
               {/* Header with Date, Guest Count & Change Toggle */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#1B3A6B]">Step 2: Pricing Breakout</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-xs font-extrabold text-slate-800">
-                      {travelDate ? `📅 ${travelDate}` : 'Standard Rates'} • {guestCountLabel}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowGuestsEdit(!showGuestsEdit)}
-                      className="text-[9.5px] font-bold text-[#1B3A6B] hover:underline bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded border border-slate-200"
-                    >
-                      {showGuestsEdit ? "Done" : "Edit Guests"}
-                    </button>
-                  </div>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-[#1B3A6B]">Step 2: Pricing Breakout</p>
+                  <p className="text-[11px] font-extrabold text-slate-800 mt-0.5 flex items-center gap-1">
+                    <span>{travelDate ? `📅 ${travelDate}` : 'Standard Rates'} • {guestCountLabel}</span>
+                  </p>
                 </div>
-                {totalSavings > 0 && (
-                  <span className="text-[9.5px] font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {discountLabel}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {totalSavings > 0 && (
+                    <span className="text-[8.5px] font-black text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                      {discountLabel}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowGuestsEdit(!showGuestsEdit)}
+                    className="text-[9px] font-bold text-[#1B3A6B] hover:underline bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded border border-slate-200"
+                  >
+                    {showGuestsEdit ? "Done" : "Edit Guests"}
+                  </button>
+                </div>
               </div>
 
               {/* Collapsible Occupancy Adjusters */}
               {showGuestsEdit && (
-                <div className="space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                <div className="space-y-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200/80">
                   {/* Primary Adults */}
                   <div className="flex items-center justify-between">
                     <div>
@@ -2168,12 +2166,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <p className="text-[9px] text-slate-400">Base room capacity (Age 12+)</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setAdults(prev => Math.max(1, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <button type="button" onClick={() => setAdults(prev => Math.max(1, prev - 1))} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{adults}</span>
                       <button type="button" onClick={() => {
                         if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
                         setAdults(prev => prev + 1);
-                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                      }} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
@@ -2184,12 +2182,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <p className="text-[9px] text-slate-400">Add-on guest in room</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setExtraAdults(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <button type="button" onClick={() => setExtraAdults(prev => Math.max(0, prev - 1))} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{extraAdults}</span>
                       <button type="button" onClick={() => {
                         if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
                         setExtraAdults(prev => prev + 1);
-                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                      }} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
@@ -2200,13 +2198,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <p className="text-[9px] text-slate-400">Age 5–12 yrs (extra bed)</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildWithBed(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <button type="button" onClick={() => setChildWithBed(prev => Math.max(0, prev - 1))} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{childWithBed}</span>
                       <button type="button" onClick={() => {
                         if (adults < 1) { toast.warning("At least 1 adult required"); return; }
                         if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
                         setChildWithBed(prev => prev + 1);
-                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                      }} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
@@ -2217,13 +2215,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <p className="text-[9px] text-slate-400">Age 2–5 yrs (sharing bed)</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setChildWithoutBed(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <button type="button" onClick={() => setChildWithoutBed(prev => Math.max(0, prev - 1))} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{childWithoutBed}</span>
                       <button type="button" onClick={() => {
                         if (adults < 1) { toast.warning("At least 1 adult required"); return; }
                         if (guestCount >= maxGuests) { toast.error(`Maximum allowed guests is ${maxGuests}`); return; }
                         setChildWithoutBed(prev => prev + 1);
-                      }} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                      }} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
 
@@ -2234,80 +2232,80 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                       <p className="text-[9px] text-slate-400">Under 2 yrs</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
+                      <button type="button" onClick={() => setInfantsCount(prev => Math.max(0, prev - 1))} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">−</button>
                       <span className="text-xs font-bold text-slate-900 w-4 text-center font-mono">{infantsCount}</span>
-                      <button type="button" onClick={() => setInfantsCount(prev => prev + 1)} className="w-6 h-6 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
+                      <button type="button" onClick={() => setInfantsCount(prev => prev + 1)} className="w-5.5 h-5.5 rounded-full border border-slate-300 bg-white flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95 text-xs">+</button>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Compact E-Commerce Style Line-Item Breakout */}
-              <div className="text-xs space-y-1.5 bg-slate-50/80 p-3 rounded-xl border border-slate-100 font-medium">
+              <div className="text-[9.5px] space-y-0.5 bg-slate-50/80 p-2 rounded-lg border border-slate-100 font-normal">
                 {categoryBreakdown.map((item, bIdx) => (
-                  <div key={bIdx} className="flex items-center justify-between text-slate-700">
-                    <span>{item.count}× {item.label} <span className="text-[9.5px] text-slate-400">(@ ₹{item.rate.toLocaleString('en-IN')})</span></span>
-                    <span className="font-bold text-slate-900">₹{item.total.toLocaleString('en-IN')}</span>
+                  <div key={bIdx} className="flex items-center justify-between text-slate-650">
+                    <span>{item.count}× {item.label} <span className="text-[8.5px] text-slate-400 font-normal">(@ ₹{item.rate.toLocaleString('en-IN')})</span></span>
+                    <span className="font-semibold text-slate-800">₹{item.total.toLocaleString('en-IN')}</span>
                   </div>
                 ))}
 
-                <div className="pt-1.5 border-t border-slate-200/80 space-y-1">
-                  <div className="flex justify-between text-slate-500">
+                <div className="pt-1 border-t border-slate-200/80 space-y-0.5">
+                  <div className="flex justify-between text-slate-500 font-normal">
                     <span>Subtotal</span>
-                    <span className="font-semibold text-slate-800">₹{totalPackageCost.toLocaleString('en-IN')}</span>
+                    <span className="font-medium text-slate-700">₹{totalPackageCost.toLocaleString('en-IN')}</span>
                   </div>
 
                   {totalSavings > 0 && (
-                    <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded -mx-1">
+                    <div className="flex justify-between text-emerald-700 font-semibold bg-emerald-50/80 px-1 py-0.5 rounded -mx-0.5 text-[9px]">
                       <span>Total Savings ({discountLabel})</span>
                       <span>−₹{totalSavings.toLocaleString('en-IN')}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-slate-500 pb-1 border-b border-dashed border-slate-200">
+                  <div className="flex justify-between text-slate-500 font-normal pb-0.5 border-b border-dashed border-slate-200">
                     <span>GST (5%)</span>
-                    <span className="font-semibold text-slate-800">₹{gstAmount.toLocaleString('en-IN')}</span>
+                    <span className="font-medium text-slate-700">₹{gstAmount.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Final Payable Price Highlight Box */}
-              <div className="bg-slate-950 text-white rounded-xl p-3 flex items-center justify-between border border-slate-900">
+              {/* Final Payable Price Highlight Box (Narrow Top-Bottom) */}
+              <div className="bg-slate-950 text-white rounded-lg px-2.5 py-1.5 flex items-center justify-between border border-slate-900">
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Final Payable Amount</p>
+                  <p className="text-[7.5px] font-medium uppercase tracking-wider text-slate-400">Final Payable Amount</p>
                   <div className="flex items-baseline gap-1.5 mt-0.5">
-                    <span className="text-lg font-black text-white">₹{grandTotal.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-bold text-white">₹{grandTotal.toLocaleString('en-IN')}</span>
                     {totalSavings > 0 && totalOriginalCost > 0 && (
-                      <span className="text-xs text-slate-400 line-through">
+                      <span className="text-[10px] text-slate-400 line-through font-normal">
                         ₹{(totalOriginalCost + Math.round(totalOriginalCost * 0.05)).toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>
                 </div>
                 {totalSavings > 0 && (
-                  <span className="text-[10px] font-black bg-emerald-400 text-slate-950 px-2 py-1 rounded font-mono uppercase">
+                  <span className="text-[8px] font-bold bg-emerald-400 text-slate-950 px-1.5 py-0.5 rounded font-mono uppercase">
                     Save ₹{totalSavings.toLocaleString('en-IN')}
                   </span>
                 )}
               </div>
 
-              {/* Action Buttons: Instant Booking CTA */}
-              <div className="space-y-2 pt-1">
+              {/* Action Buttons: 2 Buttons Side-by-Side in ONE Line (Narrow Top-Bottom) */}
+              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                 <button
                   type="button"
                   onClick={() => setShowBookingModal(true)}
-                  className="w-full bg-[#1B3A6B] hover:bg-[#275091] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  className="w-full bg-[#1B3A6B] hover:bg-[#275091] text-white py-1.5 rounded-md font-semibold text-[10px] uppercase tracking-wider shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-1 text-center"
                 >
-                  <span>Proceed to Book / Reserve 🚀</span>
+                  <span>Reserve 🚀</span>
                 </button>
                 
                 <a
                   href={`https://wa.me/919000000000?text=I'm interested in ${encodeURIComponent(packageData.name || 'this package')} (${packageData.packageCode || 'No Code'})`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                  className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-1.5 rounded-md font-semibold text-[10px] flex items-center justify-center gap-1 transition text-center"
                 >
-                  <span>💬 Chat on WhatsApp for Instaspecs</span>
+                  <span>💬 WhatsApp</span>
                 </a>
               </div>
             </div>
