@@ -26,6 +26,7 @@ import Attractions from "./pages/Attractions";
 import DiningPoints from "./pages/DiningPoints";
 import Activities from "./pages/Activities";
 import VendorChat from "./pages/VendorChat";
+import B2CConfirmedBookings from "./pages/B2CConfirmedBookings";
 
 // Protected route wrapper
 function ProtectedRoute({ component: Component }: { component: () => React.ReactElement }) {
@@ -77,6 +78,9 @@ function AppRoutes() {
       </Route>
       <Route path="/inquiries">
         <ProtectedRoute component={Inquiries} />
+      </Route>
+      <Route path="/b2c-bookings">
+        <ProtectedRoute component={B2CConfirmedBookings} />
       </Route>
       <Route path="/blogs">
         <ProtectedRoute component={Blogs} />

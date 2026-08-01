@@ -5,7 +5,7 @@ import { useChatContext } from "../context/ChatContext";
 import {
   LayoutDashboard, Package, MapPin, MessageSquare, Users, FileText,
   Settings, LogOut, Menu, X, Plane, ChevronRight, ChevronDown, ChevronLeft, Bell, Search,
-  Globe, TrendingUp, Truck, Headset, Wallet, Shield, UserCog, Layers, Building2, Compass, BellRing, Camera, Utensils, Zap, UserCheck
+  Globe, TrendingUp, Truck, Headset, Wallet, Shield, UserCog, Layers, Building2, Compass, BellRing, Camera, Utensils, Zap, UserCheck, Ticket
 } from "lucide-react";
 
 interface NavItem {
@@ -72,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Travelers", icon: Users, href: "/users", permission: "USERS" },
       { label: "Inquiries", icon: MessageSquare, href: "/inquiries", permission: "INQUIRIES", badge: "live" },
+      { label: "Confirmed Bookings", icon: Ticket, href: "/b2c-bookings", permission: "USERS", badge: "live" },
     ]
   },
   {
