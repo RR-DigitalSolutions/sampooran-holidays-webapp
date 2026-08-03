@@ -1152,16 +1152,10 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       }).filter(item => item.name);
     };
 
-    const normalizeDay = (d: Record<string, unknown>): any => {
-      // Attraction IDs come from admin → hydrated to full objects by backend
-      // d["attractions"] = array of full attraction objects OR string names
-      // d["activities"] = array of string names from admin
-      // d["diningStops"] = backend-hydrated dining stops (admin saves as diningStops)
-      // d["enrouteDiningStops"] = legacy field name (fallback)
-      const rawAttractions = d["attractions"];
-      const altAttractions = d["attraction"] ?? d["sights"] ?? d["sightseeingList"];
+    const normalizeDay = (d: Record<string, unknown>, idx: number, totalDays: number): any => {
+      const rawAttractions = d["attractions"] ?? d["attraction"] ?? d["attractionList"];
+      const altAttractions = d["placesToVisit"] ?? d["places"] ?? d["sights"];
       const altActivities = d["activities"] ?? d["activity"] ?? d["activityList"];
-      // Backend always hydrates to "diningStops"; "enrouteDiningStops" is legacy
       const altEnroute =
         d["enrouteDiningStops"] ??
         d["diningStops"] ??
@@ -1170,10 +1164,32 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       const altMeals = d["meals"] ?? d["meal"] ?? d["mealsProvided"] ?? d["mealsIncluded"];
       const altSight = d["sightSeeing"] ?? d["sight"] ?? d["todaySightseeing"];
 
-      // ── New Smart Itinerary fields ─────────────────────────────────────────
-      const dayType = typeof d["dayType"] === "string" ? d["dayType"] : undefined;
+      // ── Day Type Resolution & Auto-Detection ──────────────────────────────
+      const rawDayType = typeof d["dayType"] === "string" ? String(d["dayType"]).toUpperCase().trim() : undefined;
+      const titleText = normalizeTextItem(d["title"] ?? d["name"] ?? d["heading"]);
+      const titleLower = titleText.toLowerCase();
+
       const fromCity = normalizeTextItem(d["fromCity"]);
       const toCity = normalizeTextItem(d["toCity"]);
+      const hasFromTo = Boolean(fromCity && toCity);
+
+      let dayType = rawDayType;
+
+      // Smart auto-detect if dayType is missing or defaulted to generic SIGHTSEEING
+      if (!dayType || dayType === "SIGHTSEEING") {
+        if (titleLower.includes("departure") || titleLower.includes("depart") || titleLower.includes("drop at") || titleLower.includes("return home") || (idx === totalDays - 1 && totalDays > 1)) {
+          dayType = "DEPARTURE";
+        } else if (titleLower.includes("arrival") || titleLower.includes("arrive") || titleLower.includes("welcome to") || (idx === 0 && totalDays > 1)) {
+          dayType = "ARRIVAL";
+        } else if (hasFromTo || titleLower.includes("transit") || titleLower.includes("transfer") || titleLower.includes("drive to") || titleLower.includes("to manali") || titleLower.includes("to shimla")) {
+          dayType = "TRANSIT";
+        } else if (titleLower.includes("leisure") || titleLower.includes("free day")) {
+          dayType = "LEISURE";
+        } else {
+          dayType = "SIGHTSEEING";
+        }
+      }
+
       const isTransit = dayType === "TRANSIT";
       const dayCities = Array.isArray(d["cities"])
         ? (d["cities"] as string[]).map(c => normalizeTextItem(c)).filter(Boolean)
@@ -1191,7 +1207,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       }
 
       return {
-        title: normalizeTextItem(d["title"] ?? d["name"] ?? d["heading"]),
+        title: titleText,
         location: isTransit && transitRouteArr.length > 0
           ? transitRouteArr.join(" → ")
           : (dayCities.length > 0
@@ -1203,7 +1219,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         cities: dayCities,
         isTransit,
         transitRoute: transitRouteArr.join(" → "),
-        day: typeof d["day"] === "number" ? Number(d["day"]) : d["day"] ? Number(String(d["day"])) : undefined,
+        day: typeof d["day"] === "number" ? Number(d["day"]) : d["day"] ? Number(String(d["day"])) : idx + 1,
         description: normalizeTextItem(d["description"] ?? d["content"] ?? d["detail"]),
         accommodation: normalizeTextItem(d["accommodation"] ?? d["hotel"] ?? d["stay"] ?? d["nightStay"]),
         sightseeing: normalizeTextItem(d["sightseeing"] ?? altSight),
@@ -1212,15 +1228,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         enrouteDiningStops: parseDiningStops(altEnroute),
         transport: normalizeTextItem(d["transport"] ?? d["cab"] ?? d["vehicle"] ?? d["travelMode"]),
         cab: normalizeTextItem(d["cab"] ?? d["vehicle"]),
-        // Activities are stored separately from attractions — never merge them
         activities: parseActivities(altActivities),
       };
     };
 
-
-    return parsedItinerary.map((d) => {
+    const totalDaysCount = parsedItinerary.length;
+    return parsedItinerary.map((d, idx) => {
       if (!d || typeof d !== "object") return {} as any;
-      return normalizeDay(d as Record<string, unknown>);
+      return normalizeDay(d as Record<string, unknown>, idx, totalDaysCount);
     });
   }, [parsedItinerary, activitiesMap, diningMap]);
 
@@ -1753,13 +1768,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                         ? "bg-purple-50 text-purple-700 border-purple-200"
                                         : "bg-blue-50 text-[#1B3A6B] border-blue-200"
                               }`}>
-                                {day.dayType === "TRANSIT" ? "🚗 Travel Day"
-                                  : day.dayType === "ARRIVAL" ? "✈️ Arrival Day"
-                                    : day.dayType === "DEPARTURE" ? "🏠 Departure Day"
-                                      : day.dayType === "LEISURE" ? "🌸 Leisure Day"
-                                        : "🏔️ Sightseeing Day"}
+                                {day.dayType === "TRANSIT" ? "TRAVEL DAY"
+                                  : day.dayType === "ARRIVAL" ? "ARRIVAL DAY"
+                                    : day.dayType === "DEPARTURE" ? "DEPARTURE DAY"
+                                      : day.dayType === "LEISURE" ? "LEISURE DAY"
+                                        : "SIGHTSEEING DAY"}
                               </span>
-                              {/* TRANSIT: From → Via → To route display */}
+                              {/* TRANSIT: From → Via → To route display (Single location above title) */}
                               {day.isTransit && (day.transitRoute || (day.fromCity && day.toCity)) && (
                                 <span className="text-[8px] sm:text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 flex items-center gap-1 leading-none">
                                   <span>{day.transitRoute || `${day.fromCity} → ${day.toCity}`}</span>
@@ -1769,12 +1784,6 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                             <h3 className="mt-0.5 text-xs sm:text-base font-bold text-slate-800 truncate">
                               {day.title || `Day ${idx + 1}`}
                             </h3>
-                            {/* Show route as subtitle for transit days when title doesn't already include arrow */}
-                            {day.isTransit && (day.transitRoute || (day.fromCity && day.toCity)) && !String(day.title || "").includes("→") && (
-                              <p className="text-[9px] sm:text-[10px] text-amber-600 font-semibold mt-0.5">
-                                🚗 {day.transitRoute || `${day.fromCity} → ${day.toCity}`}
-                              </p>
-                            )}
                           </div>
                           <div className="mt-0.5 flex-shrink-0">
                             {isExpanded ? (
