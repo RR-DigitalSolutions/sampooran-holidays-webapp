@@ -23,6 +23,9 @@ import {
   Coffee,
   CheckCircle,
   MapPin,
+  Mountain,
+  Sparkles,
+  Home,
   Award,
   Headphones,
   Globe,
@@ -1172,20 +1175,34 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       const fromCity = normalizeTextItem(d["fromCity"]);
       const toCity = normalizeTextItem(d["toCity"]);
       const isTransit = dayType === "TRANSIT";
+      const dayCities = Array.isArray(d["cities"])
+        ? (d["cities"] as string[]).map(c => normalizeTextItem(c)).filter(Boolean)
+        : [];
+
+      // Construct complete route for transit day: From -> Enroute Cities -> To
+      let transitRouteArr: string[] = [];
+      if (isTransit) {
+        if (fromCity) transitRouteArr.push(fromCity);
+        dayCities.forEach(c => {
+          if (c !== fromCity && c !== toCity) transitRouteArr.push(c);
+        });
+        if (toCity) transitRouteArr.push(toCity);
+        transitRouteArr = Array.from(new Set(transitRouteArr));
+      }
 
       return {
         title: normalizeTextItem(d["title"] ?? d["name"] ?? d["heading"]),
-        // For TRANSIT days, display location as "FromCity → ToCity"; fallback to single location
-        location: isTransit && (fromCity || toCity)
-          ? [fromCity, toCity].filter(Boolean).join(" → ")
-          : (Array.isArray(d["cities"]) && (d["cities"] as string[]).filter(Boolean).length > 0
-            ? (d["cities"] as string[]).filter(Boolean).join(" → ")
+        location: isTransit && transitRouteArr.length > 0
+          ? transitRouteArr.join(" → ")
+          : (dayCities.length > 0
+            ? dayCities.join(" → ")
             : normalizeTextItem(d["location"] ?? d["city"] ?? d["place"] ?? d["destination"])),
-        // Preserve new route fields for UI rendering
         dayType,
         fromCity,
         toCity,
+        cities: dayCities,
         isTransit,
+        transitRoute: transitRouteArr.join(" → "),
         day: typeof d["day"] === "number" ? Number(d["day"]) : d["day"] ? Number(String(d["day"])) : undefined,
         description: normalizeTextItem(d["description"] ?? d["content"] ?? d["detail"]),
         accommodation: normalizeTextItem(d["accommodation"] ?? d["hotel"] ?? d["stay"] ?? d["nightStay"]),
@@ -1690,8 +1707,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                         {idx < normalizedItinerary.length - 1 && (
                           <div className="absolute left-2.5 sm:left-4 top-5 sm:top-6 bottom-0 w-0.5 bg-slate-200" />
                         )}
-                        {/* Timeline dot — changes based on day type */}
-                        <div className={`absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 flex items-center justify-center z-10 ${day.dayType === "TRANSIT"
+                        {/* Timeline dot — dynamic icon based on day type */}
+                        <div className={`absolute left-0 top-3 h-5 sm:h-8 w-5 sm:w-8 rounded-full border-2 flex items-center justify-center z-10 shadow-xs ${day.dayType === "TRANSIT"
                             ? "border-amber-300 bg-amber-50"
                             : day.dayType === "ARRIVAL"
                               ? "border-emerald-300 bg-emerald-50"
@@ -1699,16 +1716,19 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                 ? "border-rose-300 bg-rose-50"
                                 : day.dayType === "LEISURE"
                                   ? "border-purple-300 bg-purple-50"
-                                  : "border-slate-200 bg-white"
+                                  : "border-blue-300 bg-blue-50"
                           }`}>
-                          {day.dayType === "TRANSIT"
-                            ? <Car className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-amber-500" />
-                            : <MapPin className={`h-2.5 w-2.5 sm:h-4 sm:w-4 ${day.dayType === "ARRIVAL" ? "text-emerald-500"
-                                : day.dayType === "DEPARTURE" ? "text-rose-500"
-                                  : day.dayType === "LEISURE" ? "text-purple-500"
-                                    : "text-blue-600"
-                              }`} />
-                          }
+                          {day.dayType === "TRANSIT" ? (
+                            <Car className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-amber-600" />
+                          ) : day.dayType === "ARRIVAL" ? (
+                            <Plane className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-emerald-600" />
+                          ) : day.dayType === "DEPARTURE" ? (
+                            <Home className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-rose-600" />
+                          ) : day.dayType === "LEISURE" ? (
+                            <Sparkles className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-purple-600" />
+                          ) : (
+                            <Mountain className="h-2.5 w-2.5 sm:h-4 sm:w-4 text-[#1B3A6B]" />
+                          )}
                         </div>
 
                         {/* Day header with expand button */}
@@ -1721,28 +1741,28 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">
                                 Day {idx + 1}
                               </p>
-                              {/* Day type badge — only for typed days */}
-                              {day.dayType && day.dayType !== "SIGHTSEEING" && (
-                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ${day.dayType === "TRANSIT"
-                                    ? "bg-amber-100 text-amber-700"
-                                    : day.dayType === "ARRIVAL"
-                                      ? "bg-emerald-100 text-emerald-700"
-                                      : day.dayType === "DEPARTURE"
-                                        ? "bg-rose-100 text-rose-700"
-                                        : "bg-purple-100 text-purple-700"
-                                  }`}>
-                                  {day.dayType === "TRANSIT" ? "🚗 Travel Day"
-                                    : day.dayType === "ARRIVAL" ? "✈️ Arrival"
-                                      : day.dayType === "DEPARTURE" ? "🏠 Departure"
-                                        : "🌸 Leisure"}
-                                </span>
-                              )}
-                              {/* TRANSIT: From → To route display */}
-                              {day.isTransit && day.fromCity && day.toCity && (
+                              {/* Dynamic Day type badge — rendered for ALL day types */}
+                              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full leading-none border ${
+                                day.dayType === "TRANSIT"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : day.dayType === "ARRIVAL"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : day.dayType === "DEPARTURE"
+                                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                                      : day.dayType === "LEISURE"
+                                        ? "bg-purple-50 text-purple-700 border-purple-200"
+                                        : "bg-blue-50 text-[#1B3A6B] border-blue-200"
+                              }`}>
+                                {day.dayType === "TRANSIT" ? "🚗 Travel Day"
+                                  : day.dayType === "ARRIVAL" ? "✈️ Arrival Day"
+                                    : day.dayType === "DEPARTURE" ? "🏠 Departure Day"
+                                      : day.dayType === "LEISURE" ? "🌸 Leisure Day"
+                                        : "🏔️ Sightseeing Day"}
+                              </span>
+                              {/* TRANSIT: From → Via → To route display */}
+                              {day.isTransit && (day.transitRoute || (day.fromCity && day.toCity)) && (
                                 <span className="text-[8px] sm:text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 flex items-center gap-1 leading-none">
-                                  <span>{day.fromCity}</span>
-                                  <span className="text-amber-400">→</span>
-                                  <span>{day.toCity}</span>
+                                  <span>{day.transitRoute || `${day.fromCity} → ${day.toCity}`}</span>
                                 </span>
                               )}
                             </div>
@@ -1750,9 +1770,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               {day.title || `Day ${idx + 1}`}
                             </h3>
                             {/* Show route as subtitle for transit days when title doesn't already include arrow */}
-                            {day.isTransit && day.fromCity && day.toCity && !String(day.title || "").includes("→") && (
+                            {day.isTransit && (day.transitRoute || (day.fromCity && day.toCity)) && !String(day.title || "").includes("→") && (
                               <p className="text-[9px] sm:text-[10px] text-amber-600 font-semibold mt-0.5">
-                                {day.fromCity} → {day.toCity}
+                                🚗 {day.transitRoute || `${day.fromCity} → ${day.toCity}`}
                               </p>
                             )}
                           </div>
@@ -1958,58 +1978,84 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                               </div>
                             )}
 
-                            {/* Night Stay & Hotel Meals */}
-                            {(hotelInfo || mealItems.length > 0) && (
-                              <div className="rounded-lg border border-amber-100 bg-amber-50/20 p-2 sm:p-2.5 space-y-2">
+                            {/* Night Stay & Hotel Meals (or Departure Meals only) */}
+                            {day.dayType === "DEPARTURE" ? (
+                              <div className="rounded-lg border border-orange-200/70 bg-gradient-to-r from-orange-50/40 to-amber-50/30 p-2.5 sm:p-3 space-y-2">
                                 <div className="flex flex-col gap-0.5">
                                   <div className="flex items-center gap-1.5">
-                                    <Building2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Night Stay &amp; Meals</p>
+                                    <Utensils className="h-3.5 w-3.5 text-orange-600 shrink-0" />
+                                    <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                      Meals at Hotel (No Night Stay)
+                                    </p>
                                   </div>
-                                  <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Accommodation and meals included at the hotel stay.</p>
+                                  <p className="text-[9px] sm:text-[10px] text-slate-500 pl-5">
+                                    Complimentary breakfast/meals provided at hotel prior to checkout & departure journey.
+                                  </p>
                                 </div>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                  {hotelInfo && (
-                                    <button
-                                      onClick={() => handleHotelClick(hotelInfo.name, hotelInfo)}
-                                      className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-amber-300 hover:shadow-md active:scale-95 text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
-                                      disabled={loadingDetail}
+                                <div className="flex flex-wrap gap-1.5 items-center pl-5 pt-0.5">
+                                  {(mealItems.length > 0 ? mealItems : ["Breakfast"]).map((meal, mealIdx) => (
+                                    <span
+                                      key={mealIdx}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-orange-200 bg-white text-[10px] font-bold text-orange-700 shadow-xs"
                                     >
-                                      {hotelInfo.image ? (
-                                        <img
-                                          src={hotelInfo.image}
-                                          alt={hotelInfo.name}
-                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-amber-500 to-orange-650 flex items-center justify-center">
-                                          <Building2 className="w-4 h-4 text-white/30" />
-                                        </div>
-                                      )}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
-                                      <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
-                                        <p className="text-[5.5px] uppercase tracking-wider text-slate-350 font-bold leading-none truncate">
-                                          {hotelInfo.starRating ? `${hotelInfo.starRating} Star stay` : 'Hotel Stay'}
-                                        </p>
-                                        <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-amber-200 transition-colors">
-                                          {hotelInfo.name}
-                                        </p>
-                                      </div>
-                                    </button>
-                                  )}
-
-                                  {mealItems.length > 0 && (
-                                    <div className="flex-1 flex flex-wrap gap-1 items-center">
-                                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block w-full mb-0.5">Meals Included:</span>
-                                      {mealItems.map((meal, mealIdx) => (
-                                        <span key={mealIdx} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-emerald-100 bg-white text-[9px] font-semibold text-emerald-700 shadow-xs">
-                                          <span>🍽️</span> {meal}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
+                                      <span>🍽️</span> {meal}
+                                    </span>
+                                  ))}
                                 </div>
                               </div>
+                            ) : (
+                              (hotelInfo || mealItems.length > 0) && (
+                                <div className="rounded-lg border border-amber-100 bg-amber-50/20 p-2 sm:p-2.5 space-y-2">
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <Building2 className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                      <p className="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Night Stay &amp; Meals</p>
+                                    </div>
+                                    <p className="text-[9px] sm:text-[10px] text-slate-400 pl-5">Accommodation and meals included at the hotel stay.</p>
+                                  </div>
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                    {hotelInfo && (
+                                      <button
+                                        onClick={() => handleHotelClick(hotelInfo.name, hotelInfo)}
+                                        className="w-[90px] sm:w-[110px] h-[64px] sm:h-[75px] rounded-lg overflow-hidden relative border border-slate-100 hover:border-amber-300 hover:shadow-md active:scale-95 text-left flex-shrink-0 cursor-pointer group shadow-sm disabled:opacity-50"
+                                        disabled={loadingDetail}
+                                      >
+                                        {hotelInfo.image ? (
+                                          <img
+                                            src={hotelInfo.image}
+                                            alt={hotelInfo.name}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full bg-gradient-to-br from-amber-500 to-orange-650 flex items-center justify-center">
+                                            <Building2 className="w-4 h-4 text-white/30" />
+                                          </div>
+                                        )}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                                        <div className="absolute bottom-1 left-1 right-1 text-white min-w-0">
+                                          <p className="text-[5.5px] uppercase tracking-wider text-slate-350 font-bold leading-none truncate">
+                                            {hotelInfo.starRating ? `${hotelInfo.starRating} Star stay` : 'Hotel Stay'}
+                                          </p>
+                                          <p className="text-[8px] sm:text-[9.5px] font-bold text-white leading-tight mt-0.5 truncate group-hover:text-amber-200 transition-colors">
+                                            {hotelInfo.name}
+                                          </p>
+                                        </div>
+                                      </button>
+                                    )}
+
+                                    {mealItems.length > 0 && (
+                                      <div className="flex-1 flex flex-wrap gap-1 items-center">
+                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block w-full mb-0.5">Meals Included:</span>
+                                        {mealItems.map((meal, mealIdx) => (
+                                          <span key={mealIdx} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-emerald-100 bg-white text-[9px] font-semibold text-emerald-700 shadow-xs">
+                                            <span>🍽️</span> {meal}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )
                             )}
                           </div>
                         )}

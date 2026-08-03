@@ -431,18 +431,55 @@ export default function PackageForm() {
   }, [id, isEdit]);
 
   // ──────────────────────────────────────────────────────────────────────────
-  // DERIVE CITIES[] for backend from itinerary
+  // DERIVE CITIES[] for backend from itinerary in EXACT CHRONOLOGICAL ORDER
   // ──────────────────────────────────────────────────────────────────────────
   const derivedCitiesArray = useMemo(() => {
-    const cityNames = new Set<string>();
-    itinerary.forEach(day => {
-      // multi-city days
-      if (day.cities?.length) day.cities.forEach(c => { if (c.trim()) cityNames.add(c.trim()); });
-      else if (day.location?.trim()) cityNames.add(day.location.trim());
-      if (day.fromCity?.trim()) cityNames.add(day.fromCity.trim());
-      if (day.toCity?.trim()) cityNames.add(day.toCity.trim());
+    const rawSequence: string[] = [];
+
+    itinerary.forEach((d) => {
+      const dayType = d.dayType || "SIGHTSEEING";
+      const isTransit = dayType === "TRANSIT";
+
+      const from = (d.fromCity || "").trim();
+      const to = (d.toCity || "").trim();
+      const dayCities: string[] = Array.isArray(d.cities)
+        ? d.cities.map((c) => c.trim()).filter(Boolean)
+        : [];
+      const location = (d.location || "").trim();
+
+      if (isTransit) {
+        if (from) rawSequence.push(from);
+        dayCities.forEach((c) => {
+          if (c !== from && c !== to) rawSequence.push(c);
+        });
+        if (to) rawSequence.push(to);
+      } else {
+        if (dayCities.length > 0) {
+          dayCities.forEach((c) => rawSequence.push(c));
+        } else if (location) {
+          location.split(/→|->|•|,/).forEach((c) => {
+            if (c.trim()) rawSequence.push(c.trim());
+          });
+        } else {
+          if (from) rawSequence.push(from);
+          if (to) rawSequence.push(to);
+        }
+      }
     });
-    return Array.from(cityNames);
+
+    const cleaned = rawSequence.filter(Boolean);
+    const result: string[] = [];
+    const seenGlobal = new Set<string>();
+
+    cleaned.forEach((city) => {
+      const lastAdded = result[result.length - 1];
+      if (city !== lastAdded && !seenGlobal.has(city)) {
+        seenGlobal.add(city);
+        result.push(city);
+      }
+    });
+
+    return result;
   }, [itinerary]);
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -499,24 +536,29 @@ export default function PackageForm() {
 
   const getActiveDayIds = (d: ItineraryDay): number[] => {
     const dayType = getEffectiveDayType(d);
-    // 1. Prefer explicit cityIds[]
-    if (d.cityIds && d.cityIds.length > 0) return d.cityIds;
-    // 2. TRANSIT: fromCity + toCity
-    if (dayType === "TRANSIT") {
-      const ids: number[] = [];
-      if (d.fromCityId) ids.push(d.fromCityId);
-      if (d.toCityId) ids.push(d.toCityId);
-      if (ids.length > 0) return ids;
-      // fuzzy fallback
-      if (d.fromCity) { const m = resolveCityId(d.fromCity); if (m) ids.push(m); }
-      if (d.toCity)   { const m = resolveCityId(d.toCity);   if (m) ids.push(m); }
-      return ids.length > 0 ? ids : effectiveDestIds;
+    const idsSet = new Set<number>();
+
+    // 1. Explicit cityIds[] (for multi-city or enroute cities)
+    if (d.cityIds && d.cityIds.length > 0) {
+      d.cityIds.forEach(id => idsSet.add(id));
     }
+
+    // 2. TRANSIT: fromCity + via cities + toCity
+    if (dayType === "TRANSIT") {
+      if (d.fromCityId) idsSet.add(d.fromCityId);
+      if (d.toCityId) idsSet.add(d.toCityId);
+      if (d.fromCity) { const m = resolveCityId(d.fromCity); if (m) idsSet.add(m); }
+      if (d.toCity)   { const m = resolveCityId(d.toCity);   if (m) idsSet.add(m); }
+    }
+
     // 3. Legacy single location
     if (d.location) {
       const m = resolveCityId(d.location);
-      if (m) return [m];
+      if (m) idsSet.add(m);
     }
+
+    if (idsSet.size > 0) return Array.from(idsSet);
+
     // 4. Fallback: all package destinations
     return effectiveDestIds;
   };
@@ -854,8 +896,10 @@ export default function PackageForm() {
   /**
    * Multi-city chip picker for a single day
    */
-  const renderMultiCityPicker = (d: ItineraryDay, idx: number) => {
-    const currentCities: string[] = d.cities?.length ? d.cities : (d.location ? [d.location] : []);
+  const renderMultiCityPicker = (d: ItineraryDay, idx: number, labelOverride?: string, isTransitMode?: boolean) => {
+    const currentCities: string[] = isTransitMode
+      ? (d.cities || [])
+      : (d.cities?.length ? d.cities : (d.location ? [d.location] : []));
     const currentCityIds: number[] = d.cityIds || [];
 
     const addCity = (cityName: string, cityId?: number) => {
@@ -870,7 +914,7 @@ export default function PackageForm() {
       updateDay(idx, {
         cities: newCities,
         cityIds: newCityIds,
-        location: newCities[0] || "",   // keep legacy field synced with first city
+        location: isTransitMode ? d.location : (newCities[0] || ""),
         stateId: stId || d.stateId,
         countryId: ctId || d.countryId,
       });
@@ -882,24 +926,24 @@ export default function PackageForm() {
       updateDay(idx, {
         cities: newCities,
         cityIds: newCityIds,
-        location: newCities[0] || "",
+        location: isTransitMode ? d.location : (newCities[0] || ""),
       });
     };
 
     return (
       <div className="space-y-2">
         <label className="text-[10px] font-bold text-gray-500 block uppercase tracking-wider">
-          Cities / Places Covered This Day
+          {labelOverride || "Cities / Places Covered This Day"}
         </label>
 
         {/* Selected city chips with arrow separator */}
         {currentCities.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-gradient-to-r from-blue-50/60 to-indigo-50/40 rounded-xl border border-blue-200/50 min-h-[40px]">
+          <div className="flex flex-wrap items-center gap-1.5 p-2.5 bg-gradient-to-r from-amber-50/70 to-orange-50/50 rounded-xl border border-amber-200/60 min-h-[40px]">
             {currentCities.map((city, ci) => {
               const cityId = currentCityIds[ci];
               return (
                 <span key={ci} className="flex items-center gap-1">
-                  {ci > 0 && <ArrowRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />}
+                  {ci > 0 && <ArrowRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
                   <span className="inline-flex items-center gap-1 bg-[#1B3A6B] text-white text-[10.5px] font-bold px-2.5 py-1 rounded-full shadow-sm">
                     <MapPin className="w-2.5 h-2.5 opacity-70" />
                     {city}
@@ -921,7 +965,7 @@ export default function PackageForm() {
             <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               list={`city-picker-${idx}`}
-              placeholder="Search & add a city..."
+              placeholder={isTransitMode ? "Search & add enroute city/place (e.g. Kullu, Mandi)..." : "Search & add a city..."}
               className="w-full pl-8 pr-3 py-2 rounded-lg border outline-none text-sm bg-white focus:border-[#1B3A6B]"
               onKeyDown={e => {
                 if (e.key === "Enter") {
@@ -945,7 +989,7 @@ export default function PackageForm() {
             />
             <datalist id={`city-picker-${idx}`}>
               {allDests
-                .filter(dest => !currentCities.includes(dest.name))
+                .filter(dest => !currentCities.includes(dest.name) && dest.name !== d.fromCity && dest.name !== d.toCity)
                 .map(dest => <option key={dest.id} value={dest.name} />)}
             </datalist>
           </div>
@@ -958,7 +1002,7 @@ export default function PackageForm() {
               .filter(destId => !currentCityIds.includes(destId))
               .map(destId => {
                 const dest = allDests.find(d => d.id === destId);
-                if (!dest) return null;
+                if (!dest || dest.name === d.fromCity || dest.name === d.toCity) return null;
                 return (
                   <button
                     key={destId}
@@ -1031,16 +1075,16 @@ export default function PackageForm() {
               </div>
             )}
 
-            {/* Cities row — with arrow separators */}
-            {cities.length > 0 && (
+            {/* Cities row — with arrow separators in CHRONOLOGICAL ORDER */}
+            {derivedCitiesArray.length > 0 && (
               <div className="flex items-start gap-2">
                 <MapPin className="w-3.5 h-3.5 text-amber-300 mt-0.5 flex-shrink-0" />
                 <div className="flex flex-wrap items-center gap-1">
-                  <span className="text-amber-300 text-[9.5px] font-bold uppercase tracking-wider mr-1">Cities:</span>
-                  {cities.map((city, i) => (
+                  <span className="text-amber-300 text-[9.5px] font-bold uppercase tracking-wider mr-1">CITIES:</span>
+                  {derivedCitiesArray.map((cityName, i) => (
                     <span key={i} className="flex items-center gap-1">
                       {i > 0 && <ArrowRight className="w-3 h-3 text-white/40" />}
-                      <span className="text-[10.5px] font-bold text-white bg-amber-500/20 border border-amber-400/20 px-2 py-0.5 rounded-full">{city.name}</span>
+                      <span className="text-[10.5px] font-bold text-white bg-amber-500/20 border border-amber-400/20 px-2 py-0.5 rounded-full">{cityName}</span>
                     </span>
                   ))}
                 </div>
@@ -1601,9 +1645,9 @@ export default function PackageForm() {
                           <div className="bg-white/20 backdrop-blur rounded px-2 py-0.5 text-white font-black text-xs tracking-wider">DAY {day.day}</div>
                           <span className="text-white/95 text-xs font-bold">{cfg.emoji} {cfg.label}</span>
                           {/* City display with arrows */}
-                          {isTransit && day.fromCity && day.toCity ? (
+                          {isTransit && (day.fromCity || day.toCity || (day.cities && day.cities.length > 0)) ? (
                             <span className="text-white/90 text-[10px] font-semibold bg-white/20 rounded-full px-2.5 py-0.5 flex items-center gap-1">
-                              {day.fromCity} <ArrowRight className="w-3 h-3" /> {day.toCity}
+                              {[day.fromCity, ...(day.cities || []), day.toCity].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" ➔ ")}
                             </span>
                           ) : displayCities.length > 0 ? (
                             <span className="flex items-center gap-1">
@@ -1656,34 +1700,47 @@ export default function PackageForm() {
                           </div>
                         </div>
 
-                        {/* 3. TRANSIT: From → To + Dining along route */}
+                        {/* 3. TRANSIT: From → Via Enroute Cities → To */}
                         {isTransit && (
-                          <div className="bg-white rounded-xl border-2 border-amber-200 p-4 space-y-4">
-                            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">🚗 Journey Route</p>
-                            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+                          <div className="bg-white rounded-xl border-2 border-amber-200 p-4 space-y-4 shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                                🚗 Journey Route (Transit Day)
+                              </p>
+                              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                Specify Origin, Enroute Places Covered & Destination
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-end gap-3 bg-amber-50/40 p-3 rounded-xl border border-amber-100">
                               <div>
-                                <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase">From City</label>
+                                <label className="text-[10px] font-bold text-gray-600 block mb-1 uppercase tracking-wider">From City (Origin)</label>
                                 <input list={`fromcity-${idx}`} value={day.fromCity || ""} onChange={e => {
                                   const from = e.target.value;
                                   const cid = resolveCityId(from);
-                                  const newTitle = from && day.toCity ? `${from} → ${day.toCity} — Transfer` : day.title;
+                                  const enrouteStr = day.cities?.length ? ` via ${day.cities.join(", ")}` : "";
+                                  const newTitle = from && day.toCity ? `${from} → ${day.toCity}${enrouteStr} — Transfer` : day.title;
                                   updateDay(idx, { fromCity: from, fromCityId: cid, title: day.title || newTitle });
-                                }} placeholder="Departure city..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white font-semibold focus:border-amber-400" />
+                                }} placeholder="e.g. Shimla" className="w-full px-3 py-2 rounded-lg border border-amber-200 outline-none text-sm bg-white font-semibold focus:border-amber-500 shadow-xs" />
                                 <datalist id={`fromcity-${idx}`}>{allDests.map(d => <option key={d.id} value={d.name} />)}</datalist>
                               </div>
-                              <div className="flex flex-col items-center gap-1 pb-2">
-                                <div className="w-8 h-0.5 bg-amber-400" /><Car className="w-5 h-5 text-amber-500" /><div className="w-8 h-0.5 bg-amber-400" />
+                              <div className="hidden md:flex flex-col items-center gap-1 pb-2">
+                                <div className="w-10 h-0.5 bg-amber-400" /><Car className="w-5 h-5 text-amber-500" /><div className="w-10 h-0.5 bg-amber-400" />
                               </div>
                               <div>
-                                <label className="text-[10px] font-bold text-gray-500 block mb-1 uppercase">To City (Destination)</label>
+                                <label className="text-[10px] font-bold text-gray-600 block mb-1 uppercase tracking-wider">To City (Destination)</label>
                                 <input list={`tocity-${idx}`} value={day.toCity || ""} onChange={e => {
                                   const to = e.target.value;
                                   const cid = resolveCityId(to);
-                                  const newTitle = day.fromCity && to ? `${day.fromCity} → ${to} — Transfer` : day.title;
+                                  const enrouteStr = day.cities?.length ? ` via ${day.cities.join(", ")}` : "";
+                                  const newTitle = day.fromCity && to ? `${day.fromCity} → ${to}${enrouteStr} — Transfer` : day.title;
                                   updateDay(idx, { toCity: to, toCityId: cid, title: day.title || newTitle });
-                                }} placeholder="Arrival city..." className="w-full px-3 py-2 rounded-lg border outline-none text-sm bg-white font-semibold focus:border-amber-400" />
+                                }} placeholder="e.g. Manali" className="w-full px-3 py-2 rounded-lg border border-amber-200 outline-none text-sm bg-white font-semibold focus:border-amber-500 shadow-xs" />
                                 <datalist id={`tocity-${idx}`}>{allDests.map(d => <option key={d.id} value={d.name} />)}</datalist>
                               </div>
+                            </div>
+                            {/* Enroute / Via Places Covered Multi-city Picker */}
+                            <div className="pt-1">
+                              {renderMultiCityPicker(day, idx, "Enroute Cities / Via Places Covered Along the Route (Optional)", true)}
                             </div>
                           </div>
                         )}
@@ -1752,10 +1809,14 @@ export default function PackageForm() {
                         )}
 
                         {/* 12. Accommodation */}
-                        <div className={isDeparture ? "opacity-70" : ""}>
-                          {isDeparture && <p className="text-[10px] text-rose-500 font-semibold mb-1">Optional: only fill if guests have a late checkout or overnight stay</p>}
-                          {renderAccommodation(day, idx, activeIds)}
-                        </div>
+                        {!isDeparture ? (
+                          renderAccommodation(day, idx, activeIds)
+                        ) : (
+                          <div className="bg-rose-50/60 border border-rose-200/70 rounded-xl p-3 text-center">
+                            <p className="text-[11px] font-bold text-rose-700">🏠 Departure Day (Checkout & Return Journey)</p>
+                            <p className="text-[10px] text-rose-600 mt-0.5">No night stay accommodation on departure day. Breakfast/meals at hotel are configured in the Meals section above.</p>
+                          </div>
+                        )}
 
                       </div>
                     </div>
