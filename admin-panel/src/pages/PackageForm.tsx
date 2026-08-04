@@ -8,7 +8,7 @@ import {
   Tag, AlertCircle, Image as ImageIcon, DollarSign, Users, FileText,
   Plane, Hotel, Utensils, Camera, Car, Zap, ShieldCheck, Coffee,
   Loader2, Upload, Search, Sliders, Globe, Layers, ChevronRight,
-  ArrowRight, Navigation, Building2
+  ChevronDown, ChevronUp, ArrowRight, Navigation, Building2
 } from "lucide-react";
 import {
   ItineraryDay, HotelInfo, FaqEntry, uploadMedia,
@@ -124,6 +124,24 @@ export default function PackageForm() {
   const [faqs, setFaqs] = useState<FaqEntry[]>([]);
   const [hotels, setHotels] = useState<HotelInfo[]>([]);
   const [itinerary, setItinerary] = useState<ItineraryDay[]>([]);
+  const [collapsedDays, setCollapsedDays] = useState<Record<number, boolean>>({});
+
+  const toggleDayCollapse = (idx: number) => {
+    setCollapsedDays(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
+  };
+
+  const collapseAllDays = () => {
+    const map: Record<number, boolean> = {};
+    itinerary.forEach((_, i) => (map[i] = true));
+    setCollapsedDays(map);
+  };
+
+  const expandAllDays = () => {
+    setCollapsedDays({});
+  };
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
@@ -1612,15 +1630,27 @@ export default function PackageForm() {
 
             {/* Itinerary Day Builder */}
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
-              <div className="flex justify-between items-center border-b border-gray-100 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 gap-3">
                 <div>
                   <h3 className="font-bold text-gray-900 uppercase tracking-widest text-sm">Smart Itinerary Builder</h3>
                   <p className="text-[11px] text-gray-400 mt-0.5">Select day type → add multiple cities → CRM auto-suggests hotels, transport & dining for each city.</p>
                 </div>
-                <button type="button" onClick={addDay}
-                  className="bg-[#1B3A6B] text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 hover:bg-[#2a519b] transition shadow-sm">
-                  <Plus className="w-4 h-4" /> Add Day
-                </button>
+                <div className="flex items-center gap-2">
+                  {itinerary.length > 0 && (
+                    <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs font-bold">
+                      <button type="button" onClick={expandAllDays} className="px-2.5 py-1 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-white transition cursor-pointer">
+                        Expand All
+                      </button>
+                      <button type="button" onClick={collapseAllDays} className="px-2.5 py-1 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-white transition cursor-pointer">
+                        Collapse All
+                      </button>
+                    </div>
+                  )}
+                  <button type="button" onClick={addDay}
+                    className="bg-[#1B3A6B] text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-1.5 hover:bg-[#2a519b] transition shadow-sm cursor-pointer">
+                    <Plus className="w-4 h-4" /> Add Day
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-5">
@@ -1634,16 +1664,29 @@ export default function PackageForm() {
                   const isSightseeing = dayType === "SIGHTSEEING";
                   const isLeisure    = dayType === "LEISURE";
 
+                  const isCollapsed = Boolean(collapsedDays[idx]);
+
                   // Display city names for card header
                   const displayCities = day.cities?.length ? day.cities : (day.location ? [day.location] : []);
 
                   return (
-                    <div key={idx} className={`rounded-2xl border-2 ${cfg.borderColor} overflow-hidden shadow-sm`}>
+                    <div key={idx} className={`rounded-2xl border-2 ${cfg.borderColor} overflow-hidden shadow-sm transition-all`}>
                       {/* Card Header */}
-                      <div className={`${cfg.headerBg} px-4 py-2.5 flex items-center justify-between`}>
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <div className="bg-white/20 backdrop-blur rounded px-2 py-0.5 text-white font-black text-xs tracking-wider">DAY {day.day}</div>
-                          <span className="text-white/95 text-xs font-bold">{cfg.emoji} {cfg.label}</span>
+                      <div
+                        className={`${cfg.headerBg} px-4 py-2.5 flex items-center justify-between cursor-pointer select-none`}
+                        onClick={() => toggleDayCollapse(idx)}
+                      >
+                        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+                          <div className="bg-white/20 backdrop-blur rounded px-2 py-0.5 text-white font-black text-xs tracking-wider shrink-0">DAY {day.day}</div>
+                          <span className="text-white/95 text-xs font-bold shrink-0">{cfg.emoji} {cfg.label}</span>
+
+                          {/* Day Title summary pill */}
+                          {day.title && (
+                            <span className="text-white text-xs font-bold bg-white/25 backdrop-blur rounded-lg px-2.5 py-0.5 truncate max-w-[200px] sm:max-w-[320px]">
+                              {day.title}
+                            </span>
+                          )}
+
                           {/* City display with arrows */}
                           {isTransit && (day.fromCity || day.toCity || (day.cities && day.cities.length > 0)) ? (
                             <span className="text-white/90 text-[10px] font-semibold bg-white/20 rounded-full px-2.5 py-0.5 flex items-center gap-1">
@@ -1662,11 +1705,41 @@ export default function PackageForm() {
                             </span>
                           ) : null}
                         </div>
-                        <button type="button" onClick={() => removeDay(idx)} className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1 transition"><Trash2 className="w-4 h-4" /></button>
+
+                        {/* Right Action Buttons: Delete Icon & Expand/Collapse Icon Button */}
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => removeDay(idx)}
+                            title="Delete Day"
+                            className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleDayCollapse(idx)}
+                            title={isCollapsed ? "Expand Day Itinerary" : "Collapse Day Itinerary"}
+                            className="text-white hover:bg-white/20 rounded-lg p-1 px-2 transition flex items-center gap-1 bg-white/15 text-xs font-bold cursor-pointer"
+                          >
+                            {isCollapsed ? (
+                              <>
+                                <span className="hidden sm:inline">Expand</span>
+                                <ChevronDown className="w-4 h-4" />
+                              </>
+                            ) : (
+                              <>
+                                <span className="hidden sm:inline">Collapse</span>
+                                <ChevronUp className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Card Body */}
-                      <div className={`${cfg.bgColor} p-4 space-y-3.5`}>
+                      {/* Card Body — rendered only when expanded */}
+                      {!isCollapsed && (
+                        <div className={`${cfg.bgColor} p-4 space-y-3.5`}>
 
                         {/* 1. Day Type Selector */}
                         <div>
@@ -1819,6 +1892,7 @@ export default function PackageForm() {
                         )}
 
                       </div>
+                      )}
                     </div>
                   );
                 })}
