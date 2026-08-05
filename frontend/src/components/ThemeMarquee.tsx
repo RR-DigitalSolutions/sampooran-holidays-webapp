@@ -137,10 +137,12 @@ export function ThemeMarquee({ themes, title, subtitle, loading }: { themes: The
                         onMouseEnter={() => router.prefetch(linkHref)}
                         className="flex flex-col items-center gap-1.5 md:gap-2 group"
                       >
-                        <div className="relative p-[1.5px] md:p-[2px] rounded-full flex items-center justify-center">
-                          <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-0 group-hover:opacity-60 blur-lg transition-all duration-500 scale-125 -z-10" />
-                          <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#0D1B3E,#FFD700,#E1306C,#0D1B3E)] animate-[spin_4s_linear_infinite] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
-                          <div className="relative w-16 h-16 md:w-28 md:h-28 rounded-full bg-white p-[2px] md:p-[3px] z-10 shadow-sm group-hover:shadow-xl transition-all duration-300">
+                        <div className="relative p-[2px] md:p-[2.5px] rounded-full flex items-center justify-center group-hover:scale-[1.04] transition-transform duration-400">
+                          {/* Clean golden ring on hover */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent via-yellow-300 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          {/* Default subtle ring */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-200 opacity-100 group-hover:opacity-0 transition-opacity duration-300" />
+                          <div className="relative w-16 h-16 md:w-28 md:h-28 rounded-full bg-white p-[2px] md:p-[3px] z-10 shadow-sm group-hover:shadow-[0_8px_24px_rgba(245,166,35,0.35)] transition-all duration-300">
                             <div className="w-full h-full rounded-full overflow-hidden relative bg-slate-100 flex items-center justify-center">
                               {finalImageUrl ? (
                                 <Image

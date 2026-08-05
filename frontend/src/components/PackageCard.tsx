@@ -322,7 +322,7 @@ function PackageCardComponent({
         <div className="absolute bottom-0 left-0 right-0 h-[42%] w-full p-2 sm:p-3 flex flex-col justify-between z-10 bg-primary">
           {/* Covered Places: Touch-responsive horizontal scroll list */}
           <div className="w-full">
-            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none touch-pan-x w-full py-0.5">
+            <div className="flex items-center gap-1 overflow-x-auto package-places-scroll touch-pan-x w-full py-0.5">
               {citiesList.length > 0 ? (
                 citiesList.map((city, i) => (
                   <span key={i} className="flex items-center gap-0.5 shrink-0">
@@ -368,7 +368,7 @@ function PackageCardComponent({
                   <div 
                     key={i} 
                     className={cn(
-                      "items-center gap-1 text-[6.5px] xs:text-[7px] sm:text-[7.5px] text-white/80 font-normal leading-none",
+                      "items-center gap-1 text-[7px] xs:text-[7.5px] sm:text-[8px] md:text-[8.5px] text-white/80 font-normal leading-none",
                       i >= 4 ? "hidden md:flex" : "flex"
                     )}
                   >

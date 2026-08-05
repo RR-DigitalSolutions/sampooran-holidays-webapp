@@ -354,7 +354,7 @@ export default function HomeClient({ initialData }: { initialData?: any }) {
                       ))}
                     </div>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/30 to-black/85 z-[1] pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/15 to-black/60 z-[1] pointer-events-none" />
                   
                   {/* Hero Text Content with catchy animated transitions */}
                   <div className="relative z-10 container mx-auto px-4 text-center text-white pt-14 md:pt-24 mt-2 md:mt-0">

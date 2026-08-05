@@ -221,6 +221,28 @@
   background: #94a3b8;
 }
 
+/* Thin accent-themed horizontal scrollbar for package card covered places */
+.package-places-scroll {
+  -ms-overflow-style: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 166, 35, 0.5) rgba(255,255,255,0.06);
+}
+.package-places-scroll::-webkit-scrollbar {
+  height: 2px;
+  display: block;
+}
+.package-places-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+.package-places-scroll::-webkit-scrollbar-thumb {
+  background: rgba(245, 166, 35, 0.45);
+  border-radius: 999px;
+}
+.package-places-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 166, 35, 0.75);
+}
+
 /* Custom thin scrollbar for destination list */
 .custom-scrollbar {}
 
