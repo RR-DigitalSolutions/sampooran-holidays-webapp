@@ -222,25 +222,34 @@
 }
 
 /* Thin accent-themed horizontal scrollbar for package card covered places */
+/* Hidden by default, reveals on hover — ultra slim 2px golden bar */
 .package-places-scroll {
   -ms-overflow-style: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(245, 166, 35, 0.5) rgba(255,255,255,0.06);
+  scrollbar-width: none; /* hide on Firefox by default */
 }
 .package-places-scroll::-webkit-scrollbar {
   height: 2px;
   display: block;
 }
 .package-places-scroll::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
   border-radius: 999px;
 }
 .package-places-scroll::-webkit-scrollbar-thumb {
-  background: rgba(245, 166, 35, 0.45);
+  background: transparent;
   border-radius: 999px;
+  transition: background 0.2s ease;
 }
-.package-places-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 166, 35, 0.75);
+/* Reveal on hover of the scrollable div itself */
+.package-places-scroll:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 166, 35, 0.55) transparent;
+}
+.package-places-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(245, 166, 35, 0.55);
+}
+.package-places-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 166, 35, 0.85);
 }
 
 /* Custom thin scrollbar for destination list */

@@ -318,11 +318,11 @@ function PackageCardComponent({
           </div>
         </div>
 
-        {/* Bottom Solid Block (42%) */}
-        <div className="absolute bottom-0 left-0 right-0 h-[42%] w-full p-2 sm:p-3 flex flex-col justify-between z-10 bg-primary">
-          {/* Covered Places: Touch-responsive horizontal scroll list */}
-          <div className="w-full">
-            <div className="flex items-center gap-1 overflow-x-auto package-places-scroll touch-pan-x w-full py-0.5">
+        {/* Bottom Solid Block (42%) — flex-col with pinned price footer */}
+        <div className="absolute bottom-0 left-0 right-0 h-[42%] w-full px-2 pt-1.5 pb-2 sm:px-3 sm:pt-2 sm:pb-2.5 flex flex-col z-10 bg-primary overflow-hidden">
+          {/* Covered Places: Touch-responsive horizontal scroll list — scrollbar on hover only */}
+          <div className="w-full shrink-0">
+            <div className="flex items-center gap-1 overflow-x-auto package-places-scroll touch-pan-x w-full pb-0.5">
               {citiesList.length > 0 ? (
                 citiesList.map((city, i) => (
                   <span key={i} className="flex items-center gap-0.5 shrink-0">
@@ -349,10 +349,10 @@ function PackageCardComponent({
           </div>
 
           {/* Inclusions Icons row */}
-          <div className="flex items-center gap-1 sm:gap-1.5 my-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 mt-1 mb-0.5 shrink-0">
             {inclusionList.slice(0, 5).map((inc, i) => (
               <div key={i} className="flex items-center gap-0.5 sm:gap-1" title={inc.label}>
-                <div className="flex items-center justify-center w-4 h-4 sm:w-5.5 sm:h-5.5 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
+                <div className="flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
                   <inc.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 </div>
                 <span className="hidden xs:inline text-white/90 text-[6.5px] font-normal capitalize">{inc.label}</span>
@@ -360,16 +360,16 @@ function PackageCardComponent({
             ))}
           </div>
 
-          {/* Tour Highlights */}
+          {/* Tour Highlights — overflow-hidden flex-1 so it never pushes price out */}
           {displayHighlights.length > 0 && (
-            <div className="space-y-0.5 mb-1.5">
-              <div className="flex flex-col gap-0.5">
+            <div className="flex-1 min-h-0 overflow-hidden mb-1">
+              <div className="flex flex-col gap-[3px]">
                 {displayHighlights.slice(0, 6).map((h, i) => (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     className={cn(
                       "items-center gap-1 text-[7px] xs:text-[7.5px] sm:text-[8px] md:text-[8.5px] text-white/80 font-normal leading-none",
-                      i >= 4 ? "hidden md:flex" : "flex"
+                      i >= 3 ? "hidden sm:flex" : "flex"
                     )}
                   >
                     <div className="w-1 h-1 rounded-full bg-accent shrink-0" />
@@ -380,13 +380,14 @@ function PackageCardComponent({
             </div>
           )}
 
-          <div className="flex items-end justify-between mt-auto">
-            <div className="flex items-baseline gap-1 xs:gap-1.5 sm:gap-2 flex-wrap">
+          {/* Price + CTA — always pinned at bottom, never clipped */}
+          <div className="flex items-center justify-between shrink-0 mt-auto pt-1 border-t border-white/10">
+            <div className="flex items-baseline gap-1 xs:gap-1.5 sm:gap-2">
               <span className="text-white text-xs xs:text-sm sm:text-[16px] font-bold leading-none tracking-tight">
                 ₹{pkg.pricePerPerson.toLocaleString("en-IN")}/-
               </span>
               {pkg.originalPrice && pkg.originalPrice > pkg.pricePerPerson && (
-                <span className="text-red-500 text-[8px] xs:text-[9.5px] sm:text-[11px] line-through font-bold leading-none">
+                <span className="text-red-400 text-[8px] xs:text-[9.5px] sm:text-[11px] line-through font-bold leading-none">
                   ₹{pkg.originalPrice.toLocaleString("en-IN")}/-
                 </span>
               )}
@@ -396,6 +397,7 @@ function PackageCardComponent({
             </button>
           </div>
         </div>
+
       </Link>
     );
   }
