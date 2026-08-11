@@ -11,58 +11,45 @@ interface HeroImageSliderProps {
 }
 
 /**
- * HeroImageSlider — Cinematic cross-fade with subtle pan motion
- * ─────────────────────────────────────────────────────────────
- * • Each slide cross-fades smoothly (1.2 s ease-in-out) every 5 s
- * • Active slide gets a gentle horizontal pan (translateX 0% → -2%)
- *   so the imagery feels alive without the aggressive zoom effect
- * • Outgoing slide freezes at its current pan position — no snap-back
- * • Per-slide animKey forces the CSS animation to restart from 0%
- *   each time a slide becomes active (React key trick)
- * • Pauses on hover; resumes on mouse leave
- * • Navigation arrows, dot progress bar, image counter badge
+ * HeroImageSlider — Pure horizontal slide, zero zoom/scale
+ * ─────────────────────────────────────────────────────────
+ * • All slides sit in a horizontal strip; the strip translates left/right
+ *   via CSS transform — no per-image animation, no zoom, no blur.
+ * • Transition: 700 ms ease-in-out cubic-bezier for a silky slide feel.
+ * • Single image: renders perfectly without arrows, dots, or counter.
+ * • Multiple images: auto-advances every 4 s, pauses on hover.
+ *   Navigation arrows, animated progress dots, image counter badge.
+ * • Touch/swipe support: drag > 40 px triggers next/prev slide.
  */
 export function HeroImageSlider({ images, alt }: HeroImageSliderProps) {
   const validImages = images.filter(Boolean).map((img) => validateImageUrl(img));
   const total = validImages.length;
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [prevIndex, setPrevIndex] = useState<number | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  // Per-slide animation keys — bump when a slide becomes active
-  // so the pan animation restarts cleanly each time
-  const animKeysRef = useRef<number[]>(validImages.map(() => 0));
-  const [, forceRender] = useState(0);
+  const SLIDE_INTERVAL  = 4000; // ms between auto-advances
+  const TRANSITION_MS   = 700;  // ms slide transition
 
-  const SLIDE_INTERVAL  = 5000;  // ms between auto-advances
-  const FADE_DURATION   = 1200;  // ms opacity cross-fade
-  const PAN_DURATION    = 5800;  // ms pan animation (slightly longer than interval)
+  // Touch / swipe tracking
+  const touchStartX = useRef<number | null>(null);
 
   const goTo = useCallback(
     (index: number) => {
-      if (isTransitioning || total <= 1) return;
+      if (isAnimating || total <= 1) return;
       const next = (index + total) % total;
-      setPrevIndex(currentIndex);
-      setCurrentIndex(next);
-      setIsTransitioning(true);
-
-      // Bump animKey so incoming slide's CSS animation restarts
-      animKeysRef.current[next] += 1;
-      forceRender((n) => n + 1);
-
-      setTimeout(() => {
-        setPrevIndex(null);
-        setIsTransitioning(false);
-      }, FADE_DURATION + 150);
+      setIsAnimating(true);
+      setCurrent(next);
+      setTimeout(() => setIsAnimating(false), TRANSITION_MS);
     },
-    [currentIndex, isTransitioning, total]
+    [isAnimating, total]
   );
 
-  const next = useCallback(() => goTo(currentIndex + 1), [currentIndex, goTo]);
-  const prev = useCallback(() => goTo(currentIndex - 1), [currentIndex, goTo]);
+  const next = useCallback(() => goTo(current + 1), [current, goTo]);
+  const prev = useCallback(() => goTo(current - 1), [current, goTo]);
 
+  // Auto-advance
   useEffect(() => {
     if (isPaused || total <= 1) return;
     const timer = setInterval(next, SLIDE_INTERVAL);
@@ -71,127 +58,131 @@ export function HeroImageSlider({ images, alt }: HeroImageSliderProps) {
 
   if (total === 0) return null;
 
+  // ── Single image — clean static display, no chrome ──
+  if (total === 1) {
+    return (
+      <div className="relative h-full w-full overflow-hidden">
+        <Image
+          src={validateImageUrl(validImages[0], 1920, 1080, "16:9")}
+          alt={alt}
+          fill
+          sizes="100vw"
+          className="object-cover"
+          priority
+        />
+      </div>
+    );
+  }
+
+  // ── Multi-image horizontal slide strip ──
   return (
     <div
       className="relative h-full w-full overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchStartX.current;
+        if (dx < -40) next();
+        else if (dx > 40) prev();
+        touchStartX.current = null;
+      }}
     >
-      {/* ── Slides ── */}
-      {validImages.map((image, idx) => {
-        const isActive = idx === currentIndex;
-        const isPrev   = idx === prevIndex;
-        const isVisible = isActive || isPrev;
-
-        return (
+      {/*
+        Horizontal strip — all images laid side-by-side.
+        Translating the strip left by (current * 100%) reveals the active slide.
+        This is a pure CSS transform — no zoom, no scale, crisp at every size.
+      */}
+      <div
+        className="flex h-full"
+        style={{
+          width: `${total * 100}%`,
+          transform: `translateX(-${(current * 100) / total}%)`,
+          transition: `transform ${TRANSITION_MS}ms cubic-bezier(0.45, 0.02, 0.09, 1)`,
+          willChange: "transform",
+        }}
+      >
+        {validImages.map((image, idx) => (
           <div
             key={idx}
-            className="absolute inset-0"
+            className="relative h-full flex-shrink-0"
+            style={{ width: `${100 / total}%` }}
+          >
+            <Image
+              src={validateImageUrl(image, 1920, 1080, "16:9")}
+              alt={`${alt} — photo ${idx + 1}`}
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority={idx === 0}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Left arrow ── */}
+      <button
+        onClick={prev}
+        disabled={isAnimating}
+        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 p-2 sm:p-2.5 rounded-full bg-black/35 hover:bg-black/65 disabled:opacity-50 text-white transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/40 hover:scale-110 active:scale-95"
+        aria-label="Previous image"
+      >
+        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+      </button>
+
+      {/* ── Right arrow ── */}
+      <button
+        onClick={next}
+        disabled={isAnimating}
+        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 p-2 sm:p-2.5 rounded-full bg-black/35 hover:bg-black/65 disabled:opacity-50 text-white transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/40 hover:scale-110 active:scale-95"
+        aria-label="Next image"
+      >
+        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+      </button>
+
+      {/* ── Progress dot indicators ── */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+        {validImages.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => goTo(idx)}
+            aria-label={`Go to slide ${idx + 1}`}
+            className="relative overflow-hidden rounded-full transition-all duration-500 ease-out"
             style={{
-              zIndex:  isActive ? 2 : isPrev ? 1 : 0,
-              opacity: isActive ? 1 : isPrev ? 0 : 0,
-              transition: isVisible
-                ? `opacity ${FADE_DURATION}ms cubic-bezier(0.45, 0, 0.25, 1)`
-                : "none",
-              willChange: "opacity",
+              height: 3,
+              width: idx === current ? 32 : 10,
+              background: idx === current ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.25)",
             }}
           >
-            {/*
-              Inner wrapper carries the pan animation.
-              key changes every time this slide becomes active → React unmounts
-              and remounts → CSS animation restarts from translateX(0%).
-              For non-active slides the key stays stable so pan freezes in place.
-            */}
-            <div
-              key={`pan-${idx}-${animKeysRef.current[idx]}`}
-              className="absolute inset-0"
-              style={{
-                animation: `heroPan ${PAN_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both`,
-                willChange: "transform",
-              }}
-            >
-              <Image
-                src={validateImageUrl(image, 1920, 1080, "16:9")}
-                alt={`${alt} — photo ${idx + 1}`}
-                fill
-                sizes="(max-width: 768px) 100vw, 100vw"
-                className="object-cover"
-                priority={idx === 0}
+            {idx === current && (
+              <span
+                className="absolute inset-0 rounded-full bg-white"
+                style={{
+                  transformOrigin: "left",
+                  animation: !isPaused
+                    ? `slideProgress ${SLIDE_INTERVAL}ms linear forwards`
+                    : undefined,
+                  animationPlayState: isPaused ? "paused" : "running",
+                }}
               />
-            </div>
-          </div>
-        );
-      })}
+            )}
+          </button>
+        ))}
+      </div>
 
-      {/* Shared keyframe — subtle right-to-left pan (0% → -2%) */}
+      {/* ── Image counter badge ── */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rounded-full bg-black/45 backdrop-blur-sm border border-white/15 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white/85 flex items-center gap-1.5 select-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
+        {current + 1} / {total}
+      </div>
+
       <style>{`
-        @keyframes heroPan {
-          0%   { transform: scale(1.04) translateX(0%);   }
-          100% { transform: scale(1.00) translateX(-2%);  }
+        @keyframes slideProgress {
+          from { transform: scaleX(0); }
+          to   { transform: scaleX(1); }
         }
       `}</style>
-
-      {/* ── Navigation arrows ── */}
-      {total > 1 && (
-        <>
-          <button
-            onClick={prev}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 p-2 sm:p-2.5 rounded-full bg-black/30 hover:bg-black/60 text-white transition-all duration-200 backdrop-blur-sm border border-white/20 hover:scale-110 hover:border-white/40 active:scale-95"
-            aria-label="Previous image"
-          >
-            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-          <button
-            onClick={next}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 p-2 sm:p-2.5 rounded-full bg-black/30 hover:bg-black/60 text-white transition-all duration-200 backdrop-blur-sm border border-white/20 hover:scale-110 hover:border-white/40 active:scale-95"
-            aria-label="Next image"
-          >
-            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-
-          {/* ── Dot progress indicators ── */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-            {validImages.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => goTo(idx)}
-                className="relative h-[3px] rounded-full overflow-hidden transition-all duration-500 ease-out"
-                style={{ width: idx === currentIndex ? 36 : 12 }}
-                aria-label={`Go to slide ${idx + 1}`}
-              >
-                {/* Track */}
-                <span className="absolute inset-0 rounded-full bg-white/30" />
-                {/* Active fill bar */}
-                {idx === currentIndex && (
-                  <span
-                    className="absolute inset-0 rounded-full bg-white"
-                    style={{
-                      transformOrigin: "left",
-                      animation: !isPaused
-                        ? `slideProgress ${SLIDE_INTERVAL}ms linear forwards`
-                        : undefined,
-                      animationPlayState: isPaused ? "paused" : "running",
-                    }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-
-          <style>{`
-            @keyframes slideProgress {
-              from { transform: scaleX(0); }
-              to   { transform: scaleX(1); }
-            }
-          `}</style>
-
-          {/* ── Image counter badge ── */}
-          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 rounded-full bg-black/45 backdrop-blur-sm border border-white/15 px-2.5 py-1 text-[10px] sm:text-xs font-semibold text-white/85 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
-            {currentIndex + 1} / {total}
-          </div>
-        </>
-      )}
     </div>
   );
 }
