@@ -2088,12 +2088,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   {/* ── Inclusions — green checkmarks ── */}
                   {packageInclusions.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900">What's Included</h3>
-                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-emerald-100">
+                        What's Included
+                      </h3>
                       <ul className="space-y-2.5">
                         {packageInclusions.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-3">
@@ -2110,12 +2107,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   {/* ── Exclusions — red cross icons ── */}
                   {packageExclusions.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-2.5 mb-4">
-                        <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
-                          <X className="w-4 h-4 text-rose-600" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900">What's Not Included</h3>
-                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-rose-100">
+                        What's Not Included
+                      </h3>
                       <ul className="space-y-2.5">
                         {packageExclusions.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-3">
@@ -2137,18 +2131,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {/* Payment Policy Card */}
               <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-650 shrink-0">
-                      <CreditCard className="w-4.5 h-4.5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Payment &amp; Booking Policy</h3>
-                      <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase">Securing your reservations</p>
-                    </div>
-                  </div>
-                  <div className="border-t border-slate-100 pt-3">
-                    {renderPolicyContent(packageData.paymentPolicy || null)}
-                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">Payment &amp; Booking Policy</h3>
+                  <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase mt-0.5">Securing your reservations</p>
+                </div>
+                <div className="border-t border-slate-100 pt-3 mt-4">
+                  {renderPolicyContent(packageData.paymentPolicy || null)}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-[9px] font-bold text-indigo-700 bg-indigo-50/40 px-2 py-1 rounded">
                   <ShieldCheck className="w-3.5 h-3.5" />
@@ -2159,18 +2146,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
               {/* Cancellation Policy Card */}
               <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-650 shrink-0">
-                      <CalendarRange className="w-4.5 h-4.5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Cancellation &amp; Refund Policy</h3>
-                      <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase">Easy cancellation terms</p>
-                    </div>
-                  </div>
-                  <div className="border-t border-slate-100 pt-3">
-                    {renderPolicyContent(packageData.cancellationPolicy || null)}
-                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">Cancellation &amp; Refund Policy</h3>
+                  <p className="text-[9px] text-slate-400 font-bold tracking-wide uppercase mt-0.5">Easy cancellation terms</p>
+                </div>
+                <div className="border-t border-slate-100 pt-3 mt-4">
+                  {renderPolicyContent(packageData.cancellationPolicy || null)}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-[9px] font-bold text-rose-700 bg-rose-50/40 px-2 py-1 rounded">
                   <Info className="w-3.5 h-3.5" />
@@ -2181,12 +2161,9 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
             {importantNotes.length > 0 && (
               <section id="important-notes" className="rounded-md border border-amber-100 bg-amber-50/40 p-4 md:p-6 shadow-sm">
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <h2 className="text-lg font-bold text-slate-900">Important Notes</h2>
-                </div>
+                <h2 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-amber-200">
+                  Important Notes
+                </h2>
                 <ul className="space-y-2.5">
                   {importantNotes.map((note, idx) => (
                     <li key={idx} className="flex items-start gap-3">

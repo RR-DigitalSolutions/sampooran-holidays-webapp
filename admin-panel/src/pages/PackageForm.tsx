@@ -1914,7 +1914,7 @@ export default function PackageForm() {
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "Gallery" && (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-gray-900 uppercase tracking-widest text-sm">Package Gallery Images</h3>
               <label className="bg-[#1B3A6B] text-white px-4 py-2 rounded-xl font-bold text-sm cursor-pointer hover:bg-[#2a519b] transition-colors flex items-center gap-2">
                 <Upload className="w-4 h-4" /> Add Photos
@@ -1930,20 +1930,50 @@ export default function PackageForm() {
                 }} />
               </label>
             </div>
+
+            {/* ── Image Dimension Guide ── */}
+            <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 flex flex-col sm:flex-row sm:items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-blue-800 mb-1.5">📐 Recommended Hero Slider Image Dimensions</p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1 bg-white border border-blue-200 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                    <span className="text-blue-400">⬛</span> 1280 × 720 px
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-white border border-emerald-200 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                    <span>16 : 9</span> Aspect Ratio
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-white border border-amber-200 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                    ≤ 500 KB per image
+                  </span>
+                  <span className="inline-flex items-center gap-1 bg-white border border-slate-200 text-slate-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                    JPG / WebP format
+                  </span>
+                </div>
+                <p className="text-xs text-blue-600 leading-relaxed">
+                  <strong>Why 1280×720?</strong> This resolution delivers sharp, full-width display on all devices — desktop (up to 1300px wide) and mobile — while keeping file size small for fast loading.
+                  For best quality: shoot in <strong>landscape orientation</strong>, keep the subject centred, and avoid very bright or very dark images (overlay text must remain readable).
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
               {galleryImages.map((url, idx) => (
-                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-gray-200">
+                <div key={idx} className="relative aspect-video rounded-xl overflow-hidden group border border-gray-200">
                   <img src={url} alt="" className="w-full h-full object-cover" />
                   <button type="button" onClick={() => setGalleryImages(galleryImages.filter((_, i) => i !== idx))} className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white backdrop-blur-sm">
                     <Trash2 className="w-6 h-6 text-red-400 hover:text-red-500 transition-colors" />
                   </button>
+                  <span className="absolute bottom-1 left-1 text-[9px] font-bold text-white/70 bg-black/40 rounded px-1">{idx + 1}</span>
                 </div>
               ))}
               {!galleryImages.length && (
                 <div className="col-span-full border-2 border-dashed border-gray-200 rounded-2xl p-10 text-center text-gray-400 flex flex-col items-center bg-gray-50/50">
                   <ImageIcon className="w-12 h-12 mb-3 opacity-20 text-[#1B3A6B]" />
                   <p className="font-bold text-gray-500">No gallery images yet</p>
-                  <p className="text-sm mt-1">Upload multiple high-quality photos to showcase this package</p>
+                  <p className="text-sm mt-1">Upload high-quality <strong>1280×720 px</strong> landscape photos to showcase this package in the hero slider</p>
                 </div>
               )}
             </div>
