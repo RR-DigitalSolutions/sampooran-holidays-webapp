@@ -22,6 +22,9 @@ import {
   Users,
   Coffee,
   CheckCircle,
+  CheckCircle2,
+  X,
+  AlertTriangle,
   MapPin,
   Mountain,
   Sparkles,
@@ -254,8 +257,10 @@ const renderPolicyContent = (text: string | null) => {
   return (
     <ul className="space-y-2">
       {lines.map((line, idx) => (
-        <li key={idx} className="flex items-start gap-2 text-xs text-slate-650 font-semibold leading-relaxed">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#1B3A6B] mt-1.5 shrink-0" />
+        <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 font-semibold leading-relaxed">
+          <span className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1B3A6B]" />
+          </span>
           <span>{line}</span>
         </li>
       ))}
@@ -1749,10 +1754,10 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                         {/* Day header with expand button */}
                         <button
                           onClick={handleToggle}
-                          className="w-full pl-7 sm:pl-12 pr-3 sm:pr-4 py-1 sm:py-1.5 hover:bg-slate-50/50 rounded-md transition flex items-start justify-between gap-3"
+                          className="w-full pl-7 sm:pl-12 pr-3 sm:pr-4 py-1.5 sm:py-2 hover:bg-slate-50/50 rounded-md transition flex items-start justify-between gap-3"
                         >
                           <div className="text-left flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">
                                 Day {idx + 1}
                               </p>
@@ -1781,11 +1786,12 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                 </span>
                               )}
                             </div>
-                            <h3 className="mt-0.5 text-xs sm:text-base font-bold text-slate-800 truncate">
+                            {/* Title — full wrap, no truncation, larger font on all screen sizes */}
+                            <h3 className="mt-1 text-sm sm:text-base md:text-lg font-bold text-slate-800 leading-snug break-words">
                               {day.title || `Day ${idx + 1}`}
                             </h3>
                           </div>
-                          <div className="mt-0.5 flex-shrink-0">
+                          <div className="mt-1 flex-shrink-0">
                             {isExpanded ? (
                               <ChevronUp className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-slate-400" />
                             ) : (
@@ -2073,29 +2079,56 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   })}
                 </div>
               </section>
-            )}            {(packageInclusions.length > 0 || packageExclusions.length > 0) && (
+            )}
+
+            {(packageInclusions.length > 0 || packageExclusions.length > 0) && (
               <section id="inclusions" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-8 lg:grid-cols-2">
+
+                  {/* ── Inclusions — green checkmarks ── */}
                   {packageInclusions.length > 0 && (
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-4">Inclusions</h3>
-                      <ul className="list-disc pl-5 space-y-3 text-sm text-slate-700">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">What's Included</h3>
+                      </div>
+                      <ul className="space-y-2.5">
                         {packageInclusions.map((item, idx) => (
-                          <li key={idx}>{item}</li>
+                          <li key={idx} className="flex items-start gap-3">
+                            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            </span>
+                            <span className="text-sm text-slate-700 font-medium leading-snug">{item}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
+
+                  {/* ── Exclusions — red cross icons ── */}
                   {packageExclusions.length > 0 && (
                     <div>
-                      <h3 className="text-xl font-semibold text-slate-900 mb-4">Exclusions</h3>
-                      <ul className="list-disc pl-5 space-y-3 text-sm text-slate-700">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                          <X className="w-4 h-4 text-rose-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">What's Not Included</h3>
+                      </div>
+                      <ul className="space-y-2.5">
                         {packageExclusions.map((item, idx) => (
-                          <li key={idx}>{item}</li>
+                          <li key={idx} className="flex items-start gap-3">
+                            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center">
+                              <X className="w-3 h-3 text-rose-600" />
+                            </span>
+                            <span className="text-sm text-slate-700 font-medium leading-snug">{item}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
+
                 </div>
               </section>
             )}
@@ -2147,11 +2180,21 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             </div>
 
             {importantNotes.length > 0 && (
-              <section id="important-notes" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
-                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-4">Important Notes</h2>
-                <ul className="list-disc pl-5 space-y-3 text-sm text-slate-700">
+              <section id="important-notes" className="rounded-md border border-amber-100 bg-amber-50/40 p-4 md:p-6 shadow-sm">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-900">Important Notes</h2>
+                </div>
+                <ul className="space-y-2.5">
                   {importantNotes.map((note, idx) => (
-                    <li key={idx}>{note}</li>
+                    <li key={idx} className="flex items-start gap-3">
+                      <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center">
+                        <AlertTriangle className="w-3 h-3 text-amber-600" />
+                      </span>
+                      <span className="text-sm text-slate-700 font-medium leading-snug">{note}</span>
+                    </li>
                   ))}
                 </ul>
               </section>
