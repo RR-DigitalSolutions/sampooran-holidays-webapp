@@ -465,7 +465,7 @@ export default function PackageForm() {
         : [];
       const location = (d.location || "").trim();
 
-      if (isTransit) {
+      if (isTransit || dayType === "DEPARTURE") {
         if (from) rawSequence.push(from);
         dayCities.forEach((c) => {
           if (c !== from && c !== to) rawSequence.push(c);
@@ -561,8 +561,8 @@ export default function PackageForm() {
       d.cityIds.forEach(id => idsSet.add(id));
     }
 
-    // 2. TRANSIT: fromCity + via cities + toCity
-    if (dayType === "TRANSIT") {
+    // 2. TRANSIT & DEPARTURE: fromCity + via cities + toCity
+    if (dayType === "TRANSIT" || dayType === "DEPARTURE") {
       if (d.fromCityId) idsSet.add(d.fromCityId);
       if (d.toCityId) idsSet.add(d.toCityId);
       if (d.fromCity) { const m = resolveCityId(d.fromCity); if (m) idsSet.add(m); }
@@ -1870,14 +1870,51 @@ export default function PackageForm() {
 
                         {/* 11. DEPARTURE */}
                         {isDeparture && (
-                          <div className="space-y-4">
-                            <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
-                              <span className="text-rose-500 text-sm">🏠</span>
-                              <p className="text-[11px] text-rose-700 font-semibold">Departure Day — add enroute stops guests can enjoy before heading home.</p>
+                          <div className="bg-white rounded-xl border-2 border-rose-200 p-4 space-y-4 shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                                🏠 Departure Route & Return Journey
+                              </p>
+                              <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                                Specify Departure Origin, Enroute Places & Drop City
+                              </span>
                             </div>
-                            {renderAttractions(day, idx, activeIds, "Enroute ")}
-                            {renderActivities(day, idx, activeIds, "Enroute ")}
-                            {renderDining(day, idx, activeIds, "Enroute ")}
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-end gap-3 bg-rose-50/40 p-3 rounded-xl border border-rose-100">
+                              <div>
+                                <label className="text-[10px] font-bold text-gray-600 block mb-1 uppercase tracking-wider">From City (Departure Origin)</label>
+                                <input list={`fromcity-dep-${idx}`} value={day.fromCity || ""} onChange={e => {
+                                  const from = e.target.value;
+                                  const cid = resolveCityId(from);
+                                  const enrouteStr = day.cities?.length ? ` via ${day.cities.join(", ")}` : "";
+                                  const newTitle = from && day.toCity ? `Departure from ${from} → ${day.toCity}${enrouteStr}` : day.title;
+                                  updateDay(idx, { fromCity: from, fromCityId: cid, title: day.title || newTitle });
+                                }} placeholder="e.g. Manali" className="w-full px-3 py-2 rounded-lg border border-rose-200 outline-none text-sm bg-white font-semibold focus:border-rose-500 shadow-xs" />
+                                <datalist id={`fromcity-dep-${idx}`}>{allDests.map(d => <option key={d.id} value={d.name} />)}</datalist>
+                              </div>
+                              <div className="hidden md:flex flex-col items-center gap-1 pb-2">
+                                <div className="w-10 h-0.5 bg-rose-400" /><Car className="w-5 h-5 text-rose-500" /><div className="w-10 h-0.5 bg-rose-400" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-gray-600 block mb-1 uppercase tracking-wider">To City (Drop Off / Airport / Railway Station)</label>
+                                <input list={`tocity-dep-${idx}`} value={day.toCity || ""} onChange={e => {
+                                  const to = e.target.value;
+                                  const cid = resolveCityId(to);
+                                  const enrouteStr = day.cities?.length ? ` via ${day.cities.join(", ")}` : "";
+                                  const newTitle = day.fromCity && to ? `Departure from ${day.fromCity} → ${to}${enrouteStr}` : day.title;
+                                  updateDay(idx, { toCity: to, toCityId: cid, title: day.title || newTitle });
+                                }} placeholder="e.g. Chandigarh / Delhi" className="w-full px-3 py-2 rounded-lg border border-rose-200 outline-none text-sm bg-white font-semibold focus:border-rose-500 shadow-xs" />
+                                <datalist id={`tocity-dep-${idx}`}>{allDests.map(d => <option key={d.id} value={d.name} />)}</datalist>
+                              </div>
+                            </div>
+                            {/* Enroute / Via Places Covered Multi-city Picker for Departure */}
+                            <div className="pt-1">
+                              {renderMultiCityPicker(day, idx, "Enroute Cities / Places Visited Before Drop Off (Optional)", true)}
+                            </div>
+                            <div className="space-y-4 pt-2">
+                              {renderAttractions(day, idx, activeIds, "Enroute ")}
+                              {renderActivities(day, idx, activeIds, "Enroute ")}
+                              {renderDining(day, idx, activeIds, "Enroute ")}
+                            </div>
                           </div>
                         )}
 

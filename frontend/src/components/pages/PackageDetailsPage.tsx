@@ -1196,13 +1196,14 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       }
 
       const isTransit = dayType === "TRANSIT";
+      const isDeparture = dayType === "DEPARTURE";
       const dayCities = Array.isArray(d["cities"])
         ? (d["cities"] as string[]).map(c => normalizeTextItem(c)).filter(Boolean)
         : [];
 
-      // Construct complete route for transit day: From -> Enroute Cities -> To
+      // Construct complete route for transit & departure day: From -> Enroute Cities -> To
       let transitRouteArr: string[] = [];
-      if (isTransit) {
+      if (isTransit || isDeparture) {
         if (fromCity) transitRouteArr.push(fromCity);
         dayCities.forEach(c => {
           if (c !== fromCity && c !== toCity) transitRouteArr.push(c);
@@ -1213,7 +1214,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
       return {
         title: titleText,
-        location: isTransit && transitRouteArr.length > 0
+        location: (isTransit || isDeparture) && transitRouteArr.length > 0
           ? transitRouteArr.join(" → ")
           : (dayCities.length > 0
             ? dayCities.join(" → ")
@@ -1223,6 +1224,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
         toCity,
         cities: dayCities,
         isTransit,
+        isDeparture,
         transitRoute: transitRouteArr.join(" → "),
         day: typeof d["day"] === "number" ? Number(d["day"]) : d["day"] ? Number(String(d["day"])) : idx + 1,
         description: normalizeTextItem(d["description"] ?? d["content"] ?? d["detail"]),
@@ -1779,9 +1781,13 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                                       : day.dayType === "LEISURE" ? "LEISURE DAY"
                                         : "SIGHTSEEING DAY"}
                               </span>
-                              {/* TRANSIT: From → Via → To route display (Single location above title) */}
-                              {day.isTransit && (day.transitRoute || (day.fromCity && day.toCity)) && (
-                                <span className="text-[8px] sm:text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 flex items-center gap-1 leading-none">
+                              {/* TRANSIT & DEPARTURE: From → Via → To route display (Single location above title) */}
+                              {(day.isTransit || day.dayType === "DEPARTURE") && (day.transitRoute || (day.fromCity && day.toCity)) && (
+                                <span className={`text-[8px] sm:text-[9px] font-semibold rounded-full px-2 py-0.5 flex items-center gap-1 leading-none border ${
+                                  day.dayType === "DEPARTURE" 
+                                    ? "text-rose-600 bg-rose-50 border-rose-200" 
+                                    : "text-amber-600 bg-amber-50 border-amber-200"
+                                }`}>
                                   <span>{day.transitRoute || `${day.fromCity} → ${day.toCity}`}</span>
                                 </span>
                               )}

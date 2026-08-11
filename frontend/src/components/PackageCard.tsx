@@ -18,6 +18,7 @@ interface Pkg {
   slug: string;
   destinationName?: string;
   stateName?: string;
+  countryName?: string;
   imageUrl?: string;
   shortDescription?: string;
   duration: number;
@@ -36,6 +37,7 @@ interface Pkg {
   tags?: string[] | null;
   inclusions?: string[] | null;
   inclusionIcons?: string[] | null;
+  itinerary?: any;
 }
 
 function PackageCardComponent({
@@ -105,7 +107,37 @@ function PackageCardComponent({
       return { id: text, label: word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(), Icon: getInclusionIcon(text) };
     });
 
-  const citiesList = pkg.cities || (pkg.destinationName ? [pkg.destinationName] : []);
+  // Extract cities in exact itinerary order
+  const citiesList = (() => {
+    if (Array.isArray(pkg.cities) && pkg.cities.length > 0) {
+      return pkg.cities.map(c => c.trim()).filter(Boolean);
+    }
+    // Fallback: extract from itinerary if available
+    if (pkg.itinerary) {
+      try {
+        const itin: any[] = typeof pkg.itinerary === "string" ? JSON.parse(pkg.itinerary) : pkg.itinerary;
+        if (Array.isArray(itin) && itin.length > 0) {
+          const raw: string[] = [];
+          itin.forEach(d => {
+            if (d.fromCity) raw.push(d.fromCity.trim());
+            if (Array.isArray(d.cities)) d.cities.forEach((c: string) => c && raw.push(c.trim()));
+            if (d.toCity) raw.push(d.toCity.trim());
+            if (d.location) d.location.split(/→|->|•|,/).forEach((c: string) => c.trim() && raw.push(c.trim()));
+          });
+          const result: string[] = [];
+          const seen = new Set<string>();
+          raw.filter(Boolean).forEach(city => {
+            if (!seen.has(city)) {
+              seen.add(city);
+              result.push(city);
+            }
+          });
+          if (result.length > 0) return result;
+        }
+      } catch {}
+    }
+    return pkg.destinationName ? [pkg.destinationName] : [];
+  })();
 
   /* ── Horizontal variant (List View) ── */
   if (variant === "horizontal") {
@@ -476,12 +508,12 @@ function PackageCardComponent({
           {/* Destination & Cities Overlay */}
           <div className="absolute bottom-2.5 left-3 right-3 z-10">
             <div className="flex items-center gap-1.5 text-white/95 text-[10px] font-bold mb-1">
-              <MapPin className="w-3 h-3 text-accent" />
-              {pkg.stateName || "Himachal"}
+              <MapPin className="w-3 h-3 text-accent shrink-0" />
+              <span className="truncate">{pkg.stateName || pkg.destinationName || "Tour"}</span>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {citiesList.slice(0, 3).map((city, i) => (
-                <span key={i} className="text-white text-[10px] font-bold bg-black/45 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/15">
+            <div className="flex items-center gap-1 overflow-x-auto package-places-scroll touch-pan-x w-full pb-0.5">
+              {citiesList.map((city, i) => (
+                <span key={i} className="text-white text-[9.5px] font-bold bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/20 shrink-0">
                   {city}
                 </span>
               ))}
