@@ -1742,60 +1742,55 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
       <section className="container mx-auto px-4 lg:px-8 py-10">
         <div className="grid gap-8 xl:grid-cols-[1.75fr_0.75fr] items-start w-full min-w-0">
           <main className="space-y-8 min-w-0 w-full overflow-hidden">
-            {/* Unified Package Overview Highlights, Gallery & Inclusions Card */}
-            <section className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Left side: Highlights */}
-                {packageHighlights.length > 0 && (
-                  <div className="flex flex-col h-[280px]">
-                    <h3 className="text-lg font-bold text-slate-900 mb-3 shrink-0">Tour Highlights</h3>
-                    <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
-                      {packageHighlights.map((highlight, idx) => (
-                        <div key={idx} className="rounded-md bg-slate-50 px-3 py-2 md:px-4 md:py-3 text-xs text-slate-700 font-medium border border-slate-100/80 hover:bg-slate-100/50 transition-colors">
-                          • {highlight}
-                        </div>
-                      ))}
-                    </div>
+            {/* ── Tour Gallery Strip ── */}
+            {galleryImages.length > 0 && (
+              <section id="gallery" className="rounded-md border border-slate-200 bg-white p-4 md:p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900">Tour Gallery</h2>
+                    <p className="text-xs text-slate-500">Real photos of destinations, stays, and sights on this package</p>
                   </div>
-                )}
+                  <span className="text-xs font-bold text-[#1B3A6B] bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 shrink-0">
+                    {galleryImages.length} Photos
+                  </span>
+                </div>
 
-                {/* Right side: Gallery */}
-                {galleryImages.length > 0 && (
-                  <div className="flex flex-col h-[280px]">
-                    <h3 className="text-lg font-bold text-slate-900 mb-3 shrink-0">Tour Gallery</h3>
-                    <div className="flex-1 grid grid-cols-2 gap-2 overflow-hidden rounded-md">
-                      {galleryImages.slice(0, 4).map((image, idx) => {
-                        const isLast = idx === 3;
-                        const hasMore = galleryImages.length > 4;
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => setActiveLightboxIndex(idx)}
-                            className="relative w-full h-full overflow-hidden bg-slate-100 group cursor-pointer rounded-md"
-                          >
-                            <Image
-                              src={validateImageUrl(image, 400, 300, "4:3")}
-                              alt={`${packageData.name} photo ${idx + 1}`}
-                              fill
-                              sizes="(max-width: 768px) 50vw, 25vw"
-                              className="object-cover transition duration-500 group-hover:scale-105"
-                            />
-                            {isLast && hasMore && (
-                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white font-extrabold text-sm md:text-base backdrop-blur-[2px] transition group-hover:bg-black/55 rounded-md">
-                                <span className="text-xl md:text-2xl">+{galleryImages.length - 4}</span>
-                                <span className="text-[10px] uppercase tracking-wider text-white/80 font-bold mt-0.5">Photos</span>
-                              </div>
-                            )}
+                {/* Horizontal Gallery Strip */}
+                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+                  {galleryImages.map((image, idx) => {
+                    const isLastVisible = idx === 5;
+                    const hasMore = galleryImages.length > 6;
+                    if (idx > 5) return null; // Show top 6 thumbnails in strip
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setActiveLightboxIndex(idx)}
+                        className="relative w-36 xs:w-40 sm:w-48 h-24 sm:h-32 rounded-lg overflow-hidden shrink-0 cursor-pointer group border border-slate-200 shadow-2xs"
+                      >
+                        <Image
+                          src={validateImageUrl(image, 400, 300, "4:3")}
+                          alt={`${packageData.name} photo ${idx + 1}`}
+                          fill
+                          sizes="(max-width: 768px) 160px, 200px"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+
+                        {isLastVisible && hasMore && (
+                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white font-extrabold text-xs sm:text-sm backdrop-blur-[1px] transition-colors group-hover:bg-black/50">
+                            <span className="text-lg sm:text-xl">+{galleryImages.length - 6}</span>
+                            <span className="text-[9px] uppercase tracking-wider text-white/80 font-bold">More Photos</span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
-            {/* Highlights Section */}
+            {/* ── Single Tour Highlights Section ── */}
             {packageHighlights.length > 0 && (
               <section id="highlights" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-2 mb-4">
@@ -1804,8 +1799,8 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {packageHighlights.map((hl: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-md bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 font-medium">
-                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#1B3A6B] text-white">
+                    <div key={i} className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-800 font-semibold leading-relaxed hover:bg-white hover:shadow-2xs transition-all">
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#1B3A6B] text-white shadow-2xs">
                         <Check className="h-2.5 w-2.5" />
                       </div>
                       <span className="leading-snug">{hl}</span>
