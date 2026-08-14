@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Star, MapPin, Clock, CheckCircle, Sparkles, Zap,
   ArrowRight, Plane, Hotel, Car, Utensils, Camera, Ticket, ShieldCheck,
-  CheckCircle2, Users, FileText, Coffee, Heart
+  CheckCircle2, Users, FileText, Coffee, Heart, Bus, Train, Ship, Tent, UserCheck
 } from "lucide-react";
 import Image from "next/image";
 import { useState, memo } from "react";
@@ -73,9 +73,14 @@ function PackageCardComponent({
   const getInclusionIcon = (text: string) => {
     const t = text.toLowerCase();
     if (t.includes("flight") || t.includes("plane")) return Plane;
+    if (t.includes("volvo") || t.includes("bus")) return Bus;
+    if (t.includes("cab") || t.includes("car") || t.includes("transfer") || t.includes("taxi")) return Car;
+    if (t.includes("expert") || t.includes("trip expert") || t.includes("manager")) return UserCheck;
+    if (t.includes("train") || t.includes("rail")) return Train;
+    if (t.includes("houseboat") || t.includes("ship") || t.includes("boat")) return Ship;
+    if (t.includes("camp") || t.includes("tent")) return Tent;
     if (t.includes("hotel") || t.includes("stay") || t.includes("accommodation")) return Hotel;
     if (t.includes("meal") || t.includes("breakfast") || t.includes("dinner") || t.includes("food")) return Utensils;
-    if (t.includes("transfer") || t.includes("car") || t.includes("cab") || t.includes("taxi")) return Car;
     if (t.includes("sightseeing") || t.includes("tour") || t.includes("camera")) return Camera;
     if (t.includes("ticket") || t.includes("entry") || t.includes("pass")) return Ticket;
     if (t.includes("insurance") || t.includes("safe") || t.includes("shield")) return ShieldCheck;
@@ -84,11 +89,20 @@ function PackageCardComponent({
   };
 
   const getInclusionIconById = (id: string) => {
-    switch (id.toLowerCase()) {
+    const key = id.toLowerCase().trim();
+    switch (key) {
       case "flight": return Plane;
       case "hotel": return Hotel;
       case "meals": return Utensils;
+      case "cab":
       case "transfers": return Car;
+      case "volvo":
+      case "bus": return Bus;
+      case "tripexpert":
+      case "expert": return UserCheck;
+      case "train": return Train;
+      case "houseboat": return Ship;
+      case "camp": return Tent;
       case "sightseeing": return Camera;
       case "ticket": return Ticket;
       case "insurance": return ShieldCheck;
@@ -96,12 +110,21 @@ function PackageCardComponent({
       case "guide": return Users;
       case "visa": return FileText;
       case "drinks": return Coffee;
-      default: return CheckCircle;
+      default: return getInclusionIcon(key);
     }
   };
 
+  const formatIconLabel = (id: string) => {
+    const key = id.toLowerCase().trim();
+    if (key === "cab") return "Cab";
+    if (key === "volvo") return "Volvo";
+    if (key === "tripexpert") return "Trip Expert";
+    if (key === "houseboat") return "Houseboat";
+    return id.charAt(0).toUpperCase() + id.slice(1).toLowerCase();
+  };
+
   const inclusionList = (pkg.inclusionIcons && pkg.inclusionIcons.length > 0)
-    ? pkg.inclusionIcons.slice(0, 5).map(id => ({ id, label: id.charAt(0).toUpperCase() + id.slice(1).toLowerCase(), Icon: getInclusionIconById(id) }))
+    ? pkg.inclusionIcons.slice(0, 5).map(id => ({ id, label: formatIconLabel(id), Icon: getInclusionIconById(id) }))
     : displayInclusions.map(text => {
       const word = text.split(' ')[0];
       return { id: text, label: word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(), Icon: getInclusionIcon(text) };

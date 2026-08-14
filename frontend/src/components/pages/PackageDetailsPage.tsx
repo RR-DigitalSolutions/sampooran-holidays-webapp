@@ -34,6 +34,11 @@ import {
   Headphones,
   Globe,
   Hotel,
+  Bus,
+  Train,
+  Ship,
+  Tent,
+  UserCheck
 } from "lucide-react";
 import { validateImageUrl, cn } from "@/lib/utils";
 import { AttractionActivityModal } from "../modals/AttractionActivityModal";
@@ -1416,16 +1421,21 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
 
   // Map inclusion string to an icon component from lucide
   const getInclusionIcon = (name: string) => {
-    const n = (name || "").toLowerCase();
+    const n = (name || "").toLowerCase().trim();
+    if (n === "cab" || n.includes("transfer") || n.includes("car") || n.includes("taxi")) return Car;
+    if (n === "volvo" || n.includes("bus")) return Bus;
+    if (n === "tripexpert" || n.includes("expert") || n.includes("tour manager")) return UserCheck;
+    if (n === "train" || n.includes("rail")) return Train;
+    if (n === "houseboat" || n.includes("ship") || n.includes("boat")) return Ship;
+    if (n === "camp" || n.includes("tent") || n.includes("camping")) return Tent;
     if (n.includes("flight") || n.includes("plane")) return Plane;
     if (n.includes("hotel") || n.includes("stay") || n.includes("accommodation")) return Building2;
     if (n.includes("meal") || n.includes("breakfast") || n.includes("dinner") || n.includes("food")) return Utensils;
-    if (n.includes("transfer") || n.includes("car") || n.includes("cab") || n.includes("taxi")) return Car;
     if (n.includes("sight") || n.includes("tour") || n.includes("camera") || n.includes("sightseeing")) return Camera;
     if (n.includes("ticket") || n.includes("entry") || n.includes("pass")) return Ticket;
     if (n.includes("insurance") || n.includes("shield") || n.includes("safe")) return ShieldCheck;
     if (n.includes("activity") || n.includes("sport") || n.includes("trek")) return Zap;
-    if (n.includes("guide") || n.includes("manager") || n.includes("tour manager")) return Users;
+    if (n.includes("guide") || n.includes("manager")) return Users;
     if (n.includes("drink") || n.includes("coffee") || n.includes("beverage")) return Coffee;
     return CheckCircle;
   };
@@ -1835,83 +1845,65 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   )}
                 </div>
 
-                {/* ── Country → State → City Night-Stay Route Strip ── */}
+                {/* ── Sleek Compact Country → State → City Night-Stay Route Strip ── */}
                 {routeHierarchy.length > 0 && (
-                  <div className="mb-6 rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/40 p-3 md:p-4 overflow-hidden">
-                    {/* Top: Countries row */}
+                  <div className="mb-5 rounded-lg border border-slate-200 bg-[#F8FAFC] p-2.5 sm:p-3 overflow-hidden space-y-2.5">
                     {routeHierarchy.map((country, cIdx) => (
-                      <div key={cIdx} className="mb-3 last:mb-0">
-                        {/* Country header */}
-                        <div className="flex items-center gap-2 mb-2.5">
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1B3A6B] text-white text-[10px] font-bold uppercase tracking-widest shrink-0">
+                      <div key={cIdx} className="space-y-2">
+                        {/* Top Country Tag */}
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#1B3A6B] text-white text-[10px] font-extrabold uppercase tracking-widest shrink-0 shadow-2xs">
                             <Globe className="w-3 h-3" />
                             <span>{country.name}</span>
-                          </div>
-                          <div className="flex-1 h-px bg-gradient-to-r from-[#1B3A6B]/30 to-transparent" />
+                          </span>
                         </div>
 
-                        {/* States row */}
+                        {/* States list under Country */}
                         {country.states.map((stateGroup, sIdx) => (
-                          <div key={sIdx} className={`${sIdx > 0 ? "mt-3" : ""}`}>
-                            {/* State sub-header */}
+                          <div key={sIdx} className="flex flex-wrap items-center gap-1.5 pl-1 sm:pl-2">
+                            {/* State Tag */}
                             {stateGroup.name && (
-                              <div className="flex items-center gap-2 mb-2 ml-2">
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#1B3A6B]/10 text-[#1B3A6B] text-[10px] font-semibold uppercase tracking-wider border border-[#1B3A6B]/20 shrink-0">
-                                  <MapPin className="w-2.5 h-2.5" />
-                                  <span>{stateGroup.name}</span>
-                                </div>
-                                <div className="flex-1 h-px bg-[#1B3A6B]/10" />
-                              </div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/80 text-[#1B3A6B] text-[10px] font-extrabold uppercase tracking-wider border border-slate-300/60 shrink-0">
+                                <MapPin className="w-2.5 h-2.5" />
+                                <span>{stateGroup.name}</span>
+                              </span>
                             )}
 
-                            {/* Cities row — horizontally scrollable on mobile */}
-                            <div className="flex items-center gap-0 ml-4 overflow-x-auto pb-1 scrollbar-hide">
+                            {/* Horizontal Cities Sequence */}
+                            <div className="flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-hide shrink-0">
                               {stateGroup.cities.map((stop, cityIdx) => (
                                 <div key={cityIdx} className="flex items-center shrink-0">
-                                  {/* City pill */}
-                                  <div className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg border text-center ${
+                                  {/* Compact horizontal city pill */}
+                                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-bold transition-colors ${
                                     stop.nights > 0
-                                      ? "bg-white border-emerald-200 shadow-sm"
-                                      : "bg-slate-50 border-slate-200 opacity-80"
+                                      ? "bg-white border-slate-200 text-slate-800 shadow-2xs"
+                                      : "bg-slate-100 border-slate-200 text-slate-500"
                                   }`}>
-                                    <span className="text-[11px] font-bold text-slate-800 whitespace-nowrap">
-                                      {stop.city}
-                                    </span>
+                                    <span>{stop.city}</span>
                                     {stop.nights > 0 ? (
-                                      <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                      <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/80 shrink-0">
                                         {stop.nights}N
                                       </span>
                                     ) : (
-                                      <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">transit</span>
+                                      <span className="text-[9px] font-medium text-slate-400 shrink-0">transit</span>
                                     )}
                                   </div>
+
                                   {/* Arrow connector between cities */}
                                   {cityIdx < stateGroup.cities.length - 1 && (
-                                    <div className="flex items-center shrink-0 mx-1">
-                                      <div className="w-4 h-px bg-slate-300" />
-                                      <ChevronRight className="w-3 h-3 text-slate-400 -ml-1" />
-                                    </div>
+                                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 mx-0.5" />
                                   )}
                                 </div>
                               ))}
-                              {/* Arrow to next state group within same country */}
+                              {/* Arrow connector to next state */}
                               {sIdx < country.states.length - 1 && (
-                                <div className="flex items-center shrink-0 mx-2">
-                                  <div className="w-6 h-px bg-slate-300 border-dashed" />
-                                  <ChevronRight className="w-3.5 h-3.5 text-[#1B3A6B]/50 -ml-1" />
+                                <div className="flex items-center shrink-0 ml-1 mr-0.5 text-slate-400">
+                                  <span className="text-slate-300 font-bold text-xs">→</span>
                                 </div>
                               )}
                             </div>
                           </div>
                         ))}
-
-                        {/* Arrow to next country */}
-                        {cIdx < routeHierarchy.length - 1 && (
-                          <div className="flex items-center gap-1.5 mt-3 ml-4">
-                            <div className="w-8 h-px bg-[#1B3A6B]/30 border-t border-dashed" />
-                            <ChevronRight className="w-4 h-4 text-[#1B3A6B]/40" />
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

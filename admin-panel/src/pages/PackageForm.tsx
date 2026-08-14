@@ -8,7 +8,8 @@ import {
   Tag, AlertCircle, Image as ImageIcon, DollarSign, Users, FileText,
   Plane, Hotel, Utensils, Camera, Car, Zap, ShieldCheck, Coffee,
   Loader2, Upload, Search, Sliders, Globe, Layers, ChevronRight,
-  ChevronDown, ChevronUp, ArrowRight, Navigation, Building2
+  ChevronDown, ChevronUp, ArrowRight, Navigation, Building2,
+  Bus, Train, Ship, Tent, UserCheck, Sparkles, Award
 } from "lucide-react";
 import {
   ItineraryDay, HotelInfo, FaqEntry, uploadMedia,
@@ -18,16 +19,21 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const INCLUSION_OPTIONS = [
-  { id: "flight",      label: "Flight",      icon: Plane },
-  { id: "hotel",       label: "Hotel",       icon: Hotel },
-  { id: "meals",       label: "Meals",       icon: Utensils },
-  { id: "sightseeing", label: "Sightseeing", icon: Camera },
-  { id: "transfers",   label: "Transfers",   icon: Car },
-  { id: "activities",  label: "Activities",  icon: Zap },
-  { id: "insurance",   label: "Insurance",   icon: ShieldCheck },
-  { id: "guide",       label: "Guide",       icon: Users },
-  { id: "visa",        label: "Visa",        icon: FileText },
-  { id: "drinks",      label: "Drinks",      icon: Coffee },
+  { id: "flight",      label: "Flight",        icon: Plane },
+  { id: "hotel",       label: "Hotel Stay",    icon: Hotel },
+  { id: "meals",       label: "Daily Meals",   icon: Utensils },
+  { id: "cab",         label: "Private Cab",   icon: Car },
+  { id: "volvo",       label: "Volvo Bus",     icon: Bus },
+  { id: "sightseeing", label: "Sightseeing",   icon: Camera },
+  { id: "activities",  label: "Activities",    icon: Zap },
+  { id: "tripexpert",  label: "Trip Expert",   icon: UserCheck },
+  { id: "train",       label: "Train / Rail",  icon: Train },
+  { id: "houseboat",   label: "Houseboat",     icon: Ship },
+  { id: "camp",        label: "Camp / Tent",   icon: Tent },
+  { id: "insurance",   label: "Insurance",     icon: ShieldCheck },
+  { id: "guide",       label: "Tour Guide",    icon: Users },
+  { id: "visa",        label: "Visa",          icon: FileText },
+  { id: "drinks",      label: "Drinks",        icon: Coffee },
 ];
 
 // 6 tabs — merged "Destinations & Pricing" + "Pricing Calendar" into "Pricing & Calendar"
@@ -2022,17 +2028,20 @@ export default function PackageForm() {
         ══════════════════════════════════════════════════════════════════ */}
         {activeTab === "Inclusions" && (
           <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h3 className="font-bold text-gray-900 uppercase tracking-widest text-sm mb-4">Inclusion Icons</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h3 className="font-bold text-gray-900 uppercase tracking-widest text-xs mb-3 flex items-center justify-between">
+                <span>Inclusion Icons ({inclusionIcons.length} selected)</span>
+                <span className="text-[11px] text-slate-400 font-normal normal-case">Click to toggle icons shown on package cards & detail page</span>
+              </h3>
+              <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 gap-2">
                 {INCLUSION_OPTIONS.map(opt => {
                   const sel = inclusionIcons.includes(opt.id);
                   const Icon = opt.icon;
                   return (
                     <button type="button" key={opt.id} onClick={() => setInclusionIcons(sel ? inclusionIcons.filter(i => i !== opt.id) : [...inclusionIcons, opt.id])}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border ${sel ? "bg-[#1B3A6B] text-white border-[#1B3A6B]" : "bg-gray-50 text-gray-500 hover:bg-white"}`}>
-                      <Icon className="w-5 h-5" />
-                      <span className="text-[10px] font-bold uppercase">{opt.label}</span>
+                      className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border transition-all ${sel ? "bg-[#1B3A6B] text-white border-[#1B3A6B] shadow-xs" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-white hover:border-slate-300"}`}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="text-[10px] font-bold text-center leading-tight truncate w-full">{opt.label}</span>
                     </button>
                   );
                 })}
