@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Phone,
   Download,
   Share2,
@@ -124,6 +125,9 @@ type PackageData = {
   childWithBedPrice?: number;
   childWithoutBedPrice?: number;
   infantPrice?: number;
+  // Enriched multi-location data from backend (for route strip)
+  stateNames?: { id: number; name: string; countryName: string }[];
+  destinationsWithState?: { id: number; name: string; stateId: number | null; stateName: string; countryName: string }[];
 };
 
 type AttractionActivityData = Record<string, unknown>;
@@ -1456,6 +1460,133 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
     ? packageData.cities.join(" • ")
     : packageData.cities || packageData.destinationName || packageData.stateName || packageData.countryName || "India";
 
+  // ── Smart Night-Stay Route Strip (derived purely from normalizedItinerary) ──────
+  // Builds an ordered list of city stops with correct night counts.
+  // Night count = number of non-departure days where accommodation is set at that city.
+  // Transit days contribute 0 nights; departure days contribute 0 nights.
+  type StayStop = {
+    city: string;
+    nights: number;
+    stateName: string;
+    countryName: string;
+    isTransit: boolean;
+  };
+
+  const stayRoute = useMemo<StayStop[]>(() => {
+    if (!normalizedItinerary.length) return [];
+
+    // Build a city→{stateName,countryName} lookup from the enriched backend data
+    const cityStateLookup = new Map<string, { stateName: string; countryName: string }>();
+    if (Array.isArray(packageData.destinationsWithState)) {
+      packageData.destinationsWithState.forEach(d => {
+        if (d.name) {
+          cityStateLookup.set(d.name.trim().toLowerCase(), {
+            stateName: d.stateName || packageData.stateName || "",
+            countryName: d.countryName || packageData.countryName || "India",
+          });
+        }
+      });
+    }
+
+    const getCityMeta = (city: string) => {
+      const key = city.trim().toLowerCase();
+      return cityStateLookup.get(key) || {
+        stateName: packageData.stateName || "",
+        countryName: packageData.countryName || "India",
+      };
+    };
+
+    // Ordered unique city stops in trip sequence
+    const orderedCities: string[] = [];
+    const nightsMap = new Map<string, number>(); // city lowercase → nights
+
+    normalizedItinerary.forEach(day => {
+      const isDeparture = day.dayType === "DEPARTURE";
+      const isTransit   = day.dayType === "TRANSIT";
+      const hasStay     = Boolean(day.accommodation?.trim()) && !isDeparture;
+
+      if (isTransit || isDeparture) {
+        // Show transit fromCity → toCity as connectors (0 nights)
+        [day.fromCity, day.toCity].filter(Boolean).forEach((c: string) => {
+          const key = c.trim().toLowerCase();
+          if (!nightsMap.has(key)) {
+            nightsMap.set(key, 0);
+            orderedCities.push(c.trim());
+          }
+        });
+        return;
+      }
+
+      // For ARRIVAL / SIGHTSEEING / LEISURE — primary city is first in day.cities
+      const primaryCity = (day.cities?.[0] || day.location || "").trim();
+      if (!primaryCity) return;
+
+      const key = primaryCity.toLowerCase();
+      if (!nightsMap.has(key)) {
+        nightsMap.set(key, 0);
+        orderedCities.push(primaryCity);
+      }
+      if (hasStay) {
+        nightsMap.set(key, (nightsMap.get(key) ?? 0) + 1);
+      }
+    });
+
+    return orderedCities.map(city => {
+      const key = city.toLowerCase();
+      const nights = nightsMap.get(key) ?? 0;
+      const meta = getCityMeta(city);
+      return {
+        city,
+        nights,
+        stateName: meta.stateName,
+        countryName: meta.countryName,
+        isTransit: nights === 0,
+      };
+    });
+  }, [normalizedItinerary, packageData.destinationsWithState, packageData.stateName, packageData.countryName]);
+
+  // Build hierarchical Country → [State → [City]] structure for the route strip header
+  const routeHierarchy = useMemo(() => {
+    if (!stayRoute.length) return [];
+
+    // Unique countries (preserving order of first appearance)
+    const countries: { name: string; states: { name: string; cities: StayStop[] }[] }[] = [];
+    const countryIndex = new Map<string, number>();
+    const stateIndex   = new Map<string, number>(); // "country::state" → idx within country.states
+
+    stayRoute.forEach(stop => {
+      const country = stop.countryName || "India";
+      const state   = stop.stateName || "";
+
+      if (!countryIndex.has(country)) {
+        countryIndex.set(country, countries.length);
+        countries.push({ name: country, states: [] });
+      }
+      const ci = countryIndex.get(country)!;
+      const stateKey = `${country}::${state}`;
+
+      if (state) {
+        if (!stateIndex.has(stateKey)) {
+          stateIndex.set(stateKey, countries[ci].states.length);
+          countries[ci].states.push({ name: state, cities: [] });
+        }
+        const si = stateIndex.get(stateKey)!;
+        countries[ci].states[si].cities.push(stop);
+      } else {
+        // No state info — place under an unnamed state group
+        const unnamedKey = `${country}::__`;
+        if (!stateIndex.has(unnamedKey)) {
+          stateIndex.set(unnamedKey, countries[ci].states.length);
+          countries[ci].states.push({ name: "", cities: [] });
+        }
+        const si = stateIndex.get(unnamedKey)!;
+        countries[ci].states[si].cities.push(stop);
+      }
+    });
+
+    return countries;
+  }, [stayRoute]);
+
   return (
     <div className="w-full min-h-screen bg-[#F4F5F7] text-slate-900">
       {/* ═══════════════════════════════════════════
@@ -1468,11 +1599,11 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             images={galleryImages.length > 0 ? galleryImages : [packageData.imageUrl || "/default-hero.jpg"]}
             alt={packageData.name || "Package"}
           />
-          {/* Layered gradient: bottom-up + stronger left fade for legible text */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-          {/* Extra spotlight behind the left content column */}
-          <div className="absolute inset-y-0 left-0 w-[65%] bg-gradient-to-r from-black/60 to-transparent" />
+          {/* Layered gradient: gentle bottom-up + left fade so hero images breathe */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+          {/* Softer left spotlight for text legibility */}
+          <div className="absolute inset-y-0 left-0 w-[65%] bg-gradient-to-r from-black/30 to-transparent" />
         </div>
 
         <div className="relative z-10 w-full container mx-auto px-4 lg:px-8 pt-6 pb-6 lg:pt-32 lg:pb-12 bg-[#0B1528] lg:bg-transparent">
@@ -1693,7 +1824,98 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             {/* Itinerary Section with Timeline Accordion Design */}
             {normalizedItinerary.length > 0 && (
               <section id="itinerary" className="rounded-md border border-slate-200 bg-white p-3 md:p-4 shadow-sm w-full min-w-0 overflow-hidden">
-                <h2 className="text-lg sm:text-2xl font-bold text-slate-900 mb-6">Itinerary</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                  <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Itinerary</h2>
+                  {stayRoute.length > 0 && (
+                    <span className="text-xs text-slate-500 font-medium">
+                      {packageData.nights ? `${packageData.nights}N` : ""}
+                      {packageData.duration ? ` / ${packageData.duration}D` : ""}
+                      {" · "}{stayRoute.filter(s => s.nights > 0).length} Stay Cities
+                    </span>
+                  )}
+                </div>
+
+                {/* ── Country → State → City Night-Stay Route Strip ── */}
+                {routeHierarchy.length > 0 && (
+                  <div className="mb-6 rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-blue-50/40 p-3 md:p-4 overflow-hidden">
+                    {/* Top: Countries row */}
+                    {routeHierarchy.map((country, cIdx) => (
+                      <div key={cIdx} className="mb-3 last:mb-0">
+                        {/* Country header */}
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1B3A6B] text-white text-[10px] font-bold uppercase tracking-widest shrink-0">
+                            <Globe className="w-3 h-3" />
+                            <span>{country.name}</span>
+                          </div>
+                          <div className="flex-1 h-px bg-gradient-to-r from-[#1B3A6B]/30 to-transparent" />
+                        </div>
+
+                        {/* States row */}
+                        {country.states.map((stateGroup, sIdx) => (
+                          <div key={sIdx} className={`${sIdx > 0 ? "mt-3" : ""}`}>
+                            {/* State sub-header */}
+                            {stateGroup.name && (
+                              <div className="flex items-center gap-2 mb-2 ml-2">
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#1B3A6B]/10 text-[#1B3A6B] text-[10px] font-semibold uppercase tracking-wider border border-[#1B3A6B]/20 shrink-0">
+                                  <MapPin className="w-2.5 h-2.5" />
+                                  <span>{stateGroup.name}</span>
+                                </div>
+                                <div className="flex-1 h-px bg-[#1B3A6B]/10" />
+                              </div>
+                            )}
+
+                            {/* Cities row — horizontally scrollable on mobile */}
+                            <div className="flex items-center gap-0 ml-4 overflow-x-auto pb-1 scrollbar-hide">
+                              {stateGroup.cities.map((stop, cityIdx) => (
+                                <div key={cityIdx} className="flex items-center shrink-0">
+                                  {/* City pill */}
+                                  <div className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg border text-center ${
+                                    stop.nights > 0
+                                      ? "bg-white border-emerald-200 shadow-sm"
+                                      : "bg-slate-50 border-slate-200 opacity-80"
+                                  }`}>
+                                    <span className="text-[11px] font-bold text-slate-800 whitespace-nowrap">
+                                      {stop.city}
+                                    </span>
+                                    {stop.nights > 0 ? (
+                                      <span className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                        {stop.nights}N
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-medium text-slate-400 whitespace-nowrap">transit</span>
+                                    )}
+                                  </div>
+                                  {/* Arrow connector between cities */}
+                                  {cityIdx < stateGroup.cities.length - 1 && (
+                                    <div className="flex items-center shrink-0 mx-1">
+                                      <div className="w-4 h-px bg-slate-300" />
+                                      <ChevronRight className="w-3 h-3 text-slate-400 -ml-1" />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                              {/* Arrow to next state group within same country */}
+                              {sIdx < country.states.length - 1 && (
+                                <div className="flex items-center shrink-0 mx-2">
+                                  <div className="w-6 h-px bg-slate-300 border-dashed" />
+                                  <ChevronRight className="w-3.5 h-3.5 text-[#1B3A6B]/50 -ml-1" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Arrow to next country */}
+                        {cIdx < routeHierarchy.length - 1 && (
+                          <div className="flex items-center gap-1.5 mt-3 ml-4">
+                            <div className="w-8 h-px bg-[#1B3A6B]/30 border-t border-dashed" />
+                            <ChevronRight className="w-4 h-4 text-[#1B3A6B]/40" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="space-y-0">
                   {normalizedItinerary.map((day, idx) => {

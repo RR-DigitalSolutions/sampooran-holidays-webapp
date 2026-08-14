@@ -184,6 +184,48 @@ export async function buildPackageDetail(pkg: any) {
     }
   }
 
+  // ── Enrich stateIds + destinationIds for route strip (one-shot, no N+1) ──
+  const stateIdArr: number[]  = Array.isArray(source.stateIds) ? source.stateIds.filter(Boolean) : [];
+  const destIdArr: number[]   = Array.isArray(source.destinationIds) ? source.destinationIds.filter(Boolean) : [];
+
+  // Also fold in the single stateId / destinationId if not already in arrays
+  if (source.stateId && !stateIdArr.includes(source.stateId)) stateIdArr.push(source.stateId);
+  if (source.destinationId && !destIdArr.includes(source.destinationId)) destIdArr.push(source.destinationId);
+
+  let stateNames: { id: number; name: string; countryName: string }[] = [];
+  let destinationsWithState: { id: number; name: string; stateId: number | null; stateName: string; countryName: string }[] = [];
+
+  if (stateIdArr.length > 0) {
+    const stateRows = await db
+      .select({ id: statesTable.id, name: statesTable.name, countryName: countriesTable.name })
+      .from(statesTable)
+      .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id))
+      .where(inArray(statesTable.id, stateIdArr));
+    stateNames = stateRows.map(r => ({ id: r.id, name: r.name, countryName: r.countryName ?? "" }));
+  }
+
+  if (destIdArr.length > 0) {
+    const destRows = await db
+      .select({
+        id: destinationsTable.id,
+        name: destinationsTable.name,
+        stateId: destinationsTable.stateId,
+        stateName: statesTable.name,
+        countryName: countriesTable.name,
+      })
+      .from(destinationsTable)
+      .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
+      .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id))
+      .where(inArray(destinationsTable.id, destIdArr));
+    destinationsWithState = destRows.map(r => ({
+      id: r.id,
+      name: r.name,
+      stateId: r.stateId ?? null,
+      stateName: r.stateName ?? "",
+      countryName: r.countryName ?? "",
+    }));
+  }
+
   return {
     ...source,
     ...pkg,
@@ -194,6 +236,9 @@ export async function buildPackageDetail(pkg: any) {
     hotels: source.hotels ?? [],
     faqs: source.faqs ?? [],
     themes,
+    // Enriched multi-location data for the route strip
+    stateNames,               // [{id, name, countryName}] – all states this package covers
+    destinationsWithState,    // [{id, name, stateId, stateName, countryName}] – all cities with parent state
   };
 }
 
