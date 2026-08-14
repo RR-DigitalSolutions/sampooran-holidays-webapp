@@ -4,7 +4,8 @@ import {
   Plus, Trash2, Edit3, Search, Filter, Star, MapPin, CheckCircle, XCircle,
   ChevronRight, Building2, LayoutGrid, List, RefreshCw, Eye, Ban,
   Users, Wallet, BookOpen, Shield, ChevronDown, ChevronUp, X,
-  Save, Camera, Bed, Clock, Phone, Globe, Mail, AlertTriangle, TrendingUp, Info
+  Save, Camera, Bed, Clock, Phone, Globe, Mail, AlertTriangle, TrendingUp, Info,
+  Sliders, Calendar
 } from "lucide-react";
 import { getApiUrl } from "@/utils/api-url";
 
@@ -52,6 +53,7 @@ interface Hotel {
   owner_name?: string;
   owner_email?: string;
   owner_role?: string;
+  propertySource?: "ADMIN_B2B" | "VENDOR_OTA";
   pincode?: string;
   website?: string;
   vendorCommissionPct?: number;
@@ -71,11 +73,19 @@ interface Room {
   type: string;
   bedType: string;
   basePrice: number;
+  extraAdultPrice?: number;
+  extraChildWithBedPrice?: number;
+  extraChildWithoutBedPrice?: number;
+  sizeSqft?: number;
+  viewType?: string;
   maxOccupancy: number;
   mealPlan: string;
   totalRooms: number;
   availableRooms: number;
   isActive: boolean;
+  discountType?: string;
+  discountPercent?: number;
+  discountFlat?: number;
   amenities?: string[];
   images?: string[];
 }
@@ -172,6 +182,7 @@ function HotelFormModal({
       : typeof hotel?.highlights === "string"
       ? (hotel.highlights as string).split(",").map(s => s.trim()).filter(Boolean)
       : [] as string[],
+    propertySource: hotel?.propertySource || "ADMIN_B2B",
     pincode: hotel?.pincode || "",
     latitude: hotel?.latitude || "",
     longitude: hotel?.longitude || "",
@@ -255,6 +266,20 @@ function HotelFormModal({
           {step === 1 && (
             <>
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 bg-blue-50/60 p-3 rounded-2xl border border-blue-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-[#1B3A6B]">Property Classification</p>
+                    <p className="text-[11px] text-gray-500">Separate internal contracted B2B deals from vendor OTA listings</p>
+                  </div>
+                  <select
+                    value={form.propertySource}
+                    onChange={e => update("propertySource", e.target.value)}
+                    className="px-3 py-1.5 bg-white border border-[#1B3A6B]/30 rounded-xl text-xs font-bold text-[#1B3A6B] outline-none"
+                  >
+                    <option value="ADMIN_B2B">🏢 Admin Contracted (B2B Package Deal)</option>
+                    <option value="VENDOR_OTA">🏨 Vendor Property (OTA Marketplace)</option>
+                  </select>
+                </div>
                 <div>
                   <label className="label">Property Name *</label>
                   <input value={form.name} onChange={e => update("name", e.target.value)} className="input w-full" placeholder="Grand Hyatt" />
@@ -664,13 +689,347 @@ const POPULAR_AMENITIES = [
   { key: "VALLEY_VIEW", label: "Valley View" },
   { key: "BONFIRE", label: "Bonfire" }
 ];
+// ─── Room Calendar & Inventory Extranet Modal (Channel Manager Style) ──────────
+function RoomCalendarExtranetModal({
+  hotel,
+  room,
+  onClose,
+}: {
+  hotel: Hotel;
+  room: Room;
+  onClose: () => void;
+}) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [inventoryList, setInventoryList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  // Bulk update range state
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [rateType, setRateType] = useState("PEAK");
+  const [priceOverride, setPriceOverride] = useState<string>("");
+  const [extraAdultPrice, setExtraAdultPrice] = useState<string>("");
+  const [extraChildWithBedPrice, setExtraChildWithBedPrice] = useState<string>("");
+  const [extraChildWithoutBedPrice, setExtraChildWithoutBedPrice] = useState<string>("");
+  const [isBlocked, setIsBlocked] = useState(false);
+
+  const fetchInventory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month - 1, 1).toISOString().split("T")[0];
+      const lastDay = new Date(year, month + 2, 0).toISOString().split("T")[0];
+
+      const res = await fetch(
+        `${API_URL}/admin/hotels/${hotel.id}/rooms/${room.id}/inventory?startDate=${firstDay}&endDate=${lastDay}`,
+        { headers: authHeaders() }
+      );
+      if (res.ok) {
+        setInventoryList(await res.json());
+      }
+    } catch (e: any) {
+      console.error("Failed to load inventory", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [hotel.id, room.id, currentMonth]);
+
+  useEffect(() => {
+    fetchInventory();
+  }, [fetchInventory]);
+
+  const handleBulkApply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!startDate || !endDate) {
+      alert("Please select both start date and end date.");
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const body = {
+        startDate,
+        endDate,
+        rateType,
+        priceOverride: priceOverride !== "" ? Number(priceOverride) : undefined,
+        extraAdultPrice: extraAdultPrice !== "" ? Number(extraAdultPrice) : undefined,
+        extraChildWithBedPrice: extraChildWithBedPrice !== "" ? Number(extraChildWithBedPrice) : undefined,
+        extraChildWithoutBedPrice: extraChildWithoutBedPrice !== "" ? Number(extraChildWithoutBedPrice) : undefined,
+        isBlocked,
+      };
+
+      const res = await fetch(`${API_URL}/admin/hotels/${hotel.id}/rooms/${room.id}/inventory/bulk`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      alert("🎉 Rates & Extranet rules updated successfully!");
+      fetchInventory();
+    } catch (err: any) {
+      alert("Failed to update rates: " + err.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Calendar days builder
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days: Date[] = [];
+
+    const startPadding = firstDay.getDay();
+    for (let i = startPadding - 1; i >= 0; i--) {
+      days.push(new Date(year, month, -i));
+    }
+    const totalDays = lastDay.getDate();
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(new Date(year, month, i));
+    }
+    return days;
+  };
+
+  const monthDays = getDaysInMonth(currentMonth);
+
+  return (
+    <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-100">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-slate-900 via-[#1B3A6B] to-slate-900 text-white">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold">{room.name}</h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-white/20 text-white border border-white/30">
+                {room.type}
+              </span>
+            </div>
+            <p className="text-xs text-white/70">
+              {hotel.name} · Base Price: <strong className="text-emerald-300">₹{(room.basePrice || 0).toLocaleString()}</strong> / night
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Close Extranet" className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT 2 COLUMNS: Visual Extranet Calendar */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                className="p-1.5 hover:bg-white rounded-xl text-slate-700 font-bold text-xs flex items-center gap-1 border border-slate-200"
+              >
+                ← Prev Month
+              </button>
+              <h3 className="font-extrabold text-slate-800 text-sm tracking-wide uppercase">
+                {currentMonth.toLocaleString("default", { month: "long", year: "numeric" })}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                className="p-1.5 hover:bg-white rounded-xl text-slate-700 font-bold text-xs flex items-center gap-1 border border-slate-200"
+              >
+                Next Month →
+              </button>
+            </div>
+
+            {/* Legend Badges */}
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Regular</span>
+              <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">🔥 Peak Season</span>
+              <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">🌿 Off-Season</span>
+              <span className="px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">🎉 Festive</span>
+              <span className="px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">⛔ Blackout</span>
+            </div>
+
+            {/* Days Grid Header */}
+            <div className="grid grid-cols-7 gap-1 text-center font-bold text-[11px] text-slate-400 uppercase tracking-wider">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+
+            {/* Calendar Days */}
+            <div className="grid grid-cols-7 gap-1.5">
+              {monthDays.map((d, i) => {
+                const dateStr = d.toISOString().split("T")[0];
+                const isCurrentMonth = d.getMonth() === currentMonth.getMonth();
+                const inventory = inventoryList.find(inv => inv.date === dateStr || (typeof inv.date === "string" && inv.date.split("T")[0] === dateStr));
+
+                const isBlockedDate = inventory?.isBlocked;
+                const price = inventory?.priceOverride !== null && inventory?.priceOverride !== undefined ? inventory.priceOverride : room.basePrice;
+                const customType = inventory?.customPricing?.rateType || (isBlockedDate ? "BLACKOUT" : "REGULAR");
+
+                let badgeClass = "bg-[#FAFBFD] border-slate-200 text-slate-700";
+                if (isBlockedDate) badgeClass = "bg-red-50/80 border-red-200 text-red-700";
+                else if (customType === "PEAK") badgeClass = "bg-amber-50 border-amber-200 text-amber-800";
+                else if (customType === "OFF_SEASON") badgeClass = "bg-blue-50 border-blue-200 text-blue-800";
+                else if (customType === "FESTIVE") badgeClass = "bg-purple-50 border-purple-200 text-purple-800";
+
+                return (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      setStartDate(dateStr);
+                      setEndDate(dateStr);
+                    }}
+                    className={`p-2 rounded-xl border text-center transition-all cursor-pointer hover:scale-105 min-h-[60px] flex flex-col justify-between ${
+                      isCurrentMonth ? badgeClass : "opacity-30 bg-slate-50 border-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-extrabold">{d.getDate()}</span>
+                      {isBlockedDate && <span className="text-[8px] font-black text-red-600 uppercase">OFF</span>}
+                    </div>
+                    <div className="text-[10px] font-black tracking-tight">
+                      {isBlockedDate ? (
+                        <span className="text-red-500 line-through">₹{price}</span>
+                      ) : (
+                        <span className="text-emerald-700">₹{price?.toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: 1-Click Range Extranet Applicator */}
+          <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-200">
+              <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-widest flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-[#1B3A6B]" />
+                Rate & Blackout Modifier
+              </h3>
+            </div>
+
+            <form onSubmit={handleBulkApply} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Start Date *</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-slate-300 bg-white font-semibold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">End Date *</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-slate-300 bg-white font-semibold"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Seasonal Rate Tag</label>
+                <select
+                  value={rateType}
+                  onChange={e => setRateType(e.target.value)}
+                  className="w-full p-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-800"
+                >
+                  <option value="REGULAR">Regular Rate</option>
+                  <option value="PEAK">🔥 Peak Season (High Demand)</option>
+                  <option value="OFF_SEASON">🌿 Off-Season / Monsoon</option>
+                  <option value="FESTIVE">🎉 Festive / Special Event</option>
+                  <option value="PRICE_ON_REQ">📞 Price on Request</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Selling Price Override (₹ / night)</label>
+                <input
+                  type="number"
+                  placeholder={`Base: ₹${room.basePrice}`}
+                  value={priceOverride}
+                  onChange={e => setPriceOverride(e.target.value)}
+                  className="w-full p-2 rounded-xl border border-slate-300 bg-white font-bold text-emerald-700"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-medium text-slate-600 mb-1">Extra Adult (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 1200"
+                    value={extraAdultPrice}
+                    onChange={e => setExtraAdultPrice(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-slate-300 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-600 mb-1">Child w/ Bed (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 800"
+                    value={extraChildWithBedPrice}
+                    onChange={e => setExtraChildWithBedPrice(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-slate-300 bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-100">
+                  <input
+                    type="checkbox"
+                    checked={isBlocked}
+                    onChange={e => setIsBlocked(e.target.checked)}
+                    className="w-4 h-4 accent-red-600"
+                  />
+                  <span>⛔ Block / Blackout Date Range</span>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={updating}
+                className="w-full py-3 bg-[#1B3A6B] hover:bg-[#12284c] text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                {updating ? "Updating Rules..." : "⚡ Apply Rate Rules"}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Room Management Panel ────────────────────────────────────────────────────
 function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddRoom, setShowAddRoom] = useState(false);
+  const [extranetRoom, setExtranetRoom] = useState<Room | null>(null);
+
+  const ROOM_CATEGORIES = [
+    "Standard Room", "Deluxe Room", "Super Deluxe Room", "Executive Suite",
+    "Family Suite", "Premium Villa", "Luxury Cottage", "Penthouse", "Duplex Suite"
+  ];
+
+  const VIEW_TYPES = [
+    "Mountain View", "Valley View", "Lake View", "Pool View", "Garden View", "City View"
+  ];
+
   const [newRoom, setNewRoom] = useState({
-    name: "", type: "Standard", bedType: "DOUBLE", basePrice: "",
+    name: "", type: "Deluxe Room", bedType: "DOUBLE", basePrice: "",
+    extraAdultPrice: "", extraChildWithBedPrice: "", extraChildWithoutBedPrice: "",
+    sizeSqft: "", viewType: "Mountain View",
     maxOccupancy: 2, mealPlan: "EP", totalRooms: 1,
     discountType: "PERCENT", discountPercent: 0, discountFlat: 0,
   });
@@ -684,11 +1043,19 @@ function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
   useEffect(() => { fetchRooms(); }, [hotel.id]);
 
   const addRoom = async () => {
+    if (!newRoom.name.trim() || !newRoom.basePrice) {
+      alert("Room Category Name and Base Price are required.");
+      return;
+    }
     await fetch(`${API_URL}/admin/hotels/${hotel.id}/rooms`, {
       method: "POST", headers: authHeaders(),
       body: JSON.stringify({ 
         ...newRoom, 
         basePrice: Number(newRoom.basePrice),
+        extraAdultPrice: newRoom.extraAdultPrice ? Number(newRoom.extraAdultPrice) : 0,
+        extraChildWithBedPrice: newRoom.extraChildWithBedPrice ? Number(newRoom.extraChildWithBedPrice) : 0,
+        extraChildWithoutBedPrice: newRoom.extraChildWithoutBedPrice ? Number(newRoom.extraChildWithoutBedPrice) : 0,
+        sizeSqft: newRoom.sizeSqft ? Number(newRoom.sizeSqft) : null,
         discountPercent: Number(newRoom.discountPercent || 0),
         discountFlat: Number(newRoom.discountFlat || 0),
       }),
@@ -715,55 +1082,88 @@ function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h2 className="text-lg font-bold">{hotel.name}</h2>
-            <p className="text-xs text-gray-400">Room Types & Pricing</p>
+            <h2 className="text-lg font-bold text-slate-900">{hotel.name}</h2>
+            <p className="text-xs text-slate-500">Room Categories, Occupancy & Extranet Calendar Rates</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowAddRoom(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#1B3A6B] text-white text-sm font-bold rounded-xl">
-              <Plus className="w-4 h-4" /> Add Room
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#1B3A6B] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#12284c] transition-colors">
+              <Plus className="w-4 h-4" /> Add Room Category
             </button>
             <button aria-label="Close" title="Close" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl"><X className="w-5 h-5" /></button>
           </div>
         </div>
 
         {showAddRoom && (
-          <div className="p-5 bg-blue-50 border-b grid grid-cols-3 gap-3">
-            <input value={newRoom.name} onChange={e => setNewRoom(r => ({ ...r, name: e.target.value }))}
-              placeholder="Room name (e.g. Deluxe Room)" className="input col-span-3" />
-            <select aria-label="Room Type" title="Room Type" value={newRoom.type} onChange={e => setNewRoom(r => ({ ...r, type: e.target.value }))} className="input">
-              {["Standard", "Deluxe", "Suite", "Executive", "Family"].map(t => <option key={t}>{t}</option>)}
-            </select>
-            <select aria-label="Bed Type" title="Bed Type" value={newRoom.bedType} onChange={e => setNewRoom(r => ({ ...r, bedType: e.target.value }))} className="input">
-              {["SINGLE", "DOUBLE", "TWIN", "KING", "QUEEN"].map(b => <option key={b}>{b}</option>)}
-            </select>
-            <select aria-label="Meal Plan" title="Meal Plan" value={newRoom.mealPlan} onChange={e => setNewRoom(r => ({ ...r, mealPlan: e.target.value }))} className="input">
-              {Object.entries(MEAL_PLANS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <input type="number" value={newRoom.basePrice} onChange={e => setNewRoom(r => ({ ...r, basePrice: e.target.value }))}
-              placeholder="Price per night (₹)" className="input" />
-            <input type="number" value={newRoom.maxOccupancy} onChange={e => setNewRoom(r => ({ ...r, maxOccupancy: Number(e.target.value) }))}
-              placeholder="Max occupancy" className="input" />
-            <input type="number" value={newRoom.totalRooms} onChange={e => setNewRoom(r => ({ ...r, totalRooms: Number(e.target.value) }))}
-              placeholder="Total rooms" className="input" />
-            
-            <select aria-label="Discount Type" title="Discount Type" value={newRoom.discountType} onChange={e => setNewRoom(r => ({ ...r, discountType: e.target.value }))} className="input">
-              <option value="PERCENT">Percentage Discount (%)</option>
-              <option value="FLAT">Flat Discount Amount (₹)</option>
-            </select>
-            {newRoom.discountType === "PERCENT" ? (
-              <input type="number" value={newRoom.discountPercent || ""} onChange={e => setNewRoom(r => ({ ...r, discountPercent: Number(e.target.value), discountFlat: 0 }))}
-                placeholder="Discount Percent (%)" className="input" min="0" max="100" />
-            ) : (
-              <input type="number" value={newRoom.discountFlat || ""} onChange={e => setNewRoom(r => ({ ...r, discountFlat: Number(e.target.value), discountPercent: 0 }))}
-                placeholder="Discount Flat Amount (₹)" className="input" min="0" />
-            )}
-            <div className="col-span-3 flex justify-end gap-2">
-              <button onClick={() => setShowAddRoom(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-xl">Cancel</button>
-              <button onClick={addRoom} className="px-4 py-2 text-sm font-bold bg-emerald-600 text-white rounded-xl">Save Room</button>
+          <div className="p-5 bg-blue-50/70 border-b border-blue-100 grid grid-cols-3 gap-3 text-xs">
+            <div className="col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Room Category Name *</label>
+              <input value={newRoom.name} onChange={e => setNewRoom(r => ({ ...r, name: e.target.value }))}
+                placeholder="e.g. Deluxe Mountain View Room" className="input w-full bg-white font-bold" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Category Type</label>
+              <select aria-label="Category Type" value={newRoom.type} onChange={e => setNewRoom(r => ({ ...r, type: e.target.value }))} className="input w-full bg-white font-bold">
+                {ROOM_CATEGORIES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Bed Type</label>
+              <select aria-label="Bed Type" value={newRoom.bedType} onChange={e => setNewRoom(r => ({ ...r, bedType: e.target.value }))} className="input w-full bg-white">
+                {["SINGLE", "DOUBLE", "TWIN", "KING", "QUEEN"].map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">View Type</label>
+              <select aria-label="View Type" value={newRoom.viewType} onChange={e => setNewRoom(r => ({ ...r, viewType: e.target.value }))} className="input w-full bg-white">
+                {VIEW_TYPES.map(v => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Meal Plan</label>
+              <select aria-label="Meal Plan" value={newRoom.mealPlan} onChange={e => setNewRoom(r => ({ ...r, mealPlan: e.target.value }))} className="input w-full bg-white font-bold">
+                {Object.entries(MEAL_PLANS).map(([k, v]) => <option key={k} value={k}>{v} ({k})</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-emerald-800 mb-1">Base Price / Night (₹) *</label>
+              <input type="number" value={newRoom.basePrice} onChange={e => setNewRoom(r => ({ ...r, basePrice: e.target.value }))}
+                placeholder="4500" className="input w-full bg-white font-black text-emerald-700" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Extra Adult (₹)</label>
+              <input type="number" value={newRoom.extraAdultPrice} onChange={e => setNewRoom(r => ({ ...r, extraAdultPrice: e.target.value }))}
+                placeholder="1200" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Child w/ Bed (₹)</label>
+              <input type="number" value={newRoom.extraChildWithBedPrice} onChange={e => setNewRoom(r => ({ ...r, extraChildWithBedPrice: e.target.value }))}
+                placeholder="800" className="input w-full bg-white" />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Child w/o Bed (₹)</label>
+              <input type="number" value={newRoom.extraChildWithoutBedPrice} onChange={e => setNewRoom(r => ({ ...r, extraChildWithoutBedPrice: e.target.value }))}
+                placeholder="500" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Max Guests</label>
+              <input type="number" value={newRoom.maxOccupancy} onChange={e => setNewRoom(r => ({ ...r, maxOccupancy: Number(e.target.value) }))}
+                placeholder="3" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Total Rooms Count</label>
+              <input type="number" value={newRoom.totalRooms} onChange={e => setNewRoom(r => ({ ...r, totalRooms: Number(e.target.value) }))}
+                placeholder="10" className="input w-full bg-white" />
+            </div>
+
+            <div className="col-span-3 flex justify-end gap-2 pt-2 border-t border-blue-200">
+              <button onClick={() => setShowAddRoom(false)} className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl">Cancel</button>
+              <button onClick={addRoom} className="px-5 py-2 text-xs font-bold bg-emerald-600 text-white rounded-xl shadow-xs">Save Room Category</button>
             </div>
           </div>
         )}
@@ -772,36 +1172,72 @@ function RoomsPanel({ hotel, onClose }: { hotel: Hotel; onClose: () => void }) {
           {loading ? (
             <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1B3A6B]" /></div>
           ) : rooms.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-slate-400">
               <Bed className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">No rooms added yet</p>
+              <p className="font-bold">No room categories added yet</p>
             </div>
           ) : rooms.map(room => (
-            <div key={room.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border">
-                <Bed className="w-5 h-5 text-gray-400" />
+            <div key={room.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 hover:bg-white hover:shadow-xs transition-all">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center border border-slate-200 shrink-0 text-[#1B3A6B] shadow-2xs">
+                  <Bed className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-extrabold text-sm text-slate-900">{room.name}</p>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-slate-200 text-slate-700">
+                      {room.type}
+                    </span>
+                    {room.viewType && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                        {room.viewType}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {room.bedType} · {MEAL_PLANS[room.mealPlan] || room.mealPlan} · Max {room.maxOccupancy} Guests · Total {room.totalRooms} Rooms
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-gray-900">{room.name}</p>
-                <p className="text-xs text-gray-400">{room.type} · {room.bedType} · {MEAL_PLANS[room.mealPlan] || room.mealPlan} · Max {room.maxOccupancy} guests</p>
-              </div>
-              <div className="text-right">
-                <p className="font-black text-[#1B3A6B]">₹{(room.basePrice || 0).toLocaleString()}</p>
-                <p className="text-xs text-gray-400">{room.totalRooms} rooms</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => toggleRoom(room)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${room.isActive ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-                  {room.isActive ? "Active" : "Inactive"}
-                </button>
-                <button aria-label="Delete Room" title="Delete Room" onClick={() => deleteRoom(room.id)} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg text-gray-300 transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+
+              <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200">
+                <div className="text-left sm:text-right">
+                  <p className="font-black text-emerald-700 text-base">₹{(room.basePrice || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 font-semibold">base rate / night</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExtranetRoom(room)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#1B3A6B] text-white hover:bg-[#12284c] shadow-2xs transition-colors"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Rate Calendar</span>
+                  </button>
+
+                  <button onClick={() => toggleRoom(room)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${room.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"}`}>
+                    {room.isActive ? "Active" : "Inactive"}
+                  </button>
+                  <button aria-label="Delete Room" title="Delete Room" onClick={() => deleteRoom(room.id)} className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg text-slate-400 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Extranet Calendar Overlay */}
+      {extranetRoom && (
+        <RoomCalendarExtranetModal
+          hotel={hotel}
+          room={extranetRoom}
+          onClose={() => setExtranetRoom(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1136,9 +1572,9 @@ export default function HotelsManager() {
     }
   };
 
-  // Hotels created by vendors have owner_role === "HOTEL_OWNER"; all others (admin-created, null owner, ADMIN/SUPER_ADMIN owner) are admin properties
-  const adminProperties = hotels.filter(h => !h.owner_role || h.owner_role !== "HOTEL_OWNER");
-  const vendorProperties = hotels.filter(h => h.owner_role === "HOTEL_OWNER");
+  // Hotels created by admin for B2B package deals vs vendor-submitted OTA marketplace properties
+  const adminProperties = hotels.filter(h => h.propertySource === "ADMIN_B2B" || (!h.owner_role || h.owner_role !== "HOTEL_OWNER"));
+  const vendorProperties = hotels.filter(h => h.propertySource === "VENDOR_OTA" || h.owner_role === "HOTEL_OWNER");
   const pendingHotels = hotels.filter(h => h.status === "PENDING");
 
   const filteredHotels = hotels.filter(h => {
@@ -1150,9 +1586,9 @@ export default function HotelsManager() {
 
     // Filter by Admin / Vendor ownership tabs
     if (tab === "admin-added") {
-      if (h.owner_role === "HOTEL_OWNER") return false;
+      if (h.propertySource === "VENDOR_OTA" || h.owner_role === "HOTEL_OWNER") return false;
     } else if (tab === "vendor-added") {
-      if (!h.owner_role || h.owner_role !== "HOTEL_OWNER") return false;
+      if (h.propertySource === "ADMIN_B2B" && (!h.owner_role || h.owner_role !== "HOTEL_OWNER")) return false;
     }
 
     return matchSearch && matchStatus && matchType;
@@ -1171,12 +1607,12 @@ export default function HotelsManager() {
   const totalFeatured = hotels.filter(h => h.isFeatured).length;
 
   const TABS = [
-    { key: "admin-added", label: "Admin Properties", count: adminProperties.length },
-    { key: "vendor-added", label: "Vendor Properties", count: vendorProperties.length },
-    { key: "pending", label: "Pending Approval", count: pendingHotels.length, badge: pendingHotels.length > 0 },
-    { key: "bookings", label: "Bookings" },
-    { key: "vendors", label: "Vendors", count: vendors.length },
-    { key: "pending-cities", label: "🏙️ City Requests", count: pendingCityCount, badge: pendingCityCount > 0 },
+    { key: "admin-added", label: "🏢 Admin Properties (B2B Deals)", count: adminProperties.length },
+    { key: "vendor-added", label: "🏨 Vendor Properties (OTA Marketplace)", count: vendorProperties.length },
+    { key: "pending", label: "⏳ Pending Approval", count: pendingHotels.length, badge: pendingHotels.length > 0 },
+    { key: "bookings", label: "📅 Bookings" },
+    { key: "vendors", label: "👥 Vendors", count: vendors.length },
+    { key: "pending-cities", label: "📍 City Requests", count: pendingCityCount, badge: pendingCityCount > 0 },
   ] as const;
 
   return (

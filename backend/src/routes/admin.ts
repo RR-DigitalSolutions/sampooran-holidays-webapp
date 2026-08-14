@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable, bookingsTable, chatAgentsTable, chatNotesTable, chatBlocklistTable } from "@workspace/db";
+import { db, usersTable, rewardTransactionsTable, settingsTable, hotelsTable, hotelRoomsTable, hotelRoomInventoryTable, hotelPoliciesTable, transportServicesTable, transportVendorsTable, transportVehiclesTable, transportRoutesTable, packagesTable, countriesTable, statesTable, destinationsTable, homePageSlidesTable, homePageCategoriesTable, homePageSectionsTable, offersTable, conversationsTable, messagesTable, attractionsTable, activitiesTable, diningPointsTable, travelGuidesTable, regionsTable, pendingCityRequestsTable, inquiriesTable, bookingsTable, chatAgentsTable, chatNotesTable, chatBlocklistTable } from "@workspace/db";
 import { eq, desc, sql, or, and, asc, inArray } from "drizzle-orm";
 import { authenticate, authorize, AuthenticatedRequest } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -2588,6 +2588,108 @@ router.delete("/hotels/:id/rooms/:roomId", requirePermission("PACKAGES"), async 
     res.json({ message: "Room deleted" });
   } catch (e: any) {
     res.status(500).json({ error: "Failed to delete room" });
+  }
+});
+
+// GET /admin/hotels/:id/rooms/:roomId/inventory — fetch date range inventory & pricing rules
+router.get("/hotels/:id/rooms/:roomId/inventory", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    const roomId = Number(req.params.roomId);
+    const startDate = req.query.startDate ? String(req.query.startDate) : undefined;
+    const endDate = req.query.endDate ? String(req.query.endDate) : undefined;
+
+    let query = db
+      .select()
+      .from(hotelRoomInventoryTable)
+      .where(and(eq(hotelRoomInventoryTable.hotelId, hotelId), eq(hotelRoomInventoryTable.roomId, roomId)));
+
+    if (startDate && endDate) {
+      query = db
+        .select()
+        .from(hotelRoomInventoryTable)
+        .where(
+          and(
+            eq(hotelRoomInventoryTable.hotelId, hotelId),
+            eq(hotelRoomInventoryTable.roomId, roomId),
+            sql`${hotelRoomInventoryTable.date} >= ${startDate}`,
+            sql`${hotelRoomInventoryTable.date} <= ${endDate}`
+          )
+        );
+    }
+
+    const rows = await query;
+    res.json(rows);
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to fetch room inventory: " + e.message });
+  }
+});
+
+// POST /admin/hotels/:id/rooms/:roomId/inventory/bulk — bulk rate & blackout range updates
+router.post("/hotels/:id/rooms/:roomId/inventory/bulk", requirePermission("PACKAGES"), async (req, res) => {
+  try {
+    const hotelId = Number(req.params.id);
+    const roomId = Number(req.params.roomId);
+    const { startDate, endDate, rateType, priceOverride, isBlocked, discountType, discountPercent, discountFlat, extraAdultPrice, extraChildWithBedPrice, extraChildWithoutBedPrice } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "startDate and endDate are required" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+      return res.status(400).json({ error: "Invalid date range" });
+    }
+
+    // Generate date sequence
+    const dates: string[] = [];
+    const current = new Date(start);
+    while (current <= end) {
+      dates.push(current.toISOString().split("T")[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    const customPricingObj: Record<string, any> = {};
+    if (rateType) customPricingObj.rateType = rateType;
+    if (extraAdultPrice !== undefined) customPricingObj.extraAdultPrice = Number(extraAdultPrice);
+    if (extraChildWithBedPrice !== undefined) customPricingObj.extraChildWithBedPrice = Number(extraChildWithBedPrice);
+    if (extraChildWithoutBedPrice !== undefined) customPricingObj.extraChildWithoutBedPrice = Number(extraChildWithoutBedPrice);
+
+    // Upsert inventory records date by date
+    for (const d of dates) {
+      await db
+        .insert(hotelRoomInventoryTable)
+        .values({
+          hotelId,
+          roomId,
+          date: d,
+          availableCount: 10,
+          priceOverride: priceOverride !== undefined && priceOverride !== "" ? Number(priceOverride) : null,
+          isBlocked: isBlocked !== undefined ? Boolean(isBlocked) : false,
+          discountType: discountType || "PERCENT",
+          discountPercent: discountPercent !== undefined ? Number(discountPercent) : 0,
+          discountFlat: discountFlat !== undefined ? Number(discountFlat) : 0,
+          customPricing: Object.keys(customPricingObj).length > 0 ? customPricingObj : null,
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [hotelRoomInventoryTable.roomId, hotelRoomInventoryTable.date],
+          set: {
+            priceOverride: priceOverride !== undefined && priceOverride !== "" ? Number(priceOverride) : null,
+            isBlocked: isBlocked !== undefined ? Boolean(isBlocked) : false,
+            discountType: discountType || "PERCENT",
+            discountPercent: discountPercent !== undefined ? Number(discountPercent) : 0,
+            discountFlat: discountFlat !== undefined ? Number(discountFlat) : 0,
+            customPricing: Object.keys(customPricingObj).length > 0 ? customPricingObj : null,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
+    res.json({ message: `Successfully updated inventory for ${dates.length} days (${startDate} to ${endDate})` });
+  } catch (e: any) {
+    res.status(500).json({ error: "Failed to update room inventory: " + e.message });
   }
 });
 

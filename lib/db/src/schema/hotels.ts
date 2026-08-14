@@ -57,6 +57,9 @@ export const hotelsTable = pgTable("hotels", {
   // Financial
   vendorCommissionPct: real("vendor_commission_pct").default(15.0),
 
+  // Property Segregation (Admin B2B Contracted vs Vendor OTA Marketplace)
+  propertySource: text("property_source").notNull().default("ADMIN_B2B"), // 'ADMIN_B2B' | 'VENDOR_OTA'
+
   // CMS / Admin
   status: text("status").notNull().default("PENDING"), // 'PENDING','APPROVED','REJECTED','DRAFT','SUSPENDED'
   isFeatured: boolean("is_featured").default(false),

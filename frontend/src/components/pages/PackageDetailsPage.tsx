@@ -1793,30 +1793,29 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   </div>
                 )}
               </div>
-
-              {/* Bottom side: Inclusions (separated by a light border) */}
-              {inclusionItems.length > 0 && (
-                <div className="pt-5 border-t border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Key Inclusions</h3>
-                  <div className="flex flex-wrap gap-2 md:gap-3">
-                    {inclusionItems.map((item, idx) => {
-                      const IconComponent = item.Icon;
-                      return (
-                        <div key={idx} className="flex items-center gap-1.5 xs:gap-2 sm:gap-2.5 bg-slate-50 border border-slate-100 rounded-md px-2.5 py-1.5 sm:px-4 sm:py-2 hover:border-primary/20 transition-all">
-                          <div className="w-6.5 h-6.5 sm:w-8 sm:h-8 rounded-md bg-[#1B3A6B] text-[#E5F1FF] flex items-center justify-center shadow-sm shrink-0">
-                            <IconComponent className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5" />
-                          </div>
-                          <span className="text-[9px] sm:text-[11px] font-extrabold text-slate-800 tracking-wider uppercase">
-                            {item.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </section>
 
+            {/* Highlights Section */}
+            {packageHighlights.length > 0 && (
+              <section id="highlights" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Tour Highlights</h2>
+                  <span className="text-xs text-slate-400 font-medium">{packageHighlights.length} Top Experiences</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {packageHighlights.map((hl: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-md bg-slate-50 border border-slate-100 text-xs sm:text-sm text-slate-700 font-medium">
+                      <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#1B3A6B] text-white">
+                        <Check className="h-2.5 w-2.5" />
+                      </div>
+                      <span className="leading-snug">{hl}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Overview Section */}
             <section id="overview" className="rounded-md border border-slate-200 bg-white p-4 md:p-6 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1834,7 +1833,7 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             {/* Itinerary Section with Timeline Accordion Design */}
             {normalizedItinerary.length > 0 && (
               <section id="itinerary" className="rounded-md border border-slate-200 bg-white p-3 md:p-4 shadow-sm w-full min-w-0 overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Itinerary</h2>
                   {stayRoute.length > 0 && (
                     <span className="text-xs text-slate-500 font-medium">
@@ -1845,26 +1844,26 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                   )}
                 </div>
 
-                {/* ── Sleek Compact Country → State → City Night-Stay Route Strip ── */}
+                {/* ── Micro-Compact Country → State → City Night-Stay Route Strip ── */}
                 {routeHierarchy.length > 0 && (
-                  <div className="mb-5 rounded-lg border border-slate-200 bg-[#F8FAFC] p-2.5 sm:p-3 overflow-hidden space-y-2.5">
+                  <div className="mb-4 rounded-md border border-slate-200/80 bg-[#FAFBFD] p-2 sm:p-2.5 overflow-hidden space-y-1.5">
                     {routeHierarchy.map((country, cIdx) => (
-                      <div key={cIdx} className="space-y-2">
+                      <div key={cIdx} className="space-y-1.5">
                         {/* Top Country Tag */}
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#1B3A6B] text-white text-[10px] font-extrabold uppercase tracking-widest shrink-0 shadow-2xs">
-                            <Globe className="w-3 h-3" />
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#1B3A6B] text-white text-[8.5px] font-black uppercase tracking-widest shrink-0 shadow-2xs">
+                            <Globe className="w-2.5 h-2.5" />
                             <span>{country.name}</span>
                           </span>
                         </div>
 
                         {/* States list under Country */}
                         {country.states.map((stateGroup, sIdx) => (
-                          <div key={sIdx} className="flex flex-wrap items-center gap-1.5 pl-1 sm:pl-2">
+                          <div key={sIdx} className="flex flex-wrap items-center gap-1 pl-1">
                             {/* State Tag */}
                             {stateGroup.name && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/80 text-[#1B3A6B] text-[10px] font-extrabold uppercase tracking-wider border border-slate-300/60 shrink-0">
-                                <MapPin className="w-2.5 h-2.5" />
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-200/90 text-[#1B3A6B] text-[8.5px] font-black uppercase tracking-wider border border-slate-300/60 shrink-0">
+                                <MapPin className="w-2 h-2" />
                                 <span>{stateGroup.name}</span>
                               </span>
                             )}
@@ -1873,32 +1872,32 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
                             <div className="flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-hide shrink-0">
                               {stateGroup.cities.map((stop, cityIdx) => (
                                 <div key={cityIdx} className="flex items-center shrink-0">
-                                  {/* Compact horizontal city pill */}
-                                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-bold transition-colors ${
+                                  {/* Micro-compact horizontal city pill */}
+                                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-bold transition-colors ${
                                     stop.nights > 0
                                       ? "bg-white border-slate-200 text-slate-800 shadow-2xs"
                                       : "bg-slate-100 border-slate-200 text-slate-500"
                                   }`}>
                                     <span>{stop.city}</span>
                                     {stop.nights > 0 ? (
-                                      <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/80 shrink-0">
+                                      <span className="text-[8.5px] font-black text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/70 shrink-0">
                                         {stop.nights}N
                                       </span>
                                     ) : (
-                                      <span className="text-[9px] font-medium text-slate-400 shrink-0">transit</span>
+                                      <span className="text-[8.5px] font-medium text-slate-400 shrink-0">transit</span>
                                     )}
                                   </div>
 
                                   {/* Arrow connector between cities */}
                                   {cityIdx < stateGroup.cities.length - 1 && (
-                                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 mx-0.5" />
+                                    <ChevronRight className="w-3 h-3 text-slate-400 shrink-0 mx-0.5" />
                                   )}
                                 </div>
                               ))}
                               {/* Arrow connector to next state */}
                               {sIdx < country.states.length - 1 && (
-                                <div className="flex items-center shrink-0 ml-1 mr-0.5 text-slate-400">
-                                  <span className="text-slate-300 font-bold text-xs">→</span>
+                                <div className="flex items-center shrink-0 ml-0.5 text-slate-400">
+                                  <span className="text-slate-300 font-bold text-[10px]">→</span>
                                 </div>
                               )}
                             </div>
