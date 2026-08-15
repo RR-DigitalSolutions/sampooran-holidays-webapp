@@ -321,9 +321,9 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[300px] xs:h-[320px] sm:h-[390px] md:h-[440px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
+        className="block h-[260px] xs:h-[280px] sm:h-[345px] md:h-[395px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
       >
-        {/* Top Image Section (58%) */}
+        {/* Top Image Section (58%) — strictly non-increased image height */}
         <div className="absolute top-0 left-0 right-0 h-[58%] w-full">
           <Image
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
@@ -373,9 +373,9 @@ function PackageCardComponent({
           </div>
         </div>
 
-        {/* Bottom Solid Block (42%) — flex-col with pinned price footer */}
-        <div className="absolute bottom-0 left-0 right-0 h-[44%] w-full px-2 pt-1 pb-1.5 sm:px-3 sm:pt-1.5 sm:pb-2 flex flex-col z-10 bg-primary overflow-hidden">
-          {/* Covered Places: Touch-responsive horizontal scroll list — scrollbar on hover only */}
+        {/* Bottom Solid Block (42%) — compact flex-col with pinned price footer */}
+        <div className="absolute bottom-0 left-0 right-0 h-[42%] w-full px-2 pt-1 pb-1 sm:px-3 sm:pt-1.5 sm:pb-2 flex flex-col z-10 bg-primary overflow-hidden">
+          {/* Covered Places: Touch-responsive horizontal scroll list */}
           <div className="w-full shrink-0">
             <div className="flex items-center gap-1 overflow-x-auto package-places-scroll touch-pan-x w-full pb-0.5">
               {citiesList.length > 0 ? (
@@ -403,23 +403,25 @@ function PackageCardComponent({
             </div>
           </div>
 
-          {/* Inclusions Icons row */}
-          <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 mb-0.5 shrink-0">
-            {inclusionList.slice(0, 5).map((inc, i) => (
-              <div key={i} className="flex items-center gap-0.5 sm:gap-1" title={inc.label}>
-                <div className="flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
-                  <inc.Icon className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
+          {/* Dynamic Inclusion Icons row — restored to original perfect size */}
+          {inclusionList.length > 0 && (
+            <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 mb-0.5 shrink-0">
+              {inclusionList.slice(0, 5).map((inc, i) => (
+                <div key={i} className="flex items-center gap-0.5 sm:gap-1" title={inc.label}>
+                  <div className="flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/5 border border-white/10 text-accent group-hover:bg-white/10 transition-colors shrink-0">
+                    <inc.Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  </div>
+                  <span className="hidden xs:inline text-white/90 text-[6.5px] font-normal capitalize">{inc.label}</span>
                 </div>
-                <span className="hidden xs:inline text-white/90 text-[6px] font-normal capitalize">{inc.label}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {/* Tour Highlights — with label + overflow-hidden flex-1 */}
+          {/* Tour Highlights — compact layout with label, no extra bottom space */}
           {displayHighlights.length > 0 && (
             <div className="flex-1 min-h-0 overflow-hidden mb-0.5">
               <p className="text-[7px] sm:text-[8px] font-black text-accent uppercase tracking-wider mb-0.5 leading-none">Tour Highlights</p>
-              <div className="flex flex-col gap-[2px] sm:gap-[3px]">
+              <div className="flex flex-col gap-[2px]">
                 {displayHighlights.slice(0, 6).map((h, i) => (
                   <div
                     key={i}
@@ -433,7 +435,7 @@ function PackageCardComponent({
             </div>
           )}
 
-          {/* Price + CTA — always pinned at bottom, never clipped */}
+          {/* Price + CTA — pinned at bottom */}
           <div className="flex items-center justify-between shrink-0 mt-auto pt-1 border-t border-white/10">
             <div className="flex items-baseline gap-1 xs:gap-1.5 sm:gap-2">
               <span className="text-white text-xs xs:text-sm sm:text-[16px] font-bold leading-none tracking-tight">

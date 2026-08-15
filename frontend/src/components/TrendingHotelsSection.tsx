@@ -5,6 +5,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
 import { HotelCard } from "@/components/HotelCard";
 import { useCarouselGuide } from "@/hooks/useCarouselGuide";
 
@@ -31,11 +32,18 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
   const [currentMonth, setCurrentMonth] = useState("");
   const sectionRef = useRef<HTMLDivElement>(null);
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    align: "start",
-    containScroll: "trimSnaps",
-    loop: true,
-  });
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: false, stopOnMouseEnter: true })
+  );
+
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    {
+      align: "start",
+      containScroll: "trimSnaps",
+      loop: true,
+    },
+    [autoplayPlugin.current]
+  );
 
   const { showHint } = useCarouselGuide({ emblaRef: sectionRef, emblaApi, sectionId: "hotels", waitMs: 3000 });
 
@@ -102,7 +110,11 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
               </div>
             )}
             <div className="overflow-hidden" ref={emblaRef}>
-              <div className="flex -ml-2 md:-ml-3 pb-2 pt-4">
+              <div
+                className="flex -ml-2 md:-ml-3 pb-2 pt-4"
+                onMouseEnter={() => autoplayPlugin.current.stop()}
+                onMouseLeave={() => autoplayPlugin.current.play()}
+              >
             {hotels.map((hotel) => {
               // Map TrendingHotel shape to HotelCard shape
               const mappedHotel = {
@@ -124,7 +136,7 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
               };
 
               return (
-                <div key={hotel.id} className="flex-[0_0_47%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
+                <div key={hotel.id} className="flex-[0_0_82%] xs:flex-[0_0_80%] sm:flex-[0_0_48%] md:flex-[0_0_33.33%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
                   <HotelCard hotel={mappedHotel} />
                 </div>
               );

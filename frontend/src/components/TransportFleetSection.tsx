@@ -4,6 +4,7 @@ import React, { useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
 import { VehicleCard } from "@/components/VehicleCard";
 import { useCarouselGuide } from "@/hooks/useCarouselGuide";
 
@@ -59,11 +60,18 @@ const DEFAULT_VEHICLES: Vehicle[] = [
 export default function TransportFleetSection({ vehicles }: TransportFleetSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null);
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    align: "start",
-    containScroll: "trimSnaps",
-    loop: true,
-  });
+  const autoplayPlugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: false, stopOnMouseEnter: true })
+  );
+
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    {
+      align: "start",
+      containScroll: "trimSnaps",
+      loop: true,
+    },
+    [autoplayPlugin.current]
+  );
 
   const { showHint } = useCarouselGuide({ emblaRef: sectionRef, emblaApi, sectionId: "fleet", waitMs: 3000 });
 
@@ -126,9 +134,13 @@ export default function TransportFleetSection({ vehicles }: TransportFleetSectio
               </div>
             )}
             <div className="overflow-hidden" ref={emblaRef}>
-              <div className="flex -ml-2 md:-ml-3 pb-2 pt-4">
+              <div
+                className="flex -ml-2 md:-ml-3 pb-2 pt-4"
+                onMouseEnter={() => autoplayPlugin.current.stop()}
+                onMouseLeave={() => autoplayPlugin.current.play()}
+              >
                 {displayVehicles.map((vehicle) => (
-                  <div key={vehicle.id} className="flex-[0_0_47%] xs:flex-[0_0_46%] sm:flex-[0_0_46%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
+                  <div key={vehicle.id} className="flex-[0_0_82%] xs:flex-[0_0_80%] sm:flex-[0_0_48%] md:flex-[0_0_33.33%] lg:flex-[0_0_25%] min-w-0 pl-2 md:pl-3">
                     <VehicleCard vehicle={vehicle} />
                   </div>
                 ))}
