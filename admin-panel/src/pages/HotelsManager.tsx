@@ -139,6 +139,344 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// ─── Inline Rooms Panel (embedded in Edit Hotel modal, Step 3) ────────────────
+const ROOM_CATEGORIES_LIST = [
+  "Standard Room", "Deluxe Room", "Super Deluxe Room", "Executive Suite",
+  "Family Suite", "Premium Villa", "Luxury Cottage", "Penthouse", "Duplex Suite"
+];
+const VIEW_TYPES_LIST = ["Mountain View", "Valley View", "Lake View", "Pool View", "Garden View", "City View"];
+
+function InlineRoomsPanel({ hotelId }: { hotelId: number }) {
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [calendarRoom, setCalendarRoom] = useState<any | null>(null);
+  const [newRoom, setNewRoom] = useState({
+    name: "", type: "Deluxe Room", bedType: "DOUBLE", basePrice: "",
+    extraAdultPrice: "", extraChildWithBedPrice: "", extraChildWithoutBedPrice: "",
+    sizeSqft: "", viewType: "Mountain View", maxOccupancy: 2, mealPlan: "EP", totalRooms: 1,
+  });
+
+  const fetchRooms = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/hotels/${hotelId}/rooms`, { headers: authHeaders() });
+      if (res.ok) setRooms(await res.json());
+    } finally { setLoading(false); }
+  }, [hotelId]);
+
+  useEffect(() => { fetchRooms(); }, [fetchRooms]);
+
+  const addRoom = async () => {
+    if (!newRoom.name.trim() || !newRoom.basePrice) { alert("Name and Base Price are required."); return; }
+    await fetch(`${API_URL}/admin/hotels/${hotelId}/rooms`, {
+      method: "POST", headers: authHeaders(),
+      body: JSON.stringify({
+        ...newRoom, basePrice: Number(newRoom.basePrice),
+        extraAdultPrice: newRoom.extraAdultPrice ? Number(newRoom.extraAdultPrice) : 0,
+        extraChildWithBedPrice: newRoom.extraChildWithBedPrice ? Number(newRoom.extraChildWithBedPrice) : 0,
+        extraChildWithoutBedPrice: newRoom.extraChildWithoutBedPrice ? Number(newRoom.extraChildWithoutBedPrice) : 0,
+        sizeSqft: newRoom.sizeSqft ? Number(newRoom.sizeSqft) : null,
+      }),
+    });
+    setShowAdd(false);
+    setNewRoom({ name: "", type: "Deluxe Room", bedType: "DOUBLE", basePrice: "", extraAdultPrice: "", extraChildWithBedPrice: "", extraChildWithoutBedPrice: "", sizeSqft: "", viewType: "Mountain View", maxOccupancy: 2, mealPlan: "EP", totalRooms: 1 });
+    fetchRooms();
+  };
+
+  const deleteRoom = async (id: number) => {
+    if (!confirm("Delete this room category?")) return;
+    await fetch(`${API_URL}/admin/hotels/${hotelId}/rooms/${id}`, { method: "DELETE", headers: authHeaders() });
+    fetchRooms();
+  };
+
+  if (calendarRoom) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setCalendarRoom(null)} className="text-xs font-bold text-[#1B3A6B] hover:underline flex items-center gap-1">
+            ← Back to Rooms
+          </button>
+          <span className="text-xs text-gray-400">/ Calendar Pricing: {calendarRoom.name}</span>
+        </div>
+        <InlineCalendarPanel hotelId={hotelId} room={calendarRoom} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold text-slate-700">Room Categories & Pricing</p>
+          <p className="text-[11px] text-slate-400">Add room types with occupancy rates and set calendar-based pricing</p>
+        </div>
+        <button onClick={() => setShowAdd(v => !v)}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B3A6B] text-white text-xs font-bold rounded-xl hover:bg-[#0f2548] transition-colors">
+          <Plus className="w-3.5 h-3.5" /> Add Room
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="p-4 bg-blue-50/70 border border-blue-100 rounded-xl space-y-3 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">Room Name *</label>
+              <input value={newRoom.name} onChange={e => setNewRoom(r => ({ ...r, name: e.target.value }))}
+                placeholder="e.g. Deluxe Valley View Room" className="input w-full bg-white font-bold" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Category Type</label>
+              <select aria-label="Category Type" value={newRoom.type} onChange={e => setNewRoom(r => ({ ...r, type: e.target.value }))} className="input w-full bg-white">
+                {ROOM_CATEGORIES_LIST.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">View Type</label>
+              <select aria-label="View Type" value={newRoom.viewType} onChange={e => setNewRoom(r => ({ ...r, viewType: e.target.value }))} className="input w-full bg-white">
+                {VIEW_TYPES_LIST.map(v => <option key={v}>{v}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Bed Type</label>
+              <select aria-label="Bed Type" value={newRoom.bedType} onChange={e => setNewRoom(r => ({ ...r, bedType: e.target.value }))} className="input w-full bg-white">
+                {["SINGLE", "DOUBLE", "TWIN", "KING", "QUEEN"].map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Meal Plan</label>
+              <select aria-label="Meal Plan" value={newRoom.mealPlan} onChange={e => setNewRoom(r => ({ ...r, mealPlan: e.target.value }))} className="input w-full bg-white">
+                {Object.entries(MEAL_PLANS).map(([k, v]) => <option key={k} value={k}>{v} ({k})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-emerald-700 mb-1">Base Price/Night (₹) *</label>
+              <input type="number" value={newRoom.basePrice} onChange={e => setNewRoom(r => ({ ...r, basePrice: e.target.value }))}
+                placeholder="4500" className="input w-full bg-white font-black text-emerald-700" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Extra Adult (₹)</label>
+              <input type="number" value={newRoom.extraAdultPrice} onChange={e => setNewRoom(r => ({ ...r, extraAdultPrice: e.target.value }))}
+                placeholder="1200" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Child w/ Bed (₹)</label>
+              <input type="number" value={newRoom.extraChildWithBedPrice} onChange={e => setNewRoom(r => ({ ...r, extraChildWithBedPrice: e.target.value }))}
+                placeholder="800" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Child w/o Bed (₹)</label>
+              <input type="number" value={newRoom.extraChildWithoutBedPrice} onChange={e => setNewRoom(r => ({ ...r, extraChildWithoutBedPrice: e.target.value }))}
+                placeholder="500" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Max Guests</label>
+              <input type="number" value={newRoom.maxOccupancy} onChange={e => setNewRoom(r => ({ ...r, maxOccupancy: Number(e.target.value) }))}
+                placeholder="3" className="input w-full bg-white" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Total Rooms</label>
+              <input type="number" value={newRoom.totalRooms} onChange={e => setNewRoom(r => ({ ...r, totalRooms: Number(e.target.value) }))}
+                placeholder="10" className="input w-full bg-white" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-blue-200">
+            <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl">Cancel</button>
+            <button onClick={addRoom} className="px-4 py-1.5 text-xs font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700">Save Room Category</button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#1B3A6B]" /></div>
+      ) : rooms.length === 0 ? (
+        <div className="text-center py-8 text-slate-400">
+          <Bed className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p className="text-xs font-semibold">No room categories yet. Add your first room above.</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+          {rooms.map(room => (
+            <div key={room.id} className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:shadow-xs transition-all">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0 border border-blue-100">
+                  <Bed className="w-4 h-4 text-[#1B3A6B]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-bold text-xs text-slate-900">{room.name}</p>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-slate-100 text-slate-600">{room.type}</span>
+                    {room.viewType && <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">{room.viewType}</span>}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {room.bedType} · {MEAL_PLANS[room.mealPlan] || room.mealPlan} · {room.maxOccupancy} guests · {room.totalRooms} rooms ·
+                    <span className="text-emerald-700 font-bold ml-1">₹{Number(room.basePrice).toLocaleString()}/night</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setCalendarRoom(room)}
+                  title="Calendar Pricing"
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-[#1B3A6B] bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-100 transition-colors"
+                >
+                  <Calendar className="w-3 h-3" /> Pricing
+                </button>
+                <button onClick={() => deleteRoom(room.id)} title="Delete"
+                  className="p-1.5 hover:bg-red-50 rounded-lg text-gray-300 hover:text-red-500 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Inline Calendar Panel (lightweight embedded calendar pricing) ─────────────
+function InlineCalendarPanel({ hotelId, room }: { hotelId: number; room: any }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [rateType, setRateType] = useState("REGULAR");
+  const [priceOverride, setPriceOverride] = useState("");
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  const fetchInventory = useCallback(async () => {
+    setLoading(true);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month - 1, 1).toISOString().split("T")[0];
+      const lastDay = new Date(year, month + 2, 0).toISOString().split("T")[0];
+      const res = await fetch(
+        `${API_URL}/admin/hotels/${hotelId}/rooms/${room.id}/inventory?startDate=${firstDay}&endDate=${lastDay}`,
+        { headers: authHeaders() }
+      );
+      if (res.ok) setInventory(await res.json());
+    } finally { setLoading(false); }
+  }, [hotelId, room.id, currentMonth]);
+
+  useEffect(() => { fetchInventory(); }, [fetchInventory]);
+
+  const applyRules = async () => {
+    if (!startDate || !endDate) { alert("Please select both start and end dates."); return; }
+    setUpdating(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/hotels/${hotelId}/rooms/${room.id}/inventory/bulk`, {
+        method: "POST", headers: authHeaders(),
+        body: JSON.stringify({ startDate, endDate, rateType, priceOverride: priceOverride ? Number(priceOverride) : undefined, isBlocked }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      alert("✅ Pricing rules applied!");
+      fetchInventory();
+    } catch (err: any) { alert("Failed: " + err.message); } finally { setUpdating(false); }
+  };
+
+  // Build calendar days
+  const getDays = (d: Date) => {
+    const year = d.getFullYear(); const month = d.getMonth();
+    const first = new Date(year, month, 1); const last = new Date(year, month + 1, 0);
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < first.getDay(); i++) days.push(null);
+    for (let i = 1; i <= last.getDate(); i++) days.push(new Date(year, month, i));
+    return days;
+  };
+
+  const invMap = Object.fromEntries(inventory.map(inv => [inv.date?.split("T")[0], inv]));
+  const days = getDays(currentMonth);
+  const RATE_COLORS: Record<string, string> = {
+    REGULAR: "bg-white border-slate-200 text-slate-700",
+    PEAK: "bg-red-50 border-red-200 text-red-700",
+    OFF_SEASON: "bg-green-50 border-green-200 text-green-700",
+    FESTIVE: "bg-purple-50 border-purple-200 text-purple-700",
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Month Navigator */}
+      <div className="flex items-center justify-between">
+        <button onClick={() => setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500">‹</button>
+        <span className="text-xs font-bold text-slate-700">
+          {currentMonth.toLocaleString("default", { month: "long", year: "numeric" })}
+        </span>
+        <button onClick={() => setCurrentMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500">›</button>
+      </div>
+
+      {/* Calendar Grid */}
+      {loading ? (
+        <div className="flex justify-center py-4"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#1B3A6B]" /></div>
+      ) : (
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+            <div key={i} className="text-[9px] font-black text-gray-400 pb-1">{d}</div>
+          ))}
+          {days.map((day, i) => {
+            if (!day) return <div key={i} />;
+            const key = day.toISOString().split("T")[0];
+            const inv = invMap[key];
+            const blocked = inv?.isBlocked;
+            const price = inv?.priceOverride ?? room.basePrice;
+            const rt = inv?.rateType || "REGULAR";
+            const colorClass = blocked ? "bg-red-100 border-red-300 text-red-500" : RATE_COLORS[rt] || RATE_COLORS.REGULAR;
+            return (
+              <div key={i} className={`rounded-md border px-0.5 py-1 ${colorClass} cursor-default`}>
+                <div className="text-[9px] font-bold">{day.getDate()}</div>
+                <div className="text-[8px] font-black leading-none">{blocked ? "⛔" : `₹${Math.round(Number(price) / 1000)}k`}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Bulk Rule Applicator */}
+      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+        <p className="text-[11px] font-bold text-slate-700">Apply Bulk Rate Rules</p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">Start Date</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input w-full text-xs py-1.5" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">End Date</label>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input w-full text-xs py-1.5" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">Season Type</label>
+            <select aria-label="Season Type" value={rateType} onChange={e => setRateType(e.target.value)} className="input w-full text-xs py-1.5">
+              <option value="REGULAR">Regular</option>
+              <option value="PEAK">Peak Season</option>
+              <option value="OFF_SEASON">Off Season</option>
+              <option value="FESTIVE">Festive Special</option>
+              <option value="BLACKOUT">Blackout</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 mb-1">Price Override (₹)</label>
+            <input type="number" value={priceOverride} onChange={e => setPriceOverride(e.target.value)} placeholder={`Base: ₹${room.basePrice}`} className="input w-full text-xs py-1.5" />
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+            <input type="checkbox" checked={isBlocked} onChange={e => setIsBlocked(e.target.checked)} className="w-3.5 h-3.5 accent-red-500" />
+            Mark as Blocked / Unavailable
+          </label>
+          <button onClick={applyRules} disabled={updating}
+            className="px-4 py-1.5 bg-[#1B3A6B] hover:bg-[#0f2548] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 disabled:opacity-60">
+            {updating ? "Applying..." : "⚡ Apply Rules"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Add/Edit Hotel Modal ─────────────────────────────────────────────────────
 function HotelFormModal({
   hotel,
@@ -233,7 +571,7 @@ function HotelFormModal({
     }
   };
 
-  const steps = ["Basic Info", "Location", "Amenities & FAQs", "Media", "Settings"];
+  const steps = ["Basic Info", "Location", "Rooms & Pricing", "Amenities & FAQs", "Media", "Settings"];
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -248,15 +586,15 @@ function HotelFormModal({
         </div>
 
         {/* Step Indicator */}
-        <div className="flex border-b overflow-x-auto">
+        <div className="flex border-b overflow-x-auto scrollbar-hide">
           {steps.map((s, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setStep(i + 1)}
-              className={`flex-1 min-w-[90px] py-3 text-xs font-bold transition-colors whitespace-nowrap ${step === i + 1 ? "border-b-2 border-[#1B3A6B] text-[#1B3A6B]" : "text-gray-400 hover:text-gray-600"}`}
+              className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-bold transition-colors whitespace-nowrap ${step === i + 1 ? "border-b-2 border-[#1B3A6B] text-[#1B3A6B]" : "text-gray-400 hover:text-gray-600"}`}
             >
-              {s}
+              {i + 1}. {s}
             </button>
           ))}
         </div>
@@ -435,7 +773,35 @@ function HotelFormModal({
             </>
           )}
 
+          {/* ── Step 3: Rooms & Pricing (inline room manager) ── */}
           {step === 3 && (
+            <div className="space-y-4">
+              {!isEdit ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+                  <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
+                    <Bed className="w-8 h-8 text-[#1B3A6B]" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">Save property first</p>
+                    <p className="text-xs text-slate-500 mt-1">Room categories and calendar pricing will be available after the property is created.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-5 py-2.5 bg-[#1B3A6B] text-white text-xs font-bold rounded-xl hover:bg-[#0f2548] transition-colors flex items-center gap-2 disabled:opacity-60"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? "Creating..." : "Create Property & Add Rooms"}
+                  </button>
+                </div>
+              ) : (
+                <InlineRoomsPanel hotelId={hotel!.id!} />
+              )}
+            </div>
+          )}
+
+          {step === 4 && (
             <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
               <div>
                 <label className="label">Popular Amenities</label>
@@ -565,7 +931,7 @@ function HotelFormModal({
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <>
               <div>
                 <label className="label">Image URLs (one per line)</label>
@@ -576,7 +942,7 @@ function HotelFormModal({
             </>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <>
               <div className="grid grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto pr-2">
                 <div>
@@ -647,17 +1013,23 @@ function HotelFormModal({
           </button>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-xl">Cancel</button>
-            {step < steps.length ? (
+            {/* On Rooms step (3), skip to next or show Save for new properties */}
+            {step === 3 && isEdit ? (
               <button onClick={() => setStep(s => s + 1)}
                 className="px-5 py-2 text-sm font-bold bg-[#1B3A6B] text-white rounded-xl hover:bg-[#0f2548] transition-colors">
                 Next →
               </button>
-            ) : (
+            ) : step < steps.length && step !== 3 ? (
+              <button onClick={() => setStep(s => s + 1)}
+                className="px-5 py-2 text-sm font-bold bg-[#1B3A6B] text-white rounded-xl hover:bg-[#0f2548] transition-colors">
+                Next →
+              </button>
+            ) : step === steps.length ? (
               <button onClick={handleSave} disabled={saving}
                 className="px-5 py-2 text-sm font-bold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-60">
                 <Save className="w-4 h-4" /> {saving ? "Saving..." : (isEdit ? "Update Property" : "Create Property")}
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -1607,12 +1979,12 @@ export default function HotelsManager() {
   const totalFeatured = hotels.filter(h => h.isFeatured).length;
 
   const TABS = [
-    { key: "admin-added", label: "🏢 Admin Properties (B2B Deals)", count: adminProperties.length },
-    { key: "vendor-added", label: "🏨 Vendor Properties (OTA Marketplace)", count: vendorProperties.length },
-    { key: "pending", label: "⏳ Pending Approval", count: pendingHotels.length, badge: pendingHotels.length > 0 },
-    { key: "bookings", label: "📅 Bookings" },
-    { key: "vendors", label: "👥 Vendors", count: vendors.length },
-    { key: "pending-cities", label: "📍 City Requests", count: pendingCityCount, badge: pendingCityCount > 0 },
+    { key: "admin-added", label: "Admin Properties", count: adminProperties.length },
+    { key: "vendor-added", label: "Vendor Properties", count: vendorProperties.length },
+    { key: "pending", label: "Pending Approval", count: pendingHotels.length, badge: pendingHotels.length > 0 },
+    { key: "bookings", label: "Bookings" },
+    { key: "vendors", label: "Vendors", count: vendors.length },
+    { key: "pending-cities", label: "City Requests", count: pendingCityCount, badge: pendingCityCount > 0 },
   ] as const;
 
   return (
@@ -1628,16 +2000,16 @@ export default function HotelsManager() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 gap-0">
+        <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-hide">
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-colors ${tab === t.key ? "border-b-2 border-[#1B3A6B] text-[#1B3A6B]" : "text-gray-400 hover:text-gray-700"}`}
+              className={`relative flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-bold transition-colors whitespace-nowrap shrink-0 ${tab === t.key ? "border-b-2 border-[#1B3A6B] text-[#1B3A6B] bg-blue-50/40" : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"}`}
             >
               {t.label}
               {"count" in t && t.count > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${(t as any).badge ? "bg-red-500 text-white" : "bg-gray-100 text-gray-600"}`}>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${(t as any).badge ? "bg-red-500 text-white" : "bg-gray-100 text-gray-600"}`}>
                   {t.count}
                 </span>
               )}
