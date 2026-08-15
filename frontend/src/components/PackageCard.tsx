@@ -321,10 +321,10 @@ function PackageCardComponent({
         href={href}
         onTouchStart={() => router.prefetch(href)}
         onMouseEnter={() => router.prefetch(href)}
-        className="block h-[260px] xs:h-[280px] sm:h-[345px] md:h-[395px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
+        className="block h-[285px] xs:h-[305px] sm:h-[355px] md:h-[400px] w-full group relative rounded-md overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-transform hover:-translate-y-1.5 duration-300 border border-primary/20 card-gpu-fix"
       >
-        {/* Top Image Section (58%) — strictly non-increased image height */}
-        <div className="absolute top-0 left-0 right-0 h-[58%] w-full">
+        {/* Top Image Section (55%) — strictly non-increased image height */}
+        <div className="absolute top-0 left-0 right-0 h-[55%] sm:h-[58%] w-full">
           <Image
             src={pkg.imageUrl && pkg.imageUrl.trim() ? pkg.imageUrl : "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+"}
             alt={pkg.name || "Package image"}
@@ -373,8 +373,8 @@ function PackageCardComponent({
           </div>
         </div>
 
-        {/* Bottom Solid Block (42%) — compact flex-col with pinned price footer */}
-        <div className="absolute bottom-0 left-0 right-0 h-[42%] w-full px-2 pt-1 pb-1 sm:px-3 sm:pt-1.5 sm:pb-2 flex flex-col z-10 bg-primary overflow-hidden">
+        {/* Bottom Solid Block (45% mobile / 42% desktop) — compact flex-col with pinned price footer */}
+        <div className="absolute bottom-0 left-0 right-0 h-[45%] sm:h-[42%] w-full px-2 pt-1 pb-1 sm:px-3 sm:pt-1.5 sm:pb-2 flex flex-col z-10 bg-primary overflow-hidden">
           {/* Covered Places: Touch-responsive horizontal scroll list */}
           <div className="w-full shrink-0">
             <div className="flex items-center gap-1 overflow-x-auto package-places-scroll touch-pan-x w-full pb-0.5">
