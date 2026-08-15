@@ -33,7 +33,7 @@ export default function TrendingHotelsSection({ hotels }: TrendingHotelsSectionP
   const sectionRef = useRef<HTMLDivElement>(null);
 
   const autoplayPlugin = useRef(
-    Autoplay({ delay: 3000, stopOnInteraction: false, stopOnMouseEnter: true })
+    Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })
   );
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
