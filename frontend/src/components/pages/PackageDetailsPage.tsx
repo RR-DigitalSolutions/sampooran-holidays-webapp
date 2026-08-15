@@ -1609,11 +1609,10 @@ export function PackageDetailsPage({ packageData }: PackageDetailsPageProps) {
             images={galleryImages.length > 0 ? galleryImages : [packageData.imageUrl || "/default-hero.jpg"]}
             alt={packageData.name || "Package"}
           />
-          {/* Layered gradient: gentle bottom-up + left fade so hero images breathe */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
-          {/* Softer left spotlight for text legibility */}
-          <div className="absolute inset-y-0 left-0 w-[65%] bg-gradient-to-r from-black/30 to-transparent" />
+          {/* Layered gradient: gentle bottom-up fade on mobile; left text spotlight on desktop */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent lg:from-black/60 lg:via-black/20" />
+          <div className="hidden lg:block absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+          <div className="hidden lg:block absolute inset-y-0 left-0 w-[65%] bg-gradient-to-r from-black/30 to-transparent" />
         </div>
 
         <div className="relative z-10 w-full container mx-auto px-4 lg:px-8 pt-6 pb-6 lg:pt-32 lg:pb-12 bg-[#0B1528] lg:bg-transparent">
