@@ -2661,6 +2661,23 @@ export declare const destinationsTable: import("drizzle-orm/pg-core").PgTableWit
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        packagePageSlug: import("drizzle-orm/pg-core").PgColumn<{
+            name: "package_page_slug";
+            tableName: "destinations";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         stateId: import("drizzle-orm/pg-core").PgColumn<{
             name: "state_id";
             tableName: "destinations";
@@ -3725,6 +3742,7 @@ export declare const insertDestinationSchema: z.ZodObject<{
     showInTransportMenu: z.ZodOptional<z.ZodBoolean>;
     transportMenuOrder: z.ZodOptional<z.ZodInt>;
     countryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    packagePageSlug: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     stateId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     altitude: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     temperature: z.ZodOptional<z.ZodNullable<z.ZodString>>;
