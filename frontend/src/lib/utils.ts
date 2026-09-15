@@ -183,4 +183,32 @@ export function getDestinationPackageUrl(destination: {
   return `/${country}/${packageSlug}-tour-packages`;
 }
 
+function slugPart(value: string | null | undefined): string {
+  return (value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+export function getPackageDetailUrl(pkg: {
+  slug: string;
+  countrySlug?: string | null;
+  stateSlug?: string | null;
+  destinationSlug?: string | null;
+}): string {
+  if (pkg.countrySlug && pkg.stateSlug && pkg.destinationSlug) {
+    return `/packages/${slugPart(pkg.countrySlug)}/${slugPart(pkg.stateSlug)}/${slugPart(pkg.destinationSlug)}/${slugPart(pkg.slug)}`;
+  }
+  return `/packages/${pkg.slug}`;
+}
+
+export function getPackageCountryUrl(countrySlug: string): string {
+  return `/packages/${slugPart(countrySlug)}-tour-packages`;
+}
+
+export function getPackageStateUrl(countrySlug: string, stateSlug: string): string {
+  return `/packages/${slugPart(countrySlug)}/${slugPart(stateSlug)}-tour-packages`;
+}
+
+export function getPackageDestinationUrl(countrySlug: string, stateSlug: string, destinationSlug: string): string {
+  return `/packages/${slugPart(countrySlug)}/${slugPart(stateSlug)}/${slugPart(destinationSlug)}-tour-packages`;
+}
+
 export const getHotelHref = getHotelDetailUrl;

@@ -1,7 +1,8 @@
 import { Metadata, ResolvingMetadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PackageDetailsPage } from "@/components/pages/PackageDetailsPage";
 import { getApiUrl } from "@/lib/api-url";
+import { getPackageDetailUrl } from "@/lib/utils";
 
 
 const API_URL = getApiUrl();
@@ -34,6 +35,10 @@ export async function generateMetadata(
 
   if (!pkg) {
     return { title: "Package Not Found | Sampooran Holidays" };
+  }
+
+  if (pkg.countrySlug && pkg.stateSlug && pkg.destinationSlug) {
+    redirect(getPackageDetailUrl(pkg));
   }
 
   const title = pkg.metaTitle || `${pkg.name} | Sampooran Holidays`;

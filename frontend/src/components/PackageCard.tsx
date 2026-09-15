@@ -10,13 +10,16 @@ import {
 import Image from "next/image";
 import { useState, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getPackageDetailUrl } from "@/lib/utils";
 
 interface Pkg {
   id: number;
   name: string;
   slug: string;
   destinationName?: string;
+  destinationSlug?: string;
+  stateSlug?: string;
+  countrySlug?: string;
   stateName?: string;
   countryName?: string;
   imageUrl?: string;
@@ -164,7 +167,7 @@ function PackageCardComponent({
 
   /* ── Horizontal variant (List View) ── */
   if (variant === "horizontal") {
-    const href = `/packages/${pkg.slug}`;
+    const href = getPackageDetailUrl(pkg);
     return (
       <Link
         href={href}
@@ -315,7 +318,7 @@ function PackageCardComponent({
       return cities.slice(0, 3).join(" → ");
     };
 
-    const href = `/packages/${pkg.slug}`;
+    const href = getPackageDetailUrl(pkg);
     return (
       <Link
         href={href}
@@ -458,7 +461,7 @@ function PackageCardComponent({
   }
 
   /* ── Default / Grid variant ── */
-  const href = `/packages/${pkg.slug}`;
+  const href = getPackageDetailUrl(pkg);
   return (
     <Link
       href={href}

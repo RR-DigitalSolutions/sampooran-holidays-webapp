@@ -131,6 +131,75 @@ async function runStartupMigrations() {
       WHERE package_code IS NULL
     `);
 
+    // ── Backfill package geo hierarchy for canonical URLs ────────────────
+    // Only fills missing relationships; admin-managed values are never overwritten.
+    await db.execute(sql`
+      ALTER TABLE packages
+        ADD COLUMN IF NOT EXISTS destination_ids integer[] DEFAULT '{}',
+        ADD COLUMN IF NOT EXISTS state_ids integer[] DEFAULT '{}',
+        ADD COLUMN IF NOT EXISTS country_ids integer[] DEFAULT '{}'
+    `);
+
+    await db.execute(sql`
+      UPDATE packages p
+      SET
+        state_id = COALESCE(p.state_id, d.state_id),
+        country_id = COALESCE(p.country_id, s.country_id),
+        destination_ids = CASE
+          WHEN COALESCE(array_length(p.destination_ids, 1), 0) = 0 THEN ARRAY[p.destination_id]
+          ELSE p.destination_ids
+        END,
+        state_ids = CASE
+          WHEN COALESCE(array_length(p.state_ids, 1), 0) = 0 THEN ARRAY[COALESCE(p.state_id, d.state_id)]
+          ELSE p.state_ids
+        END,
+        country_ids = CASE
+          WHEN COALESCE(array_length(p.country_ids, 1), 0) = 0 THEN ARRAY[COALESCE(p.country_id, s.country_id)]
+          ELSE p.country_ids
+        END
+      FROM destinations d
+      LEFT JOIN states s ON s.id = d.state_id
+      WHERE d.id = p.destination_id
+        AND (p.state_id IS NULL OR p.country_id IS NULL
+          OR COALESCE(array_length(p.destination_ids, 1), 0) = 0
+          OR COALESCE(array_length(p.state_ids, 1), 0) = 0
+          OR COALESCE(array_length(p.country_ids, 1), 0) = 0)
+    `);
+
+    await db.execute(sql`
+      UPDATE packages p
+      SET country_id = COALESCE(p.country_id, s.country_id),
+          country_ids = CASE
+            WHEN COALESCE(array_length(p.country_ids, 1), 0) = 0 THEN ARRAY[s.country_id]
+            ELSE p.country_ids
+          END
+      FROM states s
+      WHERE s.id = p.state_id
+        AND (p.country_id IS NULL OR COALESCE(array_length(p.country_ids, 1), 0) = 0)
+    `);
+
+    // Conservative fallback for legacy rows with no destinationId: link only
+    // when an itinerary city exactly matches one active destination name.
+    await db.execute(sql`
+      UPDATE packages p
+      SET destination_id = d.id,
+          state_id = COALESCE(p.state_id, d.state_id),
+          country_id = COALESCE(p.country_id, s.country_id),
+          destination_ids = ARRAY[d.id],
+          state_ids = ARRAY[d.state_id],
+          country_ids = ARRAY[s.country_id]
+      FROM destinations d
+      LEFT JOIN states s ON s.id = d.state_id
+      WHERE p.destination_id IS NULL
+        AND d.is_active = true
+        AND p.cities IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM unnest(p.cities) AS city_name
+          WHERE lower(trim(city_name)) = lower(trim(d.name))
+        )
+    `);
+
     // ── Create package_calendar_inventory table ──
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS package_calendar_inventory (

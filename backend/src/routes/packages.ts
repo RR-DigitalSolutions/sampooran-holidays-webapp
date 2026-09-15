@@ -35,8 +35,11 @@ async function getPackageWithJoins(filters: any[] = [], limit?: number, offset?:
       stateIds: packagesTable.stateIds,
       countryIds: packagesTable.countryIds,
       destinationName: destinationsTable.name,
+      destinationSlug: destinationsTable.slug,
       stateName: sql<string>`COALESCE(${packageStates.name}, ${statesTable.name})`.as("stateName"),
+      stateSlug: sql<string>`COALESCE(${packageStates.slug}, ${statesTable.slug})`.as("stateSlug"),
       countryName: sql<string>`COALESCE(${packageCountries.name}, ${countriesTable.name})`.as("countryName"),
+      countrySlug: sql<string>`COALESCE(${packageCountries.slug}, ${countriesTable.slug})`.as("countrySlug"),
       imageUrl: packagesTable.imageUrl,
       thumbnailUrl: packagesTable.thumbnailUrl,
       shortDescription: packagesTable.shortDescription,
@@ -373,6 +376,27 @@ router.get("/packages/stats", cacheMiddleware(300), async (_req, res): Promise<v
     yearsExperience: 12,
     avgRating: 4.8,
   });
+});
+
+// Canonical package detail lookup. The hierarchy is validated by the frontend
+// route, while the package remains identified by its stable database slug.
+router.get("/packages/by-path/:countrySlug/:stateSlug/:destinationSlug/:packageSlug", cacheMiddleware(300), async (req, res): Promise<void> => {
+  const countrySlug = String(req.params.countrySlug);
+  const stateSlug = String(req.params.stateSlug);
+  const destinationSlug = String(req.params.destinationSlug);
+  const packageSlug = String(req.params.packageSlug);
+  const [pkg] = await getPackageWithJoins([eq(packagesTable.slug, packageSlug)]);
+
+  if (!pkg ||
+      pkg.countrySlug !== countrySlug ||
+      pkg.stateSlug !== stateSlug ||
+      pkg.destinationSlug !== destinationSlug) {
+    res.status(404).json({ error: "Package not found" });
+    return;
+  }
+
+  const detailedPackage = await buildPackageDetail(pkg);
+  res.json(detailedPackage);
 });
 
 router.get("/packages/:slug", cacheMiddleware(300), async (req, res): Promise<void> => {

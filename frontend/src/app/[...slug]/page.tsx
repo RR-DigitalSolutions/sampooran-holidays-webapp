@@ -161,7 +161,7 @@ export default async function DynamicSlugPage(props: Props) {
   }
 
   if (params.slug.length === 1 && /-(?:holiday-tour-packages|tourism)$/.test(lastSlug) && resolved.type === "destination") {
-    redirect(getDestinationPackageUrl(resolved.data));
+    redirect(getDestinationPackageUrl(resolved.data as { slug: string; packagePageSlug?: string | null; countrySlug?: string | null }));
   }
 
   const { type, data } = resolved;

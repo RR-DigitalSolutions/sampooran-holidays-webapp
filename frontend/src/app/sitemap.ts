@@ -24,14 +24,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (pkgRes.status === 'fulfilled' && pkgRes.value.ok) {
       const pkgData = await pkgRes.value.json();
-      const packages: Array<{ slug: string; updatedAt?: string; createdAt?: string }> =
+      const packages: Array<{
+        slug: string;
+        countrySlug?: string;
+        stateSlug?: string;
+        destinationSlug?: string;
+        updatedAt?: string;
+        createdAt?: string;
+      }> =
         pkgData.packages || [];
+
+      const packageLandingRoutes = new Set<string>();
       packageRoutes = packages.map((pkg) => ({
-        url: `${BASE_URL}/packages/${pkg.slug}`,
+        url: pkg.countrySlug && pkg.stateSlug && pkg.destinationSlug
+          ? `${BASE_URL}/packages/${pkg.countrySlug}/${pkg.stateSlug}/${pkg.destinationSlug}/${pkg.slug}`
+          : `${BASE_URL}/packages/${pkg.slug}`,
         lastModified: pkg.updatedAt || pkg.createdAt || new Date().toISOString(),
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       }));
+
+      packages.forEach((pkg) => {
+        if (pkg.countrySlug) {
+          packageLandingRoutes.add(`${BASE_URL}/packages/${pkg.countrySlug}-tour-packages`);
+        }
+        if (pkg.countrySlug && pkg.stateSlug) {
+          packageLandingRoutes.add(`${BASE_URL}/packages/${pkg.countrySlug}/${pkg.stateSlug}-tour-packages`);
+        }
+        if (pkg.countrySlug && pkg.stateSlug && pkg.destinationSlug) {
+          packageLandingRoutes.add(`${BASE_URL}/packages/${pkg.countrySlug}/${pkg.stateSlug}/${pkg.destinationSlug}-tour-packages`);
+        }
+      });
+      packageLandingRoutes.forEach((url) => {
+        packageRoutes.push({
+          url,
+          lastModified: new Date().toISOString(),
+          changeFrequency: 'weekly' as const,
+          priority: 0.85,
+        });
+      });
     }
 
     if (destRes.status === 'fulfilled' && destRes.value.ok) {

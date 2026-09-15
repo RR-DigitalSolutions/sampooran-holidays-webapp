@@ -1213,6 +1213,13 @@ export default function PackageForm() {
     );
   };
 
+  const primaryCountry = allCountries.find(c => c.id === effectiveCountryIds[0]);
+  const primaryState = allStates.find(s => s.id === effectiveStateIds[0]);
+  const primaryDestination = allDests.find(d => d.id === effectiveDestIds[0]);
+  const canonicalPackageUrl = primaryCountry && primaryState && primaryDestination && slug
+    ? `/packages/${primaryCountry.slug}/${primaryState.slug}/${primaryDestination.packagePageSlug || primaryDestination.slug}/${slug}`
+    : null;
+
   // ──────────────────────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────────────────────
@@ -1247,6 +1254,12 @@ export default function PackageForm() {
               <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Package Name</label><input required value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1B3A6B] outline-none" /></div>
               <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Package Code</label><input readOnly value={packageCode} placeholder="Auto-generated on save" className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none bg-gray-50 text-gray-500 font-mono font-bold" /></div>
               <div><label className="block text-xs font-bold text-gray-500 uppercase mb-1">Slug</label><input value={slug} onChange={e => setSlug(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1B3A6B] outline-none bg-gray-50" /></div>
+              {canonicalPackageUrl && (
+                <div className="col-span-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Canonical Package URL</p>
+                  <p className="mt-1 break-all font-mono text-xs text-blue-900">{canonicalPackageUrl}</p>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Category</label>
                 <input list="categories-list" value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#1B3A6B] outline-none" placeholder="Search or select category..." />
