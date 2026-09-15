@@ -10,25 +10,25 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const INDIA_DATA = {
   topRecommended: [
-    { name: "Jammu and Kashmir", href: "/kashmir-tour-packages" },
-    { name: "Leh Ladakh", href: "/leh-ladakh-tour-packages" },
-    { name: "Sikkim Darjeeling", href: "/sikkim-darjeeling-tour-packages" },
-    { name: "North East", href: "/north-east-tour-packages" },
-    { name: "Kerala", href: "/kerala-tour-packages" },
-    { name: "Andaman and Nicobar", href: "/andaman-tour-packages" },
-    { name: "Himachal Pradesh", href: "/himachal-tour-packages" },
+    { name: "Jammu and Kashmir", href: "/packages/india/jammu-and-kashmir-tour-packages" },
+    { name: "Leh Ladakh", href: "/packages/india/ladakh-tour-packages" },
+    { name: "Sikkim Darjeeling", href: "/packages/india/sikkim-darjeeling-tour-packages" },
+    { name: "North East", href: "/packages/india/north-east-tour-packages" },
+    { name: "Kerala", href: "/packages/india/kerala-tour-packages" },
+    { name: "Andaman and Nicobar", href: "/packages/india/andaman-tour-packages" },
+    { name: "Himachal Pradesh", href: "/packages/india/himachal-pradesh-tour-packages" },
   ],
   regions: [] as any[]
 };
 
 const WORLD_DATA = {
   topRecommended: [
-    { name: "Europe", href: "/europe-tour-packages" },
-    { name: "South East Asia", href: "/south-east-asia-tour-packages" },
-    { name: "Japan China Korea", href: "/east-asia-tour-packages" },
-    { name: "Australia New Zealand", href: "/australia-nz-tour-packages" },
-    { name: "Africa", href: "/africa-tour-packages" },
-    { name: "America", href: "/america-tour-packages" },
+    { name: "Europe", href: "/packages/europe-tour-packages" },
+    { name: "South East Asia", href: "/packages/south-east-asia-tour-packages" },
+    { name: "Japan China Korea", href: "/packages/east-asia-tour-packages" },
+    { name: "Australia New Zealand", href: "/packages/australia-new-zealand-tour-packages" },
+    { name: "Africa", href: "/packages/africa-tour-packages" },
+    { name: "America", href: "/packages/america-tour-packages" },
   ],
   regions: [] as any[]
 };
@@ -251,10 +251,13 @@ export function MegaNav() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-10">
                 {currentRegionData?.groups?.map((group: any) => {
                   const groupSlug = group.title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+                  const groupHref = type === 'india'
+                    ? `/packages/india/${group.slug || groupSlug}-tour-packages`
+                    : `/packages/${group.slug || groupSlug}-tour-packages`;
                   return (
                     <div key={group.title} className="space-y-3">
                       <h4 className="text-[13px] font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4 tracking-tight transition-colors">
-                        <Link href={`/${groupSlug}-tour-packages`}>
+                        <Link href={groupHref}>
                           {group.title.toLowerCase().endsWith('tours') ? group.title : `${group.title} Tours`}
                         </Link>
                       </h4>
@@ -265,13 +268,20 @@ export function MegaNav() {
                           const itemSlug = typeof item === 'string' ? item.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') : item?.slug;
                           return (
                             <li key={itemSlug || index}>
+                              {(() => {
+                                const itemHref = type === 'india'
+                                  ? `/packages/india/${group.slug || groupSlug}/${itemSlug}-tour-packages`
+                                  : `/packages/${group.slug || groupSlug}/${item?.stateSlug || 'destinations'}/${itemSlug}-tour-packages`;
+                                return (
                               <Link
-                                href={`/${itemSlug}-tour-packages`}
+                                href={itemHref}
                                 className="group flex items-center gap-1.5 text-[13px] text-slate-600 hover:text-primary transition-colors py-0.5"
                               >
                                 <MapPin className="w-3 h-3 text-slate-300 group-hover:text-accent transition-colors shrink-0" />
                                 <span className="truncate">{itemName.toLowerCase().endsWith('tours') ? itemName : `${itemName} Tours`}</span>
                               </Link>
+                                );
+                              })()}
                             </li>
                           );
                         })}
@@ -289,7 +299,7 @@ export function MegaNav() {
                 {currentRegionData && (
                   <div className="col-span-full pt-6 mt-6 border-t border-slate-100 flex justify-start">
                     <Link
-                      href={type === 'india' ? "/india-tour-packages" : "/world-tour-packages"}
+                      href={type === 'india' ? "/packages/india-tour-packages" : "/packages/world-tour-packages"}
                       className="flex items-center gap-2 text-accent font-semibold text-[13px] hover:underline group"
                     >
                       View All {currentRegionData.name} Packages

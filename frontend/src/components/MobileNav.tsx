@@ -148,7 +148,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                   >
                     <div className="w-full flex items-center rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <Link 
-                        href="/india-tour-packages" 
+                        href="/packages/india-tour-packages"
                         onClick={onClose}
                         className="flex-1 flex items-center gap-2.5 p-2.5 px-3 active:scale-[0.98] transition-transform text-left"
                       >
@@ -168,7 +168,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 
                     <div className="w-full flex items-center rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <Link 
-                        href="/world-tour-packages" 
+                        href="/packages/world-tour-packages"
                         onClick={onClose}
                         className="flex-1 flex items-center gap-2.5 p-2.5 px-3 active:scale-[0.98] transition-transform text-left"
                       >
@@ -290,7 +290,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                           <div key={zone.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
                             <div className="w-full flex items-center justify-between p-4 bg-white relative">
                               <Link 
-                                href={`/${zoneSlug}-tour-packages`}
+                                href="/packages/india-tour-packages"
                                 onClick={onClose}
                                 className="flex-1 text-left font-bold text-slate-700 hover:text-primary transition-colors"
                               >
@@ -340,7 +340,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                 <div className="pt-2 pb-1">
                                                   <div className="flex flex-wrap gap-2">
                                                     <Link 
-                                                      href={`/${state.slug}-tour-packages`} 
+                                                      href={`/packages/india/${state.slug}-tour-packages`}
                                                       onClick={onClose}
                                                       className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                     >
@@ -349,7 +349,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                     {state.items.map((item: any) => (
                                                       <Link
                                                         key={item.slug || item.name}
-                                                        href={`/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                                        href={`/packages/india/${state.slug}/${item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
                                                         onClick={onClose}
                                                         className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
                                                       >
@@ -376,7 +376,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       )}
                       
                       <div className="pt-4">
-                        <Link href="/india-tour-packages" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-orange-50 text-orange-600 font-bold text-[13px]">
+                        <Link href="/packages/india-tour-packages" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-orange-50 text-orange-600 font-bold text-[13px]">
                           View All India Packages
                         </Link>
                       </div>
@@ -446,7 +446,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                           <div key={region.name} className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
                             <div className="w-full flex items-center justify-between p-4 bg-white relative">
                               <Link 
-                                href={`/${regionSlug}-tour-packages`}
+                                href="/packages/world-tour-packages"
                                 onClick={onClose}
                                 className="flex-1 text-left font-semibold text-slate-900 hover:text-primary transition-colors"
                               >
@@ -496,7 +496,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                 <div className="pt-2 pb-1">
                                                   <div className="flex flex-wrap gap-2">
                                                     <Link 
-                                                      href={`/${country.slug}-tour-packages`} 
+                                                      href={`/packages/${country.slug}-tour-packages`}
                                                       onClick={onClose}
                                                       className="group flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/5 border border-primary/20 px-3 py-1.5 rounded-full hover:bg-primary hover:text-white transition-all"
                                                     >
@@ -505,7 +505,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                                     {country.destinations && country.destinations.map((dest: any) => (
                                                       <Link
                                                         key={dest.slug || dest.name}
-                                                        href={`/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
+                                                        href={`/packages/${country.slug}/${dest.stateSlug || 'destinations'}/${dest.slug || dest.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tour-packages`}
                                                         onClick={onClose}
                                                         className="group flex items-center gap-1.5 text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full hover:border-primary hover:text-primary transition-all"
                                                       >
@@ -532,7 +532,7 @@ export function MobileNav({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                       )}
                       
                       <div className="pt-4">
-                        <Link href="/world-tour-packages" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-[13px]">
+                        <Link href="/packages/world-tour-packages" onClick={onClose} className="w-full block text-center py-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-[13px]">
                           View All World Packages
                         </Link>
                       </div>

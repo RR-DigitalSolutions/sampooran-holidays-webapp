@@ -142,7 +142,7 @@ export default async function DynamicSlugPage(props: Props) {
   if (params.slug.length === 2 && /-(?:holiday-tour-packages|tour-packages|tourism)$/.test(params.slug[1])) {
     const resolvedPath = await resolveDestinationPath(params.slug[0], params.slug[1]);
     if (!resolvedPath?.data) notFound();
-    return <PackageListingPage entityType="destination" entityData={resolvedPath.data} searchParams={searchParams} />;
+    redirect(getDestinationPackageUrl(resolvedPath.data));
   }
 
   const lastSlug = params.slug[params.slug.length - 1];
@@ -161,7 +161,7 @@ export default async function DynamicSlugPage(props: Props) {
   }
 
   if (params.slug.length === 1 && /-(?:holiday-tour-packages|tourism)$/.test(lastSlug) && resolved.type === "destination") {
-    redirect(getDestinationPackageUrl(resolved.data as { slug: string; packagePageSlug?: string | null; countrySlug?: string | null }));
+    redirect(getDestinationPackageUrl(resolved.data as { slug: string; packagePageSlug?: string | null; countrySlug?: string | null; stateSlug?: string | null; stateName?: string | null }));
   }
 
   const { type, data } = resolved;

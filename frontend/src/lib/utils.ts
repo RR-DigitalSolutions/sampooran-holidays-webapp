@@ -177,10 +177,16 @@ export function getDestinationPackageUrl(destination: {
   slug: string;
   packagePageSlug?: string | null;
   countrySlug?: string | null;
+  countryName?: string | null;
+  stateSlug?: string | null;
+  stateName?: string | null;
 }): string {
-  const country = cleanDestinationSlug(destination.countrySlug || "india");
+  const country = cleanDestinationSlug(destination.countrySlug || destination.countryName || "india");
+  const state = cleanDestinationSlug(destination.stateSlug || destination.stateName || "");
   const packageSlug = cleanDestinationSlug(destination.packagePageSlug || destination.slug);
-  return `/${country}/${packageSlug}-tour-packages`;
+  return state
+    ? `/packages/${country}/${state}/${packageSlug}-tour-packages`
+    : `/packages/${country}/${packageSlug}-tour-packages`;
 }
 
 function slugPart(value: string | null | undefined): string {

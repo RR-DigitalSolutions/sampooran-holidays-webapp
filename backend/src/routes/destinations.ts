@@ -38,6 +38,7 @@ router.get("/destinations", cacheMiddleware(120), async (req, res): Promise<void
       slug: destinationsTable.slug,
       stateId: destinationsTable.stateId,
       stateName: statesTable.name,
+      stateSlug: statesTable.slug,
       countryName: countriesTable.name,
       countryId: statesTable.countryId,
       packagePageSlug: destinationsTable.packagePageSlug,
@@ -200,7 +201,10 @@ router.get("/destinations/mega-menu", cacheMiddleware(600), async (_req, res): P
         name: destinationsTable.name,
         slug: destinationsTable.slug,
         countryId: destinationsTable.countryId,
-      }).from(destinationsTable).where(
+            stateSlug: statesTable.slug,
+          }).from(destinationsTable)
+          .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
+          .where(
         and(
           inArray(destinationsTable.countryId, allCountries.map(c => c.id)),
           eq(destinationsTable.showInMenu, true)
@@ -223,7 +227,7 @@ router.get("/destinations/mega-menu", cacheMiddleware(600), async (_req, res): P
         region.countries.forEach(country => {
           const cDests = worldDestinations
             .filter(d => d.countryId === country.id)
-            .map(d => ({ name: d.name, slug: d.slug }));
+            .map(d => ({ name: d.name, slug: d.slug, stateSlug: d.stateSlug }));
             
           const cStates = worldStates
             .filter(s => s.countryId === country.id)
@@ -363,6 +367,7 @@ router.get("/destinations/resolve-slug/:slug", cacheMiddleware(300), async (req,
       db.select({
         destination: destinationsTable,
         stateName: statesTable.name,
+        stateSlug: statesTable.slug,
         countryName: countriesTable.name,
         countrySlug: countriesTable.slug,
       })
@@ -404,6 +409,7 @@ router.get("/destinations/resolve-slug/:slug", cacheMiddleware(300), async (req,
         data: {
           ...destination.destination,
           stateName: destination.stateName,
+          stateSlug: destination.stateSlug,
           countryName: destination.countryName,
           countrySlug: destination.countrySlug,
         },
@@ -432,6 +438,7 @@ router.get("/destinations/resolve-path/:countrySlug/:slug", cacheMiddleware(300)
       .select({
         destination: destinationsTable,
         stateName: statesTable.name,
+        stateSlug: statesTable.slug,
         countryName: countriesTable.name,
         countrySlug: countriesTable.slug,
       })
@@ -458,6 +465,7 @@ router.get("/destinations/resolve-path/:countrySlug/:slug", cacheMiddleware(300)
       data: {
         ...destination.destination,
         stateName: destination.stateName,
+        stateSlug: destination.stateSlug,
         countryName: destination.countryName,
         countrySlug: destination.countrySlug,
       },
