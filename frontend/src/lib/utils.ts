@@ -166,4 +166,21 @@ export function getHotelDetailUrl(hotel: {
   return `/hotels/${country}/${state}/${city}/${hotel.slug}`;
 }
 
+function cleanDestinationSlug(value: string): string {
+  return value.toLowerCase().trim()
+    .replace(/-(?:holiday-tour-packages|tour-packages|tourism)$/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function getDestinationPackageUrl(destination: {
+  slug: string;
+  packagePageSlug?: string | null;
+  countrySlug?: string | null;
+}): string {
+  const country = cleanDestinationSlug(destination.countrySlug || "india");
+  const packageSlug = cleanDestinationSlug(destination.packagePageSlug || destination.slug);
+  return `/${country}/${packageSlug}-tour-packages`;
+}
+
 export const getHotelHref = getHotelDetailUrl;

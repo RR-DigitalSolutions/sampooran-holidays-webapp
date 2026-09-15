@@ -174,6 +174,9 @@ export const destinationsTable = pgTable("destinations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  // Optional canonical slug for the destination's tour-package landing page.
+  // Falls back to slug when empty; the URL suffix is added by the frontend.
+  packagePageSlug: text("package_page_slug").unique(),
   stateId: integer("state_id"),
   countryId: integer("country_id"),
   imageUrl: text("image_url"),

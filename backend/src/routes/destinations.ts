@@ -40,8 +40,10 @@ router.get("/destinations", cacheMiddleware(120), async (req, res): Promise<void
       stateName: statesTable.name,
       countryName: countriesTable.name,
       countryId: statesTable.countryId,
+      packagePageSlug: destinationsTable.packagePageSlug,
       imageUrl: destinationsTable.imageUrl,
       thumbnailUrl: destinationsTable.thumbnailUrl,
+      countrySlug: countriesTable.slug,
       description: destinationsTable.description,
       isFeatured: destinationsTable.isFeatured,
       packageCount: destinationsTable.packageCount,
@@ -358,7 +360,20 @@ router.get("/destinations/resolve-slug/:slug", cacheMiddleware(300), async (req,
       db.select().from(statesTable).where(eq(statesTable.slug, slug)).limit(1),
 
       // 6. Destination
-      db.select().from(destinationsTable).where(eq(destinationsTable.slug, slug)).limit(1),
+      db.select({
+        destination: destinationsTable,
+        stateName: statesTable.name,
+        countryName: countriesTable.name,
+        countrySlug: countriesTable.slug,
+      })
+        .from(destinationsTable)
+        .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
+        .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id))
+        .where(or(
+          eq(destinationsTable.slug, slug),
+          eq(destinationsTable.packagePageSlug, slug)
+        ))
+        .limit(1),
     ]);
 
     // Resolve in priority order
@@ -383,12 +398,73 @@ router.get("/destinations/resolve-slug/:slug", cacheMiddleware(300), async (req,
     if (state) return void res.json({ type: "state", data: state });
 
     const destination = destinationResult[0];
-    if (destination) return void res.json({ type: "destination", data: destination });
+    if (destination) {
+      return void res.json({
+        type: "destination",
+        data: {
+          ...destination.destination,
+          stateName: destination.stateName,
+          countryName: destination.countryName,
+          countrySlug: destination.countrySlug,
+        },
+      });
+    }
 
     res.status(404).json({ error: "Slug not found" });
   } catch (error) {
     logger.error({ error, slug }, "Resolve slug error");
     res.status(500).json({ error: "Failed to resolve slug" });
+  }
+});
+
+/**
+ * Resolve a country-scoped destination package URL.
+ * Canonical form: /{country}/{destination}-tour-packages
+ */
+router.get("/destinations/resolve-path/:countrySlug/:slug", cacheMiddleware(300), async (req, res): Promise<void> => {
+  const countrySlug = String(req.params.countrySlug).toLowerCase();
+  const rawSlug = String(req.params.slug).toLowerCase();
+  const destinationSlug = rawSlug
+    .replace(/-(?:holiday-tour-packages|tour-packages|tourism)$/, "");
+
+  try {
+    const [destination] = await db
+      .select({
+        destination: destinationsTable,
+        stateName: statesTable.name,
+        countryName: countriesTable.name,
+        countrySlug: countriesTable.slug,
+      })
+      .from(destinationsTable)
+      .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
+      .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id))
+      .where(and(
+        or(
+          eq(destinationsTable.slug, destinationSlug),
+          eq(destinationsTable.packagePageSlug, destinationSlug)
+        ),
+        eq(countriesTable.slug, countrySlug),
+        eq(destinationsTable.isActive, true)
+      ))
+      .limit(1);
+
+    if (!destination) {
+      res.status(404).json({ error: "Destination not found" });
+      return;
+    }
+
+    res.json({
+      type: "destination",
+      data: {
+        ...destination.destination,
+        stateName: destination.stateName,
+        countryName: destination.countryName,
+        countrySlug: destination.countrySlug,
+      },
+    });
+  } catch (error) {
+    logger.error({ error, countrySlug, destinationSlug }, "Resolve destination path error");
+    res.status(500).json({ error: "Failed to resolve destination path" });
   }
 });
 

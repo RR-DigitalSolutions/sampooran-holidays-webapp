@@ -600,7 +600,7 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
       try { const parsed = JSON.parse(v); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
     };
     const base: Record<string, any> = {
-      name: "", slug: "", stateId: "", description: "", imageUrl: "", heroVideoUrl: "",
+      name: "", slug: "", packagePageSlug: "", stateId: "", description: "", imageUrl: "", heroVideoUrl: "",
       bestTimeToVisit: "", altitude: "", temperature: "", howToReach: "",
       nearestAirport: "", nearestRailway: "", distanceFromCapital: "",
       highlights: "", thingsToDo: "", localAttractions: "", famousFor: "",
@@ -680,6 +680,8 @@ function PlaceModal({ item, states, onClose, onSave }: { item?: any; states: any
         </div>
         <FieldInput label="Place / City Name *" value={form.name} onChange={v => setForm({ ...form, name: v })} />
         <FieldInput label="Slug (Auto)" value={form.slug} onChange={v => setForm({ ...form, slug: v })} />
+        <FieldInput label="Tour Packages URL Slug (Optional)" value={form.packagePageSlug} onChange={v => setForm({ ...form, packagePageSlug: v })} />
+        <p className="col-span-2 text-[10px] text-gray-500 -mt-3">Used as /country/slug-tour-packages. Leave empty to use the place slug. Do not include the country or URL suffix.</p>
         <MediaUploadField label="Cover Image URL" value={form.imageUrl} onChange={v => setForm({ ...form, imageUrl: v })} className="col-span-1" folder="destinations/places" />
         <MediaUploadField label="Hero Video URL (MP4 Cloudinary)" value={form.heroVideoUrl} onChange={v => setForm({ ...form, heroVideoUrl: v })} className="col-span-1" folder="destinations/places" />
         <FieldTextarea label="Short Description (2-3 lines)" value={form.description} onChange={v => setForm({ ...form, description: v })} className="col-span-2" />

@@ -1,12 +1,26 @@
 import { cache } from "react";
 import { Metadata, ResolvingMetadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PackageListingPage } from "@/components/pages/PackageListingPage";
 import { PackageDetailsPage } from "@/components/pages/PackageDetailsPage";
 import { ThemeDetailPage } from "@/components/pages/ThemeDetailPage";
 import { getApiUrl } from "@/lib/api-url";
+import { getDestinationPackageUrl } from "@/lib/utils";
 
 const API_URL = getApiUrl();
+
+const resolveDestinationPath = cache(async (countrySlug: string, slug: string) => {
+  try {
+    const res = await fetch(`${API_URL}/destinations/resolve-path/${countrySlug}/${slug}`, {
+      next: { revalidate: 120 },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+});
 
 /**
  * ⚡ React cache() — deduplicates the API call within a single render pass.
@@ -69,6 +83,19 @@ export async function generateMetadata(
     return { title: "Sampooran Holidays" };
   }
 
+  if (params.slug.length === 2 && /-(?:holiday-tour-packages|tour-packages|tourism)$/.test(params.slug[1])) {
+    const resolvedPath = await resolveDestinationPath(params.slug[0], params.slug[1]);
+    if (!resolvedPath?.data) return { title: "Not Found" };
+    const { data } = resolvedPath;
+    const title = data.metaTitle || `${data.name} Tour Packages | Sampooran Holidays`;
+    const description = data.metaDescription || data.description || `Explore tour packages for ${data.name}.`;
+    return {
+      title,
+      description,
+      alternates: { canonical: `https://sampooranholidays.com/${params.slug[0].toLowerCase()}/${params.slug[1].toLowerCase()}` },
+    };
+  }
+
   const lastSlug = params.slug[params.slug.length - 1];
   const lookupSlug = normalizeSlug(lastSlug);
 
@@ -110,6 +137,14 @@ export default async function DynamicSlugPage(props: Props) {
     return null; // Home page handled by app/page.tsx
   }
 
+  // Canonical destination package route: /{country}/{destination}-tour-packages.
+  // Legacy one-segment suffix URLs are redirected below to prevent duplicate pages.
+  if (params.slug.length === 2 && /-(?:holiday-tour-packages|tour-packages|tourism)$/.test(params.slug[1])) {
+    const resolvedPath = await resolveDestinationPath(params.slug[0], params.slug[1]);
+    if (!resolvedPath?.data) notFound();
+    return <PackageListingPage entityType="destination" entityData={resolvedPath.data} searchParams={searchParams} />;
+  }
+
   const lastSlug = params.slug[params.slug.length - 1];
   const lookupSlug = normalizeSlug(lastSlug);
 
@@ -123,6 +158,10 @@ export default async function DynamicSlugPage(props: Props) {
 
   if (!resolved?.data) {
     notFound();
+  }
+
+  if (params.slug.length === 1 && /-(?:holiday-tour-packages|tourism)$/.test(lastSlug) && resolved.type === "destination") {
+    redirect(getDestinationPackageUrl(resolved.data));
   }
 
   const { type, data } = resolved;

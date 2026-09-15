@@ -8,7 +8,7 @@ import { ChevronRight, Calendar, MapPin, Loader2, Star, Clock, Filter, SlidersHo
 import { motion, AnimatePresence } from "framer-motion";
 import { PackageCard } from "@/components/PackageCard";
 import { Youtube } from "lucide-react";
-import { cn, validateImageUrl, getYouTubeId } from "@/lib/utils";
+import { cn, validateImageUrl, getYouTubeId, getDestinationPackageUrl } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 
@@ -127,6 +127,9 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 
 export function PackageListingPage({ entityType, entityData, searchParams }: { entityType: string, entityData: any, searchParams: any }) {
   const router = useRouter();
+  const entityHref = entityType === "destination"
+    ? getDestinationPackageUrl(entityData)
+    : `/${entityData.slug}`;
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const placesContainerRef = useRef<HTMLDivElement>(null);
@@ -590,7 +593,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
               <div className="flex items-center gap-1.5 text-white/70 text-[9px] md:text-xs mt-3 justify-center lg:justify-start">
                 <Link href="/" className="hover:text-accent transition-colors">Home</Link>
                 <ChevronRight className="w-3 h-3 text-white/50" />
-                <Link href={`/${entityData.slug}-tourism`} className="hover:text-accent transition-colors capitalize">{entityData.name}</Link>
+                <Link href={entityHref} className="hover:text-accent transition-colors capitalize">{entityData.name}</Link>
                 <ChevronRight className="w-3 h-3 text-white/50" />
                 <span className="text-white font-medium">Packages</span>
               </div>
@@ -656,9 +659,9 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
               {childPlaces.map((place, idx) => (
                 <Link
                   key={idx}
-                  href={`/${place.slug}-tour-packages`}
-                  onTouchStart={() => router.prefetch(`/${place.slug}-tour-packages`)}
-                  onMouseEnter={() => router.prefetch(`/${place.slug}-tour-packages`)}
+                  href={getDestinationPackageUrl(place)}
+                  onTouchStart={() => router.prefetch(getDestinationPackageUrl(place))}
+                  onMouseEnter={() => router.prefetch(getDestinationPackageUrl(place))}
                   className="inline-flex items-center gap-1.5 bg-white/10 active:bg-white/20 p-1 pr-2.5 rounded-md border border-white/10 transition-colors group shrink-0 snap-start"
                 >
                   <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-sm overflow-hidden shrink-0 border border-white/20">
@@ -1015,7 +1018,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
                       {tagPlaces.map(place => (
                         <Link
                           key={place.id}
-                          href={`/${place.slug}-tour-packages`}
+                          href={getDestinationPackageUrl(place)}
                           className="px-3 py-1.5 md:px-4 md:py-2.5 bg-white border border-slate-200 rounded-md text-[11px] md:text-[13px] font-semibold md:font-medium text-slate-600 hover:border-primary hover:text-primary transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
                         >
                           {place.name} Tour Packages
@@ -1394,7 +1397,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
 // ─── Masonry Card — Text BELOW image, matches reference screenshot ────────────
 function MasonryCard({ place, tall }: { place: any; tall: boolean }) {
   return (
-    <Link href={`/${place.slug}-tour-packages`} className="group block">
+    <Link href={getDestinationPackageUrl(place)} className="group block">
       {/* Image container with fixed height */}
       <div className={cn(
         "relative w-full overflow-hidden rounded-lg border border-slate-100 shadow-sm transition-all duration-300 group-hover:shadow-lg group-hover:-translate-y-0.5",
