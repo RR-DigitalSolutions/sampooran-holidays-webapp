@@ -525,23 +525,39 @@ router.get("/:slug", cacheMiddleware(180), async (req: Request, res: Response) =
     const [rooms, policies, photos, reviews, ratingAgg] = await Promise.all([
       db.select().from(hotelRoomsTable)
         .where(and(eq(hotelRoomsTable.hotelId, hotelId), eq(hotelRoomsTable.isActive, true)))
-        .orderBy(hotelRoomsTable.basePrice),
+        .orderBy(hotelRoomsTable.basePrice)
+        .catch((error) => {
+          logger.warn({ error: error.message, hotelId }, "Hotel rooms unavailable");
+          return [];
+        }),
 
       db.select().from(hotelPoliciesTable)
         .where(eq(hotelPoliciesTable.hotelId, hotelId)).limit(1)
-        .then(r => r[0] || null),
+        .then(r => r[0] || null)
+        .catch((error) => {
+          logger.warn({ error: error.message, hotelId }, "Hotel policies unavailable");
+          return null;
+        }),
 
       db.select().from(hotelPhotosTable)
         .where(eq(hotelPhotosTable.hotelId, hotelId))
         .orderBy(hotelPhotosTable.displayOrder)
-        .limit(20),
+        .limit(20)
+        .catch((error) => {
+          logger.warn({ error: error.message, hotelId }, "Hotel photos unavailable");
+          return [];
+        }),
 
       db.select({ review: hotelReviewsTable, guestName: usersTable.name })
         .from(hotelReviewsTable)
         .leftJoin(usersTable, eq(hotelReviewsTable.userId, usersTable.id))
         .where(and(eq(hotelReviewsTable.hotelId, hotelId), eq(hotelReviewsTable.isPublished, true)))
         .orderBy(desc(hotelReviewsTable.createdAt))
-        .limit(20),
+        .limit(20)
+        .catch((error) => {
+          logger.warn({ error: error.message, hotelId }, "Hotel reviews unavailable");
+          return [];
+        }),
 
       db.execute(sql`
         SELECT
@@ -555,7 +571,11 @@ router.get("/:slug", cacheMiddleware(180), async (req: Request, res: Response) =
           COUNT(*)::int as total
         FROM hotel_reviews
         WHERE hotel_id = ${hotelId} AND is_published = true
-      `).then((r: any) => r.rows?.[0] || null),
+      `).then((r: any) => r.rows?.[0] || null)
+        .catch((error) => {
+          logger.warn({ error: error.message, hotelId }, "Hotel rating summary unavailable");
+          return null;
+        }),
     ]);
 
     res.json({
