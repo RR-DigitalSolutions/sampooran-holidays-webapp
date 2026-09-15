@@ -88,6 +88,12 @@ async function runStartupMigrations() {
       $$;
     `);
 
+    // Canonical country-scoped destination package URLs.
+    await db.execute(sql`
+      ALTER TABLE destinations
+      ADD COLUMN IF NOT EXISTS package_page_slug TEXT UNIQUE
+    `);
+
     // ── Extend packages table with package_code ──
     await db.execute(sql`
       DO $$
@@ -503,6 +509,7 @@ const ALLOWED_WS_ORIGINS = (
   "http://localhost:5173",
   "http://localhost:5175",
   "https://sampooran-admin.pages.dev",
+  "https://admin.sampooranholidays.com",
   "https://sampooranholidays.com",
   "https://www.sampooranholidays.com",
   "https://sampooran-holidays-webapp-frontend.vercel.app",

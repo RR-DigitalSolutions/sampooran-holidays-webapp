@@ -3,7 +3,12 @@
  * The admin panel convention is: API_BASE + "/api/admin/..." 
  */
 export function getApiBase(): string {
-  const raw = import.meta.env.VITE_API_URL || "http://localhost:8080";
+  const configured = import.meta.env.VITE_API_URL;
+  const raw = configured || (
+    typeof window !== "undefined" && window.location.hostname === "admin.sampooranholidays.com"
+      ? "https://www.sampooranholidays.com"
+      : "http://localhost:8080"
+  );
   // Remove trailing slash and /api suffix if present
   return raw.replace(/\/+$/, "").replace(/\/api$/, "");
 }

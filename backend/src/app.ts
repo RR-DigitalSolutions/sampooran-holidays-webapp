@@ -14,6 +14,7 @@ const DEFAULT_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:5175",
   "https://sampooran-admin.pages.dev",
+  "https://admin.sampooranholidays.com",
   "https://sampooranholidays.com",
   "https://www.sampooranholidays.com",
   "https://sampooran-holidays-webapp-frontend.vercel.app"

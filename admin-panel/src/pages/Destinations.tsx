@@ -6,6 +6,7 @@ import {
   Info, FileText, Image as ImageIcon, HelpCircle, ToggleRight
 } from "lucide-react";
 import { customFetch } from "../utils/api";
+import { getApiBase } from "../utils/api-url";
 import { toast } from "sonner";
 
 type Tab = "countries" | "states" | "places";
@@ -855,7 +856,7 @@ function MediaUploadField({ label, value, onChange, className = "", folder = "mi
         try { token = JSON.parse(stored).token; } catch { }
       }
       
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/media/upload?folder=${folder}`, {
+      const res = await fetch(`${getApiBase()}/api/media/upload?folder=${folder}`, {
         method: "POST",
         headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
         body: formData,

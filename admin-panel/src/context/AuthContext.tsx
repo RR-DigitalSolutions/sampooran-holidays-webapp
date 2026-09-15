@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { getApiBase } from "../utils/api-url";
 
 // ─── Types ───────────────────────────────────────────────────
 type PermissionModule =
@@ -27,8 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 export const API_BASE = (() => {
-  const raw = import.meta.env.VITE_API_URL || "http://localhost:8080";
-  return raw.replace(/\/+$/, "").replace(/\/api$/, "");
+  return getApiBase();
 })();
 
 // ─── Provider ────────────────────────────────────────────────
