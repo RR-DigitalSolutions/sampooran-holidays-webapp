@@ -7,7 +7,7 @@ import { ChevronRight, MapPin, Star, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { customFetch } from "@workspace/api-client-react";
-import { validateImageUrl } from "@/lib/utils";
+import { validateImageUrl, getDestinationPackageUrl } from "@/lib/utils";
 
 const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMmY1Ii8+PC9zdmc+";
 
@@ -21,6 +21,10 @@ type Destination = {
   places: string[];
   gallery: { name: string; image: string; slug: string; packageCount?: number; startingPrice?: number }[];
   type: string;
+  countrySlug?: string;
+  stateSlug?: string;
+  countryName?: string;
+  stateName?: string;
 };
 
 type TopDestinationsData = {
@@ -236,7 +240,7 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                         {(() => {
                           const exploreHref = selectedDest.type === 'international'
                             ? `/packages?country=${selectedDest.slug}`
-                            : `/${selectedDest.slug}-tour-packages`;
+                            : getDestinationPackageUrl(selectedDest);
                           return (
                             <Link
                               href={exploreHref}
@@ -256,7 +260,11 @@ export default function TopDestinations({ initialData }: { initialData?: TopDest
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {selectedDest.gallery?.length > 0 ? (
                         selectedDest.gallery.slice(0, 6).map((place, pIdx) => {
-                          const placeHref = `/${place.slug || place.name.toLowerCase().replace(/\s+/g, '-')}-tour-packages`;
+                          const placeHref = getDestinationPackageUrl({
+                            slug: place.slug || place.name.toLowerCase().replace(/\s+/g, '-'),
+                            countrySlug: selectedDest.countrySlug,
+                            stateSlug: selectedDest.stateSlug,
+                          });
                           return (
                             <Link
                               key={place.slug || place.name}

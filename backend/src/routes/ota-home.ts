@@ -226,6 +226,8 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
       imageUrl: destinationsTable.imageUrl,
       stateId: destinationsTable.stateId,
       countryId: destinationsTable.countryId,
+      stateSlug: statesTable.slug,
+      countrySlug: countriesTable.slug,
       packageCount: sql<number>`count(${packagesTable.id})::int`.as('packageCount'),
       startingPrice: sql<number>`min(${packagesTable.pricePerPerson})`.as('startingPrice')
     })
@@ -242,7 +244,9 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
       destinationsTable.slug,
       destinationsTable.imageUrl,
       destinationsTable.stateId,
-      destinationsTable.countryId
+      destinationsTable.countryId,
+      statesTable.slug,
+      countriesTable.slug
     );
 
     // 4. Group sub-places by country/state
@@ -272,6 +276,7 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
           slug: p.slug,
           packageCount: p.packageCount || 0,
           startingPrice: p.startingPrice || 0
+          ,stateSlug: p.stateSlug, countrySlug: p.countrySlug
         }))
       })),
       ...featuredStates.filter(s => s.countrySlug !== 'india').map(s => ({
@@ -284,6 +289,7 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
           slug: p.slug,
           packageCount: p.packageCount || 0,
           startingPrice: p.startingPrice || 0
+          ,stateSlug: p.stateSlug, countrySlug: p.countrySlug
         }))
       }))
     ];
@@ -299,6 +305,7 @@ router.get("/top-destinations", cacheMiddleware(600), async (req, res) => {
         slug: p.slug,
         packageCount: p.packageCount || 0,
         startingPrice: p.startingPrice || 0
+          ,stateSlug: p.stateSlug, countrySlug: p.countrySlug
       }))
     }));
 

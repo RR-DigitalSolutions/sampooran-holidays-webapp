@@ -22,6 +22,28 @@ const resolveDestinationPath = cache(async (countrySlug: string, slug: string) =
   }
 });
 
+const resolveCanonicalPackage = cache(async (parts: string[]) => {
+  try {
+    const response = await fetch(`${API_URL}/packages/by-path/${parts.join("/")}`, {
+      next: { revalidate: 120 },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+});
+
+const resolveCanonicalDestination = cache(async (countrySlug: string, stateSlug: string, destinationSlug: string) => {
+  const resolved = await resolveDestinationPath(countrySlug, `${destinationSlug}-tour-packages`);
+  if (!resolved?.data) return null;
+  return {
+    ...resolved.data,
+    stateSlug: resolved.data.stateSlug || stateSlug,
+  };
+});
+
 /**
  * ⚡ React cache() — deduplicates the API call within a single render pass.
  * Both generateMetadata() and DynamicSlugPage() call this function, but React
@@ -83,6 +105,23 @@ export async function generateMetadata(
     return { title: "Sampooran Holidays" };
   }
 
+  if (params.slug[0] === "packages" && params.slug.length >= 2 && params.slug.length <= 4) {
+    const last = params.slug[params.slug.length - 1].replace(/-tour-packages$/, "");
+    const resolved = params.slug.length === 2
+      ? await resolveSlug(last)
+      : params.slug.length === 3
+        ? await resolveSlug(last)
+        : await resolveCanonicalDestination(params.slug[1], params.slug[2], last);
+    if (resolved?.data) {
+      const data = resolved.data;
+      return {
+        title: data.metaTitle || `${data.name} Tour Packages | Sampooran Holidays`,
+        description: data.metaDescription || data.description || `Explore tour packages for ${data.name}.`,
+        alternates: { canonical: `https://sampooranholidays.com/${params.slug.join("/")}` },
+      };
+    }
+  }
+
   if (params.slug.length === 2 && /-(?:holiday-tour-packages|tour-packages|tourism)$/.test(params.slug[1])) {
     const resolvedPath = await resolveDestinationPath(params.slug[0], params.slug[1]);
     if (!resolvedPath?.data) return { title: "Not Found" };
@@ -135,6 +174,18 @@ export default async function DynamicSlugPage(props: Props) {
 
   if (!params.slug || params.slug.length === 0) {
     return null; // Home page handled by app/page.tsx
+  }
+
+  if (params.slug[0] === "packages" && params.slug.length === 4 && /-tour-packages$/.test(params.slug[3])) {
+    const data = await resolveCanonicalDestination(params.slug[1], params.slug[2], params.slug[3].replace(/-tour-packages$/, ""));
+    if (!data) notFound();
+    return <PackageListingPage entityType="destination" entityData={data} searchParams={searchParams} />;
+  }
+
+  if (params.slug[0] === "packages" && params.slug.length === 5) {
+    const data = await resolveCanonicalPackage(params.slug.slice(1));
+    if (!data) notFound();
+    return <main className="w-full flex flex-col min-h-screen bg-slate-50"><PackageDetailsPage packageData={data} /></main>;
   }
 
   // Canonical destination package route: /{country}/{destination}-tour-packages.
