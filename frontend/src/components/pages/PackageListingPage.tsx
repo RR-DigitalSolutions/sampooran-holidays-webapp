@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PackageCard } from "@/components/PackageCard";
 import { Youtube } from "lucide-react";
 import { cn, validateImageUrl, getYouTubeId, getDestinationPackageUrl } from "@/lib/utils";
+import { getApiBaseAbsolute } from "@/lib/api-url";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 
@@ -441,7 +442,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
         else if (entityType === "destination") queryStr = `destinationSlug=${entityData.slug}`;
         else if (entityType === "theme") queryStr = `category=${entityData.name}`;
 
-        const res = await fetch(`/api/packages?${queryStr}`);
+        const res = await fetch(`${getApiBaseAbsolute()}/api/packages?${queryStr}`);
         if (res.ok) {
           const data = await res.json();
           setPackages(data.packages || []);
@@ -459,7 +460,7 @@ export function PackageListingPage({ entityType, entityData, searchParams }: { e
     async function fetchPlaces() {
       try {
         const cleanName = entityData.name.split('(')[0].trim();
-        let url = '/api/destinations?limit=24';
+        let url = `${getApiBaseAbsolute()}/api/destinations?limit=24`;
 
         if (entityType === 'country') {
           url += `&country=${encodeURIComponent(cleanName)}`;

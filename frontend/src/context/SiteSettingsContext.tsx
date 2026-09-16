@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getApiUrl } from "@/lib/api-url";
+import { getApiBaseAbsolute } from "@/lib/api-url";
 
 // ─── OTA Partner shape ────────────────────────────────────────────────────────
 export interface OtaPartner {
@@ -198,8 +198,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const baseUrl = getApiUrl();
-        const res = await fetch(`${baseUrl}/ota/home/site-settings`, {
+        const res = await fetch(`${getApiBaseAbsolute()}/api/ota/home/site-settings`, {
           cache: "no-store",
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
