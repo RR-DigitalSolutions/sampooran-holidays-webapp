@@ -520,7 +520,10 @@ router.get("/destinations/:slug", async (req, res): Promise<void> => {
     .from(destinationsTable)
     .leftJoin(statesTable, eq(destinationsTable.stateId, statesTable.id))
     .leftJoin(countriesTable, eq(statesTable.countryId, countriesTable.id))
-    .where(eq(destinationsTable.slug, params.data.slug));
+    .where(or(
+      eq(destinationsTable.slug, params.data.slug),
+      eq(destinationsTable.packagePageSlug, params.data.slug),
+    ));
 
   if (!row) {
     res.status(404).json({ error: "Destination not found" });

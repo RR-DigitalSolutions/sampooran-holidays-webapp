@@ -285,7 +285,10 @@ router.get("/packages", cacheMiddleware(300), async (req, res): Promise<void> =>
   }
 
   if (destinationSlug) {
-    const [dest] = await db.select().from(destinationsTable).where(eq(destinationsTable.slug, String(destinationSlug)));
+    const [dest] = await db.select().from(destinationsTable).where(or(
+      eq(destinationsTable.slug, String(destinationSlug)),
+      eq(destinationsTable.packagePageSlug, String(destinationSlug)),
+    ));
     if (dest) filters.push(eq(packagesTable.destinationId, dest.id));
   }
 

@@ -182,6 +182,13 @@ export default async function DynamicSlugPage(props: Props) {
     return <PackageListingPage entityType="destination" entityData={data} searchParams={searchParams} />;
   }
 
+  // Redirect the previous country-scoped destination URL to the state-aware canonical URL.
+  if (params.slug[0] === "packages" && params.slug.length === 3 && /-tour-packages$/.test(params.slug[2])) {
+    const resolvedPath = await resolveDestinationPath(params.slug[1], params.slug[2]);
+    if (!resolvedPath?.data) notFound();
+    redirect(getDestinationPackageUrl(resolvedPath.data));
+  }
+
   if (params.slug[0] === "packages" && params.slug.length === 5) {
     const data = await resolveCanonicalPackage(params.slug.slice(1));
     if (!data) notFound();
